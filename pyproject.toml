@@ -17,3 +17,7 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 include = ["marina_custom_apps*"]
+
+[tool.bench.frappe-dependencies]
+frappe = ">=15.0.0,<16.0.0"
+erpnext = ">=15.0.0,<16.0.0"
