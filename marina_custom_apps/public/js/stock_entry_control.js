@@ -45,6 +45,10 @@ frappe.ui.form.on("Stock Entry", {
 
         marina_bind_link_query_guards(frm);
         marina_apply_field_controls(frm);
+
+        // ERPNext adds its standard End Transit button during refresh.
+        // Replace it after the refresh cycle with Marina's controlled action.
+        setTimeout(() => marina_install_end_transit_button(frm), 0);
     },
 
     async stock_entry_type(frm) {
@@ -364,4 +368,63 @@ async function marina_prepare_material_request_stock_entry(frm) {
 
     marina_bind_link_query_guards(frm);
     marina_apply_field_controls(frm);
+}
+
+
+function marina_is_submitted_send_waiting_for_receipt(frm) {
+    return (
+        frm.doc.docstatus === 1 &&
+        frm.doc.stock_entry_type === "Send Stock" &&
+        !!frm.doc.add_to_transit &&
+        Number(frm.doc.per_transferred || 0) < 100
+    );
+}
+
+
+function marina_install_end_transit_button(frm) {
+    // Remove ERPNext's standard End Transit action. Marina Receive Stock must
+    // always be created through the controlled server method below.
+    frm.remove_custom_button(__("End Transit"));
+
+    if (!marina_is_submitted_send_waiting_for_receipt(frm)) {
+        return;
+    }
+
+    frm.add_custom_button(__("End Transit"), async () => {
+        const button = frm.page.btn_secondary;
+
+        try {
+            const result = await frappe.call({
+                method: "marina_custom_apps.stock_transfer_control.end_transit.create_or_open_receive_stock",
+                args: {
+                    send_stock: frm.doc.name,
+                },
+                freeze: true,
+                freeze_message: __("Preparing controlled Receive Stock..."),
+            });
+
+            const receive = result.message || {};
+            if (!receive.name) {
+                frappe.throw(__("Receive Stock could not be created."));
+            }
+
+            if (receive.created) {
+                frappe.show_alert({
+                    message: __("Receive Stock {0} created.", [receive.name]),
+                    indicator: "green",
+                });
+            } else {
+                frappe.show_alert({
+                    message: __("Opening existing Receive Stock {0}.", [receive.name]),
+                    indicator: "blue",
+                });
+            }
+
+            frappe.set_route("Form", "Stock Entry", receive.name);
+        } finally {
+            if (button) {
+                button.prop("disabled", false);
+            }
+        }
+    });
 }
