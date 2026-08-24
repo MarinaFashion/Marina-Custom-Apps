@@ -1,0 +1,13 @@
+include *.md
+include *.txt
+recursive-include marina_custom_apps *.css
+recursive-include marina_custom_apps *.csv
+recursive-include marina_custom_apps *.html
+recursive-include marina_custom_apps *.ico
+recursive-include marina_custom_apps *.js
+recursive-include marina_custom_apps *.json
+recursive-include marina_custom_apps *.md
+recursive-include marina_custom_apps *.png
+recursive-include marina_custom_apps *.py
+recursive-include marina_custom_apps *.svg
+recursive-include marina_custom_apps *.txt
