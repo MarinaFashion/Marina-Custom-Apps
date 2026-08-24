@@ -2,7 +2,10 @@ frappe.ui.form.on("Stock Entry", {
     setup(frm) {
         frm.marina_transfer_context = null;
         frm.marina_internal_route_update = false;
+        // Install immediately, then re-assert after ERPNext's asynchronous
+        // Stock Settings callback, which otherwise overwrites from_warehouse.
         marina_install_link_queries(frm);
+        frappe.after_ajax(() => marina_install_link_queries(frm));
     },
 
     async onload(frm) {
@@ -23,6 +26,7 @@ frappe.ui.form.on("Stock Entry", {
 
     async refresh(frm) {
         marina_install_link_queries(frm);
+        frappe.after_ajax(() => marina_install_link_queries(frm));
         await marina_load_transfer_context(frm);
 
         if (marina_has_material_request_origin(frm)) {
