@@ -2,7 +2,7 @@
 
 setup(
     name="marina_custom_apps",
-    version="0.2.0",
+    version="0.3.0",
     description="Marina Trading Company custom Frappe/ERPNext modules",
     author="Marina Trading Company",
     author_email="it@marinafashion.com.sa",
