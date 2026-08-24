@@ -15,12 +15,15 @@ frappe.ui.form.on("Stock Entry", {
             if (allowed.includes("Send Stock") && !frm.doc.stock_entry_type) {
                 await frm.set_value("stock_entry_type", "Send Stock");
             }
-                    await marina_disable_standard_transit(frm);`r`n        }
+                    await marina_disable_standard_transit(frm);
+        }
 
         marina_apply_field_controls(frm);
     },
 
-    async refresh(frm) {`r`n        marina_install_link_queries(frm);`r`n        await marina_load_transfer_context(frm);
+    async refresh(frm) {
+        marina_install_link_queries(frm);
+        await marina_load_transfer_context(frm);
 
         if (marina_has_material_request_origin(frm)) {
             await marina_prepare_material_request_stock_entry(frm);
@@ -43,7 +46,8 @@ frappe.ui.form.on("Stock Entry", {
             frm.marina_internal_route_update = false;
         }
 
-        await marina_disable_standard_transit(frm);`r`n        await marina_clear_route(frm, true);
+        await marina_disable_standard_transit(frm);
+        await marina_clear_route(frm, true);
         marina_apply_field_controls(frm);
     },
 
