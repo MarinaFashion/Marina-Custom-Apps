@@ -1,8 +1,8 @@
 frappe.ui.form.on("Stock Entry", {
-    async setup(frm) {
+    setup(frm) {
         frm.marina_transfer_context = null;
         frm.marina_internal_route_update = false;
-        await marina_load_transfer_context(frm);
+        marina_install_link_queries(frm);
     },
 
     async onload(frm) {
@@ -15,21 +15,18 @@ frappe.ui.form.on("Stock Entry", {
             if (allowed.includes("Send Stock") && !frm.doc.stock_entry_type) {
                 await frm.set_value("stock_entry_type", "Send Stock");
             }
-        }
+                    await marina_disable_standard_transit(frm);`r`n        }
 
         marina_apply_field_controls(frm);
-        await marina_configure_queries(frm);
     },
 
-    async refresh(frm) {
-        await marina_load_transfer_context(frm);
+    async refresh(frm) {`r`n        marina_install_link_queries(frm);`r`n        await marina_load_transfer_context(frm);
 
         if (marina_has_material_request_origin(frm)) {
             await marina_prepare_material_request_stock_entry(frm);
         }
 
         marina_apply_field_controls(frm);
-        await marina_configure_queries(frm);
     },
 
     async stock_entry_type(frm) {
@@ -46,21 +43,22 @@ frappe.ui.form.on("Stock Entry", {
             frm.marina_internal_route_update = false;
         }
 
-        await marina_clear_route(frm, true);
+        await marina_disable_standard_transit(frm);`r`n        await marina_clear_route(frm, true);
         marina_apply_field_controls(frm);
-        await marina_configure_queries(frm);
     },
 
     async from_warehouse(frm) {
         if (frm.marina_internal_route_update || marina_has_material_request_origin(frm)) return;
 
         frm.marina_internal_route_update = true;
-        await frm.set_value("to_warehouse", null);
-        await frm.set_value("custom_intended_final_warehouse", null);
-        await marina_sync_child_route(frm);
-        frm.marina_internal_route_update = false;
-
-        await marina_configure_queries(frm);
+        try {
+            await marina_disable_standard_transit(frm);
+            await frm.set_value("to_warehouse", null);
+            await frm.set_value("custom_intended_final_warehouse", null);
+            await marina_sync_child_route(frm);
+        } finally {
+            frm.marina_internal_route_update = false;
+        }
     },
 
     async to_warehouse(frm) {
@@ -98,6 +96,54 @@ frappe.ui.form.on("Stock Entry Detail", {
     },
 });
 
+function marina_install_link_queries(frm) {
+    frm.set_query("stock_entry_type", () => {
+        const manual_types = frm.marina_transfer_context?.manual_types || ["Send Stock"];
+        return {
+            filters: [
+                ["Stock Entry Type", "name", "in",
+                    manual_types.length ? manual_types : ["__none__"]]
+            ],
+        };
+    });
+
+    frm.set_query("from_warehouse", () => ({
+        query: "marina_custom_apps.stock_transfer_control.api.search_source_warehouses",
+        filters: {
+            stock_entry_type: frm.doc.stock_entry_type || "Send Stock",
+        },
+    }));
+
+    frm.set_query("to_warehouse", () => ({
+        query: "marina_custom_apps.stock_transfer_control.api.search_target_warehouses",
+        filters: {
+            stock_entry_type: frm.doc.stock_entry_type || "Send Stock",
+            source_warehouse: frm.doc.from_warehouse || "",
+        },
+    }));
+}
+
+
+function marina_is_managed_send(frm) {
+    return frm.doc.stock_entry_type === "Send Stock";
+}
+
+
+async function marina_disable_standard_transit(frm) {
+    if (!marina_is_managed_send(frm) || marina_has_material_request_origin(frm)) {
+        return;
+    }
+
+    if (frm.fields_dict.add_to_transit) {
+        frm.set_df_property("add_to_transit", "read_only", 1);
+        frm.set_df_property("add_to_transit", "hidden", 1);
+    }
+
+    if (frm.doc.add_to_transit) {
+        await frm.set_value("add_to_transit", 0);
+    }
+}
+
 async function marina_load_transfer_context(frm) {
     if (frm.marina_transfer_context) return;
     const result = await frappe.call({
@@ -132,47 +178,6 @@ function marina_apply_field_controls(frm) {
     }
 }
 
-async function marina_configure_queries(frm) {
-    if (!frm.is_new() || frm.doc.stock_entry_type === "Receive Stock") return;
-
-    const type = frm.doc.stock_entry_type;
-    const manual_types = frm.marina_transfer_context?.manual_types || [];
-
-    frm.set_query("stock_entry_type", () => ({
-        filters: [["Stock Entry Type", "name", "in", manual_types.length ? manual_types : ["__none__"]]],
-    }));
-
-    if (marina_has_material_request_origin(frm)) return;
-    if (!["Send Stock", "Transfer Between"].includes(type)) return;
-
-    const sources = await frappe.call({
-        method: "marina_custom_apps.stock_transfer_control.api.get_valid_sources",
-        args: { stock_entry_type: type },
-    });
-    const source_names = sources.message || [];
-    frm.set_query("from_warehouse", () => ({
-        filters: [["Warehouse", "name", "in", source_names.length ? source_names : ["__none__"]]],
-    }));
-
-    if (!frm.doc.from_warehouse) {
-        frm.set_query("to_warehouse", () => ({
-            filters: [["Warehouse", "name", "in", ["__none__"]]],
-        }));
-        return;
-    }
-
-    const targets = await frappe.call({
-        method: "marina_custom_apps.stock_transfer_control.api.get_valid_targets",
-        args: {
-            stock_entry_type: type,
-            source_warehouse: frm.doc.from_warehouse,
-        },
-    });
-    const target_names = targets.message || [];
-    frm.set_query("to_warehouse", () => ({
-        filters: [["Warehouse", "name", "in", target_names.length ? target_names : ["__none__"]]],
-    }));
-}
 
 async function marina_clear_route(frm, clear_source) {
     frm.marina_internal_route_update = true;

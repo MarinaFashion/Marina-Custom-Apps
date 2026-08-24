@@ -22,6 +22,143 @@ from marina_custom_apps.stock_transfer_control.services.warehouse_policy import 
 )
 
 
+
+def _matches(text, txt):
+    return not txt or txt.lower() in (text or "").lower()
+
+
+def _slice(rows, start, page_len):
+    start = int(start or 0)
+    page_len = int(page_len or 20)
+    return rows[start:start + page_len]
+
+
+@frappe.whitelist()
+def search_source_warehouses(doctype, txt, searchfield, start, page_len, filters):
+    """Immediate Link query for Marina-controlled source warehouses."""
+    filters = frappe.parse_json(filters) if isinstance(filters, str) else (filters or {})
+    stock_entry_type = filters.get("stock_entry_type") or TYPE_SEND_STOCK
+    role = get_effective_transfer_role()
+
+    if stock_entry_type not in {TYPE_SEND_STOCK, TYPE_TRANSFER_BETWEEN}:
+        return []
+
+    if role in {ROLE_SALES_SUPERVISOR, ROLE_WAREHOUSE_MANAGER}:
+        names = get_allowed_physical_warehouses()
+        names = [name for name in names if _matches(name, txt)]
+        return [[name] for name in _slice(names, start, page_len)]
+
+    if role not in {ROLE_ADMINISTRATOR, ROLE_STOCK_MANAGER}:
+        return []
+
+    rows = frappe.get_all(
+        "Warehouse",
+        filters={"disabled": 0},
+        fields=["name", "warehouse_type"],
+        order_by="name asc",
+        limit_page_length=0,
+    )
+
+    names = []
+    for row in rows:
+        if stock_entry_type == TYPE_SEND_STOCK and row.warehouse_type == "Transit":
+            continue
+        if _matches(row.name, txt):
+            names.append(row.name)
+
+    return [[name] for name in _slice(names, start, page_len)]
+
+
+@frappe.whitelist()
+def search_target_warehouses(doctype, txt, searchfield, start, page_len, filters):
+    """Immediate Link query for Marina-controlled target warehouses."""
+    filters = frappe.parse_json(filters) if isinstance(filters, str) else (filters or {})
+    stock_entry_type = filters.get("stock_entry_type") or TYPE_SEND_STOCK
+    source_warehouse = filters.get("source_warehouse")
+
+    if not source_warehouse:
+        return []
+
+    role = get_effective_transfer_role()
+
+    if stock_entry_type == TYPE_SEND_STOCK:
+        source = validate_physical_warehouse(source_warehouse)
+
+        if not source.default_in_transit_warehouse:
+            return []
+
+        validate_transit_warehouse(source.default_in_transit_warehouse)
+
+        rows = frappe.get_all(
+            "Warehouse",
+            filters={
+                "disabled": 0,
+                "warehouse_type": "Transit",
+                "company": source.company,
+            },
+            fields=["name"],
+            order_by="name asc",
+            limit_page_length=0,
+        )
+
+        valid = []
+        for row in rows:
+            if row.name == source.default_in_transit_warehouse:
+                continue
+            try:
+                validate_transit_warehouse(row.name)
+            except Exception:
+                continue
+            if _matches(row.name, txt):
+                valid.append(row.name)
+
+        return [[name] for name in _slice(valid, start, page_len)]
+
+    if stock_entry_type == TYPE_TRANSFER_BETWEEN:
+        source = frappe.db.get_value(
+            "Warehouse",
+            source_warehouse,
+            ["company", "warehouse_type", "disabled"],
+            as_dict=True,
+        )
+        if not source or source.disabled:
+            return []
+
+        rows = frappe.get_all(
+            "Warehouse",
+            filters={
+                "disabled": 0,
+                "company": source.company,
+            },
+            fields=["name", "warehouse_type"],
+            order_by="name asc",
+            limit_page_length=0,
+        )
+
+        valid = []
+        for row in rows:
+            if row.name == source_warehouse:
+                continue
+
+            if role == ROLE_WAREHOUSE_MANAGER:
+                if row.warehouse_type == "Transit":
+                    continue
+            elif role in {ROLE_ADMINISTRATOR, ROLE_STOCK_MANAGER}:
+                if row.warehouse_type == "Transit":
+                    try:
+                        validate_transit_warehouse(row.name)
+                    except Exception:
+                        continue
+            else:
+                return []
+
+            if _matches(row.name, txt):
+                valid.append(row.name)
+
+        return [[name] for name in _slice(valid, start, page_len)]
+
+    return []
+
 @frappe.whitelist()
 def get_transfer_context():
     role = get_effective_transfer_role()
