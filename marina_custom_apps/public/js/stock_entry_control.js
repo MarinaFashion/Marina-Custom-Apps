@@ -2,10 +2,13 @@ frappe.ui.form.on("Stock Entry", {
     setup(frm) {
         frm.marina_transfer_context = null;
         frm.marina_internal_route_update = false;
-        // Install immediately, then re-assert after ERPNext's asynchronous
-        // Stock Settings callback, which otherwise overwrites from_warehouse.
+
         marina_install_link_queries(frm);
-        frappe.after_ajax(() => marina_install_link_queries(frm));
+
+        frappe.after_ajax(() => {
+            marina_install_link_queries(frm);
+            marina_bind_link_query_guards(frm);
+        });
     },
 
     async onload(frm) {
@@ -18,26 +21,35 @@ frappe.ui.form.on("Stock Entry", {
             if (allowed.includes("Send Stock") && !frm.doc.stock_entry_type) {
                 await frm.set_value("stock_entry_type", "Send Stock");
             }
-                    await marina_disable_standard_transit(frm);
+            await marina_disable_standard_transit(frm);
         }
 
+        marina_bind_link_query_guards(frm);
         marina_apply_field_controls(frm);
     },
 
     async refresh(frm) {
         marina_install_link_queries(frm);
-        frappe.after_ajax(() => marina_install_link_queries(frm));
+        marina_bind_link_query_guards(frm);
+
+        frappe.after_ajax(() => {
+            marina_install_link_queries(frm);
+            marina_bind_link_query_guards(frm);
+        });
+
         await marina_load_transfer_context(frm);
 
         if (marina_has_material_request_origin(frm)) {
             await marina_prepare_material_request_stock_entry(frm);
         }
 
+        marina_bind_link_query_guards(frm);
         marina_apply_field_controls(frm);
     },
 
     async stock_entry_type(frm) {
         if (frm.marina_internal_route_update || !frm.is_new()) {
+            marina_bind_link_query_guards(frm);
             marina_apply_field_controls(frm);
             return;
         }
@@ -52,6 +64,7 @@ frappe.ui.form.on("Stock Entry", {
 
         await marina_disable_standard_transit(frm);
         await marina_clear_route(frm, true);
+        marina_bind_link_query_guards(frm);
         marina_apply_field_controls(frm);
     },
 
@@ -67,6 +80,8 @@ frappe.ui.form.on("Stock Entry", {
         } finally {
             frm.marina_internal_route_update = false;
         }
+
+        marina_bind_link_query_guards(frm);
     },
 
     async to_warehouse(frm) {
@@ -83,6 +98,7 @@ frappe.ui.form.on("Stock Entry", {
         }
 
         await marina_sync_child_route(frm);
+        marina_bind_link_query_guards(frm);
     },
 
     validate(frm) {
@@ -104,6 +120,28 @@ frappe.ui.form.on("Stock Entry Detail", {
     },
 });
 
+
+function marina_source_query(frm) {
+    return {
+        query: "marina_custom_apps.stock_transfer_control.api.search_source_warehouses",
+        filters: {
+            stock_entry_type: frm.doc.stock_entry_type || "Send Stock",
+        },
+    };
+}
+
+
+function marina_target_query(frm) {
+    return {
+        query: "marina_custom_apps.stock_transfer_control.api.search_target_warehouses",
+        filters: {
+            stock_entry_type: frm.doc.stock_entry_type || "Send Stock",
+            source_warehouse: frm.doc.from_warehouse || "",
+        },
+    };
+}
+
+
 function marina_install_link_queries(frm) {
     frm.set_query("stock_entry_type", () => {
         const manual_types = frm.marina_transfer_context?.manual_types || ["Send Stock"];
@@ -115,20 +153,49 @@ function marina_install_link_queries(frm) {
         };
     });
 
-    frm.set_query("from_warehouse", () => ({
-        query: "marina_custom_apps.stock_transfer_control.api.search_source_warehouses",
-        filters: {
-            stock_entry_type: frm.doc.stock_entry_type || "Send Stock",
-        },
-    }));
+    frm.set_query("from_warehouse", () => marina_source_query(frm));
+    frm.set_query("to_warehouse", () => marina_target_query(frm));
 
-    frm.set_query("to_warehouse", () => ({
-        query: "marina_custom_apps.stock_transfer_control.api.search_target_warehouses",
-        filters: {
-            stock_entry_type: frm.doc.stock_entry_type || "Send Stock",
-            source_warehouse: frm.doc.from_warehouse || "",
-        },
-    }));
+    // Also take ownership of the live Link controls.
+    marina_force_link_control_queries(frm);
+}
+
+
+function marina_force_link_control_queries(frm) {
+    const source = frm.fields_dict.from_warehouse;
+    const target = frm.fields_dict.to_warehouse;
+
+    if (source) {
+        source.get_query = () => marina_source_query(frm);
+    }
+
+    if (target) {
+        target.get_query = () => marina_target_query(frm);
+    }
+}
+
+
+function marina_bind_link_query_guards(frm) {
+    marina_force_link_control_queries(frm);
+
+    const source = frm.fields_dict.from_warehouse;
+    const target = frm.fields_dict.to_warehouse;
+
+    if (source?.$input) {
+        source.$input
+            .off(".marina_stock_transfer_query")
+            .on("focus.marina_stock_transfer_query mousedown.marina_stock_transfer_query", () => {
+                source.get_query = () => marina_source_query(frm);
+            });
+    }
+
+    if (target?.$input) {
+        target.$input
+            .off(".marina_stock_transfer_query")
+            .on("focus.marina_stock_transfer_query mousedown.marina_stock_transfer_query", () => {
+                target.get_query = () => marina_target_query(frm);
+            });
+    }
 }
 
 
@@ -152,21 +219,26 @@ async function marina_disable_standard_transit(frm) {
     }
 }
 
+
 async function marina_load_transfer_context(frm) {
     if (frm.marina_transfer_context) return;
+
     const result = await frappe.call({
         method: "marina_custom_apps.stock_transfer_control.api.get_transfer_context",
     });
     frm.marina_transfer_context = result.message || {};
 }
 
+
 function marina_has_material_request_origin(frm) {
     return (frm.doc.items || []).some(row => !!row.material_request);
 }
 
+
 function marina_material_request_names(frm) {
     return [...new Set((frm.doc.items || []).map(row => row.material_request).filter(Boolean))];
 }
+
 
 function marina_apply_field_controls(frm) {
     const is_receive = frm.doc.stock_entry_type === "Receive Stock";
@@ -189,16 +261,21 @@ function marina_apply_field_controls(frm) {
 
 async function marina_clear_route(frm, clear_source) {
     frm.marina_internal_route_update = true;
-    if (clear_source) await frm.set_value("from_warehouse", null);
-    await frm.set_value("to_warehouse", null);
-    await frm.set_value("custom_intended_final_warehouse", null);
 
-    for (const row of (frm.doc.items || [])) {
-        await frappe.model.set_value(row.doctype, row.name, "s_warehouse", null);
-        await frappe.model.set_value(row.doctype, row.name, "t_warehouse", null);
+    try {
+        if (clear_source) await frm.set_value("from_warehouse", null);
+        await frm.set_value("to_warehouse", null);
+        await frm.set_value("custom_intended_final_warehouse", null);
+
+        for (const row of (frm.doc.items || [])) {
+            await frappe.model.set_value(row.doctype, row.name, "s_warehouse", null);
+            await frappe.model.set_value(row.doctype, row.name, "t_warehouse", null);
+        }
+    } finally {
+        frm.marina_internal_route_update = false;
     }
-    frm.marina_internal_route_update = false;
 }
+
 
 async function marina_sync_child_route(frm) {
     const source = frm.doc.from_warehouse || null;
@@ -212,18 +289,27 @@ async function marina_sync_child_route(frm) {
             await frappe.model.set_value(row.doctype, row.name, "t_warehouse", target);
         }
     }
+
     frm.refresh_field("items");
 }
+
 
 function marina_restore_row_route(frm, cdt, cdn) {
     const row = locals[cdt][cdn];
     if (!row) return;
+
     const source = frm.doc.from_warehouse || null;
     const target = frm.doc.to_warehouse || null;
 
-    if (row.s_warehouse !== source) frappe.model.set_value(cdt, cdn, "s_warehouse", source);
-    if (row.t_warehouse !== target) frappe.model.set_value(cdt, cdn, "t_warehouse", target);
+    if (row.s_warehouse !== source) {
+        frappe.model.set_value(cdt, cdn, "s_warehouse", source);
+    }
+
+    if (row.t_warehouse !== target) {
+        frappe.model.set_value(cdt, cdn, "t_warehouse", target);
+    }
 }
+
 
 async function marina_prepare_material_request_stock_entry(frm) {
     if (!frm.is_new()) return;
@@ -242,20 +328,33 @@ async function marina_prepare_material_request_stock_entry(frm) {
     }
 
     frm.marina_internal_route_update = true;
+
     try {
         await frm.set_value("stock_entry_type", route.stock_entry_type || "Send Stock");
         await frm.set_value("from_warehouse", route.from_warehouse);
         await frm.set_value("to_warehouse", route.to_warehouse);
-        await frm.set_value("custom_intended_final_warehouse", route.intended_final_warehouse || null);
+        await frm.set_value(
+            "custom_intended_final_warehouse",
+            route.intended_final_warehouse || null
+        );
 
         if (frm.fields_dict.custom_dc_dispatch_run && route.dc_dispatch_run) {
             await frm.set_value("custom_dc_dispatch_run", route.dc_dispatch_run);
         }
+
         if (frm.fields_dict.custom_final_store_warehouse && route.final_store_warehouse) {
-            await frm.set_value("custom_final_store_warehouse", route.final_store_warehouse);
+            await frm.set_value(
+                "custom_final_store_warehouse",
+                route.final_store_warehouse
+            );
         }
-        if (frm.fields_dict.custom_dc_dispatch_instructions && route.dc_dispatch_instructions) {
-            await frm.set_value("custom_dc_dispatch_instructions", route.dc_dispatch_instructions);
+
+        if (frm.fields_dict.custom_dc_dispatch_instructions &&
+            route.dc_dispatch_instructions) {
+            await frm.set_value(
+                "custom_dc_dispatch_instructions",
+                route.dc_dispatch_instructions
+            );
         }
 
         await marina_sync_child_route(frm);
@@ -263,5 +362,6 @@ async function marina_prepare_material_request_stock_entry(frm) {
         frm.marina_internal_route_update = false;
     }
 
+    marina_bind_link_query_guards(frm);
     marina_apply_field_controls(frm);
 }
