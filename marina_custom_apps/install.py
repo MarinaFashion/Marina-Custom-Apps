@@ -141,9 +141,10 @@ def _cleanup_legacy_original_send_stock_field():
             f"""
             update `tabStock Entry`
             set outgoing_stock_entry = {fieldname}
-            where ifnull(outgoing_stock_entry, ) = 
-              and ifnull({fieldname}, ) != 
-            """
+            where (outgoing_stock_entry is null or outgoing_stock_entry = %s)
+              and ({fieldname} is not null and {fieldname} != %s)
+            """,
+            ("", ""),
         )
 
     if frappe.db.exists("Custom Field", custom_field_name):
