@@ -26,6 +26,7 @@ frappe.ui.form.on("Stock Entry", {
 
         marina_bind_link_query_guards(frm);
         marina_apply_field_controls(frm);
+        marina_configure_receive_barcode_scanner(frm);
     },
 
     async refresh(frm) {
@@ -45,6 +46,7 @@ frappe.ui.form.on("Stock Entry", {
 
         marina_bind_link_query_guards(frm);
         marina_apply_field_controls(frm);
+        marina_configure_receive_barcode_scanner(frm);
         setTimeout(() => marina_force_receive_route_controls(frm), 0);
 
         // ERPNext adds its standard End Transit button during refresh.
@@ -71,6 +73,7 @@ frappe.ui.form.on("Stock Entry", {
         await marina_clear_route(frm, true);
         marina_bind_link_query_guards(frm);
         marina_apply_field_controls(frm);
+        marina_configure_receive_barcode_scanner(frm);
     },
 
     async from_warehouse(frm) {
@@ -263,12 +266,23 @@ function marina_apply_field_controls(frm) {
     frm.set_df_property("custom_receiving_method", "hidden", !is_receive);
     frm.set_df_property("custom_receiving_method", "read_only", 1);
 
+    const is_manual_barcode_receive =
+        is_receive &&
+        frm.doc.custom_receiving_method === "Manual / Barcode Receiving" &&
+        frm.doc.docstatus === 0;
+
+    if (frm.fields_dict.scan_barcode) {
+        frm.set_df_property("scan_barcode", "hidden", is_receive && !is_manual_barcode_receive);
+        frm.set_df_property("scan_barcode", "read_only", is_receive && !is_manual_barcode_receive);
+    }
+
     marina_force_receive_route_controls(frm);
 
     const grid = frm.fields_dict.items?.grid;
     if (grid) {
         grid.update_docfield_property("s_warehouse", "read_only", 1);
         grid.update_docfield_property("t_warehouse", "read_only", 1);
+        grid.update_docfield_property("qty", "hidden", is_receive ? 1 : 0);
 
         if (is_receive) {
             grid.update_docfield_property("qty", "read_only", 1);
@@ -278,6 +292,30 @@ function marina_apply_field_controls(frm) {
             grid.update_docfield_property("custom_unexpected_item", "read_only", 1);
         }
     }
+}
+
+
+function marina_configure_receive_barcode_scanner(frm) {
+    const is_manual_barcode_receive =
+        frm.doc.stock_entry_type === "Receive Stock" &&
+        frm.doc.custom_receiving_method === "Manual / Barcode Receiving" &&
+        frm.doc.docstatus === 0;
+
+    if (!is_manual_barcode_receive) return;
+
+    if (!frm.cscript || !erpnext?.utils?.BarcodeScanner) {
+        console.warn("Marina barcode receiving: ERPNext BarcodeScanner unavailable.");
+        return;
+    }
+
+    frm.cscript.barcode_scanner = new erpnext.utils.BarcodeScanner({
+        frm,
+        qty_field: "custom_actual_received_qty",
+        barcode_field: "barcode",
+        items_table_name: "items",
+        dont_allow_new_row: true,
+        warehouse_field: () => "s_warehouse",
+    });
 }
 
 
