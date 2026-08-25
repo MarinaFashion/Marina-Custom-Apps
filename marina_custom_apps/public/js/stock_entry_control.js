@@ -129,6 +129,9 @@ frappe.ui.form.on("Stock Entry Detail", {
     custom_actual_received_qty(frm, cdt, cdn) {
         marina_update_receive_discrepancy(frm, cdt, cdn);
     },
+    item_code(frm, cdt, cdn) {
+        marina_mark_unexpected_receive_row(frm, cdt, cdn);
+    },
 });
 
 
@@ -304,7 +307,7 @@ function marina_apply_field_controls(frm) {
         grid.update_docfield_property("qty", "hidden", 0);
         grid.update_docfield_property("custom_actual_received_qty", "hidden", is_receive ? 0 : 1);
         grid.update_docfield_property("custom_discrepancy_qty", "hidden", is_receive ? 0 : 1);
-        grid.update_docfield_property("custom_unexpected_item", "hidden", 1);
+        grid.update_docfield_property("custom_unexpected_item", "hidden", is_receive ? 0 : 1);
 
         if (is_receive) {
             grid.update_docfield_property("qty", "read_only", 1);
@@ -341,6 +344,33 @@ function marina_find_existing_scan_row(frm, item_code, barcode, uom) {
 }
 
 
+function marina_mark_unexpected_receive_row(frm, cdt, cdn) {
+    const is_manual_receive =
+        frm.doc.stock_entry_type === "Receive Stock" &&
+        frm.doc.custom_receiving_method === "Manual / Barcode Receiving" &&
+        frm.doc.docstatus === 0;
+
+    if (!is_manual_receive) return;
+
+    const row = locals[cdt][cdn];
+    if (!row || !row.item_code) return;
+
+    // Expected rows mapped from Send Stock carry original-line traceability.
+    if (row.custom_original_send_stock_detail || row.ste_detail) return;
+
+    frappe.model.set_value(cdt, cdn, {
+        custom_unexpected_item: 1,
+        qty: 0,
+        transfer_qty: 0,
+        s_warehouse: frm.doc.from_warehouse,
+        t_warehouse: frm.doc.to_warehouse,
+    }).then(() => {
+        marina_update_receive_discrepancy(frm, cdt, cdn);
+        marina_update_receive_totals(frm);
+    });
+}
+
+
 function marina_configure_managed_barcode_scanner(frm) {
     const is_send = frm.doc.stock_entry_type === "Send Stock" && frm.doc.docstatus === 0;
     const is_transfer_between =
@@ -362,7 +392,7 @@ function marina_configure_managed_barcode_scanner(frm) {
         qty_field: is_manual_receive ? "custom_actual_received_qty" : "qty",
         barcode_field: "barcode",
         items_table_name: "items",
-        dont_allow_new_row: is_manual_receive,
+        dont_allow_new_row: false,
         warehouse_field: () => "s_warehouse",
     });
 
@@ -392,6 +422,10 @@ function marina_configure_managed_barcode_scanner(frm) {
         );
         if (existing) return existing;
 
+        // In Manual / Barcode Receive, returning null intentionally lets the
+        // ERPNext scanner create one new row. Our item_code handler marks it
+        // Unexpected, forces ledger Qty = 0, and the scan increments only
+        // Actual Received Qty. Repeated scans then find and reuse this row.
         return null;
     };
 

@@ -159,13 +159,37 @@ def _validate_receiving_method(doc):
 
 
 def _reconcile_receive_rows(doc, require_actual=False):
-    """Close Transit with Sent Qty; record physical count separately."""
+    """Close Transit with expected Qty; preserve unexpected physical counts as audit-only rows."""
     total_actual = 0.0
 
     for index, row in enumerate(doc.items or [], start=1):
+        actual_qty = flt(row.get("custom_actual_received_qty"))
+        if actual_qty < 0:
+            frappe.throw(_("Row {0}: Actual Received Qty cannot be negative.").format(index))
+
         original_detail = row.get("custom_original_send_stock_detail") or row.get("ste_detail")
-        if not original_detail:
-            frappe.throw(_("Row {0}: Original Send Stock Detail is required.").format(index))
+
+        # Unexpected barcode: item was not present on original Send Stock.
+        # It must never add ledger quantity to this Receive Stock. The physical
+        # count is retained for Stock Transfer Audit to resolve later.
+        if row.get("custom_unexpected_item") or not original_detail:
+            if doc.get("custom_receiving_method") != RECEIVING_METHOD_MANUAL:
+                frappe.throw(
+                    _("Row {0}: Unexpected items are allowed only in Manual / Barcode Receiving.").format(index)
+                )
+            if actual_qty <= 0:
+                frappe.throw(
+                    _("Row {0}: Unexpected item must have Actual Received Qty greater than zero.").format(index)
+                )
+
+            row.qty = 0
+            row.transfer_qty = 0
+            row.custom_discrepancy_qty = -actual_qty
+            row.custom_unexpected_item = 1
+            row.custom_original_send_stock_detail = None
+            row.ste_detail = None
+            total_actual += actual_qty
+            continue
 
         original_row = frappe.db.get_value(
             "Stock Entry Detail",
@@ -181,10 +205,6 @@ def _reconcile_receive_rows(doc, require_actual=False):
             frappe.throw(_("Row {0}: Item must remain {1} from the original Send Stock.").format(index, original_row.item_code))
 
         sent_qty = flt(original_row.qty)
-        actual_qty = flt(row.get("custom_actual_received_qty"))
-        if actual_qty < 0:
-            frappe.throw(_("Row {0}: Actual Received Qty cannot be negative.").format(index))
-
         row.qty = sent_qty
         row.transfer_qty = sent_qty * (flt(row.conversion_factor) or 1)
         row.custom_discrepancy_qty = row.qty - actual_qty
@@ -209,7 +229,6 @@ def _reconcile_receive_rows(doc, require_actual=False):
 
     if require_actual and total_actual <= 0:
         frappe.throw(_("At least one piece must be physically received before submission."))
-
 
 def _validate_receive_origin(doc):
     _validate_receiving_method(doc)
