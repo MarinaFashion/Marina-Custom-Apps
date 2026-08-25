@@ -19,6 +19,13 @@ MANAGED_TYPES = {
     TYPE_TRANSFER_BETWEEN,
 }
 
+RECEIVING_METHOD_NORMAL = "Normal Receiving"
+RECEIVING_METHOD_MANUAL = "Manual / Barcode Receiving"
+RECEIVING_METHODS = {
+    RECEIVING_METHOD_NORMAL,
+    RECEIVING_METHOD_MANUAL,
+}
+
 
 def _has_mr_origin(doc):
     return any(row.get("material_request") for row in (doc.items or []))
@@ -131,7 +138,28 @@ def _validate_material_request_origin(doc):
     return True
 
 
+def _validate_receiving_method(doc):
+    receiving_method = doc.get("custom_receiving_method")
+    if receiving_method not in RECEIVING_METHODS:
+        frappe.throw(
+            _("Receiving Method is required and must be selected through End Transit.")
+        )
+
+    if not doc.is_new():
+        saved_method = frappe.db.get_value(
+            "Stock Entry",
+            doc.name,
+            "custom_receiving_method",
+        )
+        if saved_method and saved_method != receiving_method:
+            frappe.throw(
+                _("Receiving Method cannot be changed after Receive Stock is created.")
+            )
+
+
 def _validate_receive_origin(doc):
+    _validate_receiving_method(doc)
+
     if not doc.get("custom_receive_via_end_transit"):
         frappe.throw(
             _(
@@ -226,6 +254,19 @@ def validate_before_submit(doc, method=None):
     # Repeat the full validation at submit time so API/import/background
     # operations cannot bypass the control.
     validate_stock_entry(doc, method=method)
+
+    if (
+        doc.stock_entry_type == TYPE_RECEIVE_STOCK
+        and doc.get("custom_receiving_method") == RECEIVING_METHOD_MANUAL
+    ):
+        frappe.throw(
+            _(
+                "Manual / Barcode Receiving is enabled for draft counting, "
+                "but discrepancy ledger posting is not enabled yet. "
+                "Do not submit this Receive Stock until the reconciliation "
+                "release is installed."
+            )
+        )
 
 
 def validate_before_cancel(doc, method=None):

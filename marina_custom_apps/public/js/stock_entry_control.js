@@ -45,6 +45,7 @@ frappe.ui.form.on("Stock Entry", {
 
         marina_bind_link_query_guards(frm);
         marina_apply_field_controls(frm);
+        setTimeout(() => marina_force_receive_route_controls(frm), 0);
 
         // ERPNext adds its standard End Transit button during refresh.
         // Replace it after the refresh cycle with Marina's controlled action.
@@ -253,14 +254,38 @@ function marina_apply_field_controls(frm) {
     frm.set_df_property("to_warehouse", "read_only", is_receive || from_mr);
     frm.set_df_property("custom_intended_final_warehouse", "read_only", 1);
     if (frm.fields_dict.outgoing_stock_entry) {
-        frm.set_df_property("outgoing_stock_entry", "read_only", is_receive);
+        frm.set_df_property("outgoing_stock_entry", "hidden", !is_receive);
+        frm.set_df_property("outgoing_stock_entry", "read_only", 1);
     }
+    frm.set_df_property("custom_receiving_method", "hidden", !is_receive);
     frm.set_df_property("custom_receiving_method", "read_only", 1);
+
+    marina_force_receive_route_controls(frm);
 
     const grid = frm.fields_dict.items?.grid;
     if (grid) {
         grid.update_docfield_property("s_warehouse", "read_only", 1);
         grid.update_docfield_property("t_warehouse", "read_only", 1);
+    }
+}
+
+
+function marina_force_receive_route_controls(frm) {
+    if (frm.doc.stock_entry_type !== "Receive Stock") return;
+
+    const source = frm.fields_dict.from_warehouse;
+    const target = frm.fields_dict.to_warehouse;
+
+    frm.set_df_property("from_warehouse", "read_only", 1);
+    frm.set_df_property("to_warehouse", "read_only", 1);
+
+    for (const control of [source, target]) {
+        if (!control) continue;
+        control.df.read_only = 1;
+        control.refresh();
+        if (control.$input) {
+            control.$input.prop("readonly", true).prop("disabled", true);
+        }
     }
 }
 
@@ -393,40 +418,61 @@ function marina_install_end_transit_button(frm) {
     }
 
     frm.add_custom_button(__("End Transit"), async () => {
-        const button = frm.page.btn_secondary;
+        const status_result = await frappe.call({
+            method: "marina_custom_apps.stock_transfer_control.end_transit.get_receive_status",
+            args: { send_stock: frm.doc.name },
+        });
+        const status = status_result.message || {};
 
-        try {
-            const result = await frappe.call({
-                method: "marina_custom_apps.stock_transfer_control.end_transit.create_or_open_receive_stock",
-                args: {
-                    send_stock: frm.doc.name,
-                },
-                freeze: true,
-                freeze_message: __("Preparing controlled Receive Stock..."),
-            });
-
-            const receive = result.message || {};
-            if (!receive.name) {
-                frappe.throw(__("Receive Stock could not be created."));
-            }
-
-            if (receive.created) {
-                frappe.show_alert({
-                    message: __("Receive Stock {0} created.", [receive.name]),
-                    indicator: "green",
-                });
-            } else {
-                frappe.show_alert({
-                    message: __("Opening existing Receive Stock {0}.", [receive.name]),
-                    indicator: "blue",
-                });
-            }
-
-            frappe.set_route("Form", "Stock Entry", receive.name);
-        } finally {
-            if (button) {
-                button.prop("disabled", false);
-            }
+        if (status.exists && status.receiving_method) {
+            frappe.set_route("Form", "Stock Entry", status.name);
+            return;
         }
+
+        frappe.prompt(
+            [
+                {
+                    fieldname: "receiving_method",
+                    fieldtype: "Select",
+                    label: __("Receiving Method"),
+                    options: [
+                        "",
+                        "Normal Receiving",
+                        "Manual / Barcode Receiving",
+                    ].join("\n"),
+                    reqd: 1,
+                    description: __(
+                        "This choice is saved once and cannot be changed on this Receive Stock."
+                    ),
+                },
+            ],
+            async (values) => {
+                const result = await frappe.call({
+                    method: "marina_custom_apps.stock_transfer_control.end_transit.create_or_open_receive_stock",
+                    args: {
+                        send_stock: frm.doc.name,
+                        receiving_method: values.receiving_method,
+                    },
+                    freeze: true,
+                    freeze_message: __("Preparing controlled Receive Stock..."),
+                });
+
+                const receive = result.message || {};
+                if (!receive.name) {
+                    frappe.throw(__("Receive Stock could not be created."));
+                }
+
+                frappe.show_alert({
+                    message: receive.created
+                        ? __("Receive Stock {0} created.", [receive.name])
+                        : __("Opening existing Receive Stock {0}.", [receive.name]),
+                    indicator: receive.created ? "green" : "blue",
+                });
+
+                frappe.set_route("Form", "Stock Entry", receive.name);
+            },
+            __("Choose Receiving Method"),
+            __("Continue")
+        );
     });
 }

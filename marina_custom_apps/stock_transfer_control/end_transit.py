@@ -16,6 +16,21 @@ from marina_custom_apps.stock_transfer_control.services.warehouse_policy import 
 )
 
 
+RECEIVING_METHOD_NORMAL = "Normal Receiving"
+RECEIVING_METHOD_MANUAL = "Manual / Barcode Receiving"
+RECEIVING_METHODS = {
+    RECEIVING_METHOD_NORMAL,
+    RECEIVING_METHOD_MANUAL,
+}
+
+
+def _validate_receiving_method(receiving_method):
+    if receiving_method not in RECEIVING_METHODS:
+        frappe.throw(
+            _("Receiving Method must be Normal Receiving or Manual / Barcode Receiving.")
+        )
+
+
 def _lock_send_stock(send_stock):
     """Lock the original Send Stock row for duplicate-safe Receive creation."""
     rows = frappe.db.sql(
@@ -74,7 +89,7 @@ def _validate_original_send(send):
         )
 
 
-def _prepare_receive_document(send):
+def _prepare_receive_document(send, receiving_method):
     # Use ERPNext's own stock-in mapper so quantities, serial/batch references,
     # outgoing_stock_entry and remaining transfer quantities remain compatible
     # with ERPNext's transit accounting.
@@ -101,7 +116,7 @@ def _prepare_receive_document(send):
 
     receive.custom_receive_via_end_transit = 1
     receive.custom_intended_final_warehouse = final_physical
-    receive.custom_receiving_method = None
+    receive.custom_receiving_method = receiving_method
 
     for row in receive.items or []:
         row.s_warehouse = source_transit
@@ -112,15 +127,20 @@ def _prepare_receive_document(send):
         if row.get("ste_detail"):
             row.custom_original_send_stock_detail = row.ste_detail
 
-        # Capture expected quantity now. Actual receiving/reconciliation is
-        # deliberately handled in the next phase.
+        # Capture expected quantity and initialize the receiver statement.
         row.custom_sent_qty = row.qty
+        if receiving_method == RECEIVING_METHOD_NORMAL:
+            row.custom_actual_received_qty = row.qty
+            row.custom_discrepancy_qty = 0
+        else:
+            row.custom_actual_received_qty = 0
+            row.custom_discrepancy_qty = row.qty
 
     return receive, final_physical
 
 
 @frappe.whitelist()
-def create_or_open_receive_stock(send_stock):
+def create_or_open_receive_stock(send_stock, receiving_method=None):
     """Create exactly one controlled Draft Receive Stock for a submitted Send.
 
     If a draft already exists, return it instead of creating a duplicate.
@@ -143,6 +163,33 @@ def create_or_open_receive_stock(send_stock):
                 ).format(send_stock, existing.name)
             )
 
+        existing_method = frappe.db.get_value(
+            "Stock Entry",
+            existing.name,
+            "custom_receiving_method",
+        )
+        if existing_method:
+            if receiving_method and receiving_method != existing_method:
+                frappe.throw(
+                    _(
+                        "Receiving Method is already locked as {0} for Receive Stock {1}."
+                    ).format(existing_method, existing.name)
+                )
+        else:
+            if not receiving_method:
+                frappe.throw(
+                    _("Choose a Receiving Method before opening this Receive Stock.")
+                )
+            _validate_receiving_method(receiving_method)
+            frappe.db.set_value(
+                "Stock Entry",
+                existing.name,
+                "custom_receiving_method",
+                receiving_method,
+                update_modified=False,
+            )
+            existing_method = receiving_method
+
         # Re-check authorization against the current Transit -> Physical
         # mapping before exposing an existing draft.
         _transit, final_physical = validate_transit_warehouse(send.to_warehouse)
@@ -155,11 +202,16 @@ def create_or_open_receive_stock(send_stock):
         return {
             "name": existing.name,
             "created": False,
+            "receiving_method": existing_method,
             "source_warehouse": send.to_warehouse,
             "target_warehouse": final_physical,
         }
 
-    receive, final_physical = _prepare_receive_document(send)
+    if not receiving_method:
+        frappe.throw(_("Choose a Receiving Method before creating Receive Stock."))
+    _validate_receiving_method(receiving_method)
+
+    receive, final_physical = _prepare_receive_document(send, receiving_method)
 
     # Respect normal Stock Entry create permissions for the logged-in user.
     receive.insert()
@@ -167,6 +219,33 @@ def create_or_open_receive_stock(send_stock):
     return {
         "name": receive.name,
         "created": True,
+        "receiving_method": receiving_method,
         "source_warehouse": send.to_warehouse,
         "target_warehouse": final_physical,
+    }
+
+
+@frappe.whitelist()
+def get_receive_status(send_stock):
+    """Return the active controlled Receive, if one already exists."""
+    if not send_stock:
+        frappe.throw(_("Send Stock is required."))
+
+    send = frappe.get_doc("Stock Entry", send_stock)
+    _validate_original_send(send)
+
+    existing = _get_existing_receive(send_stock)
+    if not existing:
+        return {"exists": False}
+
+    receiving_method = frappe.db.get_value(
+        "Stock Entry",
+        existing.name,
+        "custom_receiving_method",
+    )
+    return {
+        "exists": True,
+        "name": existing.name,
+        "docstatus": existing.docstatus,
+        "receiving_method": receiving_method,
     }
