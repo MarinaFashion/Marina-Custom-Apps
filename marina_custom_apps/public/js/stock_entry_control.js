@@ -123,6 +123,9 @@ frappe.ui.form.on("Stock Entry Detail", {
     items_add(frm, cdt, cdn) {
         marina_restore_row_route(frm, cdt, cdn);
     },
+    custom_actual_received_qty(frm, cdt, cdn) {
+        marina_update_receive_discrepancy(frm, cdt, cdn);
+    },
 });
 
 
@@ -266,6 +269,14 @@ function marina_apply_field_controls(frm) {
     if (grid) {
         grid.update_docfield_property("s_warehouse", "read_only", 1);
         grid.update_docfield_property("t_warehouse", "read_only", 1);
+
+        if (is_receive) {
+            grid.update_docfield_property("qty", "read_only", 1);
+            grid.update_docfield_property("custom_sent_qty", "read_only", 1);
+            grid.update_docfield_property("custom_actual_received_qty", "read_only", frm.doc.docstatus !== 0);
+            grid.update_docfield_property("custom_discrepancy_qty", "read_only", 1);
+            grid.update_docfield_property("custom_unexpected_item", "read_only", 1);
+        }
     }
 }
 
@@ -322,6 +333,25 @@ async function marina_sync_child_route(frm) {
     }
 
     frm.refresh_field("items");
+}
+
+
+function marina_update_receive_discrepancy(frm, cdt, cdn) {
+    if (frm.doc.stock_entry_type !== "Receive Stock") return;
+
+    const row = locals[cdt][cdn];
+    if (!row) return;
+
+    const sent = Number(row.custom_sent_qty || 0);
+    const actual = Number(row.custom_actual_received_qty || 0);
+
+    if (actual < 0) {
+        frappe.model.set_value(cdt, cdn, "custom_actual_received_qty", 0);
+        frappe.msgprint(__("Actual Received Qty cannot be negative."));
+        return;
+    }
+
+    frappe.model.set_value(cdt, cdn, "custom_discrepancy_qty", sent - actual);
 }
 
 

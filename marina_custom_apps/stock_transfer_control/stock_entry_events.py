@@ -1,5 +1,6 @@
 import frappe
 from frappe import _
+from frappe.utils import flt
 
 from marina_custom_apps.stock_transfer_control.constants import (
     TYPE_RECEIVE_STOCK,
@@ -157,6 +158,45 @@ def _validate_receiving_method(doc):
             )
 
 
+def _reconcile_receive_rows(doc, require_actual=False):
+    """Close Transit with Sent Qty; record physical count separately."""
+    total_actual = 0.0
+
+    for index, row in enumerate(doc.items or [], start=1):
+        original_detail = row.get("custom_original_send_stock_detail") or row.get("ste_detail")
+        if not original_detail:
+            frappe.throw(_("Row {0}: Original Send Stock Detail is required.").format(index))
+
+        original_row = frappe.db.get_value(
+            "Stock Entry Detail",
+            original_detail,
+            ["parent", "item_code", "qty"],
+            as_dict=True,
+        )
+        if not original_row:
+            frappe.throw(_("Row {0}: Original Send Stock Detail {1} does not exist.").format(index, original_detail))
+        if original_row.parent != doc.outgoing_stock_entry:
+            frappe.throw(_("Row {0}: Original Send Stock Detail does not belong to {1}.").format(index, doc.outgoing_stock_entry))
+        if original_row.item_code != row.item_code:
+            frappe.throw(_("Row {0}: Item must remain {1} from the original Send Stock.").format(index, original_row.item_code))
+
+        sent_qty = flt(original_row.qty)
+        actual_qty = flt(row.get("custom_actual_received_qty"))
+        if actual_qty < 0:
+            frappe.throw(_("Row {0}: Actual Received Qty cannot be negative.").format(index))
+
+        row.qty = sent_qty
+        row.transfer_qty = sent_qty * (flt(row.conversion_factor) or 1)
+        row.custom_sent_qty = sent_qty
+        row.custom_discrepancy_qty = sent_qty - actual_qty
+        row.custom_unexpected_item = 0
+        row.custom_original_send_stock_detail = original_detail
+        total_actual += actual_qty
+
+    if require_actual and total_actual <= 0:
+        frappe.throw(_("At least one piece must be physically received before submission."))
+
+
 def _validate_receive_origin(doc):
     _validate_receiving_method(doc)
 
@@ -242,6 +282,7 @@ def validate_stock_entry(doc, method=None):
 
     elif doc.stock_entry_type == TYPE_RECEIVE_STOCK:
         _validate_receive_origin(doc)
+        _reconcile_receive_rows(doc)
 
     elif doc.stock_entry_type == TYPE_TRANSFER_BETWEEN:
         validate_transfer_between_route(
@@ -251,23 +292,10 @@ def validate_stock_entry(doc, method=None):
 
 
 def validate_before_submit(doc, method=None):
-    # Repeat the full validation at submit time so API/import/background
-    # operations cannot bypass the control.
     validate_stock_entry(doc, method=method)
 
-    if (
-        doc.stock_entry_type == TYPE_RECEIVE_STOCK
-        and doc.get("custom_receiving_method") == RECEIVING_METHOD_MANUAL
-    ):
-        frappe.throw(
-            _(
-                "Manual / Barcode Receiving is enabled for draft counting, "
-                "but discrepancy ledger posting is not enabled yet. "
-                "Do not submit this Receive Stock until the reconciliation "
-                "release is installed."
-            )
-        )
-
+    if doc.stock_entry_type == TYPE_RECEIVE_STOCK:
+        _reconcile_receive_rows(doc, require_actual=True)
 
 def validate_before_cancel(doc, method=None):
     if doc.stock_entry_type != TYPE_SEND_STOCK:

@@ -1,4 +1,4 @@
-﻿from frappe.utils import flt
+from frappe.utils import flt
 
 
 def discrepancy_qty(sent_qty, actual_received_qty):
@@ -7,15 +7,12 @@ def discrepancy_qty(sent_qty, actual_received_qty):
 
 
 def safe_posting_qty(sent_qty, actual_received_qty):
-    """Ledger quantity for an expected line under the agreed control model.
+    """Ledger Qty equals Sent Qty so Transit closes completely.
 
-    Physical truth is stored separately in Actual Received Qty.
-    The ledger does not automatically post more than was recorded as sent.
+    Actual Received Qty is physical evidence. Shortage/excess is settled later
+    between physical warehouses by Stock Transfer Audit.
     """
-    sent = max(flt(sent_qty), 0)
-    actual = max(flt(actual_received_qty), 0)
-    return min(sent, actual)
-
+    return max(flt(sent_qty), 0)
 
 def reconciliation_values(sent_qty, actual_received_qty):
     sent = max(flt(sent_qty), 0)
