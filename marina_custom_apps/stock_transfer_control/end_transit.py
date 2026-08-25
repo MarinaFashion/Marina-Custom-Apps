@@ -36,7 +36,7 @@ def _get_existing_receive(send_stock):
     rows = frappe.get_all(
         "Stock Entry",
         filters={
-            "custom_original_send_stock": send_stock,
+            "outgoing_stock_entry": send_stock,
             "stock_entry_type": TYPE_RECEIVE_STOCK,
             "docstatus": ["<", 2],
         },
@@ -94,12 +94,12 @@ def _prepare_receive_document(send):
 
     receive.stock_entry_type = TYPE_RECEIVE_STOCK
     receive.purpose = "Material Transfer"
+    receive.outgoing_stock_entry = send.name
     receive.add_to_transit = 0
     receive.from_warehouse = source_transit
     receive.to_warehouse = final_physical
 
     receive.custom_receive_via_end_transit = 1
-    receive.custom_original_send_stock = send.name
     receive.custom_intended_final_warehouse = final_physical
     receive.custom_receiving_method = None
 

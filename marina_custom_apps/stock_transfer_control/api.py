@@ -53,7 +53,7 @@ def search_source_warehouses(doctype, txt, searchfield, start, page_len, filters
 
     rows = frappe.get_all(
         "Warehouse",
-        filters={"disabled": 0},
+        filters={"disabled": 0, "is_group": 0},
         fields=["name", "warehouse_type"],
         order_by="name asc",
         limit_page_length=0,
@@ -93,6 +93,7 @@ def search_target_warehouses(doctype, txt, searchfield, start, page_len, filters
             "Warehouse",
             filters={
                 "disabled": 0,
+                "is_group": 0,
                 "warehouse_type": "Transit",
                 "company": source.company,
             },
@@ -118,16 +119,17 @@ def search_target_warehouses(doctype, txt, searchfield, start, page_len, filters
         source = frappe.db.get_value(
             "Warehouse",
             source_warehouse,
-            ["company", "warehouse_type", "disabled"],
+            ["company", "warehouse_type", "disabled", "is_group"],
             as_dict=True,
         )
-        if not source or source.disabled:
+        if not source or source.disabled or source.is_group:
             return []
 
         rows = frappe.get_all(
             "Warehouse",
             filters={
                 "disabled": 0,
+                "is_group": 0,
                 "company": source.company,
             },
             fields=["name", "warehouse_type"],
@@ -185,7 +187,7 @@ def get_valid_sources(stock_entry_type):
 
     rows = frappe.get_all(
         "Warehouse",
-        filters={"disabled": 0},
+        filters={"disabled": 0, "is_group": 0},
         fields=["name", "warehouse_type"],
         order_by="name asc",
         limit_page_length=0,
@@ -212,6 +214,7 @@ def get_valid_targets(stock_entry_type, source_warehouse=None):
             "Warehouse",
             filters={
                 "disabled": 0,
+                "is_group": 0,
                 "warehouse_type": "Transit",
                 "company": source.company,
                 "name": ["!=", source.default_in_transit_warehouse],
@@ -233,16 +236,17 @@ def get_valid_targets(stock_entry_type, source_warehouse=None):
         source = frappe.db.get_value(
             "Warehouse",
             source_warehouse,
-            ["company", "warehouse_type", "disabled"],
+            ["company", "warehouse_type", "disabled", "is_group"],
             as_dict=True,
         )
-        if not source or source.disabled:
+        if not source or source.disabled or source.is_group:
             return []
 
         rows = frappe.get_all(
             "Warehouse",
             filters={
                 "disabled": 0,
+                "is_group": 0,
                 "company": source.company,
                 "name": ["!=", source_warehouse],
             },

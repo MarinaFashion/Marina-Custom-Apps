@@ -1,4 +1,4 @@
-﻿from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 
 STOCK_ENTRY_FIELDS = [
@@ -23,24 +23,11 @@ STOCK_ENTRY_FIELDS = [
         ),
     },
     {
-        "fieldname": "custom_original_send_stock",
-        "label": "Original Send Stock",
-        "fieldtype": "Link",
-        "options": "Stock Entry",
-        "insert_after": "custom_intended_final_warehouse",
-        "read_only": 1,
-        "no_copy": 1,
-        "description": (
-            "Original submitted Send Stock from which this Receive Stock "
-            "was created through End Transit."
-        ),
-    },
-    {
         "fieldname": "custom_receiving_method",
         "label": "Receiving Method",
         "fieldtype": "Select",
         "options": "\nNormal Receiving\nManual / Barcode Receiving",
-        "insert_after": "custom_original_send_stock",
+        "insert_after": "custom_intended_final_warehouse",
         "read_only": 1,
         "no_copy": 1,
         "description": (
@@ -135,7 +122,35 @@ def after_install():
 
 def after_migrate():
     _ensure_custom_fields()
+    _cleanup_legacy_original_send_stock_field()
 
 
 def _ensure_custom_fields():
     create_custom_fields(CUSTOM_FIELDS, update=True)
+
+
+def _cleanup_legacy_original_send_stock_field():
+    """Migrate old duplicate reference then remove its Custom Field metadata."""
+    import frappe
+
+    fieldname = "custom_original_send_stock"
+    custom_field_name = f"Stock Entry-{fieldname}"
+
+    if frappe.db.has_column("Stock Entry", fieldname):
+        frappe.db.sql(
+            f"""
+            update `tabStock Entry`
+            set outgoing_stock_entry = {fieldname}
+            where ifnull(outgoing_stock_entry, ) = 
+              and ifnull({fieldname}, ) != 
+            """
+        )
+
+    if frappe.db.exists("Custom Field", custom_field_name):
+        frappe.delete_doc(
+            "Custom Field",
+            custom_field_name,
+            ignore_permissions=True,
+            force=True,
+        )
+        frappe.clear_cache(doctype="Stock Entry")

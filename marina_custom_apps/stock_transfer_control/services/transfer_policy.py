@@ -1,4 +1,4 @@
-﻿import frappe
+import frappe
 from frappe import _
 
 from marina_custom_apps.stock_transfer_control.constants import (
@@ -123,6 +123,11 @@ def validate_transfer_between_route(source_warehouse, target_warehouse, user=Non
 
         if not source.is_active or not target.is_active:
             frappe.throw(_("Both warehouses must be active."))
+
+        if source.is_group or target.is_group:
+            frappe.throw(
+                _("Group Warehouses cannot be used in stock transfer operations.")
+            )
 
         _assert_different_and_same_company(source, target)
 

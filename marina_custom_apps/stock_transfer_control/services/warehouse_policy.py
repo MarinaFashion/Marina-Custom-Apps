@@ -1,4 +1,4 @@
-﻿from dataclasses import dataclass
+from dataclasses import dataclass
 
 import frappe
 from frappe import _
@@ -14,6 +14,7 @@ class WarehouseInfo:
     name: str
     company: str | None
     disabled: int
+    is_group: int
     warehouse_type: str | None
     default_in_transit_warehouse: str | None
     custom_is_store: int
@@ -34,6 +35,7 @@ def get_warehouse_info(warehouse_name):
         "name",
         "company",
         "disabled",
+        "is_group",
         "warehouse_type",
         "default_in_transit_warehouse",
     ]
@@ -60,6 +62,7 @@ def get_warehouse_info(warehouse_name):
         name=row.name,
         company=row.company,
         disabled=row.disabled or 0,
+        is_group=row.is_group or 0,
         warehouse_type=row.warehouse_type,
         default_in_transit_warehouse=row.default_in_transit_warehouse,
         custom_is_store=row.get("custom_is_store") or 0,
@@ -74,6 +77,7 @@ def get_physical_for_transit(transit_warehouse):
         "Warehouse",
         filters={
             "default_in_transit_warehouse": transit_warehouse,
+            "is_group": 0,
         },
         fields=["name", "company", "disabled", "warehouse_type"],
         limit_page_length=0,
@@ -108,6 +112,13 @@ def validate_physical_warehouse(warehouse_name, *, require_active=True):
     if require_active and not info.is_active:
         frappe.throw(_("Warehouse {0} is disabled.").format(warehouse_name))
 
+    if info.is_group:
+        frappe.throw(
+            _("Warehouse {0} is a Group Warehouse and cannot be used in stock operations.").format(
+                warehouse_name
+            )
+        )
+
     if info.is_transit:
         frappe.throw(
             _("Warehouse {0} must be a physical warehouse, not Transit.").format(
@@ -129,6 +140,13 @@ def validate_transit_warehouse(
 
     if require_active and not info.is_active:
         frappe.throw(_("Transit warehouse {0} is disabled.").format(warehouse_name))
+
+    if info.is_group:
+        frappe.throw(
+            _("Transit warehouse {0} is a Group Warehouse and cannot be used in stock operations.").format(
+                warehouse_name
+            )
+        )
 
     if not info.is_transit:
         frappe.throw(

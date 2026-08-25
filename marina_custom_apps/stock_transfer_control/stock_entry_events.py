@@ -1,4 +1,4 @@
-﻿import frappe
+import frappe
 from frappe import _
 
 from marina_custom_apps.stock_transfer_control.constants import (
@@ -140,7 +140,7 @@ def _validate_receive_origin(doc):
             )
         )
 
-    original_name = doc.get("custom_original_send_stock")
+    original_name = doc.get("outgoing_stock_entry")
     if not original_name:
         frappe.throw(_("Original Send Stock is required for Receive Stock."))
 
@@ -235,7 +235,7 @@ def validate_before_cancel(doc, method=None):
     submitted_receive = frappe.db.exists(
         "Stock Entry",
         {
-            "custom_original_send_stock": doc.name,
+            "outgoing_stock_entry": doc.name,
             "stock_entry_type": TYPE_RECEIVE_STOCK,
             "docstatus": 1,
         },
@@ -246,4 +246,21 @@ def validate_before_cancel(doc, method=None):
                 "Send Stock {0} cannot be cancelled while submitted Receive "
                 "Stock {1} exists. Cancel the Receive Stock first."
             ).format(doc.name, submitted_receive)
+        )
+
+    draft_receives = frappe.get_all(
+        "Stock Entry",
+        filters={
+            "outgoing_stock_entry": doc.name,
+            "stock_entry_type": TYPE_RECEIVE_STOCK,
+            "docstatus": 0,
+        },
+        pluck="name",
+    )
+    for receive_name in draft_receives:
+        frappe.delete_doc(
+            "Stock Entry",
+            receive_name,
+            ignore_permissions=True,
+            force=True,
         )

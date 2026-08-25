@@ -252,7 +252,9 @@ function marina_apply_field_controls(frm) {
     frm.set_df_property("from_warehouse", "read_only", is_receive || from_mr);
     frm.set_df_property("to_warehouse", "read_only", is_receive || from_mr);
     frm.set_df_property("custom_intended_final_warehouse", "read_only", 1);
-    frm.set_df_property("custom_original_send_stock", "read_only", 1);
+    if (frm.fields_dict.outgoing_stock_entry) {
+        frm.set_df_property("outgoing_stock_entry", "read_only", is_receive);
+    }
     frm.set_df_property("custom_receiving_method", "read_only", 1);
 
     const grid = frm.fields_dict.items?.grid;

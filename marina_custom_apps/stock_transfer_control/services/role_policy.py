@@ -1,4 +1,4 @@
-﻿import frappe
+import frappe
 
 from marina_custom_apps.stock_transfer_control.constants import (
     ROLE_ADMINISTRATOR,
@@ -70,8 +70,9 @@ def get_allowed_physical_warehouses(user=None):
         filters={
             "name": ["in", warehouse_names],
             "disabled": 0,
+            "is_group": 0,
         },
-        fields=["name", "warehouse_type"],
+        fields=["name", "warehouse_type", "is_group"],
         limit_page_length=0,
     )
 
