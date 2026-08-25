@@ -47,6 +47,53 @@ STOCK_ENTRY_FIELDS = [
             "the controlled End Transit process."
         ),
     },
+    {
+        "fieldname": "custom_transfer_totals_section",
+        "label": "Receiving Totals",
+        "fieldtype": "Section Break",
+        "insert_after": "items",
+    },
+    {
+        "fieldname": "custom_total_sent_qty",
+        "label": "Total Sent Qty",
+        "fieldtype": "Float",
+        "insert_after": "custom_transfer_totals_section",
+        "read_only": 1,
+        "no_copy": 1,
+        "precision": "3",
+    },
+    {
+        "fieldname": "custom_total_received_qty",
+        "label": "Total Received Qty",
+        "fieldtype": "Float",
+        "insert_after": "custom_total_sent_qty",
+        "read_only": 1,
+        "no_copy": 1,
+        "precision": "3",
+    },
+    {
+        "fieldname": "custom_totals_column_break",
+        "fieldtype": "Column Break",
+        "insert_after": "custom_total_received_qty",
+    },
+    {
+        "fieldname": "custom_total_variance_qty",
+        "label": "Total Variance Qty",
+        "fieldtype": "Float",
+        "insert_after": "custom_totals_column_break",
+        "read_only": 1,
+        "no_copy": 1,
+        "precision": "3",
+    },
+    {
+        "fieldname": "custom_total_abs_variance_qty",
+        "label": "Total ABS Variance Qty",
+        "fieldtype": "Float",
+        "insert_after": "custom_total_variance_qty",
+        "read_only": 1,
+        "no_copy": 1,
+        "precision": "3",
+    },
 ]
 
 STOCK_ENTRY_DETAIL_FIELDS = [
@@ -58,20 +105,10 @@ STOCK_ENTRY_DETAIL_FIELDS = [
         "collapsible": 1,
     },
     {
-        "fieldname": "custom_sent_qty",
-        "label": "Sent Qty",
-        "fieldtype": "Float",
-        "insert_after": "custom_transfer_reconciliation_section",
-        "read_only": 1,
-        "no_copy": 1,
-        "precision": "3",
-        "description": "Quantity recorded on the original Send Stock line.",
-    },
-    {
         "fieldname": "custom_actual_received_qty",
         "label": "Actual Received Qty",
         "fieldtype": "Float",
-        "insert_after": "custom_sent_qty",
+        "insert_after": "custom_transfer_reconciliation_section",
         "no_copy": 1,
         "precision": "3",
         "description": (
@@ -87,7 +124,7 @@ STOCK_ENTRY_DETAIL_FIELDS = [
         "read_only": 1,
         "no_copy": 1,
         "precision": "3",
-        "description": "Sent Qty - Actual Received Qty. Positive = shortage; negative = excess.",
+        "description": "Qty - Actual Received Qty. Positive = shortage; negative = excess.",
     },
     {
         "fieldname": "custom_unexpected_item",
@@ -123,6 +160,7 @@ def after_install():
 def after_migrate():
     _ensure_custom_fields()
     _cleanup_legacy_original_send_stock_field()
+    _cleanup_legacy_sent_qty_field()
 
 
 def _ensure_custom_fields():
@@ -155,3 +193,18 @@ def _cleanup_legacy_original_send_stock_field():
             force=True,
         )
         frappe.clear_cache(doctype="Stock Entry")
+
+
+def _cleanup_legacy_sent_qty_field():
+    """Remove duplicate Sent Qty Custom Field; ERPNext Qty is authoritative."""
+    import frappe
+
+    custom_field_name = "Stock Entry Detail-custom_sent_qty"
+    if frappe.db.exists("Custom Field", custom_field_name):
+        frappe.delete_doc(
+            "Custom Field",
+            custom_field_name,
+            ignore_permissions=True,
+            force=True,
+        )
+        frappe.clear_cache(doctype="Stock Entry Detail")

@@ -127,8 +127,7 @@ def _prepare_receive_document(send, receiving_method):
         if row.get("ste_detail"):
             row.custom_original_send_stock_detail = row.ste_detail
 
-        # Capture expected quantity and initialize the receiver statement.
-        row.custom_sent_qty = row.qty
+        # Standard ERPNext Qty is the authoritative sent / ledger quantity.
         if receiving_method == RECEIVING_METHOD_NORMAL:
             row.custom_actual_received_qty = row.qty
             row.custom_discrepancy_qty = 0

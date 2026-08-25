@@ -187,11 +187,25 @@ def _reconcile_receive_rows(doc, require_actual=False):
 
         row.qty = sent_qty
         row.transfer_qty = sent_qty * (flt(row.conversion_factor) or 1)
-        row.custom_sent_qty = sent_qty
-        row.custom_discrepancy_qty = sent_qty - actual_qty
+        row.custom_discrepancy_qty = row.qty - actual_qty
         row.custom_unexpected_item = 0
         row.custom_original_send_stock_detail = original_detail
         total_actual += actual_qty
+
+    total_sent = sum(flt(row.qty) for row in (doc.items or []))
+    total_received = sum(
+        flt(row.get("custom_actual_received_qty")) for row in (doc.items or [])
+    )
+    total_variance = total_sent - total_received
+    total_abs_variance = sum(
+        abs(flt(row.qty) - flt(row.get("custom_actual_received_qty")))
+        for row in (doc.items or [])
+    )
+
+    doc.custom_total_sent_qty = total_sent
+    doc.custom_total_received_qty = total_received
+    doc.custom_total_variance_qty = total_variance
+    doc.custom_total_abs_variance_qty = total_abs_variance
 
     if require_actual and total_actual <= 0:
         frappe.throw(_("At least one piece must be physically received before submission."))
@@ -246,6 +260,35 @@ def _validate_receive_origin(doc):
     validate_receive_stock_route(doc.from_warehouse, doc.to_warehouse)
 
 
+def _duplicate_managed_row_key(row):
+    return (
+        row.get("item_code") or "",
+        row.get("barcode") or "",
+        row.get("uom") or "",
+        row.get("s_warehouse") or "",
+        row.get("t_warehouse") or "",
+        row.get("batch_no") or "",
+        row.get("serial_no") or "",
+    )
+
+
+def _validate_no_duplicate_managed_rows(doc):
+    if doc.stock_entry_type not in {TYPE_SEND_STOCK, TYPE_TRANSFER_BETWEEN}:
+        return
+
+    seen = {}
+    for index, row in enumerate(doc.items or [], start=1):
+        key = _duplicate_managed_row_key(row)
+        if key in seen:
+            frappe.throw(
+                _(
+                    "Rows {0} and {1} are duplicate transfer rows for item {2}. "
+                    "Use one row and increase Qty instead."
+                ).format(seen[key], index, row.item_code)
+            )
+        seen[key] = index
+
+
 def validate_stock_entry(doc, method=None):
     if not doc.items:
         return
@@ -260,6 +303,7 @@ def validate_stock_entry(doc, method=None):
         return
 
     _validate_child_route(doc)
+    _validate_no_duplicate_managed_rows(doc)
 
     if doc.stock_entry_type == TYPE_SEND_STOCK:
         intended_final = validate_send_stock_route(

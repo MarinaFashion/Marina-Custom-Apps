@@ -26,7 +26,7 @@ frappe.ui.form.on("Stock Entry", {
 
         marina_bind_link_query_guards(frm);
         marina_apply_field_controls(frm);
-        marina_configure_receive_barcode_scanner(frm);
+        marina_configure_managed_barcode_scanner(frm);
     },
 
     async refresh(frm) {
@@ -46,7 +46,7 @@ frappe.ui.form.on("Stock Entry", {
 
         marina_bind_link_query_guards(frm);
         marina_apply_field_controls(frm);
-        marina_configure_receive_barcode_scanner(frm);
+        marina_configure_managed_barcode_scanner(frm);
         setTimeout(() => marina_force_receive_route_controls(frm), 0);
 
         // ERPNext adds its standard End Transit button during refresh.
@@ -73,7 +73,7 @@ frappe.ui.form.on("Stock Entry", {
         await marina_clear_route(frm, true);
         marina_bind_link_query_guards(frm);
         marina_apply_field_controls(frm);
-        marina_configure_receive_barcode_scanner(frm);
+        marina_configure_managed_barcode_scanner(frm);
     },
 
     async from_warehouse(frm) {
@@ -278,15 +278,36 @@ function marina_apply_field_controls(frm) {
 
     marina_force_receive_route_controls(frm);
 
+    for (const fieldname of [
+        "custom_transfer_totals_section",
+        "custom_total_sent_qty",
+        "custom_total_received_qty",
+        "custom_totals_column_break",
+        "custom_total_variance_qty",
+        "custom_total_abs_variance_qty",
+    ]) {
+        if (frm.fields_dict[fieldname]) {
+            frm.set_df_property(fieldname, "hidden", !is_receive);
+            frm.set_df_property(fieldname, "read_only", 1);
+        }
+    }
+
+    if (is_receive) {
+        marina_update_receive_totals(frm);
+    }
+
     const grid = frm.fields_dict.items?.grid;
     if (grid) {
         grid.update_docfield_property("s_warehouse", "read_only", 1);
         grid.update_docfield_property("t_warehouse", "read_only", 1);
-        grid.update_docfield_property("qty", "hidden", is_receive ? 1 : 0);
+
+        grid.update_docfield_property("qty", "hidden", 0);
+        grid.update_docfield_property("custom_actual_received_qty", "hidden", is_receive ? 0 : 1);
+        grid.update_docfield_property("custom_discrepancy_qty", "hidden", is_receive ? 0 : 1);
+        grid.update_docfield_property("custom_unexpected_item", "hidden", 1);
 
         if (is_receive) {
             grid.update_docfield_property("qty", "read_only", 1);
-            grid.update_docfield_property("custom_sent_qty", "read_only", 1);
             grid.update_docfield_property("custom_actual_received_qty", "read_only", frm.doc.docstatus !== 0);
             grid.update_docfield_property("custom_discrepancy_qty", "read_only", 1);
             grid.update_docfield_property("custom_unexpected_item", "read_only", 1);
@@ -295,29 +316,87 @@ function marina_apply_field_controls(frm) {
 }
 
 
-function marina_configure_receive_barcode_scanner(frm) {
-    const is_manual_barcode_receive =
+function marina_find_existing_scan_row(frm, item_code, barcode, uom) {
+    const source = frm.doc.from_warehouse || "";
+    const target = frm.doc.to_warehouse || "";
+
+    const candidates = (frm.doc.items || []).filter((row) => {
+        if (row.item_code !== item_code) return false;
+        if ((row.s_warehouse || "") !== source) return false;
+        if ((row.t_warehouse || "") !== target) return false;
+        if (uom && row.uom && row.uom !== uom) return false;
+        return true;
+    });
+
+    if (barcode) {
+        const exact = candidates.filter((row) => (row.barcode || "") === barcode);
+        if (exact.length) return exact[0];
+
+        const without_barcode = candidates.filter((row) => !row.barcode);
+        if (without_barcode.length === 1) return without_barcode[0];
+        return null;
+    }
+
+    return candidates.length === 1 ? candidates[0] : null;
+}
+
+
+function marina_configure_managed_barcode_scanner(frm) {
+    const is_send = frm.doc.stock_entry_type === "Send Stock" && frm.doc.docstatus === 0;
+    const is_transfer_between =
+        frm.doc.stock_entry_type === "Transfer Between" && frm.doc.docstatus === 0;
+    const is_manual_receive =
         frm.doc.stock_entry_type === "Receive Stock" &&
         frm.doc.custom_receiving_method === "Manual / Barcode Receiving" &&
         frm.doc.docstatus === 0;
 
-    if (!is_manual_barcode_receive) return;
+    if (!(is_send || is_transfer_between || is_manual_receive)) return;
 
     if (!frm.cscript || !erpnext?.utils?.BarcodeScanner) {
-        console.warn("Marina barcode receiving: ERPNext BarcodeScanner unavailable.");
+        console.warn("Marina barcode control: ERPNext BarcodeScanner unavailable.");
         return;
     }
 
-    frm.cscript.barcode_scanner = new erpnext.utils.BarcodeScanner({
+    const scanner = new erpnext.utils.BarcodeScanner({
         frm,
-        qty_field: "custom_actual_received_qty",
+        qty_field: is_manual_receive ? "custom_actual_received_qty" : "qty",
         barcode_field: "barcode",
         items_table_name: "items",
-        dont_allow_new_row: true,
+        dont_allow_new_row: is_manual_receive,
         warehouse_field: () => "s_warehouse",
     });
-}
 
+    const standard_get_row = scanner.get_row_to_modify_on_scan.bind(scanner);
+    scanner.get_row_to_modify_on_scan = function (
+        item_code,
+        batch_no,
+        uom,
+        barcode,
+        default_warehouse
+    ) {
+        if (batch_no) {
+            return standard_get_row(
+                item_code,
+                batch_no,
+                uom,
+                barcode,
+                default_warehouse
+            );
+        }
+
+        const existing = marina_find_existing_scan_row(
+            frm,
+            item_code,
+            barcode,
+            uom
+        );
+        if (existing) return existing;
+
+        return null;
+    };
+
+    frm.cscript.barcode_scanner = scanner;
+}
 
 function marina_force_receive_route_controls(frm) {
     if (frm.doc.stock_entry_type !== "Receive Stock") return;
@@ -380,7 +459,7 @@ function marina_update_receive_discrepancy(frm, cdt, cdn) {
     const row = locals[cdt][cdn];
     if (!row) return;
 
-    const sent = Number(row.custom_sent_qty || 0);
+    const sent = Number(row.qty || 0);
     const actual = Number(row.custom_actual_received_qty || 0);
 
     if (actual < 0) {
@@ -389,7 +468,41 @@ function marina_update_receive_discrepancy(frm, cdt, cdn) {
         return;
     }
 
-    frappe.model.set_value(cdt, cdn, "custom_discrepancy_qty", sent - actual);
+    frappe.model.set_value(cdt, cdn, "custom_discrepancy_qty", sent - actual).then(() => marina_update_receive_totals(frm));
+}
+
+
+function marina_update_receive_totals(frm) {
+    if (frm.doc.stock_entry_type !== "Receive Stock") return;
+
+    const rows = frm.doc.items || [];
+    const total_sent = rows.reduce((sum, row) => sum + Number(row.qty || 0), 0);
+    const total_received = rows.reduce(
+        (sum, row) => sum + Number(row.custom_actual_received_qty || 0),
+        0
+    );
+    const total_variance = total_sent - total_received;
+    const total_abs_variance = rows.reduce(
+        (sum, row) =>
+            sum + Math.abs(
+                Number(row.qty || 0) -
+                Number(row.custom_actual_received_qty || 0)
+            ),
+        0
+    );
+
+    const values = {
+        custom_total_sent_qty: total_sent,
+        custom_total_received_qty: total_received,
+        custom_total_variance_qty: total_variance,
+        custom_total_abs_variance_qty: total_abs_variance,
+    };
+
+    for (const [fieldname, value] of Object.entries(values)) {
+        if (frm.fields_dict[fieldname] && frm.doc[fieldname] !== value) {
+            frm.set_value(fieldname, value);
+        }
+    }
 }
 
 
