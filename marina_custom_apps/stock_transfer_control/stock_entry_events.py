@@ -158,8 +158,40 @@ def _validate_receiving_method(doc):
             )
 
 
+def _validate_unexpected_received_items(doc):
+    rows = doc.get("custom_unexpected_received_items") or []
+    if not rows:
+        return
+
+    if doc.get("custom_receiving_method") != RECEIVING_METHOD_MANUAL:
+        frappe.throw(_("Unexpected Received Items are allowed only in Manual / Barcode Receiving."))
+
+    seen = set()
+    for index, row in enumerate(rows, start=1):
+        if not row.item_code:
+            frappe.throw(_("Unexpected Received Item row {0}: Item Code is required.").format(index))
+
+        actual_qty = flt(row.actual_received_qty)
+        if actual_qty <= 0:
+            frappe.throw(
+                _("Unexpected Received Item row {0}: Actual Received Qty must be greater than zero.").format(index)
+            )
+
+        key = (row.item_code, row.barcode or "")
+        if key in seen:
+            frappe.throw(
+                _("Unexpected Received Item row {0}: duplicate barcode/item. Use one row with the total count.").format(index)
+            )
+        seen.add(key)
+
+        row.actual_received_qty = actual_qty
+        row.discrepancy_qty = -actual_qty
+        row.source_warehouse = doc.from_warehouse
+        row.target_warehouse = doc.to_warehouse
+
+
 def _reconcile_receive_rows(doc, require_actual=False):
-    """Close Transit with expected Qty; preserve unexpected physical counts as audit-only rows."""
+    """Close Transit using only original Send rows; unexpected items are audit-only."""
     total_actual = 0.0
 
     for index, row in enumerate(doc.items or [], start=1):
@@ -168,28 +200,13 @@ def _reconcile_receive_rows(doc, require_actual=False):
             frappe.throw(_("Row {0}: Actual Received Qty cannot be negative.").format(index))
 
         original_detail = row.get("custom_original_send_stock_detail") or row.get("ste_detail")
-
-        # Unexpected barcode: item was not present on original Send Stock.
-        # It must never add ledger quantity to this Receive Stock. The physical
-        # count is retained for Stock Transfer Audit to resolve later.
         if row.get("custom_unexpected_item") or not original_detail:
-            if doc.get("custom_receiving_method") != RECEIVING_METHOD_MANUAL:
-                frappe.throw(
-                    _("Row {0}: Unexpected items are allowed only in Manual / Barcode Receiving.").format(index)
-                )
-            if actual_qty <= 0:
-                frappe.throw(
-                    _("Row {0}: Unexpected item must have Actual Received Qty greater than zero.").format(index)
-                )
-
-            row.qty = 0
-            row.transfer_qty = 0
-            row.custom_discrepancy_qty = -actual_qty
-            row.custom_unexpected_item = 1
-            row.custom_original_send_stock_detail = None
-            row.ste_detail = None
-            total_actual += actual_qty
-            continue
+            frappe.throw(
+                _(
+                    "Row {0}: Unexpected items must be recorded in the "
+                    "Unexpected Received Items table, not Stock Entry Items."
+                ).format(index)
+            )
 
         original_row = frappe.db.get_value(
             "Stock Entry Detail",
@@ -212,15 +229,22 @@ def _reconcile_receive_rows(doc, require_actual=False):
         row.custom_original_send_stock_detail = original_detail
         total_actual += actual_qty
 
+    unexpected_rows = doc.get("custom_unexpected_received_items") or []
+    unexpected_actual = sum(flt(row.actual_received_qty) for row in unexpected_rows)
+    total_actual += unexpected_actual
+
     total_sent = sum(flt(row.qty) for row in (doc.items or []))
-    total_received = sum(
+    expected_received = sum(
         flt(row.get("custom_actual_received_qty")) for row in (doc.items or [])
     )
+    total_received = expected_received + unexpected_actual
     total_variance = total_sent - total_received
-    total_abs_variance = sum(
+    expected_abs_variance = sum(
         abs(flt(row.qty) - flt(row.get("custom_actual_received_qty")))
         for row in (doc.items or [])
     )
+    unexpected_abs_variance = sum(abs(flt(row.actual_received_qty)) for row in unexpected_rows)
+    total_abs_variance = expected_abs_variance + unexpected_abs_variance
 
     doc.custom_total_sent_qty = total_sent
     doc.custom_total_received_qty = total_received
@@ -345,6 +369,7 @@ def validate_stock_entry(doc, method=None):
 
     elif doc.stock_entry_type == TYPE_RECEIVE_STOCK:
         _validate_receive_origin(doc)
+        _validate_unexpected_received_items(doc)
         _reconcile_receive_rows(doc)
 
     elif doc.stock_entry_type == TYPE_TRANSFER_BETWEEN:
@@ -358,6 +383,7 @@ def validate_before_submit(doc, method=None):
     validate_stock_entry(doc, method=method)
 
     if doc.stock_entry_type == TYPE_RECEIVE_STOCK:
+        _validate_unexpected_received_items(doc)
         _reconcile_receive_rows(doc, require_actual=True)
 
 def validate_before_cancel(doc, method=None):

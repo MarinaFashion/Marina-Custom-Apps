@@ -48,10 +48,23 @@ STOCK_ENTRY_FIELDS = [
         ),
     },
     {
+        "fieldname": "custom_unexpected_received_items",
+        "label": "Unexpected Received Items",
+        "fieldtype": "Table",
+        "options": "Unexpected Received Item",
+        "insert_after": "items",
+        "read_only": 1,
+        "no_copy": 1,
+        "description": (
+            "Audit-only physical items scanned during Manual / Barcode Receiving "
+            "that were not present on the original Send Stock."
+        ),
+    },
+    {
         "fieldname": "custom_transfer_totals_section",
         "label": "Receiving Totals",
         "fieldtype": "Section Break",
-        "insert_after": "items",
+        "insert_after": "custom_unexpected_received_items",
     },
     {
         "fieldname": "custom_total_sent_qty",

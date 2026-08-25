@@ -129,9 +129,6 @@ frappe.ui.form.on("Stock Entry Detail", {
     custom_actual_received_qty(frm, cdt, cdn) {
         marina_update_receive_discrepancy(frm, cdt, cdn);
     },
-    item_code(frm, cdt, cdn) {
-        marina_mark_unexpected_receive_row(frm, cdt, cdn);
-    },
 });
 
 
@@ -281,6 +278,11 @@ function marina_apply_field_controls(frm) {
 
     marina_force_receive_route_controls(frm);
 
+    if (frm.fields_dict.custom_unexpected_received_items) {
+        frm.set_df_property("custom_unexpected_received_items", "hidden", !is_receive);
+        frm.set_df_property("custom_unexpected_received_items", "read_only", 1);
+    }
+
     for (const fieldname of [
         "custom_transfer_totals_section",
         "custom_total_sent_qty",
@@ -344,32 +346,101 @@ function marina_find_existing_scan_row(frm, item_code, barcode, uom) {
 }
 
 
-function marina_mark_unexpected_receive_row(frm, cdt, cdn) {
-    const is_manual_receive =
-        frm.doc.stock_entry_type === "Receive Stock" &&
-        frm.doc.custom_receiving_method === "Manual / Barcode Receiving" &&
-        frm.doc.docstatus === 0;
-
-    if (!is_manual_receive) return;
-
-    const row = locals[cdt][cdn];
-    if (!row || !row.item_code) return;
-
-    // Expected rows mapped from Send Stock carry original-line traceability.
-    if (row.custom_original_send_stock_detail || row.ste_detail) return;
-
-    frappe.model.set_value(cdt, cdn, {
-        custom_unexpected_item: 1,
-        qty: 0,
-        transfer_qty: 0,
-        s_warehouse: frm.doc.from_warehouse,
-        t_warehouse: frm.doc.to_warehouse,
-    }).then(() => {
-        marina_update_receive_discrepancy(frm, cdt, cdn);
-        marina_update_receive_totals(frm);
-    });
+function marina_find_unexpected_receive_row(frm, item_code, barcode) {
+    return (frm.doc.custom_unexpected_received_items || []).find((row) =>
+        row.item_code === item_code && (row.barcode || "") === (barcode || "")
+    );
 }
 
+
+async function marina_increment_expected_receive_row(frm, row) {
+    const next_actual = Number(row.custom_actual_received_qty || 0) + 1;
+    await frappe.model.set_value(
+        row.doctype,
+        row.name,
+        "custom_actual_received_qty",
+        next_actual
+    );
+    marina_update_receive_totals(frm);
+}
+
+
+async function marina_increment_unexpected_receive_row(frm, data) {
+    const item_code = data.item_code;
+    const barcode = data.barcode || "";
+    let row = marina_find_unexpected_receive_row(frm, item_code, barcode);
+
+    if (row) {
+        const next_actual = Number(row.actual_received_qty || 0) + 1;
+        await frappe.model.set_value(row.doctype, row.name, {
+            actual_received_qty: next_actual,
+            discrepancy_qty: -next_actual,
+        });
+    } else {
+        row = frm.add_child("custom_unexpected_received_items", {
+            barcode,
+            item_code,
+            actual_received_qty: 1,
+            discrepancy_qty: -1,
+            source_warehouse: frm.doc.from_warehouse,
+            target_warehouse: frm.doc.to_warehouse,
+        });
+        frm.refresh_field("custom_unexpected_received_items");
+    }
+
+    marina_update_receive_totals(frm);
+}
+
+
+function marina_process_manual_receive_scan(frm, scanner) {
+    return new Promise((resolve, reject) => {
+        const input = scanner.scan_barcode_field.value;
+        scanner.scan_barcode_field.set_value("");
+        if (!input) {
+            resolve();
+            return;
+        }
+
+        scanner.scan_api_call(input, async (r) => {
+            const data = r && r.message;
+            if (!data || !data.item_code) {
+                scanner.show_alert(__("Cannot find Item with this Barcode"), "red");
+                scanner.play_fail_sound();
+                reject();
+                return;
+            }
+
+            try {
+                const expected = marina_find_existing_scan_row(
+                    frm,
+                    data.item_code,
+                    data.barcode,
+                    data.uom
+                );
+
+                if (expected) {
+                    await marina_increment_expected_receive_row(frm, expected);
+                    scanner.show_alert(
+                        __("Received {0}: Actual Received Qty increased.", [data.item_code]),
+                        "green"
+                    );
+                } else {
+                    await marina_increment_unexpected_receive_row(frm, data);
+                    scanner.show_alert(
+                        __("Unexpected item {0} recorded for audit.", [data.item_code]),
+                        "orange"
+                    );
+                }
+
+                scanner.play_success_sound();
+                resolve();
+            } catch (error) {
+                scanner.play_fail_sound();
+                reject(error);
+            }
+        });
+    });
+}
 
 function marina_configure_managed_barcode_scanner(frm) {
     const is_send = frm.doc.stock_entry_type === "Send Stock" && frm.doc.docstatus === 0;
@@ -396,6 +467,16 @@ function marina_configure_managed_barcode_scanner(frm) {
         warehouse_field: () => "s_warehouse",
     });
 
+    if (is_manual_receive) {
+        // Receive scans never create rows in standard Stock Entry Items.
+        // Expected items increment Actual Received Qty. Unexpected items are
+        // stored in the audit-only child table below Items.
+        scanner.process_scan = () => marina_process_manual_receive_scan(frm, scanner);
+        frm.cscript.barcode_scanner = scanner;
+        return;
+    }
+
+    // Send / Transfer Between keep deterministic same-row Qty increments.
     const standard_get_row = scanner.get_row_to_modify_on_scan.bind(scanner);
     scanner.get_row_to_modify_on_scan = function (
         item_code,
@@ -422,10 +503,6 @@ function marina_configure_managed_barcode_scanner(frm) {
         );
         if (existing) return existing;
 
-        // In Manual / Barcode Receive, returning null intentionally lets the
-        // ERPNext scanner create one new row. Our item_code handler marks it
-        // Unexpected, forces ledger Qty = 0, and the scan increments only
-        // Actual Received Qty. Repeated scans then find and reuse this row.
         return null;
     };
 
@@ -511,12 +588,18 @@ function marina_update_receive_totals(frm) {
 
     const rows = frm.doc.items || [];
     const total_sent = rows.reduce((sum, row) => sum + Number(row.qty || 0), 0);
-    const total_received = rows.reduce(
+    const expected_received = rows.reduce(
         (sum, row) => sum + Number(row.custom_actual_received_qty || 0),
         0
     );
+    const unexpected_rows = frm.doc.custom_unexpected_received_items || [];
+    const unexpected_received = unexpected_rows.reduce(
+        (sum, row) => sum + Number(row.actual_received_qty || 0),
+        0
+    );
+    const total_received = expected_received + unexpected_received;
     const total_variance = total_sent - total_received;
-    const total_abs_variance = rows.reduce(
+    const expected_abs_variance = rows.reduce(
         (sum, row) =>
             sum + Math.abs(
                 Number(row.qty || 0) -
@@ -524,6 +607,11 @@ function marina_update_receive_totals(frm) {
             ),
         0
     );
+    const unexpected_abs_variance = unexpected_rows.reduce(
+        (sum, row) => sum + Math.abs(Number(row.actual_received_qty || 0)),
+        0
+    );
+    const total_abs_variance = expected_abs_variance + unexpected_abs_variance;
 
     const values = {
         custom_total_sent_qty: total_sent,
