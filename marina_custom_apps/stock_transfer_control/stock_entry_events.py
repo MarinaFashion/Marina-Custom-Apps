@@ -163,13 +163,23 @@ def _validate_unexpected_received_items(doc):
     if not rows:
         return
 
-    if doc.get("custom_receiving_method") != RECEIVING_METHOD_MANUAL:
-        frappe.throw(_("Unexpected Received Items are allowed only in Manual / Barcode Receiving."))
+    if doc.stock_entry_type != TYPE_RECEIVE_STOCK:
+        frappe.throw(_("Unexpected Received Items are allowed only on Receive Stock."))
+
+    expected_item_codes = {row.item_code for row in (doc.items or []) if row.item_code}
 
     seen = set()
     for index, row in enumerate(rows, start=1):
         if not row.item_code:
             frappe.throw(_("Unexpected Received Item row {0}: Item Code is required.").format(index))
+
+        if row.item_code in expected_item_codes:
+            frappe.throw(
+                _(
+                    "Unexpected Received Item row {0}: Item {1} exists on the original "
+                    "Send Stock. Update Actual Received Qty in the Items table instead."
+                ).format(index, row.item_code)
+            )
 
         actual_qty = flt(row.actual_received_qty)
         if actual_qty <= 0:

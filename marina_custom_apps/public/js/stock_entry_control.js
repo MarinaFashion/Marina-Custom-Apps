@@ -27,6 +27,7 @@ frappe.ui.form.on("Stock Entry", {
         marina_bind_link_query_guards(frm);
         marina_apply_field_controls(frm);
         marina_configure_managed_barcode_scanner(frm);
+        marina_install_unexpected_item_button(frm);
     },
 
     async refresh(frm) {
@@ -47,6 +48,7 @@ frappe.ui.form.on("Stock Entry", {
         marina_bind_link_query_guards(frm);
         marina_apply_field_controls(frm);
         marina_configure_managed_barcode_scanner(frm);
+        marina_install_unexpected_item_button(frm);
         setTimeout(() => marina_force_receive_route_controls(frm), 0);
 
         // ERPNext adds its standard End Transit button during refresh.
@@ -346,6 +348,109 @@ function marina_find_existing_scan_row(frm, item_code, barcode, uom) {
 }
 
 
+function marina_item_is_expected_on_receive(frm, item_code) {
+    return (frm.doc.items || []).some((row) => row.item_code === item_code);
+}
+
+
+async function marina_add_unexpected_receive_item(frm, values) {
+    const item_code = values.item_code;
+    const barcode = (values.barcode || "").trim();
+    const actual_qty = Number(values.actual_received_qty || 0);
+
+    if (!item_code) frappe.throw(__("Item Code is required."));
+    if (!(actual_qty > 0)) frappe.throw(__("Actual Received Qty must be greater than zero."));
+
+    if (marina_item_is_expected_on_receive(frm, item_code)) {
+        frappe.throw(
+            __("Item {0} exists on the original Send Stock. Update its Actual Received Qty in the Items table instead.", [item_code])
+        );
+    }
+
+    let row = marina_find_unexpected_receive_row(frm, item_code, barcode);
+    if (row) {
+        const next_actual = Number(row.actual_received_qty || 0) + actual_qty;
+        await frappe.model.set_value(row.doctype, row.name, {
+            actual_received_qty: next_actual,
+            discrepancy_qty: -next_actual,
+            source_warehouse: frm.doc.from_warehouse,
+            target_warehouse: frm.doc.to_warehouse,
+        });
+    } else {
+        frm.add_child("custom_unexpected_received_items", {
+            barcode,
+            item_code,
+            actual_received_qty: actual_qty,
+            discrepancy_qty: -actual_qty,
+            source_warehouse: frm.doc.from_warehouse,
+            target_warehouse: frm.doc.to_warehouse,
+        });
+        frm.refresh_field("custom_unexpected_received_items");
+    }
+
+    marina_update_receive_totals(frm);
+    frm.dirty();
+}
+
+
+function marina_install_unexpected_item_button(frm) {
+    frm.remove_custom_button(__("Add Unexpected Item"), __("Receiving"));
+
+    const allowed =
+        frm.doc.stock_entry_type === "Receive Stock" &&
+        frm.doc.docstatus === 0 &&
+        !!frm.doc.custom_receive_via_end_transit;
+
+    if (!allowed) return;
+
+    frm.add_custom_button(
+        __("Add Unexpected Item"),
+        () => {
+            const dialog = new frappe.ui.Dialog({
+                title: __("Add Unexpected Received Item"),
+                fields: [
+                    {
+                        fieldname: "item_code",
+                        fieldtype: "Link",
+                        label: __("Item Code"),
+                        options: "Item",
+                        reqd: 1,
+                        get_query: () => ({
+                            filters: {disabled: 0, is_stock_item: 1},
+                        }),
+                    },
+                    {
+                        fieldname: "barcode",
+                        fieldtype: "Data",
+                        label: __("Barcode"),
+                        description: __("Optional."),
+                    },
+                    {
+                        fieldname: "actual_received_qty",
+                        fieldtype: "Float",
+                        label: __("Actual Received Qty"),
+                        reqd: 1,
+                        default: 1,
+                    },
+                ],
+                primary_action_label: __("Add"),
+                primary_action: async (values) => {
+                    try {
+                        await marina_add_unexpected_receive_item(frm, values);
+                        dialog.hide();
+                        frappe.show_alert({
+                            message: __("Unexpected item recorded for audit."),
+                            indicator: "orange",
+                        });
+                    } catch (error) {}
+                },
+            });
+            dialog.show();
+        },
+        __("Receiving")
+    );
+}
+
 function marina_find_unexpected_receive_row(frm, item_code, barcode) {
     return (frm.doc.custom_unexpected_received_items || []).find((row) =>
         row.item_code === item_code && (row.barcode || "") === (barcode || "")
@@ -366,29 +471,11 @@ async function marina_increment_expected_receive_row(frm, row) {
 
 
 async function marina_increment_unexpected_receive_row(frm, data) {
-    const item_code = data.item_code;
-    const barcode = data.barcode || "";
-    let row = marina_find_unexpected_receive_row(frm, item_code, barcode);
-
-    if (row) {
-        const next_actual = Number(row.actual_received_qty || 0) + 1;
-        await frappe.model.set_value(row.doctype, row.name, {
-            actual_received_qty: next_actual,
-            discrepancy_qty: -next_actual,
-        });
-    } else {
-        row = frm.add_child("custom_unexpected_received_items", {
-            barcode,
-            item_code,
-            actual_received_qty: 1,
-            discrepancy_qty: -1,
-            source_warehouse: frm.doc.from_warehouse,
-            target_warehouse: frm.doc.to_warehouse,
-        });
-        frm.refresh_field("custom_unexpected_received_items");
-    }
-
-    marina_update_receive_totals(frm);
+    await marina_add_unexpected_receive_item(frm, {
+        item_code: data.item_code,
+        barcode: data.barcode || "",
+        actual_received_qty: 1,
+    });
 }
 
 
