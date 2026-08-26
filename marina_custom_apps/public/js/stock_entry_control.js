@@ -28,7 +28,6 @@ frappe.ui.form.on("Stock Entry", {
         marina_apply_field_controls(frm);
         marina_configure_managed_barcode_scanner(frm);
         marina_install_unexpected_item_button(frm);
-        marina_refresh_receive_item_dependencies(frm);
     },
 
     async refresh(frm) {
@@ -53,7 +52,6 @@ frappe.ui.form.on("Stock Entry", {
         setTimeout(() => {
             marina_force_receive_route_controls(frm);
             marina_force_material_request_route_controls(frm);
-            marina_refresh_receive_item_dependencies(frm);
         }, 0);
 
         // ERPNext adds its standard End Transit button during refresh.
@@ -711,16 +709,6 @@ function marina_configure_managed_barcode_scanner(frm) {
     frm.cscript.barcode_scanner = scanner;
 }
 
-function marina_refresh_receive_item_dependencies(frm) {
-    if (frm.doc.stock_entry_type !== "Receive Stock") return;
-
-    setTimeout(() => {
-        frm.refresh_field("items");
-        const grid = frm.fields_dict.items?.grid;
-        if (grid) grid.refresh();
-    }, 0);
-}
-
 function marina_force_material_request_route_controls(frm) {
     if (!marina_has_material_request_origin(frm)) return;
 
@@ -930,6 +918,20 @@ async function marina_prepare_material_request_stock_entry(frm) {
 }
 
 
+function marina_open_receive_stock_clean(receive_name) {
+    if (!receive_name) {
+        frappe.throw(__("Receive Stock name is required."));
+    }
+
+    // End Transit switches from a Send Stock to a Receive Stock. A normal
+    // Desk route change can reuse the current Stock Entry form/grid instance,
+    // leaving child-field dependency metadata in the previous Send state.
+    // Open the Receive document through a full browser navigation so Frappe
+    // initializes the form and child grid from the Receive Stock parent state.
+    const path = `/app/stock-entry/${encodeURIComponent(receive_name)}`;
+    window.location.assign(path);
+}
+
 function marina_is_submitted_send_waiting_for_receipt(frm) {
     return (
         frm.doc.docstatus === 1 &&
@@ -957,7 +959,7 @@ function marina_install_end_transit_button(frm) {
         const status = status_result.message || {};
 
         if (status.exists && status.receiving_method) {
-            frappe.set_route("Form", "Stock Entry", status.name);
+            marina_open_receive_stock_clean(status.name);
             return;
         }
 
@@ -1001,7 +1003,7 @@ function marina_install_end_transit_button(frm) {
                     indicator: receive.created ? "green" : "blue",
                 });
 
-                frappe.set_route("Form", "Stock Entry", receive.name);
+                marina_open_receive_stock_clean(receive.name);
             },
             __("Choose Receiving Method"),
             __("Continue")
