@@ -33,56 +33,53 @@ def _has_mr_origin(doc):
 
 
 def _get_mr_route(doc):
-    """Return one exact Material Request route for all MR-linked rows.
+    """Return the authoritative route from the originating Material Request(s).
 
-    All Material Requests are treated identically. A Stock Entry created from
-    a Material Request must resolve to one Physical -> Transit route.
+    Never use mutable Stock Entry source/target values to derive this route.
     """
+    mr_names = sorted(
+        {
+            row.get("material_request")
+            for row in (doc.items or [])
+            if row.get("material_request")
+        }
+    )
+    if not mr_names:
+        return None
+
     routes = set()
 
-    for row in doc.items or []:
-        mr_name = row.get("material_request")
-        if not mr_name:
-            continue
+    for mr_name in mr_names:
+        mr = frappe.db.get_value(
+            "Material Request",
+            mr_name,
+            ["name", "docstatus", "set_from_warehouse", "set_warehouse"],
+            as_dict=True,
+        )
+        if not mr:
+            frappe.throw(_("Material Request {0} does not exist.").format(mr_name))
+        if mr.docstatus != 1:
+            frappe.throw(_("Material Request {0} must be submitted.").format(mr_name))
 
-        source = row.get("s_warehouse")
-        target = row.get("t_warehouse")
+        mr_rows = frappe.get_all(
+            "Material Request Item",
+            filters={"parent": mr_name},
+            fields=["from_warehouse", "warehouse"],
+            limit_page_length=0,
+        ) or [frappe._dict()]
 
-        mr_item_name = row.get("material_request_item")
-        if mr_item_name:
-            mr_item = frappe.db.get_value(
-                "Material Request Item",
-                mr_item_name,
-                ["from_warehouse", "warehouse"],
-                as_dict=True,
-            )
-            if mr_item:
-                source = mr_item.from_warehouse or source
-                target = mr_item.warehouse or target
+        for mr_row in mr_rows:
+            source = mr_row.from_warehouse or mr.set_from_warehouse
+            target = mr_row.warehouse or mr.set_warehouse
 
-        if not source or not target:
-            mr = frappe.db.get_value(
-                "Material Request",
-                mr_name,
-                ["set_from_warehouse", "set_warehouse"],
-                as_dict=True,
-            )
-            if mr:
-                source = source or mr.set_from_warehouse
-                target = target or mr.set_warehouse
-
-        if not source or not target:
-            frappe.throw(
-                _(
-                    "Material Request {0} does not provide a complete source "
-                    "and target warehouse route."
-                ).format(mr_name)
-            )
-
-        routes.add((source, target))
-
-    if not routes:
-        return None
+            if not source or not target:
+                frappe.throw(
+                    _(
+                        "Material Request {0} does not provide a complete source "
+                        "and target warehouse route."
+                    ).format(mr_name)
+                )
+            routes.add((source, target))
 
     if len(routes) != 1:
         frappe.throw(
@@ -94,6 +91,42 @@ def _get_mr_route(doc):
 
     return next(iter(routes))
 
+
+def _is_route_only_blank_row(row):
+    return (
+        not row.get("item_code")
+        and flt(row.get("qty")) == 0
+        and not row.get("material_request")
+        and not row.get("material_request_item")
+        and not row.get("batch_no")
+        and not row.get("serial_no")
+        and not row.get("serial_and_batch_bundle")
+    )
+
+
+def _remove_route_only_blank_rows(doc):
+    if doc.stock_entry_type not in {TYPE_SEND_STOCK, TYPE_TRANSFER_BETWEEN}:
+        return
+
+    kept = [row for row in (doc.items or []) if not _is_route_only_blank_row(row)]
+    if len(kept) != len(doc.items or []):
+        doc.set("items", kept)
+        for index, row in enumerate(doc.items or [], start=1):
+            row.idx = index
+
+
+def _set_transfer_total_qty(doc):
+    if doc.stock_entry_type in {TYPE_SEND_STOCK, TYPE_TRANSFER_BETWEEN}:
+        doc.custom_total_qty = sum(
+            flt(row.qty) for row in (doc.items or []) if row.get("item_code")
+        )
+    elif doc.stock_entry_type == TYPE_RECEIVE_STOCK:
+        doc.custom_total_qty = 0
+
+
+def before_validate_stock_entry(doc, method=None):
+    _remove_route_only_blank_rows(doc)
+    _set_transfer_total_qty(doc)
 
 def _validate_child_route(doc):
     if not doc.from_warehouse or not doc.to_warehouse:
@@ -343,6 +376,8 @@ def _validate_no_duplicate_managed_rows(doc):
 
 
 def validate_stock_entry(doc, method=None):
+    _set_transfer_total_qty(doc)
+
     if not doc.items:
         return
 

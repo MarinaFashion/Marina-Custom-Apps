@@ -49,7 +49,10 @@ frappe.ui.form.on("Stock Entry", {
         marina_apply_field_controls(frm);
         marina_configure_managed_barcode_scanner(frm);
         marina_install_unexpected_item_button(frm);
-        setTimeout(() => marina_force_receive_route_controls(frm), 0);
+        setTimeout(() => {
+            marina_force_receive_route_controls(frm);
+            marina_force_material_request_route_controls(frm);
+        }, 0);
 
         // ERPNext adds its standard End Transit button during refresh.
         // Replace it after the refresh cycle with Marina's controlled action.
@@ -112,6 +115,9 @@ frappe.ui.form.on("Stock Entry", {
     },
 
     validate(frm) {
+        marina_remove_route_only_blank_rows(frm);
+        marina_update_transfer_total_qty(frm);
+
         if (!marina_has_material_request_origin(frm)) {
             marina_sync_child_route(frm);
         }
@@ -127,6 +133,13 @@ frappe.ui.form.on("Stock Entry Detail", {
     },
     items_add(frm, cdt, cdn) {
         marina_restore_row_route(frm, cdt, cdn);
+        marina_update_transfer_total_qty(frm);
+    },
+    items_remove(frm) {
+        marina_update_transfer_total_qty(frm);
+    },
+    qty(frm) {
+        marina_update_transfer_total_qty(frm);
     },
     custom_actual_received_qty(frm, cdt, cdn) {
         marina_update_receive_discrepancy(frm, cdt, cdn);
@@ -279,14 +292,26 @@ function marina_apply_field_controls(frm) {
     }
 
     marina_force_receive_route_controls(frm);
+    marina_force_material_request_route_controls(frm);
 
     if (frm.fields_dict.custom_unexpected_received_items) {
         frm.set_df_property("custom_unexpected_received_items", "hidden", !is_receive);
         frm.set_df_property("custom_unexpected_received_items", "read_only", 1);
     }
 
+    const is_send_or_between =
+        frm.doc.stock_entry_type === "Send Stock" ||
+        frm.doc.stock_entry_type === "Transfer Between";
+    const show_any_totals = is_receive || is_send_or_between;
+
+    if (frm.fields_dict.custom_transfer_totals_section) {
+        frm.set_df_property("custom_transfer_totals_section", "hidden", !show_any_totals);
+    }
+    if (frm.fields_dict.custom_total_qty) {
+        frm.set_df_property("custom_total_qty", "hidden", !is_send_or_between);
+        frm.set_df_property("custom_total_qty", "read_only", 1);
+    }
     for (const fieldname of [
-        "custom_transfer_totals_section",
         "custom_total_sent_qty",
         "custom_total_received_qty",
         "custom_totals_column_break",
@@ -301,27 +326,106 @@ function marina_apply_field_controls(frm) {
 
     if (is_receive) {
         marina_update_receive_totals(frm);
+    } else if (is_send_or_between) {
+        marina_update_transfer_total_qty(frm);
     }
 
     const grid = frm.fields_dict.items?.grid;
     if (grid) {
+        for (const [fieldname, columns] of Object.entries({
+            s_warehouse: 2,
+            t_warehouse: 2,
+            item_code: 2,
+            qty: 1,
+            custom_actual_received_qty: 1,
+            custom_discrepancy_qty: 1,
+        })) {
+            grid.update_docfield_property(fieldname, "in_list_view", 1);
+            grid.update_docfield_property(fieldname, "columns", columns);
+        }
+
         grid.update_docfield_property("s_warehouse", "read_only", 1);
         grid.update_docfield_property("t_warehouse", "read_only", 1);
 
         grid.update_docfield_property("qty", "hidden", 0);
         grid.update_docfield_property("custom_actual_received_qty", "hidden", is_receive ? 0 : 1);
         grid.update_docfield_property("custom_discrepancy_qty", "hidden", is_receive ? 0 : 1);
-        grid.update_docfield_property("custom_unexpected_item", "hidden", is_receive ? 0 : 1);
+        grid.update_docfield_property("custom_unexpected_item", "hidden", 1);
 
         if (is_receive) {
             grid.update_docfield_property("qty", "read_only", 1);
             grid.update_docfield_property("custom_actual_received_qty", "read_only", frm.doc.docstatus !== 0);
             grid.update_docfield_property("custom_discrepancy_qty", "read_only", 1);
-            grid.update_docfield_property("custom_unexpected_item", "read_only", 1);
         }
+
+        grid.refresh();
     }
 }
 
+
+function marina_is_route_only_blank_row(row) {
+    return (
+        !row.item_code &&
+        Number(row.qty || 0) === 0 &&
+        !row.material_request &&
+        !row.material_request_item &&
+        !row.batch_no &&
+        !row.serial_no &&
+        !row.serial_and_batch_bundle
+    );
+}
+
+
+function marina_find_blank_route_row(frm) {
+    const source = frm.doc.from_warehouse || "";
+    const target = frm.doc.to_warehouse || "";
+
+    const rows = (frm.doc.items || []).filter((row) =>
+        marina_is_route_only_blank_row(row) &&
+        (row.s_warehouse || "") === source &&
+        (row.t_warehouse || "") === target
+    );
+
+    return rows.length ? rows[0] : null;
+}
+
+
+function marina_remove_route_only_blank_rows(frm) {
+    const removable = (frm.doc.items || []).filter(marina_is_route_only_blank_row);
+    if (!removable.length) return;
+
+    for (const row of removable) {
+        if (locals[row.doctype]?.[row.name]) {
+            delete locals[row.doctype][row.name];
+        }
+    }
+
+    frm.doc.items = (frm.doc.items || []).filter(
+        (row) => !marina_is_route_only_blank_row(row)
+    );
+    frm.doc.items.forEach((row, index) => {
+        row.idx = index + 1;
+    });
+    frm.refresh_field("items");
+}
+
+
+function marina_update_transfer_total_qty(frm) {
+    const managed =
+        frm.doc.stock_entry_type === "Send Stock" ||
+        frm.doc.stock_entry_type === "Transfer Between";
+
+    if (!managed || !frm.fields_dict.custom_total_qty) return;
+
+    const total = (frm.doc.items || []).reduce(
+        (sum, row) => sum + (row.item_code ? Number(row.qty || 0) : 0),
+        0
+    );
+
+    if (Number(frm.doc.custom_total_qty || 0) !== total) {
+        frm.set_value("custom_total_qty", total);
+    }
+}
 
 function marina_find_existing_scan_row(frm, item_code, barcode, uom) {
     const source = frm.doc.from_warehouse || "";
@@ -590,10 +694,30 @@ function marina_configure_managed_barcode_scanner(frm) {
         );
         if (existing) return existing;
 
+        const blank_route_row = marina_find_blank_route_row(frm);
+        if (blank_route_row) return blank_route_row;
+
         return null;
     };
 
     frm.cscript.barcode_scanner = scanner;
+}
+
+function marina_force_material_request_route_controls(frm) {
+    if (!marina_has_material_request_origin(frm)) return;
+
+    for (const fieldname of ["from_warehouse", "to_warehouse"]) {
+        const control = frm.fields_dict[fieldname];
+        frm.set_df_property(fieldname, "read_only", 1);
+
+        if (!control) continue;
+        control.df.read_only = 1;
+        control.refresh();
+
+        if (control.$input) {
+            control.$input.prop("readonly", true).prop("disabled", true);
+        }
+    }
 }
 
 function marina_force_receive_route_controls(frm) {
