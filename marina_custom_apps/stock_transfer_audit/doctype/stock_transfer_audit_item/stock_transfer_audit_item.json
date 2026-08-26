@@ -1,0 +1,85 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-08-27 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_code",
+  "sent_qty",
+  "actual_received_qty",
+  "discrepancy_qty",
+  "unexpected_item",
+  "send_stock_detail",
+  "receive_stock_detail"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Item Code",
+   "options": "Item",
+   "reqd": 1,
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "sent_qty",
+   "fieldtype": "Float",
+   "label": "Sent Qty",
+   "precision": "3",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "actual_received_qty",
+   "fieldtype": "Float",
+   "label": "Actual Received Qty",
+   "precision": "3",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "discrepancy_qty",
+   "fieldtype": "Float",
+   "label": "Discrepancy Qty",
+   "precision": "3",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "unexpected_item",
+   "fieldtype": "Check",
+   "label": "Unexpected Item",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "send_stock_detail",
+   "fieldtype": "Data",
+   "label": "Send Stock Detail",
+   "hidden": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "receive_stock_detail",
+   "fieldtype": "Data",
+   "label": "Receive Stock Detail",
+   "hidden": 1,
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-08-27 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Stock Transfer Audit",
+ "name": "Stock Transfer Audit Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
