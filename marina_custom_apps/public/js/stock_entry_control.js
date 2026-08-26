@@ -28,6 +28,7 @@ frappe.ui.form.on("Stock Entry", {
         marina_apply_field_controls(frm);
         marina_configure_managed_barcode_scanner(frm);
         marina_install_unexpected_item_button(frm);
+        marina_refresh_receive_item_dependencies(frm);
     },
 
     async refresh(frm) {
@@ -52,6 +53,7 @@ frappe.ui.form.on("Stock Entry", {
         setTimeout(() => {
             marina_force_receive_route_controls(frm);
             marina_force_material_request_route_controls(frm);
+            marina_refresh_receive_item_dependencies(frm);
         }, 0);
 
         // ERPNext adds its standard End Transit button during refresh.
@@ -707,6 +709,16 @@ function marina_configure_managed_barcode_scanner(frm) {
     };
 
     frm.cscript.barcode_scanner = scanner;
+}
+
+function marina_refresh_receive_item_dependencies(frm) {
+    if (frm.doc.stock_entry_type !== "Receive Stock") return;
+
+    setTimeout(() => {
+        frm.refresh_field("items");
+        const grid = frm.fields_dict.items?.grid;
+        if (grid) grid.refresh();
+    }, 0);
 }
 
 function marina_force_material_request_route_controls(frm) {
