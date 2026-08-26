@@ -52,15 +52,6 @@ frappe.ui.form.on("Stock Entry", {
         setTimeout(() => {
             marina_force_receive_route_controls(frm);
             marina_force_material_request_route_controls(frm);
-
-            const grid = frm.fields_dict.items?.grid;
-            if (grid) {
-                marina_apply_fixed_items_grid_layout(
-                    frm,
-                    grid,
-                    frm.doc.stock_entry_type === "Receive Stock"
-                );
-            }
         }, 0);
 
         // ERPNext adds its standard End Transit button during refresh.
@@ -341,48 +332,42 @@ function marina_apply_field_controls(frm) {
 
     const grid = frm.fields_dict.items?.grid;
     if (grid) {
-        marina_apply_fixed_items_grid_layout(frm, grid, is_receive);
-    }
-}
+        // Keep Frappe's normal/user-specific column arrangement.
+        // Only enforce business-state properties; do not force order/width.
+        grid.update_docfield_property("s_warehouse", "read_only", 1);
+        grid.update_docfield_property("t_warehouse", "read_only", 1);
 
+        grid.update_docfield_property("qty", "hidden", 0);
+        grid.update_docfield_property(
+            "custom_actual_received_qty",
+            "hidden",
+            is_receive ? 0 : 1
+        );
+        grid.update_docfield_property(
+            "custom_discrepancy_qty",
+            "hidden",
+            is_receive ? 0 : 1
+        );
+        grid.update_docfield_property("custom_unexpected_item", "hidden", 1);
 
-function marina_apply_fixed_items_grid_layout(frm, grid, is_receive) {
-    const layout = {
-        s_warehouse: { columns: 2, hidden: 0, read_only: 1 },
-        t_warehouse: { columns: 2, hidden: 0, read_only: 1 },
-        item_code: { columns: 2, hidden: 0 },
-        qty: { columns: 1, hidden: 0, read_only: is_receive ? 1 : 0 },
-        custom_actual_received_qty: {
-            columns: 1,
-            hidden: is_receive ? 0 : 1,
-            read_only: is_receive ? (frm.doc.docstatus !== 0 ? 1 : 0) : 1,
-        },
-        custom_discrepancy_qty: {
-            columns: 1,
-            hidden: is_receive ? 0 : 1,
-            read_only: 1,
-        },
-    };
-
-    // This operational grid must be identical for every user.
-    grid.user_defined_columns = [];
-
-    for (const [fieldname, config] of Object.entries(layout)) {
-        grid.update_docfield_property(fieldname, "in_list_view", 1);
-        grid.update_docfield_property(fieldname, "columns", config.columns);
-        grid.update_docfield_property(fieldname, "hidden", config.hidden);
-        if (Object.prototype.hasOwnProperty.call(config, "read_only")) {
-            grid.update_docfield_property(fieldname, "read_only", config.read_only);
+        if (is_receive) {
+            grid.update_docfield_property("qty", "read_only", 1);
+            grid.update_docfield_property(
+                "custom_actual_received_qty",
+                "read_only",
+                frm.doc.docstatus !== 0
+            );
+            grid.update_docfield_property(
+                "custom_discrepancy_qty",
+                "read_only",
+                1
+            );
         }
+
+        grid.refresh();
     }
-
-    grid.update_docfield_property("custom_unexpected_item", "hidden", 1);
-
-    // Frappe v15 caches visible columns; force a rebuild.
-    grid.visible_columns = [];
-    grid.setup_visible_columns();
-    grid.refresh();
 }
+
 
 function marina_is_route_only_blank_row(row) {
     return (
