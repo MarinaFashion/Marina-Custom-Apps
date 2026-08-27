@@ -7,9 +7,12 @@
  "engine": "InnoDB",
  "field_order": [
   "item_code",
+  "source_warehouse",
+  "target_warehouse",
   "sent_qty",
   "actual_received_qty",
   "discrepancy_qty",
+  "action",
   "unexpected_item",
   "send_stock_detail",
   "receive_stock_detail"
@@ -25,9 +28,25 @@
    "read_only": 1
   },
   {
+   "fieldname": "source_warehouse",
+   "fieldtype": "Link",
+   "label": "Source Warehouse",
+   "options": "Warehouse",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "target_warehouse",
+   "fieldtype": "Link",
+   "label": "Target Warehouse",
+   "options": "Warehouse",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
    "fieldname": "sent_qty",
    "fieldtype": "Float",
-   "label": "Sent Qty",
+   "label": "Qty Sent",
    "precision": "3",
    "in_list_view": 1,
    "read_only": 1
@@ -35,7 +54,7 @@
   {
    "fieldname": "actual_received_qty",
    "fieldtype": "Float",
-   "label": "Actual Received Qty",
+   "label": "Qty Received",
    "precision": "3",
    "in_list_view": 1,
    "read_only": 1
@@ -43,16 +62,24 @@
   {
    "fieldname": "discrepancy_qty",
    "fieldtype": "Float",
-   "label": "Discrepancy Qty",
+   "label": "Variance",
    "precision": "3",
    "in_list_view": 1,
    "read_only": 1
   },
   {
+   "fieldname": "action",
+   "fieldtype": "Select",
+   "label": "Action",
+   "options": "Move to Source\\nMove to Target",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
    "fieldname": "unexpected_item",
    "fieldtype": "Check",
    "label": "Unexpected Item",
-   "in_list_view": 1,
+   "hidden": 1,
    "read_only": 1
   },
   {

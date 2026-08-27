@@ -29,7 +29,8 @@
   "items",
   "resolution_section",
   "resolution_method",
-  "correction_stock_entry",
+  "correction_to_source_stock_entry",
+  "correction_to_target_stock_entry",
   "resolution_notes"
  ],
  "fields": [
@@ -42,7 +43,7 @@
    "fieldname": "record_type",
    "fieldtype": "Select",
    "label": "Record Type",
-   "options": "Audit Run\nLegacy / Previous Process",
+   "options": "Audit Run\\nLegacy / Previous Process",
    "reqd": 1,
    "default": "Legacy / Previous Process"
   },
@@ -50,14 +51,14 @@
    "fieldname": "audit_status",
    "fieldtype": "Select",
    "label": "Audit Status",
-   "options": "Open\nClean\nResolved\nLegacy Closed",
+   "options": "Open\\nClean\\nResolved\\nLegacy Closed",
    "reqd": 1
   },
   {
    "fieldname": "audit_result",
    "fieldtype": "Select",
    "label": "Audit Result",
-   "options": "Clean\nVariance",
+   "options": "Clean\\nVariance",
    "read_only": 1
   },
   {
@@ -159,14 +160,13 @@
   {
    "fieldname": "items_section",
    "fieldtype": "Section Break",
-   "label": "Item Comparison"
+   "label": "Exception Details"
   },
   {
    "fieldname": "items",
    "fieldtype": "Table",
-   "label": "Items",
-   "options": "Stock Transfer Audit Item",
-   "read_only": 1
+   "label": "Exceptions",
+   "options": "Stock Transfer Audit Item"
   },
   {
    "fieldname": "resolution_section",
@@ -177,13 +177,21 @@
    "fieldname": "resolution_method",
    "fieldtype": "Select",
    "label": "Resolution Method",
-   "options": "\nAuto Clean\nAudit Correction\nManual Closure\nLegacy / Previous Process"
+   "options": "\\nAuto Clean\\nAudit Correction\\nManual Closure\\nLegacy / Previous Process"
   },
   {
-   "fieldname": "correction_stock_entry",
+   "fieldname": "correction_to_source_stock_entry",
    "fieldtype": "Link",
-   "label": "Correction Stock Entry",
-   "options": "Stock Entry"
+   "label": "Move to Source Stock Entry",
+   "options": "Stock Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "correction_to_target_stock_entry",
+   "fieldtype": "Link",
+   "label": "Move to Target Stock Entry",
+   "options": "Stock Entry",
+   "read_only": 1
   },
   {
    "fieldname": "resolution_notes",
