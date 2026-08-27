@@ -4,7 +4,7 @@ app_publisher = "Marina Trading Company"
 app_description = "Marina Trading Company custom Frappe/ERPNext modules"
 app_email = "it@marinafashion.com.sa"
 app_license = "MIT"
-app_version = "0.15.0"
+app_version = "0.16.0"
 
 required_apps = ["erpnext"]
 
@@ -23,6 +23,8 @@ doc_events = {
     },
 }
 
-doctype_js = {
-    "Stock Entry": "public/js/stock_entry_control.js",
+doctype_js = {"Stock Entry": "public/js/stock_entry_control.js"}
+
+override_doctype_dashboards = {
+    "Stock Entry": "marina_custom_apps.stock_transfer_audit.stock_entry_dashboard.get_data",
 }

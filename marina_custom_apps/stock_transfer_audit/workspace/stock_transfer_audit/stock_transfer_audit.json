@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\": \"sta-head\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Stock Transfer Audit</b></span>\", \"col\": 12}}, {\"id\": \"sta-run\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Audit Runs\", \"col\": 4}}, {\"id\": \"sta-rec\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Audit Records\", \"col\": 4}}, {\"id\": \"sta-se\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Stock Entries\", \"col\": 4}}, {\"id\": \"sta-sp\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"sta-card\", \"type\": \"card\", \"data\": {\"card_name\": \"Audit Documents\", \"col\": 4}}]",
+ "content": "[{\"id\": \"h\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Stock Transfer Audit & Control</b></span>\", \"col\": 12}}, {\"id\": \"r1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Audit Runs\", \"col\": 3}}, {\"id\": \"r2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Audit Records\", \"col\": 3}}, {\"id\": \"r3\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Open Transit Aging\", \"col\": 3}}, {\"id\": \"r4\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Pending Audit Variance\", \"col\": 3}}, {\"id\": \"r5\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Variance Summary\", \"col\": 3}}, {\"id\": \"r6\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Stock Entries\", \"col\": 3}}, {\"id\": \"s\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"c1\", \"type\": \"card\", \"data\": {\"card_name\": \"Audit Documents\", \"col\": 4}}, {\"id\": \"c2\", \"type\": \"card\", \"data\": {\"card_name\": \"Control Reports\", \"col\": 4}}]",
  "creation": "2026-08-27 00:00:00.000000",
  "custom_blocks": [],
  "docstatus": 0,
@@ -52,9 +52,50 @@
    "link_type": "DocType",
    "onboard": 1,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Control Reports",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Open Transit Aging",
+   "link_count": 0,
+   "link_to": "Stock Transfer Open Transit Aging",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Pending Audit Variance",
+   "link_count": 0,
+   "link_to": "Stock Transfer Pending Audit Variance",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Variance Summary",
+   "link_count": 0,
+   "link_to": "Stock Transfer Variance Summary",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-08-27 00:00:00.000000",
+ "modified": "2026-08-28 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Stock Transfer Audit",
  "name": "Stock Transfer Audit",
@@ -86,6 +127,27 @@
    "label": "Audit Records",
    "link_to": "Stock Transfer Audit Record",
    "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "Report",
+   "label": "Open Transit Aging",
+   "link_to": "Stock Transfer Open Transit Aging",
+   "type": "Report"
+  },
+  {
+   "color": "Red",
+   "doc_view": "Report",
+   "label": "Pending Audit Variance",
+   "link_to": "Stock Transfer Pending Audit Variance",
+   "type": "Report"
+  },
+  {
+   "color": "Yellow",
+   "doc_view": "Report",
+   "label": "Variance Summary",
+   "link_to": "Stock Transfer Variance Summary",
+   "type": "Report"
   },
   {
    "color": "Grey",

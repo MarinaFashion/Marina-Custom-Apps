@@ -1,111 +1,46 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt
-
-from marina_custom_apps.stock_transfer_audit.audit_service import (
-    get_transfer_snapshot,
-    get_unaudited_received_transfers,
-)
+from frappe.utils import cint, flt
+from marina_custom_apps.stock_transfer_audit.audit_service import get_transfer_snapshot, get_unaudited_received_transfers
 from marina_custom_apps.stock_transfer_audit.status_service import update_run_status
 
-
 class StockTransferAuditRun(Document):
-    def validate(self):
-        self._validate_dates()
-        self._update_counts()
-
+    def validate(self): self._validate_dates(); self._update_counts()
     def before_submit(self):
         self._validate_dates()
-
-        if not self.transfers:
-            frappe.throw(_("Load at least one transfer before submitting the Audit Run."))
-
+        if not self.transfers: frappe.throw(_("Load at least one transfer before submitting the Audit Run."))
         for row in self.transfers:
-            if frappe.db.exists(
-                "Stock Transfer Audit Record",
-                {"original_send_stock": row.original_send_stock},
-            ):
-                frappe.throw(
-                    _(
-                        "Send Stock {0} is already in the Audit Register. Reload Transfers."
-                    ).format(row.original_send_stock)
-                )
-
-            get_transfer_snapshot(row.original_send_stock, row.receive_stock)
-
+            if frappe.db.exists("Stock Transfer Audit Record",{"original_send_stock":row.original_send_stock}): frappe.throw(_("Send Stock {0} is already in the Audit Register. Reload Transfers.").format(row.original_send_stock))
+            get_transfer_snapshot(row.original_send_stock,row.receive_stock)
     def on_submit(self):
         for row in self.transfers:
-            snap = get_transfer_snapshot(row.original_send_stock, row.receive_stock)
-
-            rec = frappe.new_doc("Stock Transfer Audit Record")
-            rec.record_type = "Audit Run"
-            rec.audit_run = self.name
-            rec.original_send_stock = snap["original_send_stock"]
-            rec.receive_stock = snap["receive_stock"]
-            rec.audit_status = "Clean" if snap["audit_result"] == "Clean" else "Open"
-            rec.processing_status = (
-                "Completed" if snap["audit_result"] == "Clean" else "Pending"
-            )
-            rec.resolution_method = (
-                "Auto Clean" if snap["audit_result"] == "Clean" else ""
-            )
-            rec.resolution_notes = (
-                "No discrepancy found during audit."
-                if snap["audit_result"] == "Clean"
-                else ""
-            )
-            rec.insert(ignore_permissions=True)
-
+            snap=get_transfer_snapshot(row.original_send_stock,row.receive_stock); rec=frappe.new_doc("Stock Transfer Audit Record")
+            rec.record_type="Audit Run"; rec.audit_run=self.name; rec.original_send_stock=snap["original_send_stock"]; rec.receive_stock=snap["receive_stock"]
+            rec.audit_status="Clean" if snap["audit_result"]=="Clean" else "Open"; rec.processing_status="Completed" if snap["audit_result"]=="Clean" else "Pending"
+            rec.resolution_method="Auto Clean" if snap["audit_result"]=="Clean" else ""; rec.resolution_notes="No discrepancy found during audit." if snap["audit_result"]=="Clean" else ""
+            rec.insert(ignore_permissions=True); rec.flags.ignore_permissions=True; rec.submit()
         update_run_status(self.name)
-
+    def before_cancel(self):
+        active=frappe.get_all("Stock Transfer Audit Record",filters={"audit_run":self.name,"docstatus":["<",2]},fields=["name","docstatus"],limit_page_length=50)
+        if active:
+            draft=[r.name for r in active if cint(r.docstatus)==0]; submitted=[r.name for r in active if cint(r.docstatus)==1]; parts=[]
+            if submitted: parts.append(_("cancel Audit Record(s): {0}").format(", ".join(submitted)))
+            if draft: parts.append(_("delete draft Audit Record(s): {0}").format(", ".join(draft)))
+            frappe.throw(_("Before cancelling this Audit Run, {0}.").format(" and ".join(parts)))
+    def on_cancel(self): self.db_set("run_status","Cancelled",update_modified=False)
+    def on_trash(self):
+        linked=frappe.get_all("Stock Transfer Audit Record",filters={"audit_run":self.name},pluck="name",limit_page_length=50)
+        if linked: frappe.throw(_("Delete the related Audit Record(s) first: {0}").format(", ".join(linked)))
     @frappe.whitelist()
     def load_transfers(self):
-        if self.docstatus != 0:
-            frappe.throw(_("Transfers can only be loaded into a Draft Audit Run."))
-
-        self._validate_dates()
-        snaps = get_unaudited_received_transfers(self.from_date, self.to_date)
-        self.set("transfers", [])
-
-        for s in snaps:
-            self.append(
-                "transfers",
-                {
-                    "posting_date": s["posting_date"],
-                    "receive_stock": s["receive_stock"],
-                    "original_send_stock": s["original_send_stock"],
-                    "source_warehouse": s["source_warehouse"],
-                    "target_warehouse": s["target_warehouse"],
-                    "total_sent_qty": s["total_sent_qty"],
-                    "total_received_qty": s["total_received_qty"],
-                    "total_variance_qty": s["total_variance_qty"],
-                    "total_abs_variance_qty": s["total_abs_variance_qty"],
-                    "audit_result": s["audit_result"],
-                },
-            )
-
-        self._update_counts()
-
-        return {
-            "loaded_count": len(self.transfers),
-            "clean_count": self.clean_count,
-            "variance_count": self.variance_count,
-        }
-
+        if self.docstatus!=0: frappe.throw(_("Transfers can only be loaded into a Draft Audit Run."))
+        self._validate_dates(); snaps=get_unaudited_received_transfers(self.from_date,self.to_date); self.set("transfers",[])
+        for s in snaps: self.append("transfers",{"posting_date":s["posting_date"],"receive_stock":s["receive_stock"],"original_send_stock":s["original_send_stock"],"source_warehouse":s["source_warehouse"],"target_warehouse":s["target_warehouse"],"total_sent_qty":s["total_sent_qty"],"total_received_qty":s["total_received_qty"],"total_variance_qty":s["total_variance_qty"],"total_abs_variance_qty":s["total_abs_variance_qty"],"audit_result":s["audit_result"]})
+        self._update_counts(); return {"loaded_count":len(self.transfers),"clean_count":self.clean_count,"variance_count":self.variance_count}
     def _validate_dates(self):
-        if not self.from_date or not self.to_date:
-            frappe.throw(_("From Date and To Date are required."))
-
-        if self.from_date > self.to_date:
-            frappe.throw(_("From Date cannot be after To Date."))
-
+        if not self.from_date or not self.to_date: frappe.throw(_("From Date and To Date are required."))
+        if self.from_date>self.to_date: frappe.throw(_("From Date cannot be after To Date."))
     def _update_counts(self):
-        rows = self.transfers or []
-        self.total_transfers = len(rows)
-        self.clean_count = sum(1 for r in rows if r.audit_result == "Clean")
-        self.variance_count = sum(1 for r in rows if r.audit_result == "Variance")
-        self.total_variance_qty = sum(flt(r.total_variance_qty) for r in rows)
-        self.total_abs_variance_qty = sum(
-            flt(r.total_abs_variance_qty) for r in rows
-        )
+        rows=self.transfers or []; self.total_transfers=len(rows); self.clean_count=sum(1 for r in rows if r.audit_result=="Clean"); self.variance_count=sum(1 for r in rows if r.audit_result=="Variance")
+        self.total_variance_qty=sum(flt(r.total_variance_qty) for r in rows); self.total_abs_variance_qty=sum(flt(r.total_abs_variance_qty) for r in rows)

@@ -47,7 +47,7 @@
    "fieldname": "run_status",
    "fieldtype": "Select",
    "label": "Run Status",
-   "options": "Draft\nPending\nCompleted",
+   "options": "Draft\nPending\nCompleted\nCancelled",
    "default": "Draft",
    "read_only": 1,
    "in_list_view": 1
@@ -109,7 +109,7 @@
  "index_web_pages_for_search": 0,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-08-27 00:00:00.000000",
+ "modified": "2026-08-28 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Stock Transfer Audit",
  "name": "Stock Transfer Audit Run",
@@ -126,7 +126,8 @@
    "role": "Stock Manager",
    "share": 1,
    "write": 1,
-   "submit": 1
+   "submit": 1,
+   "cancel": 1
   },
   {
    "create": 1,
@@ -139,7 +140,8 @@
    "role": "System Manager",
    "share": 1,
    "write": 1,
-   "submit": 1
+   "submit": 1,
+   "cancel": 1
   }
  ],
  "sort_field": "modified",

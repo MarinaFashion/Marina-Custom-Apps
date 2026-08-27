@@ -52,7 +52,7 @@
    "fieldname": "processing_status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Pending\nCompleted",
+   "options": "Pending\nCompleted\nCancelled",
    "default": "Pending",
    "read_only": 1,
    "in_list_view": 1
@@ -176,7 +176,8 @@
    "fieldname": "items",
    "fieldtype": "Table",
    "label": "Exceptions",
-   "options": "Stock Transfer Audit Item"
+   "options": "Stock Transfer Audit Item",
+   "allow_on_submit": 1
   },
   {
    "fieldname": "resolution_section",
@@ -187,7 +188,8 @@
    "fieldname": "resolution_method",
    "fieldtype": "Select",
    "label": "Resolution Method",
-   "options": "\nAuto Clean\nAudit Correction\nManual Closure\nLegacy / Previous Process"
+   "options": "\nAuto Clean\nAudit Correction\nManual Closure\nLegacy / Previous Process",
+   "allow_on_submit": 1
   },
   {
    "fieldname": "correction_to_source_stock_entry",
@@ -206,12 +208,14 @@
   {
    "fieldname": "resolution_notes",
    "fieldtype": "Small Text",
-   "label": "Resolution Notes"
+   "label": "Resolution Notes",
+   "allow_on_submit": 1
   }
  ],
  "index_web_pages_for_search": 0,
+ "is_submittable": 1,
  "links": [],
- "modified": "2026-08-27 00:00:00.000000",
+ "modified": "2026-08-28 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Stock Transfer Audit",
  "name": "Stock Transfer Audit Record",
@@ -227,7 +231,9 @@
    "report": 1,
    "role": "Stock Manager",
    "share": 1,
-   "write": 1
+   "write": 1,
+   "submit": 1,
+   "cancel": 1
   },
   {
    "create": 1,
@@ -239,7 +245,9 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
-   "write": 1
+   "write": 1,
+   "submit": 1,
+   "cancel": 1
   }
  ],
  "sort_field": "modified",
