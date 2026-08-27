@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 0,
- "autoname": "format:STA-REC-.#####",
+ "autoname": "format:STA-REC-{#####}",
  "creation": "2026-08-27 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",

@@ -21,7 +21,6 @@ class StockTransferAuditRun(Document):
             rec.record_type="Audit Run"; rec.audit_run=self.name; rec.original_send_stock=snap["original_send_stock"]; rec.receive_stock=snap["receive_stock"]
             rec.audit_status="Clean" if snap["audit_result"]=="Clean" else "Open"; rec.resolution_method="Auto Clean" if snap["audit_result"]=="Clean" else ""
             rec.resolution_notes="No discrepancy found during audit." if snap["audit_result"]=="Clean" else ""; rec.insert(ignore_permissions=True)
-            frappe.db.set_value("Stock Transfer Audit Run Transfer",row.name,"audit_record",rec.name,update_modified=False)
         frappe.db.set_value(self.doctype,self.name,"run_status","Completed",update_modified=False)
     @frappe.whitelist()
     def load_transfers(self):
