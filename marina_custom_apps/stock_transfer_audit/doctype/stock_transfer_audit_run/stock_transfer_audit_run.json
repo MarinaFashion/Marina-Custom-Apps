@@ -47,9 +47,10 @@
    "fieldname": "run_status",
    "fieldtype": "Select",
    "label": "Run Status",
-   "options": "Draft\nCompleted",
+   "options": "Draft\nPending\nCompleted",
    "default": "Draft",
-   "read_only": 1
+   "read_only": 1,
+   "in_list_view": 1
   },
   {
    "fieldname": "summary_section",

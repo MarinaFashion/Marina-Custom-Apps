@@ -8,9 +8,10 @@
  "field_order": [
   "identity_section",
   "record_type",
-  "audit_status",
+  "processing_status",
   "audit_result",
   "audit_run",
+  "audit_status",
   "identity_column",
   "original_send_stock",
   "receive_stock",
@@ -48,11 +49,13 @@
    "default": "Legacy / Previous Process"
   },
   {
-   "fieldname": "audit_status",
+   "fieldname": "processing_status",
    "fieldtype": "Select",
-   "label": "Audit Status",
-   "options": "Open\nClean\nResolved\nLegacy Closed",
-   "reqd": 1
+   "label": "Status",
+   "options": "Pending\nCompleted",
+   "default": "Pending",
+   "read_only": 1,
+   "in_list_view": 1
   },
   {
    "fieldname": "audit_result",
@@ -67,6 +70,13 @@
    "label": "Audit Run",
    "options": "Stock Transfer Audit Run",
    "read_only": 1
+  },
+  {
+   "fieldname": "audit_status",
+   "fieldtype": "Select",
+   "label": "Legacy Audit Status",
+   "options": "Open\nClean\nResolved\nLegacy Closed",
+   "hidden": 1
   },
   {
    "fieldname": "identity_column",
@@ -181,16 +191,16 @@
   },
   {
    "fieldname": "correction_to_source_stock_entry",
-   "fieldtype": "Link",
-   "label": "Move to Source Stock Entry",
-   "options": "Stock Entry",
+   "fieldtype": "Data",
+   "label": "Legacy Move to Source Reference",
+   "hidden": 1,
    "read_only": 1
   },
   {
    "fieldname": "correction_to_target_stock_entry",
-   "fieldtype": "Link",
-   "label": "Move to Target Stock Entry",
-   "options": "Stock Entry",
+   "fieldtype": "Data",
+   "label": "Legacy Move to Target Reference",
+   "hidden": 1,
    "read_only": 1
   },
   {

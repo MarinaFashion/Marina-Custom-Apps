@@ -48,6 +48,30 @@ STOCK_ENTRY_FIELDS = [
         ),
     },
     {
+        "fieldname": "custom_stock_transfer_audit_record",
+        "label": "Stock Transfer Audit Record",
+        "fieldtype": "Link",
+        "options": "Stock Transfer Audit Record",
+        "insert_after": "custom_receive_via_end_transit",
+        "read_only": 1,
+        "no_copy": 1,
+        "hidden": 1,
+        "description": (
+            "System reference used by Audit correction Transfer Between entries."
+        ),
+    },
+    {
+        "fieldname": "custom_audit_correction_direction",
+        "label": "Audit Correction Direction",
+        "fieldtype": "Select",
+        "options": "\nMove to Source\nMove to Target",
+        "insert_after": "custom_stock_transfer_audit_record",
+        "read_only": 1,
+        "no_copy": 1,
+        "hidden": 1,
+        "description": "System direction for an Audit correction Transfer Between.",
+    },
+    {
         "fieldname": "custom_unexpected_received_items",
         "label": "Unexpected Received Items",
         "fieldtype": "Table",
@@ -184,6 +208,8 @@ def after_migrate():
     _ensure_custom_fields()
     _cleanup_legacy_original_send_stock_field()
     _cleanup_legacy_sent_qty_field()
+    _backfill_audit_correction_links()
+    _refresh_audit_statuses()
 
 
 def _ensure_custom_fields():
@@ -231,3 +257,63 @@ def _cleanup_legacy_sent_qty_field():
             force=True,
         )
         frappe.clear_cache(doctype="Stock Entry Detail")
+
+
+def _backfill_audit_correction_links():
+    """Backfill v0.14 correction Stock Entries into the new one-way reference model."""
+    import frappe
+
+    if not frappe.db.exists("DocType", "Stock Transfer Audit Record"):
+        return
+
+    records = frappe.get_all(
+        "Stock Transfer Audit Record",
+        fields=[
+            "name",
+            "correction_to_source_stock_entry",
+            "correction_to_target_stock_entry",
+        ],
+        limit_page_length=0,
+    )
+
+    for record in records:
+        for stock_entry, direction in (
+            (record.correction_to_source_stock_entry, "Move to Source"),
+            (record.correction_to_target_stock_entry, "Move to Target"),
+        ):
+            if stock_entry and frappe.db.exists("Stock Entry", stock_entry):
+                frappe.db.set_value(
+                    "Stock Entry",
+                    stock_entry,
+                    {
+                        "custom_stock_transfer_audit_record": record.name,
+                        "custom_audit_correction_direction": direction,
+                    },
+                    update_modified=False,
+                )
+
+
+def _refresh_audit_statuses():
+    """Bring existing Audit Records/Runs onto the v0.15 processing-status model."""
+    import frappe
+
+    if not frappe.db.exists("DocType", "Stock Transfer Audit Record"):
+        return
+
+    from marina_custom_apps.stock_transfer_audit.status_service import (
+        update_record_status,
+        update_run_status,
+    )
+
+    run_names = set()
+    for record in frappe.get_all(
+        "Stock Transfer Audit Record",
+        fields=["name", "audit_run"],
+        limit_page_length=0,
+    ):
+        update_record_status(record.name)
+        if record.audit_run:
+            run_names.add(record.audit_run)
+
+    for run_name in run_names:
+        update_run_status(run_name)

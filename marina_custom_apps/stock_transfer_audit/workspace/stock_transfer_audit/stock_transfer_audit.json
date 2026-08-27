@@ -1,0 +1,99 @@
+{
+ "charts": [],
+ "content": "[{\"id\": \"sta-head\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Stock Transfer Audit</b></span>\", \"col\": 12}}, {\"id\": \"sta-run\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Audit Runs\", \"col\": 4}}, {\"id\": \"sta-rec\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Audit Records\", \"col\": 4}}, {\"id\": \"sta-se\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Stock Entries\", \"col\": 4}}, {\"id\": \"sta-sp\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"sta-card\", \"type\": \"card\", \"data\": {\"card_name\": \"Audit Documents\", \"col\": 4}}]",
+ "creation": "2026-08-27 00:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "stock",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Stock Transfer Audit",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Audit Documents",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Stock Transfer Audit Run",
+   "link_count": 0,
+   "link_to": "Stock Transfer Audit Run",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Stock Transfer Audit Record",
+   "link_count": 0,
+   "link_to": "Stock Transfer Audit Record",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Stock Entry",
+   "link_count": 0,
+   "link_to": "Stock Entry",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-08-27 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Stock Transfer Audit",
+ "name": "Stock Transfer Audit",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "Stock Manager"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "sequence_id": 1.0,
+ "shortcuts": [
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Audit Runs",
+   "link_to": "Stock Transfer Audit Run",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Audit Records",
+   "link_to": "Stock Transfer Audit Record",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Stock Entries",
+   "link_to": "Stock Entry",
+   "type": "DocType"
+  }
+ ],
+ "title": "Stock Transfer Audit"
+}
