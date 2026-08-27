@@ -71,7 +71,7 @@
    "fieldname": "action",
    "fieldtype": "Select",
    "label": "Action",
-   "options": "Move to Source\\nMove to Target",
+   "options": "Move to Source\nMove to Target",
    "reqd": 1,
    "in_list_view": 1
   },
