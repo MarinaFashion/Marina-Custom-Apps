@@ -1,6 +1,6 @@
 import frappe
 from frappe.desk.doctype.notification_log.notification_log import enqueue_create_notification
-from frappe.utils import cint, flt, get_url
+from frappe.utils import cint, flt
 
 from marina_custom_apps.stock_transfer_audit.control_service import (
     get_open_transit_rows,
@@ -83,7 +83,7 @@ def send_daily_stock_transfer_control_alerts():
     enqueue_create_notification(
         users,
         {
-            "type": "Alert",
+            "type": "Stock Transfer Control",
             "subject": subject,
             "description": description,
             "from_user": "Administrator",

@@ -45,6 +45,7 @@ NUMBER_CARDS = [
 
 def after_install():
     _ensure_custom_fields()
+    _ensure_notification_type()
     _ensure_number_cards()
 
 
@@ -53,6 +54,8 @@ def after_migrate():
     _cleanup_legacy_original_send_stock_field()
     _cleanup_legacy_sent_qty_field()
     _backfill_audit_correction_links()
+    _submit_existing_audit_records()
+    _ensure_notification_type()
     _ensure_number_cards()
     _refresh_audit_statuses()
 
@@ -133,6 +136,50 @@ def _backfill_audit_correction_links():
                     },
                     update_modified=False,
                 )
+
+
+
+def _submit_existing_audit_records():
+    import frappe
+
+    if not frappe.db.exists("DocType", "Stock Transfer Audit Record"):
+        return
+
+    for name in frappe.get_all(
+        "Stock Transfer Audit Record",
+        filters={"docstatus": 0},
+        pluck="name",
+        limit_page_length=0,
+    ):
+        doc = frappe.get_doc("Stock Transfer Audit Record", name)
+        doc.flags.ignore_permissions = True
+        doc.submit()
+
+
+def _ensure_notification_type():
+    import frappe
+
+    if not frappe.db.exists("DocType", "Notification Type"):
+        return
+
+    type_name = "Stock Transfer Control"
+    if frappe.db.exists("Notification Type", type_name):
+        frappe.db.set_value(
+            "Notification Type",
+            type_name,
+            "enabled",
+            1,
+            update_modified=False,
+        )
+        return
+
+    frappe.get_doc(
+        {
+            "doctype": "Notification Type",
+            "type_name": type_name,
+            "enabled": 1,
+        }
+    ).insert(ignore_permissions=True)
 
 
 def _ensure_number_cards():
