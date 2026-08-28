@@ -57,6 +57,7 @@ def after_migrate():
     _submit_existing_audit_records()
     _ensure_notification_type()
     _ensure_number_cards()
+    _force_sync_stock_transfer_workspace()
     _refresh_audit_statuses()
 
 
@@ -213,6 +214,63 @@ def _ensure_number_cards():
                 }
             )
             card.insert(ignore_permissions=True)
+
+
+
+def _force_sync_stock_transfer_workspace():
+    """Force the shipped Stock Transfer Audit workspace into the v15 database."""
+    import json
+    from pathlib import Path
+    import frappe
+
+    name = "Stock Transfer Audit"
+    workspace_file = (
+        Path(__file__).resolve().parent
+        / "stock_transfer_audit"
+        / "workspace"
+        / "stock_transfer_audit"
+        / "stock_transfer_audit.json"
+    )
+    data = json.loads(workspace_file.read_text(encoding="utf-8"))
+
+    child_tables = (
+        "links",
+        "shortcuts",
+        "number_cards",
+        "charts",
+        "custom_blocks",
+        "quick_lists",
+        "roles",
+    )
+
+    if frappe.db.exists("Workspace", name):
+        doc = frappe.get_doc("Workspace", name)
+        for fieldname in (
+            "label", "title", "module", "icon", "public", "is_hidden",
+            "hide_custom", "content", "parent_page", "sequence_id",
+        ):
+            if fieldname in data:
+                doc.set(fieldname, data.get(fieldname))
+
+        for table_field in child_tables:
+            doc.set(table_field, [])
+            for row in data.get(table_field, []):
+                doc.append(table_field, row)
+
+        if doc.meta.has_field("standard"):
+            doc.standard = 1
+
+        doc.save(ignore_permissions=True)
+    else:
+        doc = frappe.get_doc(data)
+        if doc.meta.has_field("standard"):
+            doc.standard = 1
+        doc.insert(ignore_permissions=True)
+
+    if frappe.get_meta("Workspace").has_field("standard"):
+        frappe.db.set_value("Workspace", name, "standard", 1, update_modified=False)
+
+    frappe.clear_cache(doctype="Workspace")
 
 
 def _refresh_audit_statuses():

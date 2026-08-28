@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\": \"sta-head\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Stock Transfer Control Dashboard</b></span>\", \"col\": 12}}, {\"id\": \"kpi1\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Open Transit\", \"col\": 3}}, {\"id\": \"kpi2\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Overdue Transit\", \"col\": 3}}, {\"id\": \"kpi3\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Critical Transit\", \"col\": 3}}, {\"id\": \"kpi4\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Qty In Transit\", \"col\": 3}}, {\"id\": \"kpi5\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Value In Transit\", \"col\": 3}}, {\"id\": \"kpi6\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Pending Audits\", \"col\": 3}}, {\"id\": \"kpi7\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Variance Value\", \"col\": 3}}, {\"id\": \"kpi8\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Ignored Variance Qty\", \"col\": 3}}, {\"id\": \"sp1\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"h2\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Operations</b></span>\", \"col\": 12}}, {\"id\": \"s1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Audit Runs\", \"col\": 3}}, {\"id\": \"s2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Audit Records\", \"col\": 3}}, {\"id\": \"s3\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Control Settings\", \"col\": 3}}, {\"id\": \"s4\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Stock Entries\", \"col\": 3}}, {\"id\": \"sp2\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"h3\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Control Reports</b></span>\", \"col\": 12}}, {\"id\": \"s5\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Open Transit Aging\", \"col\": 3}}, {\"id\": \"s6\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Pending Audit Variance\", \"col\": 3}}, {\"id\": \"s7\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Variance Summary\", \"col\": 3}}, {\"id\": \"s8\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Receiver Performance\", \"col\": 3}}, {\"id\": \"s9\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Ignore Analysis\", \"col\": 3}}, {\"id\": \"sp3\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"c1\", \"type\": \"card\", \"data\": {\"card_name\": \"Audit Documents\", \"col\": 4}}, {\"id\": \"c2\", \"type\": \"card\", \"data\": {\"card_name\": \"Control Reports\", \"col\": 4}}, {\"id\": \"c3\", \"type\": \"card\", \"data\": {\"card_name\": \"Settings\", \"col\": 4}}]",
+ "content": "[{\"id\":\"sta-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Stock Transfer Control Dashboard</b></span>\",\"col\":12}},{\"id\":\"kpi1\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Open Transit\",\"col\":3}},{\"id\":\"kpi2\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Overdue Transit\",\"col\":3}},{\"id\":\"kpi3\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Critical Transit\",\"col\":3}},{\"id\":\"kpi4\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Qty In Transit\",\"col\":3}},{\"id\":\"kpi5\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Value In Transit\",\"col\":3}},{\"id\":\"kpi6\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Pending Audits\",\"col\":3}},{\"id\":\"kpi7\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Variance Value\",\"col\":3}},{\"id\":\"kpi8\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Ignored Variance Qty\",\"col\":3}},{\"id\":\"sp1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"h2\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Operations</b></span>\",\"col\":12}},{\"id\":\"s1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Audit Runs\",\"col\":3}},{\"id\":\"s2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Audit Records\",\"col\":3}},{\"id\":\"s4\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Entries\",\"col\":3}},{\"id\":\"sp2\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"h3\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Control Reports</b></span>\",\"col\":12}},{\"id\":\"s5\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Open Transit Aging\",\"col\":3}},{\"id\":\"s6\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pending Audit Variance\",\"col\":3}},{\"id\":\"s7\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Variance Summary\",\"col\":3}},{\"id\":\"s8\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Receiver Performance\",\"col\":3}},{\"id\":\"s9\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Ignore Analysis\",\"col\":3}},{\"id\":\"sp3\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"c1\",\"type\":\"card\",\"data\":{\"card_name\":\"Audit Documents\",\"col\":4}},{\"id\":\"c2\",\"type\":\"card\",\"data\":{\"card_name\":\"Control Reports\",\"col\":4}},{\"id\":\"c3\",\"type\":\"card\",\"data\":{\"card_name\":\"Settings\",\"col\":4}}]",
  "creation": "2026-08-27 00:00:00.000000",
  "custom_blocks": [],
  "docstatus": 0,
@@ -136,7 +136,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-08-28 00:00:00.000000",
+ "modified": "2026-08-29 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Stock Transfer Audit",
  "name": "Stock Transfer Audit",
@@ -200,13 +200,6 @@
    "doc_view": "List",
    "label": "Audit Records",
    "link_to": "Stock Transfer Audit Record",
-   "type": "DocType"
-  },
-  {
-   "color": "Grey",
-   "doc_view": "Form",
-   "label": "Control Settings",
-   "link_to": "Stock Transfer Control Settings",
    "type": "DocType"
   },
   {
