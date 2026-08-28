@@ -1,4 +1,4 @@
-frappe.query_reports["Stock Transfer Variance Summary"] = {
+frappe.query_reports["Stock Transfer Ignore Analysis"] = {
     filters: [
         {
             fieldname: "from_date",
@@ -19,6 +19,12 @@ frappe.query_reports["Stock Transfer Variance Summary"] = {
             label: __("Target Warehouse"),
             fieldtype: "Link",
             options: "Warehouse",
+        },
+        {
+            fieldname: "ignore_reason",
+            label: __("Ignore Reason"),
+            fieldtype: "Select",
+            options: "\nReceiver Counting Error\nRecount Confirmed Correct\nData Entry Error\nAccepted Difference\nOther",
         },
     ],
 };

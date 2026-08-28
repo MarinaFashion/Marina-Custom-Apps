@@ -1,4 +1,4 @@
-frappe.query_reports["Stock Transfer Variance Summary"] = {
+frappe.query_reports["Stock Transfer Receiver Performance"] = {
     filters: [
         {
             fieldname: "from_date",
@@ -19,6 +19,11 @@ frappe.query_reports["Stock Transfer Variance Summary"] = {
             label: __("Target Warehouse"),
             fieldtype: "Link",
             options: "Warehouse",
+        },
+        {
+            fieldname: "receiver_username",
+            label: __("Receiver Username"),
+            fieldtype: "Data",
         },
     ],
 };

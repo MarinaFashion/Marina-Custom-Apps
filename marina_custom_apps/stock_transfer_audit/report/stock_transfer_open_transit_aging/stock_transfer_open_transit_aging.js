@@ -1,1 +1,29 @@
-frappe.query_reports["Stock Transfer Open Transit Aging"]={filters:[{fieldname:"company",label:__("Company"),fieldtype:"Link",options:"Company",default:frappe.defaults.get_user_default("Company")},{fieldname:"minimum_age_days",label:__("Minimum Age Days"),fieldtype:"Int",default:0},{fieldname:"overdue_after_days",label:__("Overdue After Days"),fieldtype:"Int",default:2},{fieldname:"source_warehouse",label:__("Source Warehouse"),fieldtype:"Link",options:"Warehouse"},{fieldname:"target_warehouse",label:__("Target Warehouse"),fieldtype:"Link",options:"Warehouse"}]};
+frappe.query_reports["Stock Transfer Open Transit Aging"] = {
+    filters: [
+        {
+            fieldname: "company",
+            label: __("Company"),
+            fieldtype: "Link",
+            options: "Company",
+            default: frappe.defaults.get_user_default("Company"),
+        },
+        {
+            fieldname: "status",
+            label: __("Status"),
+            fieldtype: "Select",
+            options: "\nOpen\nDue Soon\nOverdue\nCritical",
+        },
+        {
+            fieldname: "source_warehouse",
+            label: __("Source Warehouse"),
+            fieldtype: "Link",
+            options: "Warehouse",
+        },
+        {
+            fieldname: "target_warehouse",
+            label: __("Target Warehouse"),
+            fieldtype: "Link",
+            options: "Warehouse",
+        },
+    ],
+};
