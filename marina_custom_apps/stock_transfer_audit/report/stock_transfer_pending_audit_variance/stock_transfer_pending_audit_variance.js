@@ -1,0 +1,27 @@
+frappe.query_reports["Stock Transfer Pending Audit Variance"] = {
+    filters: [
+        {
+            fieldname: "minimum_age_days",
+            label: __("Minimum Age Days"),
+            fieldtype: "Int",
+            default: 0,
+        },
+        {
+            fieldname: "source_warehouse",
+            label: __("Source Warehouse"),
+            fieldtype: "Link",
+            options: "Warehouse",
+        },
+        {
+            fieldname: "target_warehouse",
+            label: __("Target Warehouse"),
+            fieldtype: "Link",
+            options: "Warehouse",
+        },
+        {
+            fieldname: "receiver_username",
+            label: __("Receiver Username"),
+            fieldtype: "Data",
+        },
+    ],
+};

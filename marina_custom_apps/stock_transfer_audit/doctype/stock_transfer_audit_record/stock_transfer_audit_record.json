@@ -1,0 +1,257 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "format:STA-REC-{#####}",
+ "creation": "2026-08-27 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "identity_section",
+  "record_type",
+  "processing_status",
+  "audit_result",
+  "audit_run",
+  "audit_status",
+  "identity_column",
+  "original_send_stock",
+  "receive_stock",
+  "audited_by",
+  "route_section",
+  "source_warehouse",
+  "transit_warehouse",
+  "target_warehouse",
+  "qty_section",
+  "total_sent_qty",
+  "total_received_qty",
+  "qty_column",
+  "total_variance_qty",
+  "total_abs_variance_qty",
+  "items_section",
+  "items",
+  "resolution_section",
+  "resolution_method",
+  "correction_to_source_stock_entry",
+  "correction_to_target_stock_entry",
+  "resolution_notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "identity_section",
+   "fieldtype": "Section Break",
+   "label": "Audit Identity"
+  },
+  {
+   "fieldname": "record_type",
+   "fieldtype": "Select",
+   "label": "Record Type",
+   "options": "Audit Run\nLegacy / Previous Process",
+   "reqd": 1,
+   "default": "Legacy / Previous Process"
+  },
+  {
+   "fieldname": "processing_status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pending\nCompleted\nCancelled",
+   "default": "Pending",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "audit_result",
+   "fieldtype": "Select",
+   "label": "Audit Result",
+   "options": "Clean\nVariance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "audit_run",
+   "fieldtype": "Link",
+   "label": "Audit Run",
+   "options": "Stock Transfer Audit Run",
+   "read_only": 1
+  },
+  {
+   "fieldname": "audit_status",
+   "fieldtype": "Select",
+   "label": "Legacy Audit Status",
+   "options": "Open\nClean\nResolved\nLegacy Closed",
+   "hidden": 1
+  },
+  {
+   "fieldname": "identity_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "original_send_stock",
+   "fieldtype": "Link",
+   "label": "Original Send Stock",
+   "options": "Stock Entry",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "receive_stock",
+   "fieldtype": "Link",
+   "label": "Receive Stock",
+   "options": "Stock Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "audited_by",
+   "fieldtype": "Link",
+   "label": "Audited By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "route_section",
+   "fieldtype": "Section Break",
+   "label": "Transfer Route"
+  },
+  {
+   "fieldname": "source_warehouse",
+   "fieldtype": "Link",
+   "label": "Source Warehouse",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "transit_warehouse",
+   "fieldtype": "Link",
+   "label": "Transit Warehouse",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "target_warehouse",
+   "fieldtype": "Link",
+   "label": "Target Warehouse",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qty_section",
+   "fieldtype": "Section Break",
+   "label": "Quantity Comparison"
+  },
+  {
+   "fieldname": "total_sent_qty",
+   "fieldtype": "Float",
+   "label": "Total Sent Qty",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_received_qty",
+   "fieldtype": "Float",
+   "label": "Total Actual Received Qty",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "qty_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_variance_qty",
+   "fieldtype": "Float",
+   "label": "Total Variance Qty",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_abs_variance_qty",
+   "fieldtype": "Float",
+   "label": "Total ABS Variance Qty",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "items_section",
+   "fieldtype": "Section Break",
+   "label": "Exception Details"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Exceptions",
+   "options": "Stock Transfer Audit Item",
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "resolution_section",
+   "fieldtype": "Section Break",
+   "label": "Resolution"
+  },
+  {
+   "fieldname": "resolution_method",
+   "fieldtype": "Select",
+   "label": "Resolution Method",
+   "options": "\nAuto Clean\nAudit Correction\nManual Closure\nLegacy / Previous Process",
+   "allow_on_submit": 1
+  },
+  {
+   "fieldname": "correction_to_source_stock_entry",
+   "fieldtype": "Data",
+   "label": "Legacy Move to Source Reference",
+   "hidden": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "correction_to_target_stock_entry",
+   "fieldtype": "Data",
+   "label": "Legacy Move to Target Reference",
+   "hidden": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "resolution_notes",
+   "fieldtype": "Small Text",
+   "label": "Resolution Notes",
+   "allow_on_submit": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-08-28 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Stock Transfer Audit",
+ "name": "Stock Transfer Audit Record",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock Manager",
+   "share": 1,
+   "write": 1,
+   "submit": 1,
+   "cancel": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1,
+   "submit": 1,
+   "cancel": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -1,0 +1,156 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-08-28 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "warehouse_section",
+  "distribution_center_warehouse",
+  "sla_section",
+  "dc_to_store_sla_days",
+  "store_to_store_sla_days",
+  "sla_column",
+  "store_to_dc_sla_days",
+  "critical_grace_days",
+  "audit_section",
+  "pending_audit_sla_days",
+  "large_variance_qty_threshold",
+  "audit_column",
+  "large_variance_value_threshold",
+  "kpi_window_days",
+  "alert_section",
+  "enable_daily_alerts",
+  "alert_role"
+ ],
+ "fields": [
+  {
+   "fieldname": "warehouse_section",
+   "fieldtype": "Section Break",
+   "label": "Warehouse Classification"
+  },
+  {
+   "fieldname": "distribution_center_warehouse",
+   "fieldtype": "Link",
+   "label": "Distribution Center Warehouse",
+   "options": "Warehouse",
+   "description": "Used to classify DC \u2192 Store, Store \u2192 DC and Store \u2192 Store transfer SLA."
+  },
+  {
+   "fieldname": "sla_section",
+   "fieldtype": "Section Break",
+   "label": "Transit SLA (Days)"
+  },
+  {
+   "fieldname": "dc_to_store_sla_days",
+   "fieldtype": "Int",
+   "label": "DC to Store SLA Days",
+   "default": "2",
+   "reqd": 1
+  },
+  {
+   "fieldname": "store_to_store_sla_days",
+   "fieldtype": "Int",
+   "label": "Store to Store SLA Days",
+   "default": "2",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sla_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "store_to_dc_sla_days",
+   "fieldtype": "Int",
+   "label": "Store to DC SLA Days",
+   "default": "2",
+   "reqd": 1
+  },
+  {
+   "fieldname": "critical_grace_days",
+   "fieldtype": "Int",
+   "label": "Critical Grace Days",
+   "default": "2",
+   "reqd": 1,
+   "description": "After the SLA is exceeded by this many additional days the transfer becomes Critical."
+  },
+  {
+   "fieldname": "audit_section",
+   "fieldtype": "Section Break",
+   "label": "Audit Escalation"
+  },
+  {
+   "fieldname": "pending_audit_sla_days",
+   "fieldtype": "Int",
+   "label": "Pending Audit SLA Days",
+   "default": "2",
+   "reqd": 1
+  },
+  {
+   "fieldname": "large_variance_qty_threshold",
+   "fieldtype": "Float",
+   "label": "Large Variance Qty Threshold",
+   "default": "5",
+   "precision": "3"
+  },
+  {
+   "fieldname": "audit_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "large_variance_value_threshold",
+   "fieldtype": "Currency",
+   "label": "Large Variance Value Threshold",
+   "default": "1000"
+  },
+  {
+   "fieldname": "kpi_window_days",
+   "fieldtype": "Int",
+   "label": "KPI Analysis Window Days",
+   "default": "30",
+   "reqd": 1
+  },
+  {
+   "fieldname": "alert_section",
+   "fieldtype": "Section Break",
+   "label": "Alerts"
+  },
+  {
+   "fieldname": "enable_daily_alerts",
+   "fieldtype": "Check",
+   "label": "Enable Daily Stock Control Alerts",
+   "default": "1"
+  },
+  {
+   "fieldname": "alert_role",
+   "fieldtype": "Link",
+   "label": "Alert Role",
+   "options": "Role",
+   "default": "Stock Manager",
+   "description": "Enabled users with this role receive the daily in-app control digest."
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "issingle": 1,
+ "modified": "2026-08-28 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Stock Transfer Audit",
+ "name": "Stock Transfer Control Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "write": 1,
+   "role": "Stock Manager"
+  },
+  {
+   "read": 1,
+   "write": 1,
+   "role": "System Manager"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

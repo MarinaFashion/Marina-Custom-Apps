@@ -1,0 +1,151 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "format:STA-RUN-{#####}",
+ "creation": "2026-08-27 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "date_section",
+  "from_date",
+  "to_date",
+  "status_column",
+  "run_status",
+  "summary_section",
+  "total_transfers",
+  "clean_count",
+  "variance_count",
+  "summary_column",
+  "total_variance_qty",
+  "total_abs_variance_qty",
+  "transfers_section",
+  "transfers"
+ ],
+ "fields": [
+  {
+   "fieldname": "date_section",
+   "fieldtype": "Section Break",
+   "label": "Audit Period"
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "From Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "status_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "run_status",
+   "fieldtype": "Select",
+   "label": "Run Status",
+   "options": "Draft\nPending\nCompleted\nCancelled",
+   "default": "Draft",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "summary_section",
+   "fieldtype": "Section Break",
+   "label": "Summary"
+  },
+  {
+   "fieldname": "total_transfers",
+   "fieldtype": "Int",
+   "label": "Total Transfers",
+   "read_only": 1
+  },
+  {
+   "fieldname": "clean_count",
+   "fieldtype": "Int",
+   "label": "Clean Transfers",
+   "read_only": 1
+  },
+  {
+   "fieldname": "variance_count",
+   "fieldtype": "Int",
+   "label": "Transfers With Variance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "summary_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_variance_qty",
+   "fieldtype": "Float",
+   "label": "Net Variance Qty",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_abs_variance_qty",
+   "fieldtype": "Float",
+   "label": "Total ABS Variance Qty",
+   "precision": "3",
+   "read_only": 1
+  },
+  {
+   "fieldname": "transfers_section",
+   "fieldtype": "Section Break",
+   "label": "Received Transfers"
+  },
+  {
+   "fieldname": "transfers",
+   "fieldtype": "Table",
+   "label": "Transfers",
+   "options": "Stock Transfer Audit Run Transfer",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-08-28 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Stock Transfer Audit",
+ "name": "Stock Transfer Audit Run",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock Manager",
+   "share": 1,
+   "write": 1,
+   "submit": 1,
+   "cancel": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1,
+   "submit": 1,
+   "cancel": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

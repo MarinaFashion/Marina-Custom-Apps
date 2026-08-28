@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "marina_custom_apps"
+version = "0.17.2"
+description = "Marina Trading Company custom Frappe/ERPNext modules"
+authors = [{ name = "Marina Trading Company", email = "it@marinafashion.com.sa" }]
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["marina_custom_apps*"]
+
+[tool.bench.frappe-dependencies]
+frappe = ">=15.0.0,<16.0.0"
+erpnext = ">=15.0.0,<16.0.0"
