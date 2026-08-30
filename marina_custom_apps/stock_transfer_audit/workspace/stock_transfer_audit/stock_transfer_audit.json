@@ -211,35 +211,30 @@
   },
   {
    "color": "Orange",
-   "doc_view": "Report",
    "label": "Open Transit Aging",
    "link_to": "Stock Transfer Open Transit Aging",
    "type": "Report"
   },
   {
    "color": "Red",
-   "doc_view": "Report",
    "label": "Pending Audit Variance",
    "link_to": "Stock Transfer Pending Audit Variance",
    "type": "Report"
   },
   {
    "color": "Yellow",
-   "doc_view": "Report",
    "label": "Variance Summary",
    "link_to": "Stock Transfer Variance Summary",
    "type": "Report"
   },
   {
    "color": "Blue",
-   "doc_view": "Report",
    "label": "Receiver Performance",
    "link_to": "Stock Transfer Receiver Performance",
    "type": "Report"
   },
   {
    "color": "Purple",
-   "doc_view": "Report",
    "label": "Ignore Analysis",
    "link_to": "Stock Transfer Ignore Analysis",
    "type": "Report"

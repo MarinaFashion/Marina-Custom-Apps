@@ -39,7 +39,7 @@ def get_columns():
 def get_data(filters):
     records = frappe.get_list(
         "Stock Transfer Audit Record",
-        filters={"docstatus": ["in", [1, 2]]},
+        filters={"docstatus": 1},
         fields=[
             "name",
             "receive_stock",

@@ -11,7 +11,7 @@ from marina_custom_apps.stock_transfer_audit.control_service import (
 )
 
 
-_CACHE_KEY = "marina:stock_transfer_audit:kpis:v017"
+_CACHE_KEY = "marina:stock_transfer_audit:kpis:v0173"
 _CACHE_SECONDS = 300
 
 
@@ -35,7 +35,7 @@ def _metrics():
 
     records = frappe.get_all(
         "Stock Transfer Audit Record",
-        filters={"docstatus": ["in", [1, 2]], "audit_result": "Variance"},
+        filters={"docstatus": 1, "audit_result": "Variance"},
         fields=["name", "receive_stock", "total_abs_variance_qty"],
         limit_page_length=0,
     )
