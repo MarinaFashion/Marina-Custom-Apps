@@ -1,0 +1,131 @@
+{
+  "doctype": "DocType",
+  "name": "Cycle Count Plan",
+  "module": "Cycle Count",
+  "autoname": "naming_series:",
+  "track_changes": 1,
+  "field_order": [
+    "naming_series",
+    "company",
+    "count_date",
+    "count_window",
+    "status",
+    "scope_section",
+    "selection_mode",
+    "item_group",
+    "styles",
+    "stores_section",
+    "stores",
+    "generated_count_count"
+  ],
+  "fields": [
+    {
+      "fieldname": "naming_series",
+      "label": "Series",
+      "fieldtype": "Select",
+      "options": "CCP-.YYYY.-.#####",
+      "default": "CCP-.YYYY.-.#####",
+      "reqd": 1
+    },
+    {
+      "fieldname": "company",
+      "label": "Company",
+      "fieldtype": "Link",
+      "options": "Company",
+      "reqd": 1
+    },
+    {
+      "fieldname": "count_date",
+      "label": "Planned Count Date",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "count_window",
+      "label": "Count Window",
+      "fieldtype": "Select",
+      "options": "Before Store Opening\\nAfter Store Closing",
+      "reqd": 1
+    },
+    {
+      "fieldname": "status",
+      "label": "Status",
+      "fieldtype": "Select",
+      "options": "Draft\\nCounts Generated\\nCompleted\\nCancelled",
+      "default": "Draft",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "scope_section",
+      "label": "Count Scope",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "selection_mode",
+      "label": "Style Selection Mode",
+      "fieldtype": "Select",
+      "options": "Selected Styles\\nItem Group",
+      "default": "Selected Styles",
+      "reqd": 1
+    },
+    {
+      "fieldname": "item_group",
+      "label": "Item Group",
+      "fieldtype": "Link",
+      "options": "Item Group",
+      "depends_on": "eval:doc.selection_mode=='Item Group'"
+    },
+    {
+      "fieldname": "styles",
+      "label": "Styles",
+      "fieldtype": "Table",
+      "options": "Cycle Count Plan Style",
+      "reqd": 1
+    },
+    {
+      "fieldname": "stores_section",
+      "label": "Stores",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "stores",
+      "label": "Stores",
+      "fieldtype": "Table",
+      "options": "Cycle Count Plan Store",
+      "reqd": 1
+    },
+    {
+      "fieldname": "generated_count_count",
+      "label": "Generated Store Counts",
+      "fieldtype": "Int",
+      "read_only": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Stock Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "print": 1,
+      "email": 1,
+      "export": 1,
+      "report": 1,
+      "share": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "print": 1,
+      "email": 1,
+      "export": 1,
+      "report": 1,
+      "share": 1
+    }
+  ]
+}

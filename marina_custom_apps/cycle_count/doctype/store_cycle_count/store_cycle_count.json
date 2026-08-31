@@ -1,0 +1,233 @@
+{
+    "doctype":  "DocType",
+    "name":  "Store Cycle Count",
+    "module":  "Cycle Count",
+    "autoname":  "naming_series:",
+    "track_changes":  1,
+    "is_submittable":  1,
+    "field_order":  [
+                        "naming_series",
+                        "cycle_count_plan",
+                        "company",
+                        "warehouse",
+                        "assigned_to",
+                        "status",
+                        "schedule_section",
+                        "count_date",
+                        "count_window",
+                        "count_started_on",
+                        "count_completed_on",
+                        "counting_section",
+                        "entry_mode",
+                        "barcode_scan",
+                        "items",
+                        "summary_section",
+                        "total_lines",
+                        "counted_lines",
+                        "variance_lines",
+                        "total_abs_variance_qty",
+                        "total_variance_value",
+                        "stock_reconciliation"
+                    ],
+    "fields":  [
+                   {
+                       "fieldname":  "naming_series",
+                       "label":  "Series",
+                       "fieldtype":  "Select",
+                       "options":  "SCC-.YYYY.-.#####",
+                       "default":  "SCC-.YYYY.-.#####",
+                       "reqd":  1
+                   },
+                   {
+                       "fieldname":  "cycle_count_plan",
+                       "label":  "Cycle Count Plan",
+                       "fieldtype":  "Link",
+                       "options":  "Cycle Count Plan",
+                       "reqd":  1,
+                       "read_only":  1
+                   },
+                   {
+                       "fieldname":  "company",
+                       "label":  "Company",
+                       "fieldtype":  "Link",
+                       "options":  "Company",
+                       "reqd":  1,
+                       "read_only":  1
+                   },
+                   {
+                       "fieldname":  "warehouse",
+                       "label":  "Store Warehouse",
+                       "fieldtype":  "Link",
+                       "options":  "Warehouse",
+                       "reqd":  1,
+                       "read_only":  1,
+                       "in_list_view":  1
+                   },
+                   {
+                       "fieldname":  "assigned_to",
+                       "label":  "Assigned Store User",
+                       "fieldtype":  "Link",
+                       "options":  "User",
+                       "reqd":  1,
+                       "read_only":  1
+                   },
+                   {
+                       "fieldname":  "status",
+                       "label":  "Status",
+                       "fieldtype":  "Select",
+                       "options":  "Assigned\\nCounting\\nSubmitted for Review\\nRecount Requested\\nReconciliation Created\\nReconciled\\nCancelled",
+                       "default":  "Assigned",
+                       "read_only":  1,
+                       "in_list_view":  1
+                   },
+                   {
+                       "fieldname":  "schedule_section",
+                       "label":  "Schedule / Cut-Off",
+                       "fieldtype":  "Section Break"
+                   },
+                   {
+                       "fieldname":  "count_date",
+                       "label":  "Count Date",
+                       "fieldtype":  "Date",
+                       "reqd":  1,
+                       "read_only":  1
+                   },
+                   {
+                       "fieldname":  "count_window",
+                       "label":  "Count Window",
+                       "fieldtype":  "Select",
+                       "options":  "Before Store Opening\\nAfter Store Closing",
+                       "read_only":  1
+                   },
+                   {
+                       "fieldname":  "count_started_on",
+                       "label":  "Count Started On",
+                       "fieldtype":  "Datetime",
+                       "read_only":  1
+                   },
+                   {
+                       "fieldname":  "count_completed_on",
+                       "label":  "Count Completed On",
+                       "fieldtype":  "Datetime",
+                       "read_only":  1
+                   },
+                   {
+                       "fieldname":  "counting_section",
+                       "label":  "Counting",
+                       "fieldtype":  "Section Break"
+                   },
+                   {
+                       "fieldname":  "entry_mode",
+                       "label":  "Entry Mode",
+                       "fieldtype":  "Select",
+                       "options":  "Manual\\nBarcode",
+                       "default":  "Manual"
+                   },
+                   {
+                       "fieldname":  "barcode_scan",
+                       "label":  "Scan Barcode",
+                       "fieldtype":  "Data",
+                       "depends_on":  "eval:doc.entry_mode==\u0027Barcode\u0027"
+                   },
+                   {
+                       "fieldname":  "items",
+                       "label":  "Items",
+                       "fieldtype":  "Table",
+                       "options":  "Store Cycle Count Item",
+                       "reqd":  1
+                   },
+                   {
+                       "fieldname":  "summary_section",
+                       "label":  "Review Summary",
+                       "fieldtype":  "Section Break"
+                   },
+                   {
+                       "fieldname":  "total_lines",
+                       "label":  "Total Lines",
+                       "fieldtype":  "Int",
+                       "read_only":  1
+                   },
+                   {
+                       "fieldname":  "counted_lines",
+                       "label":  "Counted Lines",
+                       "fieldtype":  "Int",
+                       "read_only":  1
+                   },
+                   {
+                       "fieldname":  "variance_lines",
+                       "label":  "Variance Lines",
+                       "fieldtype":  "Int",
+                       "read_only":  1,
+                       "permlevel":  1
+                   },
+                   {
+                       "fieldname":  "total_abs_variance_qty",
+                       "label":  "Total ABS Variance Qty",
+                       "fieldtype":  "Float",
+                       "precision":  "3",
+                       "read_only":  1,
+                       "permlevel":  1
+                   },
+                   {
+                       "fieldname":  "total_variance_value",
+                       "label":  "Estimated Variance Value",
+                       "fieldtype":  "Currency",
+                       "read_only":  1,
+                       "permlevel":  1
+                   },
+                   {
+                       "fieldname":  "stock_reconciliation",
+                       "label":  "Stock Reconciliation",
+                       "fieldtype":  "Link",
+                       "options":  "Stock Reconciliation",
+                       "read_only":  1,
+                       "permlevel":  1
+                   }
+               ],
+    "permissions":  [
+                        {
+                            "role":  "Cycle Count Store User",
+                            "read":  1,
+                            "write":  1,
+                            "print":  1
+                        },
+                        {
+                            "role":  "Stock Manager",
+                            "read":  1,
+                            "write":  1,
+                            "create":  1,
+                            "submit":  1,
+                            "cancel":  1,
+                            "delete":  1,
+                            "print":  1,
+                            "email":  1,
+                            "export":  1,
+                            "report":  1,
+                            "share":  1
+                        },
+                        {
+                            "role":  "System Manager",
+                            "read":  1,
+                            "write":  1,
+                            "create":  1,
+                            "submit":  1,
+                            "cancel":  1,
+                            "delete":  1,
+                            "print":  1,
+                            "email":  1,
+                            "export":  1,
+                            "report":  1,
+                            "share":  1
+                        },
+                        {
+                            "role":  "Stock Manager",
+                            "permlevel":  1,
+                            "read":  1
+                        },
+                        {
+                            "role":  "System Manager",
+                            "permlevel":  1,
+                            "read":  1
+                        }
+                    ]
+}

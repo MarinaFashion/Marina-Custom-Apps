@@ -51,6 +51,8 @@ def after_install():
     dc_dispatch_after_install()
     from marina_custom_apps.stock_auto_allocation.install import after_install as stock_allocation_after_install
     stock_allocation_after_install()
+    from marina_custom_apps.cycle_count.install import after_install as cycle_count_after_install
+    cycle_count_after_install()
 
 
 def after_migrate():
@@ -68,8 +70,12 @@ def after_migrate():
     # Re-run base field/role creation idempotently (replaces the standalone v1 patch).
     from marina_custom_apps.stock_auto_allocation.install import after_install as stock_allocation_after_install
     stock_allocation_after_install()
+    from marina_custom_apps.cycle_count.install import after_install as cycle_count_after_install
+    cycle_count_after_install()
     from marina_custom_apps.stock_auto_allocation.migration import after_migrate as stock_allocation_after_migrate
     stock_allocation_after_migrate()
+    from marina_custom_apps.cycle_count.install import after_migrate as cycle_count_after_migrate
+    cycle_count_after_migrate()
 
 
 def _ensure_custom_fields():

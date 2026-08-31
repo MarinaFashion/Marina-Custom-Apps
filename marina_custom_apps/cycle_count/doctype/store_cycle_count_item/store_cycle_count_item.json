@@ -1,0 +1,133 @@
+{
+    "doctype":  "DocType",
+    "name":  "Store Cycle Count Item",
+    "module":  "Cycle Count",
+    "istable":  1,
+    "editable_grid":  1,
+    "field_order":  [
+                        "item_code",
+                        "item_name",
+                        "item_template",
+                        "size",
+                        "barcode",
+                        "counted",
+                        "counted_qty",
+                        "system_qty",
+                        "variance_qty",
+                        "variance_percent",
+                        "valuation_rate",
+                        "variance_value",
+                        "first_count_qty",
+                        "unexpected_item"
+                    ],
+    "fields":  [
+                   {
+                       "fieldname":  "item_code",
+                       "label":  "Item Code",
+                       "fieldtype":  "Link",
+                       "options":  "Item",
+                       "reqd":  1,
+                       "read_only":  1,
+                       "in_list_view":  1
+                   },
+                   {
+                       "fieldname":  "item_name",
+                       "label":  "Item Name",
+                       "fieldtype":  "Data",
+                       "read_only":  1,
+                       "in_list_view":  1
+                   },
+                   {
+                       "fieldname":  "item_template",
+                       "label":  "Style",
+                       "fieldtype":  "Link",
+                       "options":  "Item",
+                       "read_only":  1,
+                       "in_list_view":  1
+                   },
+                   {
+                       "fieldname":  "size",
+                       "label":  "Size",
+                       "fieldtype":  "Data",
+                       "read_only":  1,
+                       "in_list_view":  1
+                   },
+                   {
+                       "fieldname":  "barcode",
+                       "label":  "Barcode",
+                       "fieldtype":  "Data",
+                       "read_only":  1
+                   },
+                   {
+                       "fieldname":  "counted",
+                       "label":  "Counted",
+                       "fieldtype":  "Check",
+                       "default":  "0",
+                       "read_only":  0
+                   },
+                   {
+                       "fieldname":  "counted_qty",
+                       "label":  "Physical Qty",
+                       "fieldtype":  "Float",
+                       "precision":  "3",
+                       "in_list_view":  1
+                   },
+                   {
+                       "fieldname":  "system_qty",
+                       "label":  "System Qty at Count Start",
+                       "fieldtype":  "Float",
+                       "precision":  "3",
+                       "read_only":  1,
+                       "in_list_view":  1,
+                       "permlevel":  1
+                   },
+                   {
+                       "fieldname":  "variance_qty",
+                       "label":  "Variance Qty",
+                       "fieldtype":  "Float",
+                       "precision":  "3",
+                       "read_only":  1,
+                       "in_list_view":  1,
+                       "permlevel":  1
+                   },
+                   {
+                       "fieldname":  "variance_percent",
+                       "label":  "Variance %",
+                       "fieldtype":  "Percent",
+                       "read_only":  1,
+                       "permlevel":  1
+                   },
+                   {
+                       "fieldname":  "valuation_rate",
+                       "label":  "Valuation Rate",
+                       "fieldtype":  "Currency",
+                       "read_only":  1,
+                       "permlevel":  1
+                   },
+                   {
+                       "fieldname":  "variance_value",
+                       "label":  "Variance Value",
+                       "fieldtype":  "Currency",
+                       "read_only":  1,
+                       "permlevel":  1
+                   },
+                   {
+                       "fieldname":  "first_count_qty",
+                       "label":  "First Count Qty",
+                       "fieldtype":  "Float",
+                       "precision":  "3",
+                       "read_only":  1,
+                       "permlevel":  1
+                   },
+                   {
+                       "fieldname":  "unexpected_item",
+                       "label":  "Unexpected Item",
+                       "fieldtype":  "Check",
+                       "default":  "0",
+                       "read_only":  1
+                   }
+               ],
+    "permissions":  [
+
+                    ]
+}

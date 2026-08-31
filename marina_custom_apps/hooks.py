@@ -4,7 +4,7 @@ app_publisher = "Marina Trading Company"
 app_description = "Marina Trading Company custom Frappe/ERPNext modules"
 app_email = "it@marinafashion.com.sa"
 app_license = "MIT"
-app_version = "0.30.0"
+app_version = "0.40.0"
 
 required_apps = ["erpnext"]
 
@@ -12,6 +12,10 @@ after_install = "marina_custom_apps.install.after_install"
 after_migrate = "marina_custom_apps.install.after_migrate"
 
 doc_events = {
+    "Stock Reconciliation": {
+        "on_submit": "marina_custom_apps.cycle_count.stock_reconciliation_events.on_submit",
+        "on_cancel": "marina_custom_apps.cycle_count.stock_reconciliation_events.on_cancel",
+    },
     "Stock Entry": {
         "before_validate": "marina_custom_apps.stock_transfer_control.stock_entry_events.before_validate_stock_entry",
         "validate": "marina_custom_apps.stock_transfer_control.stock_entry_events.validate_stock_entry",
@@ -52,4 +56,12 @@ scheduler_events = {
     "daily": [
         "marina_custom_apps.stock_transfer_audit.alerts.send_daily_stock_transfer_control_alerts"
     ],
+}
+
+permission_query_conditions = {
+    "Store Cycle Count": "marina_custom_apps.cycle_count.permissions.store_cycle_count_query",
+}
+
+has_permission = {
+    "Store Cycle Count": "marina_custom_apps.cycle_count.permissions.store_cycle_count_permission",
 }

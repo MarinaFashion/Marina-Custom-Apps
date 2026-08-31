@@ -1,0 +1,29 @@
+{
+  "doctype": "DocType",
+  "name": "Cycle Count Plan Style",
+  "module": "Cycle Count",
+  "istable": 1,
+  "editable_grid": 1,
+  "field_order": [
+    "item_template",
+    "item_name"
+  ],
+  "fields": [
+    {
+      "fieldname": "item_template",
+      "label": "Style / Item Template",
+      "fieldtype": "Link",
+      "options": "Item",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "item_name",
+      "label": "Item Name",
+      "fieldtype": "Data",
+      "read_only": 1,
+      "in_list_view": 1
+    }
+  ],
+  "permissions": []
+}

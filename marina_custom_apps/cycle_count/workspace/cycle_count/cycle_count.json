@@ -1,0 +1,40 @@
+{
+  "doctype": "Workspace",
+  "name": "Cycle Count",
+  "label": "Cycle Count",
+  "title": "Cycle Count",
+  "module": "Cycle Count",
+  "icon": "list-checks",
+  "public": 1,
+  "is_hidden": 0,
+  "content": "[{\"id\":\"cc_header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Cycle Count</span>\",\"col\":12}},{\"id\":\"cc_plan\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Cycle Count Plans\",\"col\":4}},{\"id\":\"cc_store\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Store Cycle Counts\",\"col\":4}},{\"id\":\"cc_recon\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Reconciliation\",\"col\":4}}]",
+  "shortcuts": [
+    {
+      "label": "Cycle Count Plans",
+      "link_to": "Cycle Count Plan",
+      "type": "DocType",
+      "doc_view": "List",
+      "color": "Blue"
+    },
+    {
+      "label": "Store Cycle Counts",
+      "link_to": "Store Cycle Count",
+      "type": "DocType",
+      "doc_view": "List",
+      "color": "Green"
+    },
+    {
+      "label": "Stock Reconciliation",
+      "link_to": "Stock Reconciliation",
+      "type": "DocType",
+      "doc_view": "List",
+      "color": "Orange"
+    }
+  ],
+  "links": [],
+  "number_cards": [],
+  "charts": [],
+  "custom_blocks": [],
+  "quick_lists": [],
+  "roles": []
+}
