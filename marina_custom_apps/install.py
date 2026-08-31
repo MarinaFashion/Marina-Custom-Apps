@@ -47,6 +47,8 @@ def after_install():
     _ensure_custom_fields()
     _ensure_notification_type()
     _ensure_number_cards()
+    from marina_custom_apps.dc_dispatch.install import after_install as dc_dispatch_after_install
+    dc_dispatch_after_install()
 
 
 def after_migrate():
@@ -59,6 +61,8 @@ def after_migrate():
     _ensure_number_cards()
     _force_sync_stock_transfer_workspace()
     _refresh_audit_statuses()
+    from marina_custom_apps.dc_dispatch.install import after_migrate as dc_dispatch_after_migrate
+    dc_dispatch_after_migrate()
 
 
 def _ensure_custom_fields():

@@ -1,0 +1,489 @@
+{
+  "actions": [],
+  "allow_rename": 0,
+  "autoname": "naming_series:",
+  "creation": "2026-08-12 00:00:00.000000",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "identity_section",
+    "naming_series",
+    "company",
+    "status",
+    "column_break_identity",
+    "revision",
+    "calculated_at",
+    "dispatch_group_no",
+    "dispatch_batch_code",
+    "reference_section",
+    "sales_from_date",
+    "sales_to_date",
+    "minimum_match_percent",
+    "reference_fields",
+    "historical_scope_section",
+    "historical_reference_filters",
+    "size_performance_section",
+    "include_size_performance_factor",
+    "size_performance_column_break",
+    "size_performance_weight",
+    "items_section",
+    "source_warehouse",
+    "target_filters_section",
+    "item_year",
+    "season",
+    "main_group",
+    "column_break_target_filters",
+    "collection",
+    "drop",
+    "subgroup",
+    "advanced_filters_section",
+    "item_filters",
+    "loaded_items_section",
+    "items",
+    "tier_configuration_section",
+    "tier_rules",
+    "tier_defaults_applied",
+    "stores_section",
+    "store_rules",
+    "background_processing_section",
+    "background_job_status",
+    "background_job_action",
+    "background_job_column_break",
+    "background_job_message",
+    "background_job_started_at",
+    "background_job_completed_at",
+    "background_job_id",
+    "background_job_result",
+    "proposal_section",
+    "proposal_file",
+    "proposal_summary",
+    "stock_snapshot_hash",
+    "calculation_input_hash",
+    "size_performance_signature",
+    "forecast_growth_signature"
+  ],
+  "fields": [
+    {
+      "fieldname": "identity_section",
+      "fieldtype": "Section Break",
+      "label": "Initial Dispatch Run"
+    },
+    {
+      "default": "DCD-.YYYY.-.#####",
+      "fieldname": "naming_series",
+      "fieldtype": "Select",
+      "label": "Series",
+      "options": "DCD-.YYYY.-.#####",
+      "reqd": 1
+    },
+    {
+      "fieldname": "company",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "label": "Company",
+      "options": "Company",
+      "reqd": 1
+    },
+    {
+      "default": "Draft",
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "label": "Status",
+      "options": "Draft\nItems Loaded\nReference Review Required\nCalculated\nProposal Imported\nApproved\nMaterial Requests Created\nCancelled",
+      "read_only": 1
+    },
+    {
+      "fieldname": "column_break_identity",
+      "fieldtype": "Column Break"
+    },
+    {
+      "default": "0",
+      "fieldname": "revision",
+      "fieldtype": "Int",
+      "label": "Proposal Revision",
+      "read_only": 1
+    },
+    {
+      "fieldname": "calculated_at",
+      "fieldtype": "Datetime",
+      "label": "Calculated At",
+      "read_only": 1
+    },
+    {
+      "fieldname": "dispatch_group_no",
+      "fieldtype": "Int",
+      "label": "Dispatch Group No.",
+      "read_only": 1
+    },
+    {
+      "fieldname": "dispatch_batch_code",
+      "fieldtype": "Data",
+      "in_list_view": 1,
+      "label": "Material Request Title",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reference_section",
+      "fieldtype": "Section Break",
+      "label": "Block A — Historical Sales Reference and Criteria"
+    },
+    {
+      "fieldname": "sales_from_date",
+      "fieldtype": "Date",
+      "label": "Sales From Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "sales_to_date",
+      "fieldtype": "Date",
+      "label": "Sales To Date",
+      "reqd": 1
+    },
+    {
+      "default": "100",
+      "description": "A historical template must match at least this percentage of the selected, nonblank fields for its Main Group.",
+      "fieldname": "minimum_match_percent",
+      "fieldtype": "Percent",
+      "label": "Minimum Field Match %",
+      "reqd": 1
+    },
+    {
+      "fieldname": "reference_fields",
+      "fieldtype": "Table",
+      "label": "Matching Fields by Main Group",
+      "options": "DC Dispatch Reference Field"
+    },
+    {
+      "fieldname": "historical_scope_section",
+      "fieldtype": "Section Break",
+      "label": "Historical Reference Filters"
+    },
+    {
+      "description": "Optional: further restrict the historical reference pool by Item fields such as Year, Season, Collection, Drop, or other configured Item fields. If Main Group is blank, the filter applies to all groups.",
+      "fieldname": "historical_reference_filters",
+      "fieldtype": "Table",
+      "label": "Historical Reference Filters",
+      "options": "DC Dispatch Historical Reference Filter"
+    },
+    {
+      "fieldname": "size_performance_section",
+      "fieldtype": "Section Break",
+      "label": "Size Performance Factor"
+    },
+    {
+      "default": "0",
+      "description": "Optional secondary factor. Overall historical demand still determines each store's total quantity; this factor only influences the size mix within that total.",
+      "fieldname": "include_size_performance_factor",
+      "fieldtype": "Check",
+      "label": "Include Size Performance Factor"
+    },
+    {
+      "fieldname": "size_performance_column_break",
+      "fieldtype": "Column Break"
+    },
+    {
+      "default": "0",
+      "depends_on": "eval:doc.include_size_performance_factor==1",
+      "mandatory_depends_on": "eval:doc.include_size_performance_factor==1",
+      "description": "Higher weight gives historical relative size performance across stores more influence. 100% still preserves each store's total quantity and never exceeds available DC stock.",
+      "fieldname": "size_performance_weight",
+      "fieldtype": "Percent",
+      "label": "Size Performance Weight %"
+    },
+    {
+      "fieldname": "items_section",
+      "fieldtype": "Section Break",
+      "label": "Block B — Items to Dispatch"
+    },
+    {
+      "fieldname": "source_warehouse",
+      "fieldtype": "Link",
+      "in_standard_filter": 1,
+      "label": "Source DC Warehouse",
+      "options": "Warehouse",
+      "reqd": 1
+    },
+    {
+      "fieldname": "target_filters_section",
+      "fieldtype": "Section Break",
+      "label": "Target Item Filters"
+    },
+    {
+      "description": "Loaded from Item Templates and narrowed by the other selected filters.",
+      "fieldname": "item_year",
+      "fieldtype": "Select",
+      "label": "Item Year"
+    },
+    {
+      "description": "Loaded from Item Templates and narrowed by the other selected filters.",
+      "fieldname": "season",
+      "fieldtype": "Select",
+      "label": "Season"
+    },
+    {
+      "fieldname": "column_break_target_filters",
+      "fieldtype": "Column Break"
+    },
+    {
+      "description": "Loaded from Item Templates and narrowed by the other selected filters.",
+      "fieldname": "collection",
+      "fieldtype": "Select",
+      "label": "Collection"
+    },
+    {
+      "description": "Uses Item field custom_drop. Loaded from Item Templates and narrowed by the other selected filters.",
+      "fieldname": "drop",
+      "fieldtype": "Select",
+      "label": "Drop / Batch"
+    },
+    {
+      "description": "Uses the Item Main Group field configured in DC Dispatch Settings.",
+      "fieldname": "main_group",
+      "fieldtype": "Select",
+      "label": "Main Group"
+    },
+    {
+      "description": "Uses the Item Subgroup field configured in DC Dispatch Settings.",
+      "fieldname": "subgroup",
+      "fieldtype": "Select",
+      "label": "Item Subgroup"
+    },
+    {
+      "fieldname": "advanced_filters_section",
+      "fieldtype": "Section Break",
+      "hidden": 1,
+      "label": "Advanced Item Filters (Retired)"
+    },
+    {
+      "description": "Retained hidden for backward compatibility; v0.5.0 does not use Advanced Item Filters.",
+      "fieldname": "item_filters",
+      "fieldtype": "Table",
+      "hidden": 1,
+      "label": "Advanced Item Filters",
+      "options": "DC Dispatch Item Filter"
+    },
+    {
+      "fieldname": "loaded_items_section",
+      "fieldtype": "Section Break",
+      "label": "Items to Dispatch"
+    },
+    {
+      "fieldname": "items",
+      "fieldtype": "Table",
+      "label": "Items to Dispatch",
+      "options": "DC Dispatch Run Item"
+    },
+    {
+      "fieldname": "tier_configuration_section",
+      "fieldtype": "Section Break",
+      "label": "Tier Allocation Rules"
+    },
+    {
+      "description": "Priority ranges set the default Tier. Store Tier remains editable for planner override. Minimum and Maximum quantities apply independently to every size/variant.",
+      "fieldname": "tier_rules",
+      "fieldtype": "Table",
+      "label": "Tier Allocation Rules",
+      "options": "DC Dispatch Tier Rule"
+    },
+    {
+      "default": "0",
+      "fieldname": "tier_defaults_applied",
+      "fieldtype": "Check",
+      "hidden": 1,
+      "label": "Tier Defaults Applied",
+      "read_only": 1
+    },
+    {
+      "fieldname": "stores_section",
+      "fieldtype": "Section Break",
+      "label": "Eligible Stores and No-History Decisions"
+    },
+    {
+      "fieldname": "store_rules",
+      "fieldtype": "Table",
+      "label": "Store Rules",
+      "options": "DC Dispatch Store Rule"
+    },
+    {
+      "fieldname": "background_processing_section",
+      "fieldtype": "Section Break",
+      "label": "Background Processing"
+    },
+    {
+      "default": "Idle",
+      "fieldname": "background_job_status",
+      "fieldtype": "Select",
+      "label": "Processing Status",
+      "options": "Idle\nQueued\nRunning\nCompleted\nFailed",
+      "read_only": 1
+    },
+    {
+      "fieldname": "background_job_action",
+      "fieldtype": "Data",
+      "label": "Current / Last Action",
+      "read_only": 1
+    },
+    {
+      "fieldname": "background_job_column_break",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "background_job_message",
+      "fieldtype": "Small Text",
+      "label": "Processing Message",
+      "read_only": 1
+    },
+    {
+      "fieldname": "background_job_started_at",
+      "fieldtype": "Datetime",
+      "label": "Started At",
+      "read_only": 1
+    },
+    {
+      "fieldname": "background_job_completed_at",
+      "fieldtype": "Datetime",
+      "label": "Completed At",
+      "read_only": 1
+    },
+    {
+      "fieldname": "background_job_id",
+      "fieldtype": "Data",
+      "label": "Background Job ID",
+      "hidden": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "background_job_result",
+      "fieldtype": "Long Text",
+      "label": "Background Job Result",
+      "hidden": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "proposal_section",
+      "fieldtype": "Section Break",
+      "label": "Proposal Review and Execution"
+    },
+    {
+      "description": "Attach the reviewed workbook here before importing it.",
+      "fieldname": "proposal_file",
+      "fieldtype": "Attach",
+      "label": "Reviewed Proposal Workbook"
+    },
+    {
+      "fieldname": "proposal_summary",
+      "fieldtype": "HTML",
+      "label": "Proposal Summary"
+    },
+    {
+      "fieldname": "stock_snapshot_hash",
+      "fieldtype": "Data",
+      "hidden": 1,
+      "label": "Stock Snapshot Hash",
+      "read_only": 1
+    },
+    {
+      "fieldname": "calculation_input_hash",
+      "fieldtype": "Data",
+      "hidden": 1,
+      "label": "Calculation Input Hash",
+      "read_only": 1
+    },
+    {
+      "fieldname": "size_performance_signature",
+      "fieldtype": "Data",
+      "hidden": 1,
+      "label": "Size Performance Signature",
+      "read_only": 1
+    },
+    {
+      "fieldname": "forecast_growth_signature",
+      "fieldtype": "Data",
+      "hidden": 1,
+      "label": "Forecast Growth Signature",
+      "read_only": 1
+    }
+  ],
+  "links": [
+    {
+      "link_doctype": "DC Dispatch Proposal Line",
+      "link_fieldname": "run"
+    }
+  ],
+  "modified": "2026-08-21 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "DC Dispatch",
+  "name": "DC Dispatch Run",
+  "owner": "Administrator",
+  "permissions": [
+    {
+      "create": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Stock User",
+      "share": 1,
+      "write": 1
+    },
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Stock Manager",
+      "share": 1,
+      "write": 1
+    },
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 1
+    }
+  ],
+  "search_fields": "status,company,source_warehouse",
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "states": [
+    {
+      "color": "Gray",
+      "title": "Draft"
+    },
+    {
+      "color": "Orange",
+      "title": "Reference Review Required"
+    },
+    {
+      "color": "Blue",
+      "title": "Calculated"
+    },
+    {
+      "color": "Green",
+      "title": "Approved"
+    },
+    {
+      "color": "Green",
+      "title": "Material Requests Created"
+    },
+    {
+      "color": "Red",
+      "title": "Cancelled"
+    }
+  ],
+  "title_field": "status",
+  "track_changes": 1
+}
