@@ -49,6 +49,8 @@ def after_install():
     _ensure_number_cards()
     from marina_custom_apps.dc_dispatch.install import after_install as dc_dispatch_after_install
     dc_dispatch_after_install()
+    from marina_custom_apps.stock_auto_allocation.install import after_install as stock_allocation_after_install
+    stock_allocation_after_install()
 
 
 def after_migrate():
@@ -63,6 +65,11 @@ def after_migrate():
     _refresh_audit_statuses()
     from marina_custom_apps.dc_dispatch.install import after_migrate as dc_dispatch_after_migrate
     dc_dispatch_after_migrate()
+    # Re-run base field/role creation idempotently (replaces the standalone v1 patch).
+    from marina_custom_apps.stock_auto_allocation.install import after_install as stock_allocation_after_install
+    stock_allocation_after_install()
+    from marina_custom_apps.stock_auto_allocation.migration import after_migrate as stock_allocation_after_migrate
+    stock_allocation_after_migrate()
 
 
 def _ensure_custom_fields():

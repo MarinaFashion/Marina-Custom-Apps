@@ -4,7 +4,7 @@ app_publisher = "Marina Trading Company"
 app_description = "Marina Trading Company custom Frappe/ERPNext modules"
 app_email = "it@marinafashion.com.sa"
 app_license = "MIT"
-app_version = "0.20.0"
+app_version = "0.30.0"
 
 required_apps = ["erpnext"]
 
@@ -26,13 +26,22 @@ doc_events = {
     },
     "Material Request": {
         "on_cancel": "marina_custom_apps.dc_dispatch.material_request_events.clear_proposal_links",
-        "on_trash": "marina_custom_apps.dc_dispatch.material_request_events.clear_proposal_links",
+        "on_trash": "marina_custom_apps.material_request_events.on_trash",
     },
 }
 
 doctype_js = {
     "Stock Entry": "public/js/stock_entry_control.js",
     "DC Dispatch Run": "public/js/dc_dispatch_run_v063.js",
+    "Material Request": "public/js/material_request_logistics.js",
+}
+
+
+override_doctype_class = {
+    "Stock Allocation Run": (
+        "marina_custom_apps.stock_auto_allocation."
+        "logistics_stock_allocation_run.LogisticsStockAllocationRun"
+    ),
 }
 
 override_doctype_dashboards = {

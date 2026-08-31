@@ -1,0 +1,344 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "SAR-.YYYY.-.#####",
+ "creation": "2026-08-04 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "company",
+  "dc_warehouse",
+  "status",
+  "column_break_1",
+  "lookback_period_days",
+  "coverage_days",
+  "use_target_historical_sales",
+  "source_protection_days",
+  "new_release_grace_period_days",
+  "default_minimum_per_variant",
+  "minimum_store_transfer_qty",
+  "minimum_consolidated_city_transfer_qty",
+  "apply_minimum_to_dc_transfers",
+  "allocation_scope",
+  "selected_source_store",
+  "selected_target_store",
+  "section_break_filters",
+  "item_year",
+  "season",
+  "column_break_filters",
+  "collection",
+  "drop",
+  "section_break_transit",
+  "consider_transit_at_source",
+  "column_break_transit",
+  "consider_transit_at_target",
+  "section_break_items",
+  "items",
+  "get_items_html",
+  "section_break_proposal",
+  "proposal_version",
+  "proposal_review_status",
+  "proposal_exported_on",
+  "proposal_reviewed_by",
+  "proposal_reviewed_on",
+  "proposal_lines",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "description": "Distribution Center supplying stock for Tier 1 allocation. Filtered to warehouses flagged \"Is Distribution Center\".",
+   "fieldname": "dc_warehouse",
+   "fieldtype": "Link",
+   "label": "DC Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nItems Pulled\nProposal Generated\nApproved\nRequested\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "14",
+   "description": "Historical sales window used to calculate store and variant sales velocity.",
+   "fieldname": "lookback_period_days",
+   "fieldtype": "Int",
+   "label": "Lookback Period (days)",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "default": "7",
+   "description": "Desired forward stock cover at receiving stores. Used after restoring the minimum complete variant range.",
+   "fieldname": "coverage_days",
+   "fieldtype": "Int",
+   "label": "Target Coverage Days",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "description": "When checked, target demand uses historical sales velocity and Target Coverage Days. Uncheck for a reopened/newly reset target store whose recent sales history is not mature; the target will then receive only the Minimum Pieces per Variant. Source-store sales performance and source protection remain fully active.",
+   "fieldname": "use_target_historical_sales",
+   "fieldtype": "Check",
+   "label": "Use Target Historical Sales"
+  },
+  {
+   "default": "3",
+   "description": "Demand cover protected at donor stores before stock can be reallocated. The donor also keeps at least the Minimum Pieces per Variant.",
+   "fieldname": "source_protection_days",
+   "fieldtype": "Int",
+   "label": "Source Protection Days",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "default": "14",
+   "description": "Protect newly displayed styles from premature reallocation. During this period the donor keeps at least its normal protection and enough stock for the Target Coverage Days. Variant Display Date is used first; if blank, the template Display Date is used.",
+   "fieldname": "new_release_grace_period_days",
+   "fieldtype": "Int",
+   "label": "New Release Grace Period (Days)",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "description": "Default minimum quantity of every variant required in each selected destination store. Enter an item-level override in the Working List only when needed.",
+   "fieldname": "default_minimum_per_variant",
+   "fieldtype": "Int",
+   "label": "Default Minimum Pieces per Variant",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "description": "Minimum total approved quantity required for one Store-to-Store Source → Target route before a Material Request is created. The quantity is summed across all items/variants on that route. 0 disables this control.",
+   "fieldname": "minimum_store_transfer_qty",
+   "fieldtype": "Int",
+   "label": "Minimum Store-to-Store Transfer Qty",
+   "non_negative": 1
+  },
+  {
+   "default": "0",
+   "description": "Minimum total approved quantity for all Store-to-Store transfers in the same Source City → Destination City pair. When reached, ALL eligible routes in that city pair are created and marked as one consolidated physical shipment, even when an individual route already exceeds the direct-transfer minimum. 0 disables city consolidation.",
+   "fieldname": "minimum_consolidated_city_transfer_qty",
+   "fieldtype": "Int",
+   "label": "Minimum Consolidated City Transfer Qty",
+   "non_negative": 1
+  },
+  {
+   "default": "0",
+   "description": "If checked, the same minimum route quantity is also applied to Distribution Center → Store Material Requests.",
+   "fieldname": "apply_minimum_to_dc_transfers",
+   "fieldtype": "Check",
+   "label": "Apply Minimum Qty to DC Transfers"
+  },
+  {
+   "default": "Many-to-Many",
+   "description": "Many-to-Many uses all eligible sources and targets. One-to-Many requires a source store. Many-to-One requires a target store. One-to-One requires both.",
+   "fieldname": "allocation_scope",
+   "fieldtype": "Select",
+   "label": "Allocation Scope",
+   "options": "Many-to-Many\nOne-to-Many\nMany-to-One\nOne-to-One",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.allocation_scope=='One-to-Many' || doc.allocation_scope=='One-to-One'",
+   "description": "Required for One-to-Many and One-to-One. Only this store will be used as the store source.",
+   "fieldname": "selected_source_store",
+   "fieldtype": "Link",
+   "label": "Selected Source Store",
+   "mandatory_depends_on": "eval:doc.allocation_scope=='One-to-Many' || doc.allocation_scope=='One-to-One'",
+   "options": "Warehouse"
+  },
+  {
+   "depends_on": "eval:doc.allocation_scope=='Many-to-One' || doc.allocation_scope=='One-to-One'",
+   "description": "Required for Many-to-One and One-to-One. Only this store will be used as the destination.",
+   "fieldname": "selected_target_store",
+   "fieldtype": "Link",
+   "label": "Selected Target Store",
+   "mandatory_depends_on": "eval:doc.allocation_scope=='Many-to-One' || doc.allocation_scope=='One-to-One'",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "section_break_filters",
+   "fieldtype": "Section Break",
+   "label": "Item Filters"
+  },
+  {
+   "fieldname": "item_year",
+   "fieldtype": "Data",
+   "label": "Item Year"
+  },
+  {
+   "fieldname": "season",
+   "fieldtype": "Select",
+   "label": "Season"
+  },
+  {
+   "fieldname": "column_break_filters",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "collection",
+   "fieldtype": "Select",
+   "label": "Collection"
+  },
+  {
+   "fieldname": "drop",
+   "fieldtype": "Select",
+   "label": "Drop"
+  },
+  {
+   "fieldname": "section_break_transit",
+   "fieldtype": "Section Break",
+   "label": "In-Transit Stock Handling"
+  },
+  {
+   "default": "0",
+   "description": "If checked, source in-transit stock counts as available to send.",
+   "fieldname": "consider_transit_at_source",
+   "fieldtype": "Check",
+   "label": "Add In-Transit Stock to Source Warehouses"
+  },
+  {
+   "fieldname": "column_break_transit",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "If checked, destination in-transit stock counts toward current stock.",
+   "fieldname": "consider_transit_at_target",
+   "fieldtype": "Check",
+   "label": "Add In-Transit Stock to Target Warehouses"
+  },
+  {
+   "fieldname": "section_break_items",
+   "fieldtype": "Section Break",
+   "label": "Working List"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Stock Allocation Run Item"
+  },
+  {
+   "fieldname": "section_break_proposal",
+   "fieldtype": "Section Break",
+   "label": "Allocation Proposal (Tier 1 — DC to Stores)"
+  },
+  {
+   "default": "0",
+   "fieldname": "proposal_version",
+   "fieldtype": "Int",
+   "label": "Proposal Version",
+   "read_only": 1
+  },
+  {
+   "default": "Not Reviewed",
+   "fieldname": "proposal_review_status",
+   "fieldtype": "Select",
+   "label": "Proposal Review Status",
+   "options": "Not Reviewed\nExported\nReviewed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "proposal_exported_on",
+   "fieldtype": "Datetime",
+   "label": "Proposal Exported On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "proposal_reviewed_by",
+   "fieldtype": "Link",
+   "label": "Proposal Reviewed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "proposal_reviewed_on",
+   "fieldtype": "Datetime",
+   "label": "Proposal Reviewed On",
+   "read_only": 1
+  },
+  {
+   "description": "Generated by \"Generate Proposal\". No Material Requests are created until approval.",
+   "fieldname": "proposal_lines",
+   "fieldtype": "Table",
+   "label": "Proposal Lines",
+   "options": "Stock Allocation Proposal Line",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Stock Allocation Run",
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [
+  {
+   "group": "Generated Documents",
+   "link_doctype": "Material Request",
+   "link_fieldname": "stock_auto_allocation_run"
+  }
+ ],
+ "modified": "2026-08-13 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Stock Auto Allocation",
+ "name": "Stock Allocation Run",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock Allocation Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

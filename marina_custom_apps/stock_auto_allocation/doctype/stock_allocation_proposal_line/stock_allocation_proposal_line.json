@@ -1,0 +1,283 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-08-04 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "item_template",
+  "item_code",
+  "column_break_1",
+  "source_warehouse",
+  "target_warehouse",
+  "section_break_1",
+  "qty",
+  "tier",
+  "status",
+  "reviewed_qty",
+  "review_action",
+  "review_comment",
+  "reviewed_by",
+  "reviewed_on",
+  "section_break_audit",
+  "display_date",
+  "grace_period_till_date",
+  "target_historical_sales_used",
+  "source_stock",
+  "source_sales",
+  "source_protection_qty",
+  "source_days_cover",
+  "column_break_audit",
+  "target_stock",
+  "target_sales",
+  "target_required_qty",
+  "target_days_cover",
+  "section_break_2",
+  "transit_warehouse",
+  "material_request",
+  "stock_entry"
+ ],
+ "fields": [
+  {
+   "fieldname": "item_template",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item (Template)",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item (Variant)",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "source_warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Source Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
+  },
+  {
+   "fieldname": "target_warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Target Warehouse (Store)",
+   "options": "Warehouse",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Qty",
+   "non_negative": 1,
+   "precision": "2",
+   "reqd": 1
+  },
+  {
+   "default": "DC",
+   "fieldname": "tier",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Tier",
+   "options": "DC\nStore",
+   "read_only": 1
+  },
+  {
+   "default": "Proposed",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Proposed\nApproved\nRequested\nRejected",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reviewed_qty",
+   "fieldtype": "Float",
+   "label": "Reviewed Qty",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "review_action",
+   "fieldtype": "Select",
+   "label": "Review Action",
+   "options": "Pending\nApprove\nAdjust\nReject",
+   "read_only": 1
+  },
+  {
+   "fieldname": "review_comment",
+   "fieldtype": "Small Text",
+   "label": "Review Comment",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reviewed_by",
+   "fieldtype": "Link",
+   "label": "Reviewed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reviewed_on",
+   "fieldtype": "Datetime",
+   "label": "Reviewed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_audit",
+   "fieldtype": "Section Break",
+   "label": "Stock and Sales at Proposal Time"
+  },
+  {
+   "description": "Effective display date used by the engine. Variant date is preferred; template date is used when the variant date is blank.",
+   "fieldname": "display_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Display Date",
+   "read_only": 1
+  },
+  {
+   "description": "Inclusive final date of the New Release Grace Period calculated from the effective Display Date.",
+   "fieldname": "grace_period_till_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Grace Period Till Date",
+   "read_only": 1
+  },
+  {
+   "default": "1",
+   "description": "Shows whether target historical sales were used to calculate this proposal line's target requirement.",
+   "fieldname": "target_historical_sales_used",
+   "fieldtype": "Check",
+   "label": "Target Historical Sales Used",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_stock",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Source Stock",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_sales",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Source Sales",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "description": "Quantity protected at this source before it can donate, based on Source Protection Days and Minimum Pieces per Variant.",
+   "fieldname": "source_protection_qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Source Protected Qty",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "description": "Source stock divided by its daily sales velocity. Blank when the variant has no sales.",
+   "fieldname": "source_days_cover",
+   "fieldtype": "Float",
+   "label": "Source Days Cover",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_audit",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "target_stock",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Target Stock",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "target_sales",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Target Sales",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "description": "Target stock objective for this variant after minimum-range restoration and Target Coverage Days.",
+   "fieldname": "target_required_qty",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Target Required Qty",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "description": "Target stock divided by its daily sales velocity. Blank when the variant has no sales.",
+   "fieldname": "target_days_cover",
+   "fieldtype": "Float",
+   "label": "Target Days Cover",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break",
+   "label": "Transit / Fulfillment"
+  },
+  {
+   "fieldname": "transit_warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Transit Warehouse (actual MR target)",
+   "options": "Warehouse",
+   "read_only": 1
+  },
+  {
+   "fieldname": "material_request",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Material Request",
+   "read_only": 1,
+   "description": "Material Request created from this proposal line. Deletion cleanup clears this reference before Frappe backlink validation.",
+   "options": "Material Request"
+  },
+  {
+   "fieldname": "stock_entry",
+   "fieldtype": "Link",
+   "label": "Stock Entry (Transit → Store, future)",
+   "options": "Stock Entry",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-08-13 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Stock Auto Allocation",
+ "name": "Stock Allocation Proposal Line",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

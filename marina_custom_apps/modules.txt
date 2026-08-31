@@ -1,3 +1,4 @@
 Stock Transfer Control
 Stock Transfer Audit
 DC Dispatch
+Stock Auto Allocation

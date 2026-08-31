@@ -125,6 +125,9 @@ def _set_transfer_total_qty(doc):
 
 
 def before_validate_stock_entry(doc, method=None):
+    # Preserve Stock Auto Allocation logistics metadata/authoritative MR route first.
+    from marina_custom_apps.stock_auto_allocation.stock_entry_events import preserve_allocation_route
+    preserve_allocation_route(doc, method=method)
     _remove_route_only_blank_rows(doc)
     _set_transfer_total_qty(doc)
 
