@@ -2,7 +2,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, now_datetime
-from marina_custom_apps.cycle_count.utils import ensure_counter, is_stock_manager, require_stock_manager, bin_snapshot
+from marina_custom_apps.cycle_count.utils import ensure_counter, is_stock_manager, require_stock_manager, bin_snapshot, size_abbreviation
 from marina_custom_apps.cycle_count.coverage import mark_completed
 
 class StoreCycleCount(Document):
@@ -219,7 +219,7 @@ class StoreCycleCount(Document):
                 "item_code": item_code,
                 "item_name": item.item_name,
                 "item_template": item.variant_of or item_code,
-                "size": size_value,
+                "size": size_abbreviation(size_value),
                 "barcode": primary_barcode or barcode,
                 "system_qty": flt(snap.get("qty")),
                 "valuation_rate": flt(snap.get("rate")),
@@ -260,6 +260,7 @@ class StoreCycleCount(Document):
         current=bin_snapshot(self.warehouse,[r.item_code for r in rows])
         sr=frappe.new_doc("Stock Reconciliation"); sr.company=self.company
         if sr.meta.has_field("purpose"): sr.purpose="Stock Reconciliation"
+        if sr.meta.has_field("set_warehouse"): sr.set_warehouse=self.warehouse
         if sr.meta.has_field("custom_store_cycle_count"): sr.custom_store_cycle_count=self.name
         for r in rows:
             cur=current.get(r.item_code,{})

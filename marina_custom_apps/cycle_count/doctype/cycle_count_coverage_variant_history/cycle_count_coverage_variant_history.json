@@ -1,0 +1,28 @@
+{
+  "doctype": "DocType",
+  "name": "Cycle Count Coverage Variant History",
+  "module": "Cycle Count",
+  "istable": 1,
+  "editable_grid": 1,
+  "field_order": [
+    "count_date",
+    "store_cycle_count",
+    "item_code",
+    "size",
+    "system_qty",
+    "counted_qty",
+    "variance_qty",
+    "variance_value"
+  ],
+  "fields": [
+    {"fieldname":"count_date","label":"Count Date","fieldtype":"Date","read_only":1,"in_list_view":1},
+    {"fieldname":"store_cycle_count","label":"Store Cycle Count","fieldtype":"Link","options":"Store Cycle Count","read_only":1,"in_list_view":1},
+    {"fieldname":"item_code","label":"Variant / Item Code","fieldtype":"Link","options":"Item","read_only":1,"in_list_view":1},
+    {"fieldname":"size","label":"Size","fieldtype":"Data","read_only":1,"in_list_view":1},
+    {"fieldname":"system_qty","label":"Stock Qty at Count Start","fieldtype":"Float","precision":"3","read_only":1,"in_list_view":1},
+    {"fieldname":"counted_qty","label":"Counted Qty","fieldtype":"Float","precision":"3","read_only":1,"in_list_view":1},
+    {"fieldname":"variance_qty","label":"Variance Qty","fieldtype":"Float","precision":"3","read_only":1,"in_list_view":1},
+    {"fieldname":"variance_value","label":"Variance Value","fieldtype":"Currency","read_only":1}
+  ],
+  "permissions": []
+}

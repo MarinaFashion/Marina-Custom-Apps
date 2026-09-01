@@ -33,3 +33,17 @@ function configure_store_user_query(frm) {
     };
   });
 }
+
+frappe.ui.form.on("Cycle Count Plan", {
+  refresh(frm) {
+    if (!frm.is_new() && cint(frm.doc.generated_count_count) > 0) {
+      frm.add_custom_button(
+        __("Open Store Cycle Counts"),
+        () => frappe.set_route("List", "Store Cycle Count", {
+          cycle_count_plan: frm.doc.name
+        }),
+        __("View")
+      );
+    }
+  }
+});

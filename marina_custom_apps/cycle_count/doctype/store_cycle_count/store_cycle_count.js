@@ -1,3 +1,11 @@
+function cc_scope_controls(frm){
+  const g=frm.fields_dict.items?.grid;
+  if(!g)return;
+  const can_manage=cc_manager();
+  g.cannot_add_rows=!can_manage;
+  g.cannot_delete_rows=!can_manage;
+  g.wrapper.find(".grid-add-row, .grid-remove-rows, .grid-delete-row").toggle(can_manage);
+}
 function cc_manager(){return frappe.session.user==="Administrator" || frappe.user.has_role("Stock Manager");}
 function cc_blind(frm){
   const g=frm.fields_dict.items?.grid;if(!g)return;
@@ -7,6 +15,7 @@ function cc_blind(frm){
 }
 frappe.ui.form.on("Store Cycle Count",{
   refresh(frm){
+    cc_scope_controls(frm);
     cc_blind(frm);
     const mine=frm.doc.assigned_to===frappe.session.user || cc_manager();
     if(frm.doc.docstatus===0 && mine && ["Assigned","Recount Requested"].includes(frm.doc.status))
