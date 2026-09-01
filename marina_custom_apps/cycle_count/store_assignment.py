@@ -33,3 +33,33 @@ def validate_assignment(warehouse,user):
     if user not in users: frappe.throw(_("User {0} is not in Warehouse Users Allowed for {1}.").format(user,warehouse))
 
 def parse_assignments(v): return json.loads(v or "{}") if isinstance(v,str) else (v or {})
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def allowed_user_query(doctype, txt, searchfield, start, page_len, filters):
+    """Return only enabled users allowed for the selected Warehouse."""
+    warehouse = (filters or {}).get("warehouse")
+    if not warehouse:
+        return []
+
+    users = warehouse_allowed_users(warehouse)
+    if not users:
+        return []
+
+    txt = (txt or "").strip()
+    return frappe.get_all(
+        "User",
+        filters={
+            "enabled": 1,
+            "name": ["in", users],
+        },
+        or_filters={
+            "name": ["like", f"%{txt}%"],
+            "full_name": ["like", f"%{txt}%"],
+        },
+        fields=["name", "full_name"],
+        order_by="full_name asc, name asc",
+        limit_start=int(start or 0),
+        limit_page_length=int(page_len or 20),
+        as_list=True,
+    )
