@@ -64,12 +64,19 @@ class CycleCountPlan(Document):
         items+=frappe.get_all("Item",filters={"disabled":0,"name":["in",styles],"has_variants":0},fields=["name","item_name","variant_of"],limit_page_length=0)
         if not items: frappe.throw(_("No active variants/items found."))
         bc=primary_barcodes([r.name for r in items]); sz=sizes([r.name for r in items]); created=[]
+        existing_rows=frappe.get_all(
+            "Store Cycle Count",
+            filters={"cycle_count_plan":self.name,"docstatus":["!=",2]},
+            fields=["name","warehouse"],
+            limit_page_length=0,
+        )
+        existing_by_warehouse={r.warehouse:r.name for r in existing_rows}
         for s in self.stores:
-            if s.store_cycle_count and frappe.db.exists("Store Cycle Count",s.store_cycle_count): continue
+            if s.warehouse in existing_by_warehouse: continue
             d=frappe.new_doc("Store Cycle Count"); d.update({"cycle_count_plan":self.name,"company":self.company,"warehouse":s.warehouse,"assigned_to":s.assigned_to,"count_date":self.count_date,"status":"Assigned"})
             for i in items: d.append("items",{"item_code":i.name,"item_name":i.item_name,"item_template":i.variant_of or i.name,"size":sz.get(i.name),"barcode":bc.get(i.name)})
-            d.insert(ignore_permissions=True); s.db_set("store_cycle_count",d.name,update_modified=False); created.append(d.name)
-        mark_selected(self); self.db_set("generated_count_count",len([r for r in self.stores if r.store_cycle_count]),update_modified=False); self.db_set("status","Counts Generated",update_modified=False); return created
+            d.insert(ignore_permissions=True); existing_by_warehouse[s.warehouse]=d.name; created.append(d.name)
+        mark_selected(self); self.db_set("generated_count_count",len(existing_by_warehouse),update_modified=False); self.db_set("status","Counts Generated",update_modified=False); return created
 
 @frappe.whitelist()
 def get_filter_options(item_year=None,season=None,collection=None,drop=None,main_group=None):

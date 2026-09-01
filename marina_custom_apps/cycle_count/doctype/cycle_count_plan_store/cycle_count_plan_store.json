@@ -6,8 +6,7 @@
     "editable_grid":  1,
     "field_order":  [
                         "warehouse",
-                        "assigned_to",
-                        "store_cycle_count"
+                        "assigned_to"
                     ],
     "fields":  [
                    {
@@ -26,14 +25,6 @@
                        "reqd":  0,
                        "in_list_view":  1,
                        "description":  "Loaded from Warehouse Users Allowed. Required before Store Cycle Counts can be generated."
-                   },
-                   {
-                       "fieldname":  "store_cycle_count",
-                       "label":  "Store Cycle Count",
-                       "fieldtype":  "Link",
-                       "options":  "Store Cycle Count",
-                       "read_only":  1,
-                       "in_list_view":  1
                    }
                ],
     "permissions":  [

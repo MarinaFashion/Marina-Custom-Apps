@@ -1,7 +1,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, now_datetime
+from frappe.utils import flt, get_datetime, now_datetime
 from marina_custom_apps.cycle_count.utils import ensure_counter, is_stock_manager, require_stock_manager, bin_snapshot, size_abbreviation
 from marina_custom_apps.cycle_count.coverage import mark_completed
 
@@ -39,6 +39,11 @@ class StoreCycleCount(Document):
 
     def on_cancel(self):
         self.db_set("status","Cancelled",update_modified=False)
+        self._refresh_plan_generation_state(exclude_self=True)
+
+    def on_trash(self):
+        require_stock_manager()
+        self._refresh_plan_generation_state(exclude_self=True)
 
     @frappe.whitelist()
     def start_count(self):
@@ -257,17 +262,41 @@ class StoreCycleCount(Document):
     def _make_reconciliation(self):
         rows=[r for r in self.items if r.counted and abs(flt(r.variance_qty))>1e-9]
         if not rows: return None
-        current=bin_snapshot(self.warehouse,[r.item_code for r in rows])
+        if not self.count_completed_on:
+            frappe.throw(_("Count End Time is required before creating Stock Reconciliation."))
+
+        cutoff=get_datetime(self.count_completed_on)
         sr=frappe.new_doc("Stock Reconciliation"); sr.company=self.company
         if sr.meta.has_field("purpose"): sr.purpose="Stock Reconciliation"
         if sr.meta.has_field("set_warehouse"): sr.set_warehouse=self.warehouse
+        if sr.meta.has_field("set_posting_time"): sr.set_posting_time=1
+        sr.posting_date=cutoff.strftime("%Y-%m-%d")
+        sr.posting_time=cutoff.strftime("%H:%M:%S.%f")
         if sr.meta.has_field("custom_store_cycle_count"): sr.custom_store_cycle_count=self.name
+
         for r in rows:
-            cur=current.get(r.item_code,{})
-            # Apply the discovered variance to CURRENT stock, so legitimate later
-            # transactions are preserved even if approval happens after opening.
-            qty=flt(cur.get("qty"))+flt(r.variance_qty)
-            rate=flt(cur.get("rate")) or flt(r.valuation_rate)
-            sr.append("items",{"item_code":r.item_code,"warehouse":self.warehouse,"qty":qty,"valuation_rate":rate})
+            sr.append("items",{
+                "item_code":r.item_code,
+                "warehouse":self.warehouse,
+                "qty":flt(r.counted_qty),
+                "valuation_rate":flt(r.valuation_rate),
+            })
         sr.insert(ignore_permissions=True)
         return sr
+
+    def _refresh_plan_generation_state(self, exclude_self=False):
+        if not self.cycle_count_plan or not frappe.db.exists("Cycle Count Plan",self.cycle_count_plan):
+            return
+        filters={"cycle_count_plan":self.cycle_count_plan,"docstatus":["!=",2]}
+        if exclude_self and self.name:
+            filters["name"]=["!=",self.name]
+        active_count=frappe.db.count("Store Cycle Count",filters)
+        total_stores=frappe.db.count("Cycle Count Plan Store",{
+            "parent":self.cycle_count_plan,
+            "parenttype":"Cycle Count Plan",
+            "parentfield":"stores",
+        })
+        values={"generated_count_count":active_count}
+        if active_count < total_stores:
+            values["status"]="Stores Loaded"
+        frappe.db.set_value("Cycle Count Plan",self.cycle_count_plan,values,update_modified=False)
