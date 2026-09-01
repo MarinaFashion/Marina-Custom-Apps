@@ -7,6 +7,25 @@ function cc_scope_controls(frm){
   g.wrapper.find(".grid-add-row, .grid-remove-rows, .grid-delete-row").toggle(can_manage);
 }
 function cc_manager(){return frappe.session.user==="Administrator" || frappe.user.has_role("Stock Manager");}
+function cc_bind_physical_qty_touch(frm){
+  const g=frm.fields_dict.items?.grid;
+  if(!g)return;
+
+  g.wrapper
+    .off("input.cc_physical_qty", '[data-fieldname="counted_qty"] input')
+    .on("input.cc_physical_qty", '[data-fieldname="counted_qty"] input', function(){
+      if(frm.doc.status!=="Counting" || frm.doc.entry_mode!=="Manual")return;
+
+      const $row=$(this).closest(".grid-row");
+      const cdn=$row.attr("data-name") || $row.data("name");
+      if(!cdn)return;
+
+      const row=locals["Store Cycle Count Item"]?.[cdn];
+      if(row && !row.counted){
+        frappe.model.set_value("Store Cycle Count Item",cdn,"counted",1);
+      }
+    });
+}
 function cc_blind(frm){
   const g=frm.fields_dict.items?.grid;if(!g)return;
   ["system_qty","variance_qty","variance_percent","valuation_rate","variance_value","first_count_qty","first_variance_qty"].forEach(f=>{
@@ -17,11 +36,16 @@ frappe.ui.form.on("Store Cycle Count",{
   refresh(frm){
     cc_scope_controls(frm);
     cc_blind(frm);
+    cc_bind_physical_qty_touch(frm);
     const mine=frm.doc.assigned_to===frappe.session.user || cc_manager();
     if(frm.doc.docstatus===0 && mine && ["Assigned","Recount Requested"].includes(frm.doc.status))
       frm.add_custom_button(__("Start Count"),()=>frappe.confirm(__("Confirm the store is closed for transactions and start the stock snapshot now?"),()=>frm.call("start_count").then(()=>frm.reload_doc())),__("Count"));
     if(frm.doc.docstatus===0 && mine && frm.doc.status==="Counting")
-      frm.add_custom_button(__("Submit Count for Review"),()=>frm.call("submit_count").then(()=>frm.reload_doc()),__("Count"));
+      frm.add_custom_button(__("Submit Count for Review"),async()=>{
+        if(frm.is_dirty()) await frm.save();
+        await frm.call("submit_count");
+        await frm.reload_doc();
+      },__("Count"));
     if(frm.doc.docstatus===0 && cc_manager() && frm.doc.status==="Submitted for Review")
       frm.add_custom_button(__("Request Recount"),()=>frm.call("request_recount").then(()=>frm.reload_doc()),__("Review"));
     if(frm.doc.stock_reconciliation)
