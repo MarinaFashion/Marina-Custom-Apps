@@ -1,0 +1,17 @@
+{
+    "doctype":  "Report",
+    "name":  "Cycle Count Coverage",
+    "report_name":  "Cycle Count Coverage",
+    "ref_doctype":  "Cycle Count Coverage",
+    "report_type":  "Script Report",
+    "is_standard":  "Yes",
+    "module":  "Cycle Count",
+    "roles":  [
+                  {
+                      "role":  "Stock Manager"
+                  },
+                  {
+                      "role":  "System Manager"
+                  }
+              ]
+}

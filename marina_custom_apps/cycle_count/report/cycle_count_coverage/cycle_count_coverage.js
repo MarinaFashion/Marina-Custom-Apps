@@ -1,0 +1,1 @@
+frappe.query_reports["Cycle Count Coverage"]={filters:[{fieldname:"company",label:__("Company"),fieldtype:"Link",options:"Company"},{fieldname:"store_warehouse",label:__("Store"),fieldtype:"Link",options:"Warehouse"},{fieldname:"item_template",label:__("Style"),fieldtype:"Link",options:"Item"}]};

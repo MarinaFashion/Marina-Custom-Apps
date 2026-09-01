@@ -1,40 +1,85 @@
 {
-  "doctype": "Workspace",
-  "name": "Cycle Count",
-  "label": "Cycle Count",
-  "title": "Cycle Count",
-  "module": "Cycle Count",
-  "icon": "list-checks",
-  "public": 1,
-  "is_hidden": 0,
-  "content": "[{\"id\":\"cc_header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Cycle Count</span>\",\"col\":12}},{\"id\":\"cc_plan\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Cycle Count Plans\",\"col\":4}},{\"id\":\"cc_store\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Store Cycle Counts\",\"col\":4}},{\"id\":\"cc_recon\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Reconciliation\",\"col\":4}}]",
-  "shortcuts": [
-    {
-      "label": "Cycle Count Plans",
-      "link_to": "Cycle Count Plan",
-      "type": "DocType",
-      "doc_view": "List",
-      "color": "Blue"
-    },
-    {
-      "label": "Store Cycle Counts",
-      "link_to": "Store Cycle Count",
-      "type": "DocType",
-      "doc_view": "List",
-      "color": "Green"
-    },
-    {
-      "label": "Stock Reconciliation",
-      "link_to": "Stock Reconciliation",
-      "type": "DocType",
-      "doc_view": "List",
-      "color": "Orange"
-    }
-  ],
-  "links": [],
-  "number_cards": [],
-  "charts": [],
-  "custom_blocks": [],
-  "quick_lists": [],
-  "roles": []
+    "doctype":  "Workspace",
+    "name":  "Cycle Count",
+    "label":  "Cycle Count",
+    "title":  "Cycle Count",
+    "module":  "Cycle Count",
+    "icon":  "list-checks",
+    "public":  1,
+    "is_hidden":  0,
+    "content":  "[{\"data\":{\"text\":\"\\u003cspan class=\\\"h4\\\"\\u003eCycle Count\\u003c/span\\u003e\",\"col\":12},\"id\":\"cc_header\",\"type\":\"header\"},{\"data\":{\"number_card_name\":\"Pending Cycle Counts\",\"col\":3},\"id\":\"k1\",\"type\":\"number_card\"},{\"data\":{\"number_card_name\":\"Never Counted Coverage\",\"col\":3},\"id\":\"k2\",\"type\":\"number_card\"},{\"data\":{\"number_card_name\":\"Cycle Count ABS Variance Qty\",\"col\":3},\"id\":\"k3\",\"type\":\"number_card\"},{\"data\":{\"number_card_name\":\"Cycle Count Inventory Accuracy\",\"col\":3},\"id\":\"k4\",\"type\":\"number_card\"},{\"data\":{\"text\":\"\\u003cspan class=\\\"h5\\\"\\u003ePlanning \\u0026 Counting\\u003c/span\\u003e\",\"col\":12},\"id\":\"planning\",\"type\":\"header\"},{\"data\":{\"col\":4,\"shortcut_name\":\"Cycle Count Plans\"},\"id\":\"s1\",\"type\":\"shortcut\"},{\"data\":{\"col\":4,\"shortcut_name\":\"Store Cycle Counts\"},\"id\":\"s2\",\"type\":\"shortcut\"},{\"data\":{\"col\":4,\"shortcut_name\":\"Cycle Count Coverage\"},\"id\":\"s3\",\"type\":\"shortcut\"},{\"data\":{\"text\":\"\\u003cspan class=\\\"h5\\\"\\u003eReports \\u0026 Reconciliation\\u003c/span\\u003e\",\"col\":12},\"id\":\"analytics\",\"type\":\"header\"},{\"data\":{\"col\":3,\"shortcut_name\":\"Cycle Count Coverage Report\"},\"id\":\"s4\",\"type\":\"shortcut\"},{\"data\":{\"col\":3,\"shortcut_name\":\"Pending Cycle Counts Report\"},\"id\":\"s5\",\"type\":\"shortcut\"},{\"data\":{\"col\":3,\"shortcut_name\":\"Cycle Count Variance\"},\"id\":\"s6\",\"type\":\"shortcut\"},{\"data\":{\"col\":3,\"shortcut_name\":\"Stock Reconciliation\"},\"id\":\"s7\",\"type\":\"shortcut\"}]",
+    "shortcuts":  [
+                      {
+                          "label":  "Cycle Count Plans",
+                          "link_to":  "Cycle Count Plan",
+                          "type":  "DocType",
+                          "doc_view":  "List"
+                      },
+                      {
+                          "label":  "Store Cycle Counts",
+                          "link_to":  "Store Cycle Count",
+                          "type":  "DocType",
+                          "doc_view":  "List"
+                      },
+                      {
+                          "label":  "Cycle Count Coverage",
+                          "link_to":  "Cycle Count Coverage",
+                          "type":  "DocType",
+                          "doc_view":  "List"
+                      },
+                      {
+                          "label":  "Cycle Count Coverage Report",
+                          "link_to":  "Cycle Count Coverage",
+                          "type":  "Report"
+                      },
+                      {
+                          "label":  "Pending Cycle Counts Report",
+                          "link_to":  "Pending Cycle Counts",
+                          "type":  "Report"
+                      },
+                      {
+                          "label":  "Cycle Count Variance",
+                          "link_to":  "Cycle Count Variance",
+                          "type":  "Report"
+                      },
+                      {
+                          "label":  "Stock Reconciliation",
+                          "link_to":  "Stock Reconciliation",
+                          "type":  "DocType",
+                          "doc_view":  "List"
+                      }
+                  ],
+    "number_cards":  [
+                         {
+                             "number_card_name":  "Pending Cycle Counts",
+                             "label":  "Pending Cycle Counts"
+                         },
+                         {
+                             "number_card_name":  "Never Counted Coverage",
+                             "label":  "Never Counted Coverage"
+                         },
+                         {
+                             "number_card_name":  "Cycle Count ABS Variance Qty",
+                             "label":  "Cycle Count ABS Variance Qty"
+                         },
+                         {
+                             "number_card_name":  "Cycle Count Inventory Accuracy",
+                             "label":  "Cycle Count Inventory Accuracy"
+                         }
+                     ],
+    "links":  [
+
+              ],
+    "charts":  [
+
+               ],
+    "custom_blocks":  [
+
+                      ],
+    "quick_lists":  [
+
+                    ],
+    "roles":  [
+
+              ]
 }

@@ -3,6 +3,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, now_datetime
 from marina_custom_apps.cycle_count.utils import ensure_counter, is_stock_manager, require_stock_manager, bin_snapshot
+from marina_custom_apps.cycle_count.coverage import mark_completed
 
 class StoreCycleCount(Document):
     def validate(self):
@@ -25,6 +26,7 @@ class StoreCycleCount(Document):
             self.db_set("status","Reconciliation Created",update_modified=False)
         else:
             self.db_set("status","Reconciled",update_modified=False)
+            mark_completed(self)
 
     def before_cancel(self):
         require_stock_manager()
@@ -104,7 +106,7 @@ class StoreCycleCount(Document):
             "warehouse",
             "assigned_to",
             "count_date",
-            "count_window",
+
         )
         for fieldname in immutable_parent:
             if self.get(fieldname) != old.get(fieldname):

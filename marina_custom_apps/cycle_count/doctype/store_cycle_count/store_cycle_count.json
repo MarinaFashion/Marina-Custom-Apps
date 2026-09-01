@@ -14,7 +14,6 @@
                         "status",
                         "schedule_section",
                         "count_date",
-                        "count_window",
                         "count_started_on",
                         "count_completed_on",
                         "counting_section",
@@ -90,13 +89,6 @@
                        "label":  "Count Date",
                        "fieldtype":  "Date",
                        "reqd":  1,
-                       "read_only":  1
-                   },
-                   {
-                       "fieldname":  "count_window",
-                       "label":  "Count Window",
-                       "fieldtype":  "Select",
-                       "options":  "Before Store Opening\\nAfter Store Closing",
                        "read_only":  1
                    },
                    {

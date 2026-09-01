@@ -1,0 +1,1 @@
+frappe.query_reports["Cycle Count Variance"]={filters:[{fieldname:"company",label:__("Company"),fieldtype:"Link",options:"Company"},{fieldname:"warehouse",label:__("Store"),fieldtype:"Link",options:"Warehouse"}]};
