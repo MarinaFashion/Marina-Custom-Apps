@@ -74,7 +74,7 @@
                        "fieldname":  "status",
                        "label":  "Status",
                        "fieldtype":  "Select",
-                       "options":  "Assigned\\nCounting\\nSubmitted for Review\\nRecount Requested\\nReconciliation Created\\nReconciled\\nCancelled",
+                       "options":  "Assigned\nCounting\nSubmitted for Review\nRecount Requested\nReconciliation Created\nReconciled\nCancelled",
                        "default":  "Assigned",
                        "read_only":  1,
                        "in_list_view":  1
@@ -112,7 +112,7 @@
                        "fieldname":  "entry_mode",
                        "label":  "Entry Mode",
                        "fieldtype":  "Select",
-                       "options":  "Manual\\nBarcode",
+                       "options":  "Manual\nBarcode",
                        "default":  "Manual"
                    },
                    {
