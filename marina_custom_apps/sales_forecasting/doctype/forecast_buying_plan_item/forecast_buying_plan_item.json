@@ -1,0 +1,216 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-09-03 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "collection",
+  "drop",
+  "display_date",
+  "main_group",
+  "planned_styles",
+  "planned_total_qty",
+  "planned_total_cost",
+  "planned_selling_value",
+  "calc_section",
+  "avg_qty_per_style",
+  "avg_cost_per_unit",
+  "planned_asp",
+  "selling_value_ex_vat",
+  "planned_gross_profit",
+  "planned_margin_pct",
+  "progress_section",
+  "styles_created",
+  "styles_priced",
+  "po_qty",
+  "received_qty",
+  "assortment_readiness_pct",
+  "price_readiness_pct",
+  "po_completion_pct",
+  "receipt_completion_pct"
+ ],
+ "fields": [
+  {
+   "fieldname": "collection",
+   "fieldtype": "Data",
+   "label": "Collection",
+   "in_list_view": 1,
+   "reqd": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "drop",
+   "fieldtype": "Data",
+   "label": "Drop",
+   "in_list_view": 1,
+   "reqd": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "display_date",
+   "fieldtype": "Date",
+   "label": "Display Date",
+   "in_list_view": 1,
+   "reqd": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "main_group",
+   "fieldtype": "Select",
+   "label": "Group",
+   "options": "\nDresses\nUppers\nBottoms",
+   "in_list_view": 1,
+   "reqd": 1,
+   "columns": 2
+  },
+  {
+   "fieldname": "planned_styles",
+   "fieldtype": "Int",
+   "label": "Styles",
+   "in_list_view": 1,
+   "reqd": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "planned_total_qty",
+   "fieldtype": "Float",
+   "label": "Total Qty",
+   "in_list_view": 1,
+   "reqd": 1,
+   "precision": "0",
+   "columns": 1
+  },
+  {
+   "fieldname": "planned_total_cost",
+   "fieldtype": "Currency",
+   "label": "Total Cost",
+   "in_list_view": 1,
+   "reqd": 1,
+   "options": "currency",
+   "columns": 2
+  },
+  {
+   "fieldname": "planned_selling_value",
+   "fieldtype": "Currency",
+   "label": "Total Selling Value",
+   "in_list_view": 1,
+   "reqd": 1,
+   "options": "currency",
+   "columns": 2
+  },
+  {
+   "fieldname": "calc_section",
+   "fieldtype": "Section Break",
+   "label": "Calculated Plan Metrics"
+  },
+  {
+   "fieldname": "avg_qty_per_style",
+   "fieldtype": "Float",
+   "label": "Avg Qty / Style",
+   "read_only": 1,
+   "precision": "1"
+  },
+  {
+   "fieldname": "avg_cost_per_unit",
+   "fieldtype": "Currency",
+   "label": "Avg Cost / Unit",
+   "read_only": 1,
+   "options": "currency"
+  },
+  {
+   "fieldname": "planned_asp",
+   "fieldtype": "Currency",
+   "label": "Planned ASP incl. VAT",
+   "read_only": 1,
+   "options": "currency"
+  },
+  {
+   "fieldname": "selling_value_ex_vat",
+   "fieldtype": "Currency",
+   "label": "Selling Value excl. VAT",
+   "read_only": 1,
+   "options": "currency"
+  },
+  {
+   "fieldname": "planned_gross_profit",
+   "fieldtype": "Currency",
+   "label": "Planned Gross Profit",
+   "read_only": 1,
+   "options": "currency"
+  },
+  {
+   "fieldname": "planned_margin_pct",
+   "fieldtype": "Percent",
+   "label": "Planned Margin %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "progress_section",
+   "fieldtype": "Section Break",
+   "label": "ERP Buying Readiness"
+  },
+  {
+   "fieldname": "styles_created",
+   "fieldtype": "Int",
+   "label": "Styles Created",
+   "read_only": 1
+  },
+  {
+   "fieldname": "styles_priced",
+   "fieldtype": "Int",
+   "label": "Styles Priced",
+   "read_only": 1
+  },
+  {
+   "fieldname": "po_qty",
+   "fieldtype": "Float",
+   "label": "PO Qty",
+   "read_only": 1,
+   "precision": "0"
+  },
+  {
+   "fieldname": "received_qty",
+   "fieldtype": "Float",
+   "label": "Received Qty",
+   "read_only": 1,
+   "precision": "0"
+  },
+  {
+   "fieldname": "assortment_readiness_pct",
+   "fieldtype": "Percent",
+   "label": "Assortment Readiness %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "price_readiness_pct",
+   "fieldtype": "Percent",
+   "label": "Price Readiness %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "po_completion_pct",
+   "fieldtype": "Percent",
+   "label": "PO Completion %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "receipt_completion_pct",
+   "fieldtype": "Percent",
+   "label": "Receipt Completion %",
+   "read_only": 1
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-09-03 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Sales Forecasting",
+ "name": "Forecast Buying Plan Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

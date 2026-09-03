@@ -1,0 +1,439 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-09-03 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "general_section",
+  "company",
+  "buying_supplier",
+  "selling_price_list",
+  "currency",
+  "vat_rate",
+  "main_groups",
+  "branch_mapping_section",
+  "branch_company_field",
+  "branch_opening_date_field",
+  "branch_store_space_field",
+  "branch_cluster_field",
+  "branch_warehouse_field",
+  "branch_pos_profile_field",
+  "branch_city_field",
+  "item_mapping_section",
+  "item_main_group_field",
+  "item_sub_group_field",
+  "item_year_field",
+  "item_season_field",
+  "item_collection_field",
+  "item_drop_field",
+  "item_display_date_field",
+  "calendar_section",
+  "calendar_doctype",
+  "calendar_date_field",
+  "calendar_event_field",
+  "calendar_hijri_date_field",
+  "calendar_hijri_month_name_field",
+  "calendar_hijri_day_field",
+  "calendar_hijri_month_field",
+  "calendar_hijri_year_field",
+  "salary_section",
+  "salary_pre_start_day",
+  "salary_peak_start_day",
+  "salary_peak_end_next_month_day",
+  "salary_decline_end_day",
+  "data_mart_section",
+  "history_start_date",
+  "daily_refresh_lookback_days",
+  "displayed_style_window_days",
+  "inventory_active_window_days",
+  "ignore_pos_shift_over_hours",
+  "data_mart_batch_size",
+  "model_section",
+  "model_name",
+  "lookback_years",
+  "recency_half_life_days",
+  "minimum_analog_samples",
+  "confidence_z",
+  "apply_buying_plan_adjustment"
+ ],
+ "fields": [
+  {
+   "fieldname": "general_section",
+   "fieldtype": "Section Break",
+   "label": "General"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "default": "Marina",
+   "reqd": 1
+  },
+  {
+   "fieldname": "buying_supplier",
+   "fieldtype": "Link",
+   "label": "Buying Supplier",
+   "options": "Supplier",
+   "default": "Midmak",
+   "description": "Supplier used for original buying Purchase Orders."
+  },
+  {
+   "fieldname": "selling_price_list",
+   "fieldtype": "Link",
+   "label": "Selling Price List",
+   "options": "Price List",
+   "default": "Standard Selling",
+   "reqd": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Forecast Currency",
+   "options": "Currency",
+   "default": "SAR",
+   "reqd": 1
+  },
+  {
+   "fieldname": "vat_rate",
+   "fieldtype": "Percent",
+   "label": "VAT Rate",
+   "default": "15",
+   "reqd": 1
+  },
+  {
+   "fieldname": "main_groups",
+   "fieldtype": "Data",
+   "label": "Forecast Main Groups",
+   "default": "Dresses,Uppers,Bottoms",
+   "description": "Comma-separated Item Main Group values included in the forecasting model.",
+   "reqd": 1
+  },
+  {
+   "fieldname": "branch_mapping_section",
+   "fieldtype": "Section Break",
+   "label": "Branch Mapping"
+  },
+  {
+   "fieldname": "branch_company_field",
+   "fieldtype": "Data",
+   "label": "Branch Company Field",
+   "default": "custom_company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "branch_opening_date_field",
+   "fieldtype": "Data",
+   "label": "Branch Opening Date Field",
+   "default": "custom_opening_date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "branch_store_space_field",
+   "fieldtype": "Data",
+   "label": "Branch Store Space Field",
+   "default": "custom_store_space",
+   "reqd": 1
+  },
+  {
+   "fieldname": "branch_cluster_field",
+   "fieldtype": "Data",
+   "label": "Branch Cluster Field",
+   "default": "custom_cluster",
+   "reqd": 1
+  },
+  {
+   "fieldname": "branch_warehouse_field",
+   "fieldtype": "Data",
+   "label": "Branch Warehouse Field",
+   "default": "custom_warehouse",
+   "reqd": 1
+  },
+  {
+   "fieldname": "branch_pos_profile_field",
+   "fieldtype": "Data",
+   "label": "Branch POS Profile Field",
+   "default": "custom_pos_profile",
+   "reqd": 1
+  },
+  {
+   "fieldname": "branch_city_field",
+   "fieldtype": "Data",
+   "label": "Branch City Field",
+   "default": "custom_city",
+   "reqd": 1
+  },
+  {
+   "fieldname": "item_mapping_section",
+   "fieldtype": "Section Break",
+   "label": "Item Mapping"
+  },
+  {
+   "fieldname": "item_main_group_field",
+   "fieldtype": "Data",
+   "label": "Item Main Group Field",
+   "default": "custom_item_main_group",
+   "reqd": 1
+  },
+  {
+   "fieldname": "item_sub_group_field",
+   "fieldtype": "Data",
+   "label": "Item Sub Group Field",
+   "default": "item_sub_group",
+   "reqd": 1
+  },
+  {
+   "fieldname": "item_year_field",
+   "fieldtype": "Data",
+   "label": "Item Year Field",
+   "default": "item_year",
+   "reqd": 1
+  },
+  {
+   "fieldname": "item_season_field",
+   "fieldtype": "Data",
+   "label": "Item Season Field",
+   "default": "season",
+   "reqd": 1
+  },
+  {
+   "fieldname": "item_collection_field",
+   "fieldtype": "Data",
+   "label": "Item Collection Field",
+   "default": "collection",
+   "reqd": 1
+  },
+  {
+   "fieldname": "item_drop_field",
+   "fieldtype": "Data",
+   "label": "Item Drop Field",
+   "default": "custom_drop",
+   "reqd": 1
+  },
+  {
+   "fieldname": "item_display_date_field",
+   "fieldtype": "Data",
+   "label": "Item Display Date Field",
+   "default": "display_date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "calendar_section",
+   "fieldtype": "Section Break",
+   "label": "Calendar / Hijri Mapping"
+  },
+  {
+   "fieldname": "calendar_doctype",
+   "fieldtype": "Data",
+   "label": "Calendar DocType",
+   "description": "Leave blank to auto-detect the Marina calendar DocType containing date, event and Hijri fields."
+  },
+  {
+   "fieldname": "calendar_date_field",
+   "fieldtype": "Data",
+   "label": "Gregorian Date Field",
+   "default": "date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "calendar_event_field",
+   "fieldtype": "Data",
+   "label": "Event Field",
+   "default": "event",
+   "reqd": 1
+  },
+  {
+   "fieldname": "calendar_hijri_date_field",
+   "fieldtype": "Data",
+   "label": "Hijri Date Field",
+   "default": "hijri_date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "calendar_hijri_month_name_field",
+   "fieldtype": "Data",
+   "label": "Hijri Month Name Field",
+   "default": "hijri_m_name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "calendar_hijri_day_field",
+   "fieldtype": "Data",
+   "label": "Hijri Day Field",
+   "default": "day",
+   "reqd": 1
+  },
+  {
+   "fieldname": "calendar_hijri_month_field",
+   "fieldtype": "Data",
+   "label": "Hijri Month Field",
+   "default": "month",
+   "reqd": 1
+  },
+  {
+   "fieldname": "calendar_hijri_year_field",
+   "fieldtype": "Data",
+   "label": "Hijri Year Field",
+   "default": "year",
+   "reqd": 1
+  },
+  {
+   "fieldname": "salary_section",
+   "fieldtype": "Section Break",
+   "label": "Customer Salary Cycle"
+  },
+  {
+   "fieldname": "salary_pre_start_day",
+   "fieldtype": "Int",
+   "label": "Pre-Salary Starts",
+   "default": "25",
+   "reqd": 1
+  },
+  {
+   "fieldname": "salary_peak_start_day",
+   "fieldtype": "Int",
+   "label": "Salary Peak Starts",
+   "default": "27",
+   "reqd": 1
+  },
+  {
+   "fieldname": "salary_peak_end_next_month_day",
+   "fieldtype": "Int",
+   "label": "Peak Ends (Next Month Day)",
+   "default": "3",
+   "reqd": 1
+  },
+  {
+   "fieldname": "salary_decline_end_day",
+   "fieldtype": "Int",
+   "label": "Post-Salary Decline Ends",
+   "default": "9",
+   "reqd": 1
+  },
+  {
+   "fieldname": "data_mart_section",
+   "fieldtype": "Section Break",
+   "label": "Data Mart"
+  },
+  {
+   "fieldname": "history_start_date",
+   "fieldtype": "Date",
+   "label": "History Start Date",
+   "default": "2023-01-01",
+   "reqd": 1
+  },
+  {
+   "fieldname": "daily_refresh_lookback_days",
+   "fieldtype": "Int",
+   "label": "Daily Refresh Lookback Days",
+   "default": "14",
+   "reqd": 1
+  },
+  {
+   "fieldname": "displayed_style_window_days",
+   "fieldtype": "Int",
+   "label": "Displayed Style Window (Days)",
+   "default": "180",
+   "description": "Styles displayed within this rolling window count as active displayed assortment.",
+   "reqd": 1
+  },
+  {
+   "fieldname": "inventory_active_window_days",
+   "fieldtype": "Int",
+   "label": "Inventory Active Window (Days)",
+   "default": "365",
+   "description": "Inventory features include styles within this many days of display.",
+   "reqd": 1
+  },
+  {
+   "fieldname": "ignore_pos_shift_over_hours",
+   "fieldtype": "Float",
+   "label": "Ignore POS Shift Over (Hours)",
+   "default": "24",
+   "description": "Individual POS shifts longer than this are treated as test/anomalous records."
+  },
+  {
+   "fieldname": "data_mart_batch_size",
+   "fieldtype": "Int",
+   "label": "Insert Batch Size",
+   "default": "5000",
+   "reqd": 1
+  },
+  {
+   "fieldname": "model_section",
+   "fieldtype": "Section Break",
+   "label": "Forecast Model"
+  },
+  {
+   "fieldname": "model_name",
+   "fieldtype": "Data",
+   "label": "Model Name",
+   "default": "Marina Analog Ensemble v1",
+   "read_only": 1
+  },
+  {
+   "fieldname": "lookback_years",
+   "fieldtype": "Int",
+   "label": "Lookback Years",
+   "default": "3",
+   "reqd": 1
+  },
+  {
+   "fieldname": "recency_half_life_days",
+   "fieldtype": "Int",
+   "label": "Recency Half-Life (Days)",
+   "default": "365",
+   "reqd": 1
+  },
+  {
+   "fieldname": "minimum_analog_samples",
+   "fieldtype": "Int",
+   "label": "Minimum Analog Samples",
+   "default": "20",
+   "reqd": 1
+  },
+  {
+   "fieldname": "confidence_z",
+   "fieldtype": "Float",
+   "label": "Forecast Range Z",
+   "default": "1.28",
+   "description": "1.28 produces an approximately 80% interval for a normal distribution."
+  },
+  {
+   "fieldname": "apply_buying_plan_adjustment",
+   "fieldtype": "Check",
+   "label": "Apply Buying Plan Assortment Adjustment",
+   "default": "1"
+  }
+ ],
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-09-03 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Sales Forecasting",
+ "name": "Sales Forecast Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Sales Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

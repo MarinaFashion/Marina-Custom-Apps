@@ -4,12 +4,12 @@ app_publisher = "Marina Trading Company"
 app_description = "Marina Trading Company custom Frappe/ERPNext modules"
 app_email = "it@marinafashion.com.sa"
 app_license = "MIT"
-app_version = "0.42.2"
+app_version = "0.43.0"
 
 required_apps = ["erpnext"]
 
-after_install = "marina_custom_apps.install.after_install"
-after_migrate = "marina_custom_apps.install.after_migrate"
+after_install = "marina_custom_apps.sales_forecasting.install.app_after_install"
+after_migrate = "marina_custom_apps.sales_forecasting.install.app_after_migrate"
 
 doc_events = {
     "Stock Reconciliation": {
@@ -54,7 +54,8 @@ override_doctype_dashboards = {
 
 scheduler_events = {
     "daily": [
-        "marina_custom_apps.stock_transfer_audit.alerts.send_daily_stock_transfer_control_alerts"
+        "marina_custom_apps.stock_transfer_audit.alerts.send_daily_stock_transfer_control_alerts",
+        "marina_custom_apps.sales_forecasting.tasks.daily_refresh",
     ],
 }
 

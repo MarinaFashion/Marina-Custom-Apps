@@ -1,0 +1,281 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "format:SFR-{YYYY}-{#####}",
+ "creation": "2026-09-03 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "setup_section",
+  "run_type",
+  "status",
+  "as_of_date",
+  "forecast_from",
+  "forecast_to",
+  "company",
+  "buying_plan",
+  "scope_section",
+  "branch",
+  "main_group",
+  "model_section",
+  "model_name",
+  "generated_on",
+  "history_from",
+  "history_to",
+  "summary_section",
+  "forecast_sales",
+  "forecast_units",
+  "actual_sales",
+  "actual_units",
+  "column_break_summary",
+  "wape",
+  "accuracy_pct",
+  "bias_pct",
+  "mae",
+  "result_count",
+  "preview_section",
+  "forecast_preview",
+  "error_section",
+  "error_message"
+ ],
+ "fields": [
+  {
+   "fieldname": "setup_section",
+   "fieldtype": "Section Break",
+   "label": "Forecast Setup"
+  },
+  {
+   "fieldname": "run_type",
+   "fieldtype": "Select",
+   "label": "Run Type",
+   "options": "Future\nBacktest",
+   "default": "Future",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nQueued\nRunning\nCompleted\nFailed",
+   "default": "Draft",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "as_of_date",
+   "fieldtype": "Date",
+   "label": "Information Available Through",
+   "default": "Today",
+   "reqd": 1,
+   "description": "Backtests use only information before this date, preventing future-data leakage."
+  },
+  {
+   "fieldname": "forecast_from",
+   "fieldtype": "Date",
+   "label": "Forecast From",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "forecast_to",
+   "fieldtype": "Date",
+   "label": "Forecast To",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "default": "Marina",
+   "reqd": 1
+  },
+  {
+   "fieldname": "buying_plan",
+   "fieldtype": "Link",
+   "label": "Buying Plan",
+   "options": "Forecast Buying Plan",
+   "description": "Optional. If blank, the engine uses the latest approved plan effective on the As Of Date."
+  },
+  {
+   "fieldname": "scope_section",
+   "fieldtype": "Section Break",
+   "label": "Optional Scope",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "label": "Branch",
+   "options": "Branch",
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "main_group",
+   "fieldtype": "Select",
+   "label": "Main Group",
+   "options": "\nDresses\nUppers\nBottoms",
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "model_section",
+   "fieldtype": "Section Break",
+   "label": "Model"
+  },
+  {
+   "fieldname": "model_name",
+   "fieldtype": "Data",
+   "label": "Model",
+   "read_only": 1
+  },
+  {
+   "fieldname": "generated_on",
+   "fieldtype": "Datetime",
+   "label": "Generated On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "history_from",
+   "fieldtype": "Date",
+   "label": "History From",
+   "read_only": 1
+  },
+  {
+   "fieldname": "history_to",
+   "fieldtype": "Date",
+   "label": "History To",
+   "read_only": 1
+  },
+  {
+   "fieldname": "summary_section",
+   "fieldtype": "Section Break",
+   "label": "Forecast Summary"
+  },
+  {
+   "fieldname": "forecast_sales",
+   "fieldtype": "Currency",
+   "label": "Forecast Sales incl. VAT",
+   "read_only": 1
+  },
+  {
+   "fieldname": "forecast_units",
+   "fieldtype": "Float",
+   "label": "Forecast Units",
+   "read_only": 1,
+   "precision": "1"
+  },
+  {
+   "fieldname": "actual_sales",
+   "fieldtype": "Currency",
+   "label": "Actual Sales incl. VAT",
+   "read_only": 1
+  },
+  {
+   "fieldname": "actual_units",
+   "fieldtype": "Float",
+   "label": "Actual Units",
+   "read_only": 1,
+   "precision": "1"
+  },
+  {
+   "fieldname": "column_break_summary",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "wape",
+   "fieldtype": "Percent",
+   "label": "WAPE",
+   "read_only": 1
+  },
+  {
+   "fieldname": "accuracy_pct",
+   "fieldtype": "Percent",
+   "label": "Accuracy %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bias_pct",
+   "fieldtype": "Percent",
+   "label": "Bias %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "mae",
+   "fieldtype": "Currency",
+   "label": "MAE",
+   "read_only": 1
+  },
+  {
+   "fieldname": "result_count",
+   "fieldtype": "Int",
+   "label": "Result Rows",
+   "read_only": 1
+  },
+  {
+   "fieldname": "preview_section",
+   "fieldtype": "Section Break",
+   "label": "Forecast Preview"
+  },
+  {
+   "fieldname": "forecast_preview",
+   "fieldtype": "HTML",
+   "label": "Preview"
+  },
+  {
+   "fieldname": "error_section",
+   "fieldtype": "Section Break",
+   "label": "Error Details",
+   "depends_on": "eval:doc.status=='Failed'"
+  },
+  {
+   "fieldname": "error_message",
+   "fieldtype": "Small Text",
+   "label": "Error Message",
+   "read_only": 1
+  }
+ ],
+ "links": [
+  {
+   "link_doctype": "Sales Forecast Result",
+   "link_fieldname": "forecast_run"
+  }
+ ],
+ "modified": "2026-09-03 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Sales Forecasting",
+ "name": "Sales Forecast Run",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,354 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "field:record_key",
+ "creation": "2026-09-03 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "key_section",
+  "record_key",
+  "date",
+  "branch",
+  "warehouse",
+  "main_group",
+  "sub_group",
+  "store_section",
+  "city",
+  "cluster",
+  "store_space",
+  "store_age_days",
+  "store_open_flag",
+  "operating_hours",
+  "sales_section",
+  "retail_sales_value",
+  "net_revenue_ex_vat",
+  "net_units",
+  "transaction_count",
+  "return_units",
+  "return_value",
+  "avg_realized_price",
+  "realized_discount_pct",
+  "assortment_section",
+  "displayed_styles",
+  "new_styles_7d",
+  "new_styles_30d",
+  "closing_stock_units",
+  "in_stock_skus",
+  "styles_in_stock",
+  "avg_sizes_in_stock_per_style",
+  "avg_markdown_pct",
+  "calendar_section",
+  "weekday",
+  "is_weekend",
+  "gregorian_month",
+  "hijri_date",
+  "hijri_month_name",
+  "hijri_day",
+  "hijri_month",
+  "hijri_year",
+  "event",
+  "salary_phase"
+ ],
+ "fields": [
+  {
+   "fieldname": "key_section",
+   "fieldtype": "Section Break",
+   "label": "Dimension"
+  },
+  {
+   "fieldname": "record_key",
+   "fieldtype": "Data",
+   "label": "Record Key",
+   "unique": 1,
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "label": "Branch",
+   "options": "Branch",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Warehouse",
+   "options": "Warehouse",
+   "reqd": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "main_group",
+   "fieldtype": "Data",
+   "label": "Main Group",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "sub_group",
+   "fieldtype": "Data",
+   "label": "Sub Group",
+   "read_only": 1
+  },
+  {
+   "fieldname": "store_section",
+   "fieldtype": "Section Break",
+   "label": "Store Context"
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "label": "City",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cluster",
+   "fieldtype": "Data",
+   "label": "Cluster",
+   "read_only": 1
+  },
+  {
+   "fieldname": "store_space",
+   "fieldtype": "Float",
+   "label": "Store Space",
+   "read_only": 1
+  },
+  {
+   "fieldname": "store_age_days",
+   "fieldtype": "Int",
+   "label": "Store Age (Days)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "store_open_flag",
+   "fieldtype": "Check",
+   "label": "Store Open",
+   "read_only": 1
+  },
+  {
+   "fieldname": "operating_hours",
+   "fieldtype": "Float",
+   "label": "Operating Hours",
+   "read_only": 1,
+   "precision": "2"
+  },
+  {
+   "fieldname": "sales_section",
+   "fieldtype": "Section Break",
+   "label": "Sales"
+  },
+  {
+   "fieldname": "retail_sales_value",
+   "fieldtype": "Currency",
+   "label": "Retail Sales incl. VAT",
+   "read_only": 1
+  },
+  {
+   "fieldname": "net_revenue_ex_vat",
+   "fieldtype": "Currency",
+   "label": "Net Revenue excl. VAT",
+   "read_only": 1
+  },
+  {
+   "fieldname": "net_units",
+   "fieldtype": "Float",
+   "label": "Net Units",
+   "read_only": 1,
+   "precision": "0"
+  },
+  {
+   "fieldname": "transaction_count",
+   "fieldtype": "Int",
+   "label": "Transactions",
+   "read_only": 1
+  },
+  {
+   "fieldname": "return_units",
+   "fieldtype": "Float",
+   "label": "Return Units",
+   "read_only": 1,
+   "precision": "0"
+  },
+  {
+   "fieldname": "return_value",
+   "fieldtype": "Currency",
+   "label": "Return Value",
+   "read_only": 1
+  },
+  {
+   "fieldname": "avg_realized_price",
+   "fieldtype": "Currency",
+   "label": "Avg Realized Price",
+   "read_only": 1
+  },
+  {
+   "fieldname": "realized_discount_pct",
+   "fieldtype": "Percent",
+   "label": "Realized Discount %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "assortment_section",
+   "fieldtype": "Section Break",
+   "label": "Assortment / Inventory / Price"
+  },
+  {
+   "fieldname": "displayed_styles",
+   "fieldtype": "Int",
+   "label": "Displayed Styles",
+   "read_only": 1
+  },
+  {
+   "fieldname": "new_styles_7d",
+   "fieldtype": "Int",
+   "label": "New Styles 7D",
+   "read_only": 1
+  },
+  {
+   "fieldname": "new_styles_30d",
+   "fieldtype": "Int",
+   "label": "New Styles 30D",
+   "read_only": 1
+  },
+  {
+   "fieldname": "closing_stock_units",
+   "fieldtype": "Float",
+   "label": "Closing Stock Units",
+   "read_only": 1,
+   "precision": "0"
+  },
+  {
+   "fieldname": "in_stock_skus",
+   "fieldtype": "Int",
+   "label": "SKUs In Stock",
+   "read_only": 1
+  },
+  {
+   "fieldname": "styles_in_stock",
+   "fieldtype": "Int",
+   "label": "Styles In Stock",
+   "read_only": 1
+  },
+  {
+   "fieldname": "avg_sizes_in_stock_per_style",
+   "fieldtype": "Float",
+   "label": "Avg Sizes In Stock / Style",
+   "read_only": 1,
+   "precision": "2"
+  },
+  {
+   "fieldname": "avg_markdown_pct",
+   "fieldtype": "Percent",
+   "label": "Avg Published Markdown %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "calendar_section",
+   "fieldtype": "Section Break",
+   "label": "Calendar / Event"
+  },
+  {
+   "fieldname": "weekday",
+   "fieldtype": "Data",
+   "label": "Weekday",
+   "read_only": 1
+  },
+  {
+   "fieldname": "is_weekend",
+   "fieldtype": "Check",
+   "label": "Weekend",
+   "read_only": 1
+  },
+  {
+   "fieldname": "gregorian_month",
+   "fieldtype": "Int",
+   "label": "Gregorian Month",
+   "read_only": 1
+  },
+  {
+   "fieldname": "hijri_date",
+   "fieldtype": "Data",
+   "label": "Hijri Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "hijri_month_name",
+   "fieldtype": "Data",
+   "label": "Hijri Month Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "hijri_day",
+   "fieldtype": "Int",
+   "label": "Hijri Day",
+   "read_only": 1
+  },
+  {
+   "fieldname": "hijri_month",
+   "fieldtype": "Int",
+   "label": "Hijri Month",
+   "read_only": 1
+  },
+  {
+   "fieldname": "hijri_year",
+   "fieldtype": "Int",
+   "label": "Hijri Year",
+   "read_only": 1
+  },
+  {
+   "fieldname": "event",
+   "fieldtype": "Data",
+   "label": "Event",
+   "read_only": 1
+  },
+  {
+   "fieldname": "salary_phase",
+   "fieldtype": "Select",
+   "label": "Salary Phase",
+   "options": "Normal\nPre-Salary\nSalary Peak\nPost-Salary Decline",
+   "read_only": 1
+  }
+ ],
+ "links": [],
+ "modified": "2026-09-03 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Sales Forecasting",
+ "name": "Sales Forecast Daily",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "role": "System Manager"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "role": "Sales Manager"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "role": "Stock Manager"
+  }
+ ],
+ "sort_field": "date",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -3,3 +3,4 @@ Stock Transfer Audit
 DC Dispatch
 Stock Auto Allocation
 Cycle Count
+Sales Forecasting

@@ -1,0 +1,199 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "field:result_key",
+ "creation": "2026-09-03 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "identity_section",
+  "result_key",
+  "forecast_run",
+  "date",
+  "branch",
+  "main_group",
+  "forecast_section",
+  "forecast_sales",
+  "forecast_sales_low",
+  "forecast_sales_high",
+  "forecast_units",
+  "forecast_asp",
+  "confidence_pct",
+  "actual_section",
+  "actual_sales",
+  "actual_units",
+  "absolute_error",
+  "signed_error",
+  "absolute_pct_error",
+  "diagnostics_section",
+  "analog_samples",
+  "drivers"
+ ],
+ "fields": [
+  {
+   "fieldname": "identity_section",
+   "fieldtype": "Section Break",
+   "label": "Forecast Dimension"
+  },
+  {
+   "fieldname": "result_key",
+   "fieldtype": "Data",
+   "label": "Result Key",
+   "unique": 1,
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "forecast_run",
+   "fieldtype": "Link",
+   "label": "Forecast Run",
+   "options": "Sales Forecast Run",
+   "reqd": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "label": "Branch",
+   "options": "Branch",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "main_group",
+   "fieldtype": "Data",
+   "label": "Main Group",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "forecast_section",
+   "fieldtype": "Section Break",
+   "label": "Forecast"
+  },
+  {
+   "fieldname": "forecast_sales",
+   "fieldtype": "Currency",
+   "label": "Forecast Sales incl. VAT",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "forecast_sales_low",
+   "fieldtype": "Currency",
+   "label": "Low",
+   "read_only": 1
+  },
+  {
+   "fieldname": "forecast_sales_high",
+   "fieldtype": "Currency",
+   "label": "High",
+   "read_only": 1
+  },
+  {
+   "fieldname": "forecast_units",
+   "fieldtype": "Float",
+   "label": "Forecast Units",
+   "read_only": 1,
+   "precision": "1"
+  },
+  {
+   "fieldname": "forecast_asp",
+   "fieldtype": "Currency",
+   "label": "Forecast ASP",
+   "read_only": 1
+  },
+  {
+   "fieldname": "confidence_pct",
+   "fieldtype": "Percent",
+   "label": "Confidence %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "actual_section",
+   "fieldtype": "Section Break",
+   "label": "Actual / Accuracy"
+  },
+  {
+   "fieldname": "actual_sales",
+   "fieldtype": "Currency",
+   "label": "Actual Sales incl. VAT",
+   "read_only": 1
+  },
+  {
+   "fieldname": "actual_units",
+   "fieldtype": "Float",
+   "label": "Actual Units",
+   "read_only": 1,
+   "precision": "1"
+  },
+  {
+   "fieldname": "absolute_error",
+   "fieldtype": "Currency",
+   "label": "Absolute Error",
+   "read_only": 1
+  },
+  {
+   "fieldname": "signed_error",
+   "fieldtype": "Currency",
+   "label": "Signed Error",
+   "read_only": 1
+  },
+  {
+   "fieldname": "absolute_pct_error",
+   "fieldtype": "Percent",
+   "label": "Absolute % Error",
+   "read_only": 1
+  },
+  {
+   "fieldname": "diagnostics_section",
+   "fieldtype": "Section Break",
+   "label": "Diagnostics"
+  },
+  {
+   "fieldname": "analog_samples",
+   "fieldtype": "Int",
+   "label": "Analog Samples",
+   "read_only": 1
+  },
+  {
+   "fieldname": "drivers",
+   "fieldtype": "Small Text",
+   "label": "Model Drivers",
+   "read_only": 1
+  }
+ ],
+ "links": [],
+ "modified": "2026-09-03 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Sales Forecasting",
+ "name": "Sales Forecast Result",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "role": "System Manager"
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "role": "Sales Manager"
+  }
+ ],
+ "sort_field": "date",
+ "sort_order": "DESC",
+ "states": []
+}

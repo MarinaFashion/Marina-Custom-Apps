@@ -1,0 +1,138 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"sf-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Marina Sales Forecasting Control Center</b></span>\",\"col\":12}},{\"id\":\"kpi1\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Forecast Planned Qty 90D\",\"col\":3}},{\"id\":\"kpi2\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Forecast Planned Styles 90D\",\"col\":3}},{\"id\":\"kpi3\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Forecast Latest Accuracy\",\"col\":3}},{\"id\":\"kpi4\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Forecast Data Mart Records\",\"col\":3}},{\"id\":\"sp1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"plan-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Plan \\u2192 Forecast \\u2192 Learn</span>\",\"col\":12}},{\"id\":\"s1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"New Buying Plan\",\"col\":3}},{\"id\":\"s2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Buying Plans\",\"col\":3}},{\"id\":\"s3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"New Forecast Run\",\"col\":3}},{\"id\":\"s4\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Forecast Runs\",\"col\":3}},{\"id\":\"s5\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Forecast Results\",\"col\":3}},{\"id\":\"s6\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Forecast Daily Data\",\"col\":3}},{\"id\":\"s7\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Forecast Settings\",\"col\":3}},{\"id\":\"accuracy-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Accuracy & Learning</span>\",\"col\":12}},{\"id\":\"s12\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Forecast Accuracy Analysis\",\"col\":4}},{\"id\":\"sp2\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"master-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Source Masters</span>\",\"col\":12}},{\"id\":\"s8\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Branches\",\"col\":3}},{\"id\":\"s9\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Items\",\"col\":3}},{\"id\":\"s10\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Purchase Orders\",\"col\":3}},{\"id\":\"s11\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Invoices\",\"col\":3}}]",
+ "creation": "2026-09-03 00:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "chart",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Sales Forecasting",
+ "links": [],
+ "modified": "2026-09-03 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Sales Forecasting",
+ "name": "Sales Forecasting",
+ "number_cards": [
+  {
+   "number_card_name": "Forecast Planned Qty 90D",
+   "label": "Forecast Planned Qty 90D"
+  },
+  {
+   "number_card_name": "Forecast Planned Styles 90D",
+   "label": "Forecast Planned Styles 90D"
+  },
+  {
+   "number_card_name": "Forecast Latest Accuracy",
+   "label": "Forecast Latest Accuracy"
+  },
+  {
+   "number_card_name": "Forecast Data Mart Records",
+   "label": "Forecast Data Mart Records"
+  }
+ ],
+ "owner": "Administrator",
+ "parent_page": "Selling",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "Sales Manager"
+  },
+  {
+   "role": "Purchase Manager"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "sequence_id": 20.0,
+ "shortcuts": [
+  {
+   "color": "Green",
+   "doc_view": "New",
+   "label": "New Buying Plan",
+   "link_to": "Forecast Buying Plan",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Buying Plans",
+   "link_to": "Forecast Buying Plan",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "New",
+   "label": "New Forecast Run",
+   "link_to": "Sales Forecast Run",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Forecast Runs",
+   "link_to": "Sales Forecast Run",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "label": "Forecast Results",
+   "link_to": "Sales Forecast Result",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Forecast Daily Data",
+   "link_to": "Sales Forecast Daily",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "label": "Forecast Settings",
+   "link_to": "Sales Forecast Settings",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Branches",
+   "link_to": "Branch",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Items",
+   "link_to": "Item",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Purchase Orders",
+   "link_to": "Purchase Order",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Sales Invoices",
+   "link_to": "Sales Invoice",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "label": "Forecast Accuracy Analysis",
+   "link_to": "Forecast Accuracy Analysis",
+   "type": "Report"
+  }
+ ],
+ "title": "Sales Forecasting"
+}

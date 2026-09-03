@@ -1,0 +1,306 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-09-03 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "is_submittable": 1,
+ "field_order": [
+  "identity_section",
+  "company",
+  "plan_year",
+  "season",
+  "version",
+  "effective_from",
+  "status",
+  "currency",
+  "plan_items_section",
+  "items",
+  "totals_section",
+  "total_styles",
+  "total_qty",
+  "total_cost",
+  "total_selling_value",
+  "column_break_totals",
+  "selling_value_ex_vat",
+  "planned_gross_profit",
+  "planned_margin_pct",
+  "readiness_section",
+  "styles_created",
+  "styles_priced",
+  "po_qty",
+  "received_qty",
+  "assortment_readiness_pct",
+  "po_completion_pct",
+  "receipt_completion_pct",
+  "revision_of",
+  "notes_section",
+  "notes",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "identity_section",
+   "fieldtype": "Section Break",
+   "label": "Buying Plan Identity"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "default": "Marina",
+   "reqd": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "plan_year",
+   "fieldtype": "Int",
+   "label": "Year",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "season",
+   "fieldtype": "Data",
+   "label": "Season",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "version",
+   "fieldtype": "Int",
+   "label": "Version",
+   "default": "1",
+   "reqd": 1,
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "effective_from",
+   "fieldtype": "Date",
+   "label": "Effective From",
+   "default": "Today",
+   "reqd": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nApproved\nSuperseded\nCancelled",
+   "default": "Draft",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "default": "SAR",
+   "reqd": 1
+  },
+  {
+   "fieldname": "plan_items_section",
+   "fieldtype": "Section Break",
+   "label": "Buying Plan by Display / Group"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Buying Plan Items",
+   "options": "Forecast Buying Plan Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "totals_section",
+   "fieldtype": "Section Break",
+   "label": "Plan Totals"
+  },
+  {
+   "fieldname": "total_styles",
+   "fieldtype": "Int",
+   "label": "Total Styles",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_qty",
+   "fieldtype": "Float",
+   "label": "Total Qty",
+   "read_only": 1,
+   "precision": "0"
+  },
+  {
+   "fieldname": "total_cost",
+   "fieldtype": "Currency",
+   "label": "Total Cost",
+   "read_only": 1,
+   "options": "currency"
+  },
+  {
+   "fieldname": "total_selling_value",
+   "fieldtype": "Currency",
+   "label": "Total Selling Value incl. VAT",
+   "read_only": 1,
+   "options": "currency"
+  },
+  {
+   "fieldname": "column_break_totals",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "selling_value_ex_vat",
+   "fieldtype": "Currency",
+   "label": "Selling Value excl. VAT",
+   "read_only": 1,
+   "options": "currency"
+  },
+  {
+   "fieldname": "planned_gross_profit",
+   "fieldtype": "Currency",
+   "label": "Planned Gross Profit",
+   "read_only": 1,
+   "options": "currency"
+  },
+  {
+   "fieldname": "planned_margin_pct",
+   "fieldtype": "Percent",
+   "label": "Planned Margin %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "readiness_section",
+   "fieldtype": "Section Break",
+   "label": "ERP Buying Readiness"
+  },
+  {
+   "fieldname": "styles_created",
+   "fieldtype": "Int",
+   "label": "Styles Created",
+   "read_only": 1
+  },
+  {
+   "fieldname": "styles_priced",
+   "fieldtype": "Int",
+   "label": "Styles Priced",
+   "read_only": 1
+  },
+  {
+   "fieldname": "po_qty",
+   "fieldtype": "Float",
+   "label": "PO Qty",
+   "read_only": 1,
+   "precision": "0"
+  },
+  {
+   "fieldname": "received_qty",
+   "fieldtype": "Float",
+   "label": "Received Qty",
+   "read_only": 1,
+   "precision": "0"
+  },
+  {
+   "fieldname": "assortment_readiness_pct",
+   "fieldtype": "Percent",
+   "label": "Assortment Readiness %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "po_completion_pct",
+   "fieldtype": "Percent",
+   "label": "PO Completion %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "receipt_completion_pct",
+   "fieldtype": "Percent",
+   "label": "Receipt Completion %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "revision_of",
+   "fieldtype": "Link",
+   "label": "Revision Of",
+   "options": "Forecast Buying Plan",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "notes_section",
+   "fieldtype": "Section Break",
+   "label": "Notes",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "options": "Forecast Buying Plan",
+   "read_only": 1,
+   "no_copy": 1,
+   "print_hide": 1
+  }
+ ],
+ "links": [],
+ "modified": "2026-09-03 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Sales Forecasting",
+ "name": "Forecast Buying Plan",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Sales Manager",
+   "share": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Purchase Manager",
+   "write": 1,
+   "create": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1,
+   "export": 1,
+   "report": 1,
+   "print": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "season"
+}
