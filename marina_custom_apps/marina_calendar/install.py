@@ -27,6 +27,7 @@ def after_migrate():
     _point_forecasting_to_marina_calendar()
 
 
+
 def detect_legacy_calendar_doctype():
     if not frappe.db.exists("DocType", "DocType"):
         return None

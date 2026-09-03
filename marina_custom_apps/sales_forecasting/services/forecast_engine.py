@@ -95,6 +95,7 @@ def run_forecast(run_name, *, commit=True):
                     target["hijri_day"] = cint(cal_ctx.get("hijri_day"))
                     target["hijri_month"] = cint(cal_ctx.get("hijri_month"))
                     target["event"] = cal_ctx.get("event") or ""
+                    target["store_trading_status"] = cal_ctx.get("store_trading_status") or "No Change"
                     plan_features = _plan_features(plan_context, group, day)
                     recent = latest_context.get((branch.name, group), {})
                     target["new_styles_30d"] = (
@@ -107,7 +108,23 @@ def run_forecast(run_name, *, commit=True):
                     candidates, fallback = _candidate_pool(
                         pools, branch, group, cint(cfg.minimum_analog_samples or 20)
                     )
-                    pred = _predict_one(candidates, target, branch, fallback, cfg, plan_features)
+                    if target["store_trading_status"] == "Closed":
+                        pred = {
+                            "forecast_sales": 0, "forecast_units": 0, "forecast_asp": 0,
+                            "low": 0, "high": 0, "confidence": 95, "samples": 0,
+                            "drivers": {
+                                "fallback": fallback,
+                                "store_trading_status": "Closed",
+                                "event": target.get("event") or None,
+                                "rule": "Explicit calendar closure",
+                            },
+                        }
+                    else:
+                        pred = _predict_one(candidates, target, branch, fallback, cfg, plan_features)
+                        if target["store_trading_status"] == "Partially Open":
+                            pred["confidence"] = max(10, pred["confidence"] - 15)
+                            pred["drivers"]["store_trading_status"] = "Partially Open"
+                            pred["drivers"]["warning"] = "Partial operation; no automatic sales multiplier applied"
                     actual = actual_map.get((str(day), branch.name, group))
 
                     actual_sales = flt(actual.get("retail_sales_value")) if actual else 0
@@ -218,7 +235,7 @@ def _load_history(start, end, groups):
             "realized_discount_pct", "displayed_styles", "new_styles_7d", "new_styles_30d",
             "closing_stock_units", "in_stock_skus", "styles_in_stock", "avg_sizes_in_stock_per_style",
             "avg_markdown_pct", "weekday", "is_weekend", "gregorian_month", "hijri_day",
-            "hijri_month", "event", "salary_phase",
+            "hijri_month", "event", "store_trading_status", "salary_phase",
         ],
         order_by="date asc",
         limit_page_length=0,
@@ -233,6 +250,8 @@ def _build_pools(history):
         "company": defaultdict(list),
     }
     for row in history:
+        if (row.store_trading_status or "No Change") == "Closed":
+            continue
         if not cint(row.store_open_flag) and not cint(row.transaction_count):
             continue
         group = row.main_group
@@ -367,6 +386,7 @@ def _predict_one(candidates, target, branch, fallback, cfg, plan_features):
             "salary_phase": target["salary_phase"],
             "hijri_month": target.get("hijri_month") or None,
             "event": target.get("event") or None,
+            "store_trading_status": target.get("store_trading_status") or "No Change",
             "planned_new_styles_30d": plan_features.get("new_styles_30d"),
             "planned_asp": plan_asp or None,
             "po_completion_pct": plan_features.get("po_completion_pct"),

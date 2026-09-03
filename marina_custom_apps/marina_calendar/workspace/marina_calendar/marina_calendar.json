@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"cal-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Marina Calendar</b></span>\",\"col\":12}},{\"id\":\"dates\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Calendar Dates\",\"col\":6}},{\"id\":\"events\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Calendar Events\",\"col\":6}},{\"id\":\"info\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"text-muted\\\">Maintain events in Calendar Events. Each date automatically displays all applicable events in a read-only child table.</span>\",\"col\":12}}]",
+ "content": "[{\"id\":\"cal-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Marina Calendar</b></span>\",\"col\":12}},{\"id\":\"calendar-view\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Calendar View\",\"col\":4}},{\"id\":\"events\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Calendar Events\",\"col\":4}},{\"id\":\"dates\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Calendar Dates\",\"col\":4}},{\"id\":\"info\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"text-muted\\\">Use Calendar View for a Google Calendar-like month/week/day view. Filter by Event Type, Scope, Branch, City, impact, trading status and forecast relevance. Explicit Closed events are excluded from normal-demand learning and forecast zero for the affected scope.</span>\",\"col\":12}}]",
  "creation": "2026-09-03 00:00:00.000000",
  "custom_blocks": [],
  "docstatus": 0,
@@ -35,10 +35,10 @@
  "sequence_id": 2.0,
  "shortcuts": [
   {
-   "color": "Blue",
-   "doc_view": "List",
-   "label": "Calendar Dates",
-   "link_to": "Marina Calendar Date",
+   "color": "Orange",
+   "doc_view": "Calendar",
+   "label": "Calendar View",
+   "link_to": "Marina Calendar Event",
    "type": "DocType"
   },
   {
@@ -46,6 +46,13 @@
    "doc_view": "List",
    "label": "Calendar Events",
    "link_to": "Marina Calendar Event",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Calendar Dates",
+   "link_to": "Marina Calendar Date",
    "type": "DocType"
   }
  ],

@@ -28,6 +28,7 @@
   "importance",
   "expected_sales_impact",
   "impact_strength",
+  "store_trading_status",
   "impact_column",
   "forecast_relevant",
   "main_group",
@@ -104,7 +105,8 @@
    "label": "Importance",
    "options": "Low\nMedium\nHigh\nCritical",
    "default": "Medium",
-   "reqd": 1
+   "reqd": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "expected_sales_impact",
@@ -112,7 +114,8 @@
    "label": "Expected Sales Impact",
    "options": "Unknown\nPositive\nNegative\nNeutral",
    "default": "Unknown",
-   "reqd": 1
+   "reqd": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "impact_strength",
@@ -123,6 +126,16 @@
    "reqd": 1
   },
   {
+   "fieldname": "store_trading_status",
+   "fieldtype": "Select",
+   "label": "Store Trading Status",
+   "options": "No Change\nClosed\nPartially Open",
+   "default": "No Change",
+   "reqd": 1,
+   "in_standard_filter": 1,
+   "description": "Use Closed only when the selected scope did not trade. Partially Open marks reduced/limited operation without forcing sales to zero."
+  },
+  {
    "fieldname": "impact_column",
    "fieldtype": "Column Break"
   },
@@ -131,13 +144,15 @@
    "fieldtype": "Check",
    "label": "Forecast Relevant",
    "default": "1",
-   "in_list_view": 1
+   "in_list_view": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "main_group",
    "fieldtype": "Data",
    "label": "Main Group",
-   "description": "Optional. Leave blank when the event affects all product groups."
+   "description": "Optional. Leave blank when the event affects all product groups.",
+   "in_standard_filter": 1
   },
   {
    "fieldname": "scope_section",
@@ -169,14 +184,16 @@
    "fieldname": "city",
    "fieldtype": "Data",
    "label": "City",
-   "depends_on": "eval:doc.scope==\"City\""
+   "depends_on": "eval:doc.scope==\"City\"",
+   "in_standard_filter": 1
   },
   {
    "fieldname": "branch",
    "fieldtype": "Link",
    "label": "Branch",
    "options": "Branch",
-   "depends_on": "eval:doc.scope==\"Branch\""
+   "depends_on": "eval:doc.scope==\"Branch\"",
+   "in_standard_filter": 1
   },
   {
    "fieldname": "details_section",
@@ -197,7 +214,8 @@
    "fieldname": "disabled",
    "fieldtype": "Check",
    "label": "Disabled",
-   "default": "0"
+   "default": "0",
+   "in_standard_filter": 1
   },
   {
    "fieldname": "legacy_section",

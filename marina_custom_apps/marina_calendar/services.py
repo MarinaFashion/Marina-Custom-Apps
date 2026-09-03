@@ -33,6 +33,7 @@ def event_row_values(event):
         "importance": event.importance,
         "expected_sales_impact": event.expected_sales_impact,
         "impact_strength": event.impact_strength,
+        "store_trading_status": event.store_trading_status or "No Change",
         "forecast_relevant": event.forecast_relevant,
         "scope": event.scope,
         "company": event.company,

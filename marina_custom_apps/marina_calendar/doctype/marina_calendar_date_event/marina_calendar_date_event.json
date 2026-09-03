@@ -21,6 +21,7 @@
   "importance",
   "expected_sales_impact",
   "impact_strength",
+  "store_trading_status",
   "forecast_relevant",
   "scope",
   "company",
@@ -70,6 +71,13 @@
    "fieldtype": "Data",
    "label": "Strength",
    "read_only": 1
+  },
+  {
+   "fieldname": "store_trading_status",
+   "fieldtype": "Data",
+   "label": "Trading Status",
+   "read_only": 1,
+   "in_list_view": 1
   },
   {
    "fieldname": "forecast_relevant",

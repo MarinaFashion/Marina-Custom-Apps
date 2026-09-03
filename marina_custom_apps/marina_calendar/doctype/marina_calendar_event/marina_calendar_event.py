@@ -24,6 +24,13 @@ class MarinaCalendarEvent(Document):
         elif self.scope == "City":
             self.branch = ""
 
+        # A declared closure is operational truth, not merely a soft demand signal.
+        # Keep it forecast-relevant and consistently classified.
+        if self.store_trading_status == "Closed":
+            self.forecast_relevant = 1
+            self.expected_sales_impact = "Negative"
+            self.impact_strength = "High"
+
     def on_update(self):
         from marina_custom_apps.marina_calendar.services import sync_event_dates
         sync_event_dates(self.name)

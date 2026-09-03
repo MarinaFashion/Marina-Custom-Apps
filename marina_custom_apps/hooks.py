@@ -4,9 +4,11 @@ app_publisher = "Marina Trading Company"
 app_description = "Marina Trading Company custom Frappe/ERPNext modules"
 app_email = "it@marinafashion.com.sa"
 app_license = "MIT"
-app_version = "0.43.1"
+app_version = "0.43.2"
 
 required_apps = ["erpnext"]
+
+calendars = ["Marina Calendar Event"]
 
 after_install = "marina_custom_apps.sales_forecasting.install.app_after_install"
 after_migrate = "marina_custom_apps.sales_forecasting.install.app_after_migrate"

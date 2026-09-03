@@ -48,6 +48,7 @@
   "hijri_month",
   "hijri_year",
   "event",
+  "store_trading_status",
   "salary_phase"
  ],
  "fields": [
@@ -313,6 +314,14 @@
    "fieldtype": "Data",
    "label": "Event",
    "read_only": 1
+  },
+  {
+   "fieldname": "store_trading_status",
+   "fieldtype": "Select",
+   "label": "Store Trading Status",
+   "options": "No Change\nClosed\nPartially Open",
+   "read_only": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "salary_phase",

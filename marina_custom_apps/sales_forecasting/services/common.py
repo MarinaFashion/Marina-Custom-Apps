@@ -167,7 +167,7 @@ def load_calendar(start_date, end_date, cfg=None):
                 fields=[
                     "name", "event_name", "event_type", "start_date", "end_date",
                     "importance", "expected_sales_impact", "impact_strength",
-                    "scope", "company", "city", "branch", "main_group",
+                    "store_trading_status", "scope", "company", "city", "branch", "main_group",
                 ],
                 order_by="start_date asc, name asc",
                 limit_page_length=0,
@@ -219,7 +219,7 @@ def load_calendar(start_date, end_date, cfg=None):
         event_text = row.get(mapping["event"]) if mapping["event"] in available else ""
         out[key] = {
             "event": event_text or "",
-            "events": ([frappe._dict({"event_name": event_text, "scope": "Company"})] if event_text else []),
+            "events": ([frappe._dict({"event_name": event_text, "scope": "Company", "store_trading_status": "No Change"})] if event_text else []),
             "hijri_date": row.get(mapping["hijri_date"]) if mapping["hijri_date"] in available else "",
             "hijri_month_name": row.get(mapping["hijri_month_name"]) if mapping["hijri_month_name"] in available else "",
             "hijri_day": cint(row.get(mapping["hijri_day"])) if mapping["hijri_day"] in available else 0,
@@ -249,9 +249,17 @@ def calendar_context(day_calendar, branch=None, main_group=None, company=None):
         selected.append(event)
 
     names = sorted({(e.get("event_name") or "").strip() for e in selected if e.get("event_name")})
+    statuses = {e.get("store_trading_status") or "No Change" for e in selected}
+    trading_status = (
+        "Closed" if "Closed" in statuses
+        else "Partially Open" if "Partially Open" in statuses
+        else "No Change"
+    )
+
     result = dict(day_calendar)
     result["events"] = selected
     result["event"] = " | ".join(names)
+    result["store_trading_status"] = trading_status
     return result
 
 

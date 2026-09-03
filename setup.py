@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="marina_custom_apps",
-    version="0.43.1",
+    version="0.43.2",
     description="Marina Trading Company custom Frappe/ERPNext modules",
     author="Marina Trading Company",
     author_email="it@marinafashion.com.sa",

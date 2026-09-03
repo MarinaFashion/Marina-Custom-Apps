@@ -30,7 +30,7 @@ DAILY_FIELDS = [
     "displayed_styles", "new_styles_7d", "new_styles_30d", "closing_stock_units",
     "in_stock_skus", "styles_in_stock", "avg_sizes_in_stock_per_style", "avg_markdown_pct",
     "weekday", "is_weekend", "gregorian_month", "hijri_date", "hijri_month_name",
-    "hijri_day", "hijri_month", "hijri_year", "event", "salary_phase",
+    "hijri_day", "hijri_month", "hijri_year", "event", "store_trading_status", "salary_phase",
 ]
 
 
@@ -92,7 +92,10 @@ def build_data_mart(start_date, end_date, *, commit=True):
                 cal_ctx = calendar_context(cal, branch, group, cfg.company)
                 s = sales.get((branch.warehouse, day_key, group), {})
                 transactions = cint(s.get("transaction_count"))
+                trading_status = cal_ctx.get("store_trading_status") or "No Change"
                 open_flag = 1 if operating_hours >= 2 or transactions > 0 else 0
+                if trading_status == "Closed":
+                    open_flag = 0
                 inv = inventory.metrics(branch.warehouse, group)
                 published_markdown = pricing.markdown(group)
                 positive_units = flt(s.get("positive_units"))
@@ -125,7 +128,7 @@ def build_data_mart(start_date, end_date, *, commit=True):
                     day.strftime("%a"), is_weekend(day), day.month,
                     cal_ctx.get("hijri_date") or "", cal_ctx.get("hijri_month_name") or "",
                     cint(cal_ctx.get("hijri_day")), cint(cal_ctx.get("hijri_month")), cint(cal_ctx.get("hijri_year")),
-                    cal_ctx.get("event") or "", salary_phase(day, cfg),
+                    cal_ctx.get("event") or "", trading_status, salary_phase(day, cfg),
                 ]
                 rows.append(row)
 
