@@ -1,0 +1,247 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-09-03 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "links": [],
+ "modified": "2026-09-03 00:00:00.000000",
+ "modified_by": "Administrator",
+ "owner": "Administrator",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "autoname": "hash",
+ "module": "Marina Calendar",
+ "name": "Marina Calendar Event",
+ "title_field": "event_name",
+ "search_fields": "event_name,event_type,scope,city,branch",
+ "field_order": [
+  "event_section",
+  "event_name",
+  "event_type",
+  "date_column",
+  "start_date",
+  "end_date",
+  "all_day",
+  "impact_section",
+  "importance",
+  "expected_sales_impact",
+  "impact_strength",
+  "impact_column",
+  "forecast_relevant",
+  "main_group",
+  "scope_section",
+  "scope",
+  "company",
+  "scope_column",
+  "city",
+  "branch",
+  "details_section",
+  "source",
+  "notes",
+  "disabled",
+  "legacy_section",
+  "legacy_key"
+ ],
+ "fields": [
+  {
+   "fieldname": "event_section",
+   "fieldtype": "Section Break",
+   "label": "Event"
+  },
+  {
+   "fieldname": "event_name",
+   "fieldtype": "Data",
+   "label": "Event Name",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "event_type",
+   "fieldtype": "Select",
+   "label": "Event Type",
+   "options": "Religious\nEducation\nNational\nCommercial\nMall\nInternal\nOperational\nOther",
+   "default": "Other",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "date_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "all_day",
+   "fieldtype": "Check",
+   "label": "All Day",
+   "default": "1"
+  },
+  {
+   "fieldname": "impact_section",
+   "fieldtype": "Section Break",
+   "label": "Forecast Impact"
+  },
+  {
+   "fieldname": "importance",
+   "fieldtype": "Select",
+   "label": "Importance",
+   "options": "Low\nMedium\nHigh\nCritical",
+   "default": "Medium",
+   "reqd": 1
+  },
+  {
+   "fieldname": "expected_sales_impact",
+   "fieldtype": "Select",
+   "label": "Expected Sales Impact",
+   "options": "Unknown\nPositive\nNegative\nNeutral",
+   "default": "Unknown",
+   "reqd": 1
+  },
+  {
+   "fieldname": "impact_strength",
+   "fieldtype": "Select",
+   "label": "Impact Strength",
+   "options": "Low\nMedium\nHigh",
+   "default": "Medium",
+   "reqd": 1
+  },
+  {
+   "fieldname": "impact_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "forecast_relevant",
+   "fieldtype": "Check",
+   "label": "Forecast Relevant",
+   "default": "1",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "main_group",
+   "fieldtype": "Data",
+   "label": "Main Group",
+   "description": "Optional. Leave blank when the event affects all product groups."
+  },
+  {
+   "fieldname": "scope_section",
+   "fieldtype": "Section Break",
+   "label": "Scope"
+  },
+  {
+   "fieldname": "scope",
+   "fieldtype": "Select",
+   "label": "Scope",
+   "options": "Company\nCity\nBranch",
+   "default": "Company",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "default": "Marina"
+  },
+  {
+   "fieldname": "scope_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "label": "City",
+   "depends_on": "eval:doc.scope==\"City\""
+  },
+  {
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "label": "Branch",
+   "options": "Branch",
+   "depends_on": "eval:doc.scope==\"Branch\""
+  },
+  {
+   "fieldname": "details_section",
+   "fieldtype": "Section Break",
+   "label": "Details"
+  },
+  {
+   "fieldname": "source",
+   "fieldtype": "Data",
+   "label": "Source"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "disabled",
+   "fieldtype": "Check",
+   "label": "Disabled",
+   "default": "0"
+  },
+  {
+   "fieldname": "legacy_section",
+   "fieldtype": "Section Break",
+   "label": "Legacy Migration",
+   "collapsible": 1,
+   "collapsed": 1
+  },
+  {
+   "fieldname": "legacy_key",
+   "fieldtype": "Data",
+   "label": "Legacy Import Key",
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "Sales Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1
+  },
+  {
+   "role": "Stock Manager",
+   "read": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1
+  }
+ ]
+}

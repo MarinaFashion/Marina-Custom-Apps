@@ -1,0 +1,115 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-09-03 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "links": [],
+ "modified": "2026-09-03 00:00:00.000000",
+ "modified_by": "Administrator",
+ "owner": "Administrator",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "istable": 1,
+ "module": "Marina Calendar",
+ "name": "Marina Calendar Date Event",
+ "field_order": [
+  "calendar_event",
+  "event_name",
+  "event_type",
+  "importance",
+  "expected_sales_impact",
+  "impact_strength",
+  "forecast_relevant",
+  "scope",
+  "company",
+  "city",
+  "branch",
+  "main_group"
+ ],
+ "fields": [
+  {
+   "fieldname": "calendar_event",
+   "fieldtype": "Link",
+   "label": "Calendar Event",
+   "options": "Marina Calendar Event",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "event_name",
+   "fieldtype": "Data",
+   "label": "Event",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "event_type",
+   "fieldtype": "Data",
+   "label": "Type",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "importance",
+   "fieldtype": "Data",
+   "label": "Importance",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "expected_sales_impact",
+   "fieldtype": "Data",
+   "label": "Sales Impact",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "impact_strength",
+   "fieldtype": "Data",
+   "label": "Strength",
+   "read_only": 1
+  },
+  {
+   "fieldname": "forecast_relevant",
+   "fieldtype": "Check",
+   "label": "Forecast Relevant",
+   "read_only": 1
+  },
+  {
+   "fieldname": "scope",
+   "fieldtype": "Data",
+   "label": "Scope",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "label": "City",
+   "read_only": 1
+  },
+  {
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "label": "Branch",
+   "options": "Branch",
+   "read_only": 1
+  },
+  {
+   "fieldname": "main_group",
+   "fieldtype": "Data",
+   "label": "Main Group",
+   "read_only": 1
+  }
+ ],
+ "permissions": []
+}

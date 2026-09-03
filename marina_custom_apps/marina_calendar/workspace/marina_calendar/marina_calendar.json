@@ -1,0 +1,53 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"cal-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Marina Calendar</b></span>\",\"col\":12}},{\"id\":\"dates\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Calendar Dates\",\"col\":6}},{\"id\":\"events\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Calendar Events\",\"col\":6}},{\"id\":\"info\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"text-muted\\\">Maintain events in Calendar Events. Each date automatically displays all applicable events in a read-only child table.</span>\",\"col\":12}}]",
+ "creation": "2026-09-03 00:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "calendar",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Marina Calendar",
+ "links": [],
+ "modified": "2026-09-03 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Marina Calendar",
+ "name": "Marina Calendar",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Sales Manager"
+  },
+  {
+   "role": "Stock Manager"
+  }
+ ],
+ "sequence_id": 2.0,
+ "shortcuts": [
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Calendar Dates",
+   "link_to": "Marina Calendar Date",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Calendar Events",
+   "link_to": "Marina Calendar Event",
+   "type": "DocType"
+  }
+ ],
+ "title": "Marina Calendar"
+}

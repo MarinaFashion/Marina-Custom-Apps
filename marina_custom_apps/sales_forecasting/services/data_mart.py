@@ -8,6 +8,7 @@ from frappe import _
 from frappe.utils import add_days, cint, flt, get_datetime, getdate, now_datetime
 
 from .common import (
+    calendar_context,
     date_range,
     get_branches,
     is_weekend,
@@ -88,6 +89,7 @@ def build_data_mart(start_date, end_date, *, commit=True):
             store_age_days = max((day - getdate(branch.opening_date)).days, 0) if branch.opening_date else 0
 
             for group in groups:
+                cal_ctx = calendar_context(cal, branch, group, cfg.company)
                 s = sales.get((branch.warehouse, day_key, group), {})
                 transactions = cint(s.get("transaction_count"))
                 open_flag = 1 if operating_hours >= 2 or transactions > 0 else 0
@@ -121,9 +123,9 @@ def build_data_mart(start_date, end_date, *, commit=True):
                     inv["closing_stock_units"], inv["in_stock_skus"], inv["styles_in_stock"],
                     inv["avg_sizes_in_stock_per_style"], published_markdown,
                     day.strftime("%a"), is_weekend(day), day.month,
-                    cal.get("hijri_date") or "", cal.get("hijri_month_name") or "",
-                    cint(cal.get("hijri_day")), cint(cal.get("hijri_month")), cint(cal.get("hijri_year")),
-                    cal.get("event") or "", salary_phase(day, cfg),
+                    cal_ctx.get("hijri_date") or "", cal_ctx.get("hijri_month_name") or "",
+                    cint(cal_ctx.get("hijri_day")), cint(cal_ctx.get("hijri_month")), cint(cal_ctx.get("hijri_year")),
+                    cal_ctx.get("event") or "", salary_phase(day, cfg),
                 ]
                 rows.append(row)
 

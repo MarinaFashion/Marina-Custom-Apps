@@ -9,6 +9,7 @@ from frappe import _
 from frappe.utils import add_days, cint, flt, getdate, now_datetime
 
 from .common import (
+    calendar_context,
     exp_recency_weight,
     get_branches,
     is_weekend,
@@ -90,6 +91,10 @@ def run_forecast(run_name, *, commit=True):
                 if branch.opening_date and getdate(branch.opening_date) > day:
                     continue
                 for group in groups:
+                    cal_ctx = calendar_context(cal, branch, group, cfg.company)
+                    target["hijri_day"] = cint(cal_ctx.get("hijri_day"))
+                    target["hijri_month"] = cint(cal_ctx.get("hijri_month"))
+                    target["event"] = cal_ctx.get("event") or ""
                     plan_features = _plan_features(plan_context, group, day)
                     recent = latest_context.get((branch.name, group), {})
                     target["new_styles_30d"] = (

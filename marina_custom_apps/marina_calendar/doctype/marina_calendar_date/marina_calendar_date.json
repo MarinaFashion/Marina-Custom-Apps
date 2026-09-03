@@ -1,0 +1,183 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-09-03 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "links": [],
+ "modified": "2026-09-03 00:00:00.000000",
+ "modified_by": "Administrator",
+ "owner": "Administrator",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "autoname": "field:date",
+ "module": "Marina Calendar",
+ "name": "Marina Calendar Date",
+ "field_order": [
+  "date",
+  "gregorian_section",
+  "month_name",
+  "week_day",
+  "hijri_section",
+  "hijri_date",
+  "hijri_m_name",
+  "hijri_column",
+  "day",
+  "month",
+  "year",
+  "events_section",
+  "event_count",
+  "event_summary",
+  "events",
+  "legacy_section",
+  "legacy_source_doctype",
+  "legacy_source_name",
+  "legacy_event"
+ ],
+ "fields": [
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "gregorian_section",
+   "fieldtype": "Section Break",
+   "label": "Gregorian Calendar"
+  },
+  {
+   "fieldname": "month_name",
+   "fieldtype": "Data",
+   "label": "Month Name",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "week_day",
+   "fieldtype": "Data",
+   "label": "Week Day",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "hijri_section",
+   "fieldtype": "Section Break",
+   "label": "Hijri Calendar"
+  },
+  {
+   "fieldname": "hijri_date",
+   "fieldtype": "Data",
+   "label": "Hijri Date",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "hijri_m_name",
+   "fieldtype": "Data",
+   "label": "Hijri Month Name"
+  },
+  {
+   "fieldname": "hijri_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "day",
+   "fieldtype": "Int",
+   "label": "Hijri Day"
+  },
+  {
+   "fieldname": "month",
+   "fieldtype": "Int",
+   "label": "Hijri Month"
+  },
+  {
+   "fieldname": "year",
+   "fieldtype": "Int",
+   "label": "Hijri Year"
+  },
+  {
+   "fieldname": "events_section",
+   "fieldtype": "Section Break",
+   "label": "Calendar Events"
+  },
+  {
+   "fieldname": "event_count",
+   "fieldtype": "Int",
+   "label": "Event Count",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "event_summary",
+   "fieldtype": "Small Text",
+   "label": "Event Summary",
+   "read_only": 1
+  },
+  {
+   "fieldname": "events",
+   "fieldtype": "Table",
+   "label": "Events",
+   "options": "Marina Calendar Date Event",
+   "read_only": 1
+  },
+  {
+   "fieldname": "legacy_section",
+   "fieldtype": "Section Break",
+   "label": "Legacy Migration",
+   "collapsible": 1,
+   "collapsed": 1
+  },
+  {
+   "fieldname": "legacy_source_doctype",
+   "fieldtype": "Data",
+   "label": "Legacy Source DocType",
+   "read_only": 1
+  },
+  {
+   "fieldname": "legacy_source_name",
+   "fieldtype": "Data",
+   "label": "Legacy Source Record",
+   "read_only": 1
+  },
+  {
+   "fieldname": "legacy_event",
+   "fieldtype": "Small Text",
+   "label": "Legacy Event Text",
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "Sales Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1
+  },
+  {
+   "role": "Stock Manager",
+   "read": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1
+  }
+ ]
+}

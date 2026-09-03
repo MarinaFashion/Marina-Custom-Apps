@@ -227,7 +227,9 @@
    "fieldname": "calendar_doctype",
    "fieldtype": "Data",
    "label": "Calendar DocType",
-   "description": "Leave blank to auto-detect the Marina calendar DocType containing date, event and Hijri fields."
+   "description": "App-managed Marina Calendar Date DocType. Legacy calendar data is migrated automatically during v0.43.1 migration.",
+   "default": "Marina Calendar Date",
+   "read_only": 1
   },
   {
    "fieldname": "calendar_date_field",

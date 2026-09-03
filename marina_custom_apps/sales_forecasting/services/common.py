@@ -90,6 +90,12 @@ def get_branches(cfg=None):
 
 def detect_calendar_doctype(cfg=None):
     cfg = cfg or settings()
+    # Marina Calendar is now an app-managed source of truth. Prefer it whenever installed.
+    if frappe.db.exists("DocType", "Marina Calendar Date"):
+        if cfg.calendar_doctype != "Marina Calendar Date":
+            frappe.db.set_single_value("Sales Forecast Settings", "calendar_doctype", "Marina Calendar Date")
+            cfg.calendar_doctype = "Marina Calendar Date"
+        return "Marina Calendar Date"
     if cfg.calendar_doctype and frappe.db.exists("DocType", cfg.calendar_doctype):
         return cfg.calendar_doctype
 
@@ -128,6 +134,59 @@ def load_calendar(start_date, end_date, cfg=None):
     if not doctype:
         return {}
 
+    if doctype == "Marina Calendar Date":
+        rows = frappe.get_all(
+            doctype,
+            filters={"date": ["between", [start_date, end_date]]},
+            fields=["date", "hijri_date", "hijri_m_name", "day", "month", "year"],
+            order_by="date asc",
+            limit_page_length=0,
+        )
+        out = {
+            str(row.date): {
+                "event": "",
+                "events": [],
+                "hijri_date": row.hijri_date or "",
+                "hijri_month_name": row.hijri_m_name or "",
+                "hijri_day": cint(row.day),
+                "hijri_month": cint(row.month),
+                "hijri_year": cint(row.year),
+            }
+            for row in rows
+        }
+
+        if frappe.db.exists("DocType", "Marina Calendar Event"):
+            events = frappe.get_all(
+                "Marina Calendar Event",
+                filters=[
+                    ["start_date", "<=", end_date],
+                    ["end_date", ">=", start_date],
+                    ["disabled", "=", 0],
+                    ["forecast_relevant", "=", 1],
+                ],
+                fields=[
+                    "name", "event_name", "event_type", "start_date", "end_date",
+                    "importance", "expected_sales_impact", "impact_strength",
+                    "scope", "company", "city", "branch", "main_group",
+                ],
+                order_by="start_date asc, name asc",
+                limit_page_length=0,
+            )
+            start_bound = getdate(start_date)
+            end_bound = getdate(end_date)
+            for event in events:
+                d = max(getdate(event.start_date), start_bound)
+                stop = min(getdate(event.end_date or event.start_date), end_bound)
+                while d <= stop:
+                    day = out.setdefault(str(d), {
+                        "event": "", "events": [], "hijri_date": "", "hijri_month_name": "",
+                        "hijri_day": 0, "hijri_month": 0, "hijri_year": 0,
+                    })
+                    day["events"].append(event)
+                    d += timedelta(days=1)
+        return out
+
+    # Backward-compatible fallback for the legacy custom calendar until migration is validated.
     meta = frappe.get_meta(doctype)
     mapping = {
         "date": safe_field(cfg.calendar_date_field, "date"),
@@ -157,8 +216,10 @@ def load_calendar(start_date, end_date, cfg=None):
     out = {}
     for row in rows:
         key = str(row.get(mapping["date"]))
+        event_text = row.get(mapping["event"]) if mapping["event"] in available else ""
         out[key] = {
-            "event": row.get(mapping["event"]) if mapping["event"] in available else "",
+            "event": event_text or "",
+            "events": ([frappe._dict({"event_name": event_text, "scope": "Company"})] if event_text else []),
             "hijri_date": row.get(mapping["hijri_date"]) if mapping["hijri_date"] in available else "",
             "hijri_month_name": row.get(mapping["hijri_month_name"]) if mapping["hijri_month_name"] in available else "",
             "hijri_day": cint(row.get(mapping["hijri_day"])) if mapping["hijri_day"] in available else 0,
@@ -166,6 +227,32 @@ def load_calendar(start_date, end_date, cfg=None):
             "hijri_year": cint(row.get(mapping["hijri_year"])) if mapping["hijri_year"] in available else 0,
         }
     return out
+
+
+def calendar_context(day_calendar, branch=None, main_group=None, company=None):
+    """Return date/Hijri data plus the events that apply to this branch/category context."""
+    day_calendar = day_calendar or {}
+    selected = []
+    for event in day_calendar.get("events") or []:
+        scope = event.get("scope") or "Company"
+        event_company = event.get("company") or ""
+        if event_company and company and event_company != company:
+            continue
+        if event.get("main_group") and main_group and event.get("main_group") != main_group:
+            continue
+        if scope == "Branch":
+            if not branch or event.get("branch") != branch.name:
+                continue
+        elif scope == "City":
+            if not branch or event.get("city") != (branch.city or ""):
+                continue
+        selected.append(event)
+
+    names = sorted({(e.get("event_name") or "").strip() for e in selected if e.get("event_name")})
+    result = dict(day_calendar)
+    result["events"] = selected
+    result["event"] = " | ".join(names)
+    return result
 
 
 def union_hours(intervals, day):

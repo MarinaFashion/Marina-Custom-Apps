@@ -17,6 +17,8 @@ def app_after_install():
     # Preserve all existing Marina Custom Apps installation behavior, then install Forecasting.
     from marina_custom_apps.install import after_install as base_after_install
     base_after_install()
+    from marina_custom_apps.marina_calendar.install import after_install as calendar_after_install
+    calendar_after_install()
     after_install()
 
 
@@ -24,6 +26,8 @@ def app_after_migrate():
     # Preserve all existing Marina Custom Apps migration behavior, then sync Forecasting.
     from marina_custom_apps.install import after_migrate as base_after_migrate
     base_after_migrate()
+    from marina_custom_apps.marina_calendar.install import after_migrate as calendar_after_migrate
+    calendar_after_migrate()
     after_migrate()
 
 def after_install():
