@@ -15,7 +15,7 @@ ERPNext/Frappe v15 forecasting module for Marina Fashion. It turns operational E
 - Calendar: configurable existing Date/Hijri/Event DocType, auto-detected from the confirmed fields.
 - Salary cycle: 25-26 Pre-Salary, 27-end + 1-3 Salary Peak, 4-9 Decline, 10-24 Normal.
 - Future commercial intent: versioned `Forecast Buying Plan`.
-- Buying execution: submitted Midmak Purchase Orders and Purchase Receipts, evaluated as-of each forecast run to prevent backtest leakage.
+- Buying execution: submitted Purchase Orders and Purchase Receipts for matching merchandise; supplier is not part of forecast/readiness classification.
 
 ## Main documents
 
@@ -47,3 +47,9 @@ A backtest uses only information available through the Run's `as_of_date`. Buyin
 5. Calibrate model weights/ranges only after the backtest evidence is visible.
 
 This v1 intentionally has no external ML dependency so it runs inside the current Frappe v15 app. The data mart/model-version design is ready for a later CatBoost/LightGBM model if evidence shows that it materially improves rolling backtests.
+
+## Readiness matching (v0.43.3)
+
+ERP Buying Readiness is aggregated at `Year + Season + Main Group`. Collection, Drop and Display Date stay in the Buying Plan because they are important for display timing and forecasting, but they no longer block merchandise-readiness recognition. Purchase Orders are supplier-neutral, and Received Qty is read directly from submitted Purchase Receipts. Variant classification falls back to the Item Template when a mapped value is blank on the variant.
+
+Sales Forecast Settings field mappings use dynamic autocomplete dropdowns populated from the actual installed Branch and Item fields, with server-side validation to prevent invalid field names.

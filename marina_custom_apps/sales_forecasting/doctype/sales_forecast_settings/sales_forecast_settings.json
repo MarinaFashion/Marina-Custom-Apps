@@ -7,7 +7,6 @@
  "field_order": [
   "general_section",
   "company",
-  "buying_supplier",
   "selling_price_list",
   "currency",
   "vat_rate",
@@ -72,14 +71,6 @@
    "reqd": 1
   },
   {
-   "fieldname": "buying_supplier",
-   "fieldtype": "Link",
-   "label": "Buying Supplier",
-   "options": "Supplier",
-   "default": "Midmak",
-   "description": "Supplier used for original buying Purchase Orders."
-  },
-  {
    "fieldname": "selling_price_list",
    "fieldtype": "Link",
    "label": "Selling Price List",
@@ -117,49 +108,49 @@
   },
   {
    "fieldname": "branch_company_field",
-   "fieldtype": "Data",
+   "fieldtype": "Autocomplete",
    "label": "Branch Company Field",
    "default": "custom_company",
    "reqd": 1
   },
   {
    "fieldname": "branch_opening_date_field",
-   "fieldtype": "Data",
+   "fieldtype": "Autocomplete",
    "label": "Branch Opening Date Field",
    "default": "custom_opening_date",
    "reqd": 1
   },
   {
    "fieldname": "branch_store_space_field",
-   "fieldtype": "Data",
+   "fieldtype": "Autocomplete",
    "label": "Branch Store Space Field",
    "default": "custom_store_space",
    "reqd": 1
   },
   {
    "fieldname": "branch_cluster_field",
-   "fieldtype": "Data",
+   "fieldtype": "Autocomplete",
    "label": "Branch Cluster Field",
    "default": "custom_cluster",
    "reqd": 1
   },
   {
    "fieldname": "branch_warehouse_field",
-   "fieldtype": "Data",
+   "fieldtype": "Autocomplete",
    "label": "Branch Warehouse Field",
    "default": "custom_warehouse",
    "reqd": 1
   },
   {
    "fieldname": "branch_pos_profile_field",
-   "fieldtype": "Data",
+   "fieldtype": "Autocomplete",
    "label": "Branch POS Profile Field",
    "default": "custom_pos_profile",
    "reqd": 1
   },
   {
    "fieldname": "branch_city_field",
-   "fieldtype": "Data",
+   "fieldtype": "Autocomplete",
    "label": "Branch City Field",
    "default": "custom_city",
    "reqd": 1
@@ -171,49 +162,49 @@
   },
   {
    "fieldname": "item_main_group_field",
-   "fieldtype": "Data",
+   "fieldtype": "Autocomplete",
    "label": "Item Main Group Field",
    "default": "custom_item_main_group",
    "reqd": 1
   },
   {
    "fieldname": "item_sub_group_field",
-   "fieldtype": "Data",
+   "fieldtype": "Autocomplete",
    "label": "Item Sub Group Field",
    "default": "item_sub_group",
    "reqd": 1
   },
   {
    "fieldname": "item_year_field",
-   "fieldtype": "Data",
+   "fieldtype": "Autocomplete",
    "label": "Item Year Field",
    "default": "item_year",
    "reqd": 1
   },
   {
    "fieldname": "item_season_field",
-   "fieldtype": "Data",
+   "fieldtype": "Autocomplete",
    "label": "Item Season Field",
    "default": "season",
    "reqd": 1
   },
   {
    "fieldname": "item_collection_field",
-   "fieldtype": "Data",
+   "fieldtype": "Autocomplete",
    "label": "Item Collection Field",
    "default": "collection",
    "reqd": 1
   },
   {
    "fieldname": "item_drop_field",
-   "fieldtype": "Data",
+   "fieldtype": "Autocomplete",
    "label": "Item Drop Field",
    "default": "custom_drop",
    "reqd": 1
   },
   {
    "fieldname": "item_display_date_field",
-   "fieldtype": "Data",
+   "fieldtype": "Autocomplete",
    "label": "Item Display Date Field",
    "default": "display_date",
    "reqd": 1

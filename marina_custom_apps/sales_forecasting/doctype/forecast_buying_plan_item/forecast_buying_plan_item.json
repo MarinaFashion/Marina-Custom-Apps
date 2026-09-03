@@ -149,7 +149,8 @@
   {
    "fieldname": "progress_section",
    "fieldtype": "Section Break",
-   "label": "ERP Buying Readiness"
+   "label": "ERP Buying Readiness (Legacy Row Fields)",
+   "hidden": 1
   },
   {
    "fieldname": "styles_created",

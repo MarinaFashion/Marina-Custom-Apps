@@ -27,6 +27,7 @@
   "planned_gross_profit",
   "planned_margin_pct",
   "readiness_section",
+  "readiness_basis",
   "styles_created",
   "styles_priced",
   "po_qty",
@@ -176,6 +177,11 @@
    "fieldname": "readiness_section",
    "fieldtype": "Section Break",
    "label": "ERP Buying Readiness"
+  },
+  {
+   "fieldname": "readiness_basis",
+   "fieldtype": "HTML",
+   "options": "<div class=\"text-muted small\">Readiness basis: <b>Year + Season + Main Group</b>. Collection, Drop and Display Date remain planning and forecast-timing dimensions.</div>"
   },
   {
    "fieldname": "styles_created",

@@ -440,53 +440,58 @@ def _resolve_plan(run, as_of, forecast_from, forecast_to):
 def _plan_context(plan, as_of, cfg):
     """Build buying-plan context using only execution known by ``as_of``.
 
-    The Buying Plan stores today's readiness for operational use, but a historical
-    backtest must not see POs or receipts created after its information cut-off.
-    This method recomputes PO/receipt progress as-of the run date to prevent
-    future-data leakage.
+    Execution readiness follows the same Year + Season + Main Group grain as the
+    operational Buying Plan refresh. Collection, Drop and Display Date remain
+    timing dimensions, but they do not block recognition of seasonal supply.
     """
     context = defaultdict(list)
     if not plan:
         return context
 
+    grouped = defaultdict(lambda: {"planned_qty": 0.0, "rows": []})
     for row in plan.items:
-        execution = _execution_as_of(plan, row, as_of, cfg)
-        planned_qty = flt(row.planned_total_qty)
-        po_pct = min(100, execution["po_qty"] / planned_qty * 100) if planned_qty else 0
-        receipt_pct = min(100, execution["received_qty"] / planned_qty * 100) if planned_qty else 0
-        context[row.main_group].append({
-            "display_date": getdate(row.display_date),
-            "styles": flt(row.planned_styles),
-            "qty": planned_qty,
-            "selling": flt(row.planned_selling_value),
-            "po_completion_pct": po_pct,
-            "receipt_completion_pct": receipt_pct,
-        })
+        group = (row.main_group or "").strip()
+        grouped[group]["planned_qty"] += flt(row.planned_total_qty)
+        grouped[group]["rows"].append(row)
+
+    for group, bucket in grouped.items():
+        execution = _execution_as_of(plan, group, as_of, cfg)
+        group_qty = flt(bucket["planned_qty"])
+        po_pct = min(100, execution["po_qty"] / group_qty * 100) if group_qty else 0
+        receipt_pct = min(100, execution["received_qty"] / group_qty * 100) if group_qty else 0
+
+        for row in bucket["rows"]:
+            context[group].append({
+                "display_date": getdate(row.display_date),
+                "styles": flt(row.planned_styles),
+                "qty": flt(row.planned_total_qty),
+                "selling": flt(row.planned_selling_value),
+                "po_completion_pct": po_pct,
+                "receipt_completion_pct": receipt_pct,
+            })
     return context
 
 
-def _execution_as_of(plan, row, as_of, cfg):
+def _execution_as_of(plan, main_group, as_of, cfg):
     from .common import safe_field
 
     item_year = safe_field(cfg.item_year_field, "item_year")
     item_season = safe_field(cfg.item_season_field, "season")
-    item_collection = safe_field(cfg.item_collection_field, "collection")
-    item_drop = safe_field(cfg.item_drop_field, "custom_drop")
-    item_display = safe_field(cfg.item_display_date_field, "display_date")
     item_group = safe_field(cfg.item_main_group_field, "custom_item_main_group")
-    supplier = cfg.buying_supplier or "Midmak"
 
-    classification = [
-        str(plan.plan_year), plan.season, row.collection, row.drop,
-        str(row.display_date), row.main_group,
-    ]
+    def resolved(fieldname):
+        return (
+            f"coalesce("
+            f"nullif(cast(i.`{fieldname}` as char), ''), "
+            f"nullif(cast(template.`{fieldname}` as char), '')"
+            f")"
+        )
+
+    classification = [str(plan.plan_year), plan.season, main_group]
     where = f"""
-        i.`{item_year}` = %s
-        and i.`{item_season}` = %s
-        and i.`{item_collection}` = %s
-        and i.`{item_drop}` = %s
-        and i.`{item_display}` = %s
-        and i.`{item_group}` = %s
+        {resolved(item_year)} = %s
+        and {resolved(item_season)} = %s
+        and {resolved(item_group)} = %s
     """
 
     po_qty = frappe.db.sql(
@@ -495,13 +500,14 @@ def _execution_as_of(plan, row, as_of, cfg):
         from `tabPurchase Order Item` poi
         inner join `tabPurchase Order` po on po.name = poi.parent
         inner join `tabItem` i on i.name = poi.item_code
+        left join `tabItem` template on template.name = i.variant_of
         where po.docstatus = 1
-          and po.supplier = %s
+          and po.company = %s
           and po.transaction_date <= %s
           and date(po.creation) <= %s
           and {where}
         """,
-        [supplier, str(as_of), str(as_of), *classification],
+        [plan.company, str(as_of), str(as_of), *classification],
     )[0][0] or 0
 
     received_qty = frappe.db.sql(
@@ -510,13 +516,14 @@ def _execution_as_of(plan, row, as_of, cfg):
         from `tabPurchase Receipt Item` pri
         inner join `tabPurchase Receipt` pr on pr.name = pri.parent
         inner join `tabItem` i on i.name = pri.item_code
+        left join `tabItem` template on template.name = i.variant_of
         where pr.docstatus = 1
-          and pr.supplier = %s
+          and pr.company = %s
           and pr.posting_date <= %s
           and date(pr.creation) <= %s
           and {where}
         """,
-        [supplier, str(as_of), str(as_of), *classification],
+        [plan.company, str(as_of), str(as_of), *classification],
     )[0][0] or 0
 
     return {"po_qty": flt(po_qty), "received_qty": flt(received_qty)}
