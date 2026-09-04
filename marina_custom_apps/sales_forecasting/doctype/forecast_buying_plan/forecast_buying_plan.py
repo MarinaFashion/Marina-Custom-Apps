@@ -1,4 +1,5 @@
 import re
+from collections import defaultdict
 
 import frappe
 from frappe import _
@@ -118,6 +119,15 @@ class ForecastBuyingPlan(Document):
             "po_qty": 0.0,
             "received_qty": 0.0,
         }
+        group_totals = defaultdict(
+            lambda: {
+                "styles": 0.0,
+                "qty": 0.0,
+                "styles_created": 0.0,
+                "po_qty": 0.0,
+                "received_qty": 0.0,
+            }
+        )
 
         for row in self.items:
             styles = flt(row.planned_styles)
@@ -150,6 +160,26 @@ class ForecastBuyingPlan(Document):
             totals["po_qty"] += flt(row.po_qty)
             totals["received_qty"] += flt(row.received_qty)
 
+            group = (row.main_group or "").strip()
+            group_totals[group]["styles"] += styles
+            group_totals[group]["qty"] += qty
+            group_totals[group]["styles_created"] += flt(row.styles_created)
+            group_totals[group]["po_qty"] += flt(row.po_qty)
+            group_totals[group]["received_qty"] += flt(row.received_qty)
+
+        capped_styles_created = sum(
+            min(values["styles_created"], values["styles"])
+            for values in group_totals.values()
+        )
+        capped_po_qty = sum(
+            min(values["po_qty"], values["qty"])
+            for values in group_totals.values()
+        )
+        capped_received_qty = sum(
+            min(values["received_qty"], values["qty"])
+            for values in group_totals.values()
+        )
+
         self.total_styles = int(totals["styles"])
         self.total_qty = totals["qty"]
         self.total_cost = totals["cost"]
@@ -164,15 +194,15 @@ class ForecastBuyingPlan(Document):
         self.po_qty = totals["po_qty"]
         self.received_qty = totals["received_qty"]
         self.assortment_readiness_pct = (
-            min(100, totals["styles_created"] / totals["styles"] * 100)
+            capped_styles_created / totals["styles"] * 100
             if totals["styles"]
             else 0
         )
         self.po_completion_pct = (
-            min(100, totals["po_qty"] / totals["qty"] * 100) if totals["qty"] else 0
+            capped_po_qty / totals["qty"] * 100 if totals["qty"] else 0
         )
         self.receipt_completion_pct = (
-            min(100, totals["received_qty"] / totals["qty"] * 100)
+            capped_received_qty / totals["qty"] * 100
             if totals["qty"]
             else 0
         )

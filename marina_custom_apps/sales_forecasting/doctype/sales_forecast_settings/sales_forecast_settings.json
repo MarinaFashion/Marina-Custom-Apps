@@ -9,12 +9,14 @@
   "company",
   "selling_price_list",
   "currency",
+  "general_column_break",
   "vat_rate",
   "main_groups",
   "branch_mapping_section",
   "branch_company_field",
   "branch_opening_date_field",
   "branch_store_space_field",
+  "branch_mapping_column_break",
   "branch_cluster_field",
   "branch_warehouse_field",
   "branch_pos_profile_field",
@@ -23,6 +25,7 @@
   "item_main_group_field",
   "item_sub_group_field",
   "item_year_field",
+  "item_mapping_column_break",
   "item_season_field",
   "item_collection_field",
   "item_drop_field",
@@ -31,6 +34,7 @@
   "calendar_doctype",
   "calendar_date_field",
   "calendar_event_field",
+  "calendar_mapping_column_break",
   "calendar_hijri_date_field",
   "calendar_hijri_month_name_field",
   "calendar_hijri_day_field",
@@ -39,12 +43,14 @@
   "salary_section",
   "salary_pre_start_day",
   "salary_peak_start_day",
+  "salary_column_break",
   "salary_peak_end_next_month_day",
   "salary_decline_end_day",
   "data_mart_section",
   "history_start_date",
   "daily_refresh_lookback_days",
   "displayed_style_window_days",
+  "data_mart_column_break",
   "inventory_active_window_days",
   "ignore_pos_shift_over_hours",
   "data_mart_batch_size",
@@ -52,6 +58,7 @@
   "model_name",
   "lookback_years",
   "recency_half_life_days",
+  "model_column_break",
   "minimum_analog_samples",
   "confidence_z",
   "apply_buying_plan_adjustment"
@@ -85,6 +92,10 @@
    "options": "Currency",
    "default": "SAR",
    "reqd": 1
+  },
+  {
+   "fieldname": "general_column_break",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "vat_rate",
@@ -126,6 +137,10 @@
    "label": "Branch Store Space Field",
    "default": "custom_store_space",
    "reqd": 1
+  },
+  {
+   "fieldname": "branch_mapping_column_break",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "branch_cluster_field",
@@ -180,6 +195,10 @@
    "label": "Item Year Field",
    "default": "item_year",
    "reqd": 1
+  },
+  {
+   "fieldname": "item_mapping_column_break",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "item_season_field",
@@ -237,6 +256,10 @@
    "reqd": 1
   },
   {
+   "fieldname": "calendar_mapping_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "calendar_hijri_date_field",
    "fieldtype": "Data",
    "label": "Hijri Date Field",
@@ -291,6 +314,10 @@
    "reqd": 1
   },
   {
+   "fieldname": "salary_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "salary_peak_end_next_month_day",
    "fieldtype": "Int",
    "label": "Peak Ends (Next Month Day)",
@@ -319,9 +346,11 @@
   {
    "fieldname": "daily_refresh_lookback_days",
    "fieldtype": "Int",
-   "label": "Daily Refresh Lookback Days",
+   "label": "Legacy Daily Refresh Lookback Days",
    "default": "14",
-   "reqd": 1
+   "reqd": 0,
+   "hidden": 1,
+   "description": "Retained for v0.43.3 compatibility. Forecast Runs now create only missing Data Mart records; no automatic daily Data Mart rebuild is scheduled."
   },
   {
    "fieldname": "displayed_style_window_days",
@@ -330,6 +359,10 @@
    "default": "180",
    "description": "Styles displayed within this rolling window count as active displayed assortment.",
    "reqd": 1
+  },
+  {
+   "fieldname": "data_mart_column_break",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "inventory_active_window_days",
@@ -378,6 +411,10 @@
    "label": "Recency Half-Life (Days)",
    "default": "365",
    "reqd": 1
+  },
+  {
+   "fieldname": "model_column_break",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "minimum_analog_samples",

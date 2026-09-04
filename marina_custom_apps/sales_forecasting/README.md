@@ -53,3 +53,14 @@ This v1 intentionally has no external ML dependency so it runs inside the curren
 ERP Buying Readiness is aggregated at `Year + Season + Main Group`. Collection, Drop and Display Date stay in the Buying Plan because they are important for display timing and forecasting, but they no longer block merchandise-readiness recognition. Purchase Orders are supplier-neutral, and Received Qty is read directly from submitted Purchase Receipts. Variant classification falls back to the Item Template when a mapped value is blank on the variant.
 
 Sales Forecast Settings field mappings use dynamic autocomplete dropdowns populated from the actual installed Branch and Item fields, with server-side validation to prevent invalid field names.
+
+## v0.43.4 operational hardening
+
+- Forecast Runs ensure their required historical Data Mart coverage automatically and insert only missing `Date + Branch + Main Group` keys. Existing Daily records are not recreated or updated.
+- The automatic daily Data Mart rebuild scheduler was removed.
+- System Managers can use **Sales Forecast Daily -> Data Mart Maintenance** to delete or delete-and-rebuild a corrected date range, optionally scoped by Branch/Main Group.
+- Forecast Result rows distinguish unavailable actuals using `Has Actual Data`, avoiding null-insert failures for future forecasts/backtests without loaded actuals.
+- Forecast workspace KPI methods are whitelisted with underlying DocType permission checks and correct Number Card permission context.
+- Buying Plan overall assortment/PO/receipt completion percentages cap each Main Group contribution so over-completion in one group cannot offset a shortage in another.
+- Sales Forecast Settings use two-column desktop sections, validate operational ranges, and repair only missing/invalid legacy defaults during migration.
+- Completed Forecast Runs are immutable audit records: they cannot be edited, rerun, or deleted; corrected inputs must be tested with a new run.

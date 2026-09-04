@@ -11,8 +11,12 @@ frappe.ui.form.on("Sales Forecast Run", {
     refresh(frm) {
         render_run_indicators(frm);
         if (!frm.is_new()) {
-            frm.add_custom_button(__("Run Forecast"), () => queue_forecast(frm), __("Forecast"));
-            frm.add_custom_button(__("Build Data Mart"), () => open_data_mart_dialog(frm), __("Forecast"));
+            if (!["Completed", "Queued", "Running"].includes(frm.doc.status)) {
+                frm.add_custom_button(__("Run Forecast"), () => queue_forecast(frm), __("Forecast"));
+            }
+            frm.add_custom_button(__("Data Mart Records"), () => {
+                frappe.set_route("List", "Sales Forecast Daily");
+            }, __("Forecast"));
             frm.add_custom_button(__("Results"), () => {
                 frappe.set_route("List", "Sales Forecast Result", { forecast_run: frm.doc.name });
             }, __("Forecast"));
@@ -28,9 +32,13 @@ function render_run_indicators(frm) {
     }
     if (frm.doc.status === "Completed") {
         frm.dashboard.add_indicator(__("Forecast: {0}", [format_currency(frm.doc.forecast_sales, "SAR")]), "blue");
-        if (frm.doc.run_type === "Backtest" || flt(frm.doc.actual_sales)) {
+        const actualRows = cint(frm.doc.actual_result_count);
+        const resultRows = cint(frm.doc.result_count);
+        if (actualRows > 0 && resultRows > 0 && actualRows === resultRows) {
             frm.dashboard.add_indicator(__("Accuracy: {0}%", [flt(frm.doc.accuracy_pct).toFixed(1)]), flt(frm.doc.accuracy_pct) >= 85 ? "green" : "orange");
             frm.dashboard.add_indicator(__("Bias: {0}%", [flt(frm.doc.bias_pct).toFixed(1)]), Math.abs(flt(frm.doc.bias_pct)) <= 5 ? "green" : "red");
+        } else if (actualRows > 0) {
+            frm.dashboard.add_indicator(__("Actual coverage: {0}/{1}", [actualRows, resultRows]), "orange");
         }
     }
 }
@@ -40,10 +48,13 @@ function queue_forecast(frm) {
         method: "marina_custom_apps.sales_forecasting.api.queue_forecast_run",
         args: { run_name: frm.doc.name },
         freeze: true,
-        freeze_message: __("Queueing Marina forecast…"),
+        freeze_message: __("Queueing Marina forecast..."),
         callback(r) {
             if (!r.exc) {
-                frappe.show_alert({ message: __("Forecast queued"), indicator: "blue" });
+                frappe.show_alert({
+                    message: __("Forecast queued. Missing historical Data Mart records will be created automatically."),
+                    indicator: "blue"
+                });
                 poll_run(frm, 0);
             }
         }
@@ -64,35 +75,10 @@ function poll_run(frm, attempt) {
     }, 3000);
 }
 
-function open_data_mart_dialog(frm) {
-    const d = new frappe.ui.Dialog({
-        title: __("Build Forecast Data Mart"),
-        fields: [
-            { fieldname: "from_date", fieldtype: "Date", label: __("From Date"), default: frm.doc.history_from || frappe.datetime.add_months(frappe.datetime.get_today(), -12), reqd: 1 },
-            { fieldname: "to_date", fieldtype: "Date", label: __("To Date"), default: frm.doc.as_of_date || frappe.datetime.get_today(), reqd: 1 },
-            { fieldname: "warning", fieldtype: "HTML", options: `<div class="alert alert-warning">${__("A long historical rebuild can take several minutes. It runs in the background and is safe to re-run.")}</div>` }
-        ],
-        primary_action_label: __("Build"),
-        primary_action(values) {
-            d.hide();
-            frappe.call({
-                method: "marina_custom_apps.sales_forecasting.api.queue_data_mart_build",
-                args: { start_date: values.from_date, end_date: values.to_date },
-                freeze: true,
-                freeze_message: __("Queueing data mart rebuild…"),
-                callback() {
-                    frappe.show_alert({ message: __("Data mart rebuild queued"), indicator: "blue" });
-                }
-            });
-        }
-    });
-    d.show();
-}
-
 function render_preview(frm) {
     const wrapper = frm.fields_dict.forecast_preview && frm.fields_dict.forecast_preview.$wrapper;
     if (!wrapper) return;
-    wrapper.empty().append(`<div class="text-muted">${__("Loading forecast chart…")}</div>`);
+    wrapper.empty().append(`<div class="text-muted">${__("Loading forecast chart...")}</div>`);
     frappe.call({
         method: "marina_custom_apps.sales_forecasting.api.get_run_preview",
         args: { run_name: frm.doc.name },
@@ -107,7 +93,7 @@ function render_preview(frm) {
             const datasets = [
                 { name: __("Forecast"), values: rows.map(x => flt(x.forecast_sales)) }
             ];
-            if (rows.some(x => x.actual_sales !== null && x.actual_sales !== undefined)) {
+            if (rows.every(x => x.actual_sales !== null && x.actual_sales !== undefined)) {
                 datasets.push({ name: __("Actual"), values: rows.map(x => flt(x.actual_sales)) });
             }
             new frappe.Chart(wrapper[0], {

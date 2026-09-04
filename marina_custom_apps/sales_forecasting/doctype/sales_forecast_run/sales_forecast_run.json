@@ -33,6 +33,7 @@
   "bias_pct",
   "mae",
   "result_count",
+  "actual_result_count",
   "preview_section",
   "forecast_preview",
   "error_section",
@@ -213,6 +214,12 @@
    "fieldname": "result_count",
    "fieldtype": "Int",
    "label": "Result Rows",
+   "read_only": 1
+  },
+  {
+   "fieldname": "actual_result_count",
+   "fieldtype": "Int",
+   "label": "Rows With Actuals",
    "read_only": 1
   },
   {

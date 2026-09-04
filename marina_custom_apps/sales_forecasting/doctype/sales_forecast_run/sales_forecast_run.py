@@ -6,6 +6,13 @@ from frappe.utils import getdate
 
 class SalesForecastRun(Document):
     def validate(self):
+        if not self.is_new():
+            stored_status = frappe.db.get_value(self.doctype, self.name, "status")
+            if stored_status == "Completed":
+                frappe.throw(
+                    _("Completed Forecast Runs are immutable. Create a new Forecast Run instead.")
+                )
+
         cfg = frappe.get_single("Sales Forecast Settings")
         self.company = self.company or cfg.company or "Marina"
         self.model_name = cfg.model_name or "Marina Analog Ensemble v1"
@@ -18,4 +25,9 @@ class SalesForecastRun(Document):
             self.status = "Draft"
 
     def on_trash(self):
+        stored_status = frappe.db.get_value(self.doctype, self.name, "status")
+        if stored_status == "Completed":
+            frappe.throw(
+                _("Completed Forecast Runs cannot be deleted because they are part of the forecast audit trail.")
+            )
         frappe.db.delete("Sales Forecast Result", {"forecast_run": self.name})

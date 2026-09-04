@@ -1,29 +1,49 @@
 from datetime import timedelta
 
 import frappe
-from frappe.utils import flt, getdate, today
+from frappe import _
+from frappe.utils import cint, flt, getdate, today
 
 
-def upcoming_planned_qty():
+def _require_read(doctype):
+    if not frappe.has_permission(doctype, "read"):
+        frappe.throw(
+            _("You do not have permission to read {0}.").format(doctype),
+            frappe.PermissionError,
+        )
+
+
+@frappe.whitelist()
+def upcoming_planned_qty(filters=None):
+    _require_read("Forecast Buying Plan")
     return _upcoming()["qty"]
 
 
-def upcoming_planned_styles():
+@frappe.whitelist()
+def upcoming_planned_styles(filters=None):
+    _require_read("Forecast Buying Plan")
     return _upcoming()["styles"]
 
 
-def latest_forecast_accuracy():
+@frappe.whitelist()
+def latest_forecast_accuracy(filters=None):
+    _require_read("Sales Forecast Run")
     rows = frappe.get_all(
         "Sales Forecast Run",
-        filters={"status": "Completed", "actual_sales": [">", 0]},
-        fields=["accuracy_pct"],
+        filters={"status": "Completed", "actual_result_count": [">", 0]},
+        fields=["accuracy_pct", "actual_result_count", "result_count"],
         order_by="generated_on desc",
-        limit=1,
+        limit=50,
     )
-    return flt(rows[0].accuracy_pct) if rows else 0
+    for row in rows:
+        if cint(row.result_count) > 0 and cint(row.actual_result_count) == cint(row.result_count):
+            return flt(row.accuracy_pct)
+    return 0
 
 
-def data_mart_records():
+@frappe.whitelist()
+def data_mart_records(filters=None):
+    _require_read("Sales Forecast Daily")
     return frappe.db.count("Sales Forecast Daily")
 
 

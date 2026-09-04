@@ -20,6 +20,7 @@
   "forecast_asp",
   "confidence_pct",
   "actual_section",
+  "has_actual_data",
   "actual_sales",
   "actual_units",
   "absolute_error",
@@ -123,6 +124,13 @@
    "fieldname": "actual_section",
    "fieldtype": "Section Break",
    "label": "Actual / Accuracy"
+  },
+  {
+   "fieldname": "has_actual_data",
+   "fieldtype": "Check",
+   "label": "Has Actual Data",
+   "read_only": 1,
+   "in_standard_filter": 1
   },
   {
    "fieldname": "actual_sales",

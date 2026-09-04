@@ -2,7 +2,10 @@ import frappe
 from frappe import _
 from frappe.utils import add_days, getdate, nowdate
 
-from marina_custom_apps.sales_forecasting.services.data_mart import build_data_mart
+from marina_custom_apps.sales_forecasting.services.data_mart import (
+    build_data_mart,
+    data_mart_range_count,
+)
 from marina_custom_apps.sales_forecasting.services.forecast_engine import preview, run_forecast
 from marina_custom_apps.sales_forecasting.services.readiness import refresh_buying_plan
 
@@ -60,10 +63,10 @@ def queue_data_mart_build(start_date, end_date):
     start = str(getdate(start_date))
     end = str(getdate(end_date))
     job = frappe.enqueue(
-        "marina_custom_apps.sales_forecasting.services.data_mart.build_data_mart",
+        "marina_custom_apps.sales_forecasting.services.data_mart.ensure_data_mart_coverage",
         queue="long",
         timeout=7200,
-        job_name=f"sales-forecast-data-mart-{start}-{end}",
+        job_name=f"sales-forecast-data-mart-ensure-{start}-{end}",
         start_date=start,
         end_date=end,
     )
@@ -72,16 +75,83 @@ def queue_data_mart_build(start_date, end_date):
 
 @frappe.whitelist()
 def build_data_mart_now(start_date, end_date):
-    """Admin/debug endpoint for short ranges. Long rebuilds should use queue_data_mart_build."""
+    """Admin/debug endpoint for short ranges only."""
     if "System Manager" not in frappe.get_roles():
         frappe.throw(_("System Manager role required."), frappe.PermissionError)
-    return build_data_mart(start_date, end_date)
+
+    start = getdate(start_date)
+    end = getdate(end_date)
+    if end < start:
+        frappe.throw(_("End Date must be on or after Start Date."))
+    if (end - start).days > 30:
+        frappe.throw(
+            _("Synchronous Data Mart rebuild is limited to 31 days. Use Data Mart Maintenance for longer ranges.")
+        )
+
+    return build_data_mart(start, end, replace_existing=True)
+
+
+@frappe.whitelist()
+def get_data_mart_range_count(start_date, end_date, branch=None, main_group=None):
+    if "System Manager" not in frappe.get_roles():
+        frappe.throw(_("System Manager role required."), frappe.PermissionError)
+    return {
+        "count": data_mart_range_count(
+            start_date,
+            end_date,
+            branch=branch,
+            main_group=main_group,
+        )
+    }
+
+
+@frappe.whitelist()
+def queue_data_mart_maintenance(
+    start_date,
+    end_date,
+    action="delete",
+    branch=None,
+    main_group=None,
+):
+    if "System Manager" not in frappe.get_roles():
+        frappe.throw(_("System Manager role required."), frappe.PermissionError)
+    if action not in ("delete", "rebuild"):
+        frappe.throw(_("Action must be Delete Only or Delete & Rebuild."))
+
+    start = str(getdate(start_date))
+    end = str(getdate(end_date))
+    job = frappe.enqueue(
+        "marina_custom_apps.sales_forecasting.services.data_mart.maintain_data_mart_range",
+        queue="long",
+        timeout=7200,
+        job_name=f"sales-forecast-data-mart-maintenance-{action}-{start}-{end}",
+        start_date=start,
+        end_date=end,
+        action=action,
+        branch=branch or None,
+        main_group=main_group or None,
+    )
+    return {
+        "queued": True,
+        "job_id": getattr(job, "id", None),
+        "action": action,
+        "start_date": start,
+        "end_date": end,
+    }
 
 
 @frappe.whitelist()
 def queue_forecast_run(run_name):
     run = frappe.get_doc("Sales Forecast Run", run_name)
     run.check_permission("write")
+
+    if run.status == "Completed":
+        frappe.throw(
+            _("Completed Forecast Runs are immutable. Create a new Forecast Run instead.")
+        )
+    if run.status in ("Queued", "Running"):
+        frappe.throw(_("This Forecast Run is already queued or running."))
+
     run.save()
     frappe.db.set_value("Sales Forecast Run", run.name, {"status": "Queued", "error_message": ""})
     frappe.db.commit()

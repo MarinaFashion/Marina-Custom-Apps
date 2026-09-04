@@ -18,14 +18,15 @@ from .common import (
     salary_phase,
     settings,
 )
+from .data_mart import ensure_data_mart_coverage
 
 
 RESULT_FIELDS = [
     "name", "owner", "creation", "modified", "modified_by", "docstatus", "idx",
     "result_key", "forecast_run", "date", "branch", "main_group",
     "forecast_sales", "forecast_sales_low", "forecast_sales_high", "forecast_units",
-    "forecast_asp", "confidence_pct", "actual_sales", "actual_units", "absolute_error",
-    "signed_error", "absolute_pct_error", "analog_samples", "drivers",
+    "forecast_asp", "confidence_pct", "has_actual_data", "actual_sales", "actual_units",
+    "absolute_error", "signed_error", "absolute_pct_error", "analog_samples", "drivers",
 ]
 
 
@@ -43,7 +44,10 @@ def run_forecast(run_name, *, commit=True):
         forecast_from = getdate(run.forecast_from)
         forecast_to = getdate(run.forecast_to)
         lookback_years = max(cint(cfg.lookback_years or 3), 1)
-        history_from = as_of - timedelta(days=lookback_years * 366)
+        history_from = max(
+            as_of - timedelta(days=lookback_years * 366),
+            getdate(cfg.history_start_date),
+        )
         history_to = as_of
 
         branches = get_branches(cfg)
@@ -52,6 +56,14 @@ def run_forecast(run_name, *, commit=True):
         groups = [run.main_group] if run.main_group else main_groups(cfg)
         if not branches or not groups:
             frappe.throw(_("No branches or groups match the forecast scope."))
+
+        ensure_data_mart_coverage(
+            history_from,
+            history_to,
+            branch_names=[branch.name for branch in branches],
+            group_names=groups,
+            commit=commit,
+        )
 
         history = _load_history(history_from, history_to, groups)
         pools = _build_pools(history)
@@ -141,9 +153,10 @@ def run_forecast(run_name, *, commit=True):
                         frappe.session.user or "Administrator", 0, 0,
                         key, run.name, str(day), branch.name, group,
                         pred["forecast_sales"], pred["low"], pred["high"], pred["forecast_units"],
-                        pred["forecast_asp"], pred["confidence"], actual_sales if has_actual else None,
-                        actual_units if has_actual else None, abs_error if has_actual else None,
-                        signed_error if has_actual else None, ape if has_actual else None,
+                        pred["forecast_asp"], pred["confidence"], 1 if has_actual else 0,
+                        actual_sales if has_actual else 0, actual_units if has_actual else 0,
+                        abs_error if has_actual else 0, signed_error if has_actual else 0,
+                        ape if has_actual else 0,
                         pred["samples"], json.dumps(pred["drivers"], ensure_ascii=False),
                     ])
                     total_forecast_sales += pred["forecast_sales"]
@@ -187,6 +200,7 @@ def run_forecast(run_name, *, commit=True):
             bias_pct=bias if actual_rows else 0,
             mae=mae if actual_rows else 0,
             result_count=len(rows),
+            actual_result_count=actual_rows,
             error_message="",
         )
         if commit:
@@ -200,12 +214,21 @@ def run_forecast(run_name, *, commit=True):
         }
     except Exception:
         message = frappe.get_traceback()
+        # Never commit partially inserted Forecast Result rows or other uncommitted
+        # forecast work when a run fails. Data Mart coverage is committed separately
+        # before model execution when commit=True, so it remains available.
+        frappe.db.rollback()
         _set_run(run.name, status="Failed", error_message=message[-4000:])
         frappe.db.commit()
         raise
 
 
 def _validate_run(run):
+    if run.status == "Completed":
+        frappe.throw(
+            _("Completed Forecast Runs are immutable. Create a new Forecast Run instead.")
+        )
+
     start = getdate(run.forecast_from)
     end = getdate(run.forecast_to)
     as_of = getdate(run.as_of_date)
@@ -581,7 +604,11 @@ def preview(run_name):
                sum(forecast_sales) as forecast_sales,
                sum(forecast_sales_low) as forecast_low,
                sum(forecast_sales_high) as forecast_high,
-               sum(actual_sales) as actual_sales
+               case
+                   when count(*) > 0 and sum(has_actual_data) = count(*)
+                   then sum(actual_sales)
+                   else null
+               end as actual_sales
         from `tabSales Forecast Result`
         where forecast_run = %s
         group by date

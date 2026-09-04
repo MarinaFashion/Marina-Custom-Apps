@@ -34,7 +34,15 @@ DAILY_FIELDS = [
 ]
 
 
-def build_data_mart(start_date, end_date, *, commit=True):
+def build_data_mart(
+    start_date,
+    end_date,
+    *,
+    commit=True,
+    branch_names=None,
+    group_names=None,
+    replace_existing=False,
+):
     cfg = settings()
     start = getdate(start_date)
     end = getdate(end_date)
@@ -42,10 +50,20 @@ def build_data_mart(start_date, end_date, *, commit=True):
         frappe.throw(_("End Date must be on or after Start Date."))
 
     branches = get_branches(cfg)
+    if isinstance(branch_names, str):
+        branch_names = [branch_names]
+    if branch_names:
+        wanted_branches = set(branch_names)
+        branches = [branch for branch in branches if branch.name in wanted_branches]
     if not branches:
         frappe.throw(_("No Branch records with a linked selling warehouse were found."))
 
     groups = main_groups(cfg)
+    if isinstance(group_names, str):
+        group_names = [group_names]
+    if group_names:
+        wanted_groups = set(group_names)
+        groups = [group for group in groups if group in wanted_groups]
     if not groups:
         frappe.throw(_("Configure at least one Forecast Main Group in Sales Forecast Settings."))
 
@@ -132,27 +150,272 @@ def build_data_mart(start_date, end_date, *, commit=True):
                 ]
                 rows.append(row)
 
-    _replace_rows(start, end, rows, cfg)
+    inserted = _write_rows(
+        start,
+        end,
+        rows,
+        cfg,
+        branch_names=[branch.name for branch in branches],
+        group_names=groups,
+        replace_existing=replace_existing,
+    )
     if commit:
         frappe.db.commit()
 
     return {
         "start_date": str(start),
         "end_date": str(end),
-        "rows": len(rows),
+        "rows_generated": len(rows),
+        "rows_inserted": inserted,
         "branches": len(branches),
         "groups": groups,
+        "replace_existing": bool(replace_existing),
     }
 
 
 def refresh_recent_data():
+    """Legacy callable retained for compatibility; it is no longer scheduled."""
     cfg = settings()
     lookback = max(cint(cfg.daily_refresh_lookback_days or 14), 1)
     end = getdate(add_days(frappe.utils.today(), -1))
     start = getdate(add_days(end, -(lookback - 1)))
     if start < getdate(cfg.history_start_date):
         start = getdate(cfg.history_start_date)
-    return build_data_mart(start, end)
+    return ensure_data_mart_coverage(start, end)
+
+
+def ensure_data_mart_coverage(
+    start_date,
+    end_date,
+    *,
+    branch_names=None,
+    group_names=None,
+    commit=True,
+):
+    """Create only missing Date x Branch x Main Group records.
+
+    Existing rows are immutable during normal Forecast Runs. Corrected source data
+    is picked up only after an explicit maintenance delete/rebuild.
+    """
+    cfg = settings()
+    start = getdate(start_date)
+    end = getdate(end_date)
+    if end < start:
+        frappe.throw(_("End Date must be on or after Start Date."))
+
+    branches = get_branches(cfg)
+    if isinstance(branch_names, str):
+        branch_names = [branch_names]
+    if branch_names:
+        wanted = set(branch_names)
+        branches = [branch for branch in branches if branch.name in wanted]
+
+    groups = main_groups(cfg)
+    if isinstance(group_names, str):
+        group_names = [group_names]
+    if group_names:
+        wanted = set(group_names)
+        groups = [group for group in groups if group in wanted]
+
+    if not branches or not groups:
+        frappe.throw(_("No branches or groups match the requested Data Mart scope."))
+
+    expected_by_date = {}
+    dimensions = {}
+    for day in date_range(start, end):
+        day_key = str(day)
+        keys = set()
+        for branch in branches:
+            if branch.opening_date and getdate(branch.opening_date) > day:
+                continue
+            for group in groups:
+                key = f"{day_key}|{branch.name}|{group}"
+                keys.add(key)
+                dimensions[key] = (branch.name, group, day)
+        expected_by_date[day_key] = keys
+
+    expected_count = sum(len(keys) for keys in expected_by_date.values())
+    if not expected_count:
+        return {
+            "start_date": str(start),
+            "end_date": str(end),
+            "expected": 0,
+            "existing": 0,
+            "missing": 0,
+            "inserted": 0,
+        }
+
+    filters = {
+        "date": ["between", [str(start), str(end)]],
+        "branch": ["in", [branch.name for branch in branches]],
+        "main_group": ["in", groups],
+    }
+    existing_keys = set(
+        frappe.get_all(
+            "Sales Forecast Daily",
+            filters=filters,
+            pluck="record_key",
+            limit_page_length=0,
+        )
+    )
+
+    existing_expected = sum(
+        1
+        for keys in expected_by_date.values()
+        for key in keys
+        if key in existing_keys
+    )
+    missing_count = expected_count - existing_expected
+    if missing_count <= 0:
+        return {
+            "start_date": str(start),
+            "end_date": str(end),
+            "expected": expected_count,
+            "existing": expected_count,
+            "missing": 0,
+            "inserted": 0,
+        }
+
+    full_missing_days = []
+    partial_by_scope = defaultdict(list)
+
+    for day_key, expected_keys in expected_by_date.items():
+        missing_keys = expected_keys - existing_keys
+        if not missing_keys:
+            continue
+        if len(missing_keys) == len(expected_keys):
+            full_missing_days.append(getdate(day_key))
+            continue
+        for key in missing_keys:
+            branch_name, group, day = dimensions[key]
+            partial_by_scope[(branch_name, group)].append(day)
+
+    inserted = 0
+    build_calls = 0
+
+    for range_start, range_end in _contiguous_ranges(full_missing_days):
+        result = build_data_mart(
+            range_start,
+            range_end,
+            commit=False,
+            branch_names=[branch.name for branch in branches],
+            group_names=groups,
+            replace_existing=False,
+        )
+        inserted += cint(result.get("rows_inserted"))
+        build_calls += 1
+
+    for (branch_name, group), days in partial_by_scope.items():
+        for range_start, range_end in _contiguous_ranges(days):
+            result = build_data_mart(
+                range_start,
+                range_end,
+                commit=False,
+                branch_names=[branch_name],
+                group_names=[group],
+                replace_existing=False,
+            )
+            inserted += cint(result.get("rows_inserted"))
+            build_calls += 1
+
+    if commit:
+        frappe.db.commit()
+
+    return {
+        "start_date": str(start),
+        "end_date": str(end),
+        "expected": expected_count,
+        "existing": existing_expected,
+        "missing": missing_count,
+        "inserted": inserted,
+        "build_calls": build_calls,
+    }
+
+
+def data_mart_range_count(start_date, end_date, *, branch=None, main_group=None):
+    start = getdate(start_date)
+    end = getdate(end_date)
+    if end < start:
+        frappe.throw(_("End Date must be on or after Start Date."))
+    where, params = _data_mart_where(
+        start,
+        end,
+        branch_names=[branch] if branch else None,
+        group_names=[main_group] if main_group else None,
+    )
+    return cint(
+        frappe.db.sql(
+            f"select count(*) from `tabSales Forecast Daily` where {where}",
+            params,
+        )[0][0]
+        or 0
+    )
+
+
+def maintain_data_mart_range(
+    start_date,
+    end_date,
+    *,
+    branch=None,
+    main_group=None,
+    action="delete",
+    commit=True,
+):
+    start = getdate(start_date)
+    end = getdate(end_date)
+    if end < start:
+        frappe.throw(_("End Date must be on or after Start Date."))
+
+    branch_names = [branch] if branch else None
+    group_names = [main_group] if main_group else None
+    deleted = _delete_data_mart_rows(
+        start,
+        end,
+        branch_names=branch_names,
+        group_names=group_names,
+    )
+
+    result = {
+        "start_date": str(start),
+        "end_date": str(end),
+        "branch": branch or "",
+        "main_group": main_group or "",
+        "deleted": deleted,
+        "rebuilt": 0,
+    }
+
+    if action == "rebuild":
+        build = build_data_mart(
+            start,
+            end,
+            commit=False,
+            branch_names=branch_names,
+            group_names=group_names,
+            replace_existing=False,
+        )
+        result["rebuilt"] = cint(build.get("rows_inserted"))
+    elif action != "delete":
+        frappe.throw(_("Unknown Data Mart maintenance action."))
+
+    if commit:
+        frappe.db.commit()
+    return result
+
+
+def _contiguous_ranges(days):
+    days = sorted({getdate(day) for day in days})
+    if not days:
+        return []
+    ranges = []
+    range_start = previous = days[0]
+    for day in days[1:]:
+        if day == previous + timedelta(days=1):
+            previous = day
+            continue
+        ranges.append((range_start, previous))
+        range_start = previous = day
+    ranges.append((range_start, previous))
+    return ranges
 
 
 def _load_sales(start, end, warehouses, groups, cfg):
@@ -578,18 +841,92 @@ def _count_between(sorted_dates, start, end):
     return bisect.bisect_right(sorted_dates, end) - bisect.bisect_left(sorted_dates, start)
 
 
-def _replace_rows(start, end, rows, cfg):
-    frappe.db.sql(
-        "delete from `tabSales Forecast Daily` where `date` between %s and %s",
-        (str(start), str(end)),
+def _data_mart_where(start, end, *, branch_names=None, group_names=None):
+    clauses = ["`date` between %s and %s"]
+    params = [str(start), str(end)]
+
+    if branch_names:
+        placeholders = ",".join(["%s"] * len(branch_names))
+        clauses.append(f"`branch` in ({placeholders})")
+        params.extend(branch_names)
+
+    if group_names:
+        placeholders = ",".join(["%s"] * len(group_names))
+        clauses.append(f"`main_group` in ({placeholders})")
+        params.extend(group_names)
+
+    return " and ".join(clauses), params
+
+
+def _delete_data_mart_rows(start, end, *, branch_names=None, group_names=None):
+    where, params = _data_mart_where(
+        start,
+        end,
+        branch_names=branch_names,
+        group_names=group_names,
     )
+    count = cint(
+        frappe.db.sql(
+            f"select count(*) from `tabSales Forecast Daily` where {where}",
+            params,
+        )[0][0]
+        or 0
+    )
+    if count:
+        frappe.db.sql(
+            f"delete from `tabSales Forecast Daily` where {where}",
+            params,
+        )
+    return count
+
+
+def _write_rows(
+    start,
+    end,
+    rows,
+    cfg,
+    *,
+    branch_names=None,
+    group_names=None,
+    replace_existing=False,
+):
+    if replace_existing:
+        _delete_data_mart_rows(
+            start,
+            end,
+            branch_names=branch_names,
+            group_names=group_names,
+        )
+
     if not rows:
-        return
+        return 0
+
+    filters = {"date": ["between", [str(start), str(end)]]}
+    if branch_names:
+        filters["branch"] = ["in", branch_names]
+    if group_names:
+        filters["main_group"] = ["in", group_names]
+
+    existing_keys = set(
+        frappe.get_all(
+            "Sales Forecast Daily",
+            filters=filters,
+            pluck="record_key",
+            limit_page_length=0,
+        )
+    )
+
+    key_index = DAILY_FIELDS.index("record_key")
+    pending = [row for row in rows if row[key_index] not in existing_keys]
+    if not pending:
+        return 0
+
     chunk = max(cint(cfg.data_mart_batch_size or 5000), 500)
     frappe.db.bulk_insert(
         "Sales Forecast Daily",
         fields=DAILY_FIELDS,
-        values=rows,
-        ignore_duplicates=False,
+        values=pending,
+        ignore_duplicates=True,
         chunk_size=chunk,
     )
+    return len(pending)

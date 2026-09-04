@@ -4,7 +4,7 @@ app_publisher = "Marina Trading Company"
 app_description = "Marina Trading Company custom Frappe/ERPNext modules"
 app_email = "it@marinafashion.com.sa"
 app_license = "MIT"
-app_version = "0.43.3"
+app_version = "0.43.4"
 
 required_apps = ["erpnext"]
 
@@ -57,7 +57,6 @@ override_doctype_dashboards = {
 scheduler_events = {
     "daily": [
         "marina_custom_apps.stock_transfer_audit.alerts.send_daily_stock_transfer_control_alerts",
-        "marina_custom_apps.sales_forecasting.tasks.daily_refresh",
     ],
 }
 
