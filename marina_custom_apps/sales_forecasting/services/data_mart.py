@@ -42,6 +42,7 @@ def build_data_mart(
     branch_names=None,
     group_names=None,
     replace_existing=False,
+    include_disabled_stores=False,
 ):
     cfg = settings()
     start = getdate(start_date)
@@ -49,7 +50,7 @@ def build_data_mart(
     if end < start:
         frappe.throw(_("End Date must be on or after Start Date."))
 
-    branches = get_branches(cfg)
+    branches = get_branches(cfg, include_disabled_stores=include_disabled_stores)
     if isinstance(branch_names, str):
         branch_names = [branch_names]
     if branch_names:
@@ -191,6 +192,7 @@ def ensure_data_mart_coverage(
     branch_names=None,
     group_names=None,
     commit=True,
+    include_disabled_stores=False,
 ):
     """Create only missing Date x Branch x Main Group records.
 
@@ -203,7 +205,7 @@ def ensure_data_mart_coverage(
     if end < start:
         frappe.throw(_("End Date must be on or after Start Date."))
 
-    branches = get_branches(cfg)
+    branches = get_branches(cfg, include_disabled_stores=include_disabled_stores)
     if isinstance(branch_names, str):
         branch_names = [branch_names]
     if branch_names:
@@ -301,6 +303,7 @@ def ensure_data_mart_coverage(
             branch_names=[branch.name for branch in branches],
             group_names=groups,
             replace_existing=False,
+            include_disabled_stores=include_disabled_stores,
         )
         inserted += cint(result.get("rows_inserted"))
         build_calls += 1
@@ -314,6 +317,7 @@ def ensure_data_mart_coverage(
                 branch_names=[branch_name],
                 group_names=[group],
                 replace_existing=False,
+            include_disabled_stores=include_disabled_stores,
             )
             inserted += cint(result.get("rows_inserted"))
             build_calls += 1

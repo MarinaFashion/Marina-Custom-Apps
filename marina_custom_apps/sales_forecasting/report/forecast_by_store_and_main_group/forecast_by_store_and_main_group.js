@@ -1,10 +1,13 @@
-frappe.query_reports["Forecast Accuracy Analysis"] = {
+frappe.query_reports["Forecast by Store and Main Group"] = {
+    tree: true,
+    name_field: "name",
+    parent_field: "parent",
+    initial_depth: 0,
     filters: [
         { fieldname: "forecast_run", label: __("Forecast Run"), fieldtype: "Link", options: "Sales Forecast Run", reqd: 1 },
-        { fieldname: "level", label: __("Analysis Level"), fieldtype: "Select", options: "Detail\nDaily\nBranch\nMain Group\nBranch x Main Group", default: "Branch x Main Group", reqd: 1 },
         { fieldname: "from_date", label: __("From Date"), fieldtype: "Date" },
         { fieldname: "to_date", label: __("To Date"), fieldtype: "Date" },
         { fieldname: "branch", label: __("Branch"), fieldtype: "Link", options: "Branch" },
-        { fieldname: "main_group", label: __("Main Group"), fieldtype: "Select", options: "\nDresses\nUppers\nBottoms" }
+        { fieldname: "show_units", label: __("Show Units"), fieldtype: "Check", default: 0 }
     ]
 };

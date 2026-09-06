@@ -56,7 +56,7 @@ def is_weekend(date_value):
     return 1 if getdate(date_value).weekday() in (4, 5) else 0
 
 
-def get_branches(cfg=None):
+def get_branches(cfg=None, *, include_disabled_stores=False):
     cfg = cfg or settings()
     fields = {
         "company": safe_field(cfg.branch_company_field, "custom_company"),
@@ -85,7 +85,35 @@ def get_branches(cfg=None):
         params,
         as_dict=True,
     )
-    return [r for r in rows if r.warehouse]
+    linked = [r for r in rows if r.warehouse]
+    if not linked:
+        return []
+
+    warehouse_meta = frappe.get_meta("Warehouse")
+    if not warehouse_meta.has_field("custom_is_store"):
+        frappe.throw(
+            "Warehouse.custom_is_store is required by Sales Forecasting to identify selling stores."
+        )
+
+    warehouse_filters = {
+        "name": ["in", [row.warehouse for row in linked]],
+        "is_group": 0,
+        "custom_is_store": 1,
+    }
+    if not include_disabled_stores:
+        warehouse_filters["disabled"] = 0
+    if cfg.company:
+        warehouse_filters["company"] = cfg.company
+
+    eligible_warehouses = set(
+        frappe.get_all(
+            "Warehouse",
+            filters=warehouse_filters,
+            pluck="name",
+            limit_page_length=0,
+        )
+    )
+    return [row for row in linked if row.warehouse in eligible_warehouses]
 
 
 def detect_calendar_doctype(cfg=None):

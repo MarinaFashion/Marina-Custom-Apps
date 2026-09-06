@@ -207,6 +207,7 @@ def _ensure_indexes():
         ("Sales Forecast Daily", ["date", "branch", "main_group"], "sf_daily_date_branch_group"),
         ("Sales Forecast Daily", ["branch", "main_group", "date"], "sf_daily_branch_group_date"),
         ("Sales Forecast Result", ["forecast_run", "date"], "sf_result_run_date"),
+        ("Sales Forecast Result", ["forecast_run", "branch", "main_group", "date"], "sf_result_run_branch_group_date"),
         ("Forecast Buying Plan Item", ["display_date", "main_group"], "sf_plan_display_group"),
     ):
         if not frappe.db.exists("DocType", doctype):

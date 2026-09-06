@@ -166,6 +166,22 @@ def queue_forecast_run(run_name):
 
 
 @frappe.whitelist()
+def queue_refresh_forecast_actuals(run_name):
+    run = frappe.get_doc("Sales Forecast Run", run_name)
+    run.check_permission("write")
+    if run.status != "Completed":
+        frappe.throw(_("Actuals can be refreshed only for a Completed Forecast Run."))
+    job = frappe.enqueue(
+        "marina_custom_apps.sales_forecasting.services.forecast_engine.refresh_actuals",
+        queue="long",
+        timeout=7200,
+        job_name=f"sales-forecast-refresh-actuals-{run.name}",
+        run_name=run.name,
+    )
+    return {"queued": True, "job_id": getattr(job, "id", None), "run": run.name}
+
+
+@frappe.whitelist()
 def get_run_preview(run_name):
     run = frappe.get_doc("Sales Forecast Run", run_name)
     run.check_permission("read")

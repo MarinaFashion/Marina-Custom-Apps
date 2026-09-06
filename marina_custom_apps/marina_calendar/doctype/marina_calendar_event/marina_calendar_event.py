@@ -24,6 +24,21 @@ class MarinaCalendarEvent(Document):
         elif self.scope == "City":
             self.branch = ""
 
+        if (
+            self.event_type == "Operational"
+            and self.importance == "Critical"
+            and self.expected_sales_impact == "Negative"
+            and self.store_trading_status == "No Change"
+        ):
+            frappe.msgprint(
+                _(
+                    "This is a Critical Operational event with Negative sales impact, "
+                    "but Store Trading Status is No Change. Confirm whether the selected scope remained open."
+                ),
+                indicator="orange",
+                alert=True,
+            )
+
         # A declared closure is operational truth, not merely a soft demand signal.
         # Keep it forecast-relevant and consistently classified.
         if self.store_trading_status == "Closed":

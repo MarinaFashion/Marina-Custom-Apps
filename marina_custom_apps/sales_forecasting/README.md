@@ -64,3 +64,13 @@ Sales Forecast Settings field mappings use dynamic autocomplete dropdowns popula
 - Buying Plan overall assortment/PO/receipt completion percentages cap each Main Group contribution so over-completion in one group cannot offset a shortage in another.
 - Sales Forecast Settings use two-column desktop sections, validate operational ranges, and repair only missing/invalid legacy defaults during migration.
 - Completed Forecast Runs are immutable audit records: they cannot be edited, rerun, or deleted; corrected inputs must be tested with a new run.
+## v0.43.5 forecast scope, audit and analysis hardening
+
+- Forecast eligibility now requires the Branch-linked Warehouse to be an active, non-group selling store (`custom_is_store = 1`, `disabled = 0`, `is_group = 0`).
+- Historical analog pools use the same eligible Branch universe so office/DC/non-store rows cannot contaminate fallback pools.
+- Critical negative Operational calendar events warn when Store Trading Status remains `No Change`.
+- Dormant branches are flagged in model drivers and receive a confidence penalty without changing forecast amount.
+- Completed Forecast Runs can refresh realized actuals without changing frozen forecast predictions or silently rebuilding existing historical Data Mart rows.
+- `Has Actual Data` is authoritative for all accuracy calculations; completed generated Data Mart rows count as realized actual coverage even when sales are zero.
+- Forecast Accuracy Analysis supports Detail, Daily, Branch, Main Group and Branch x Main Group levels.
+- Forecast by Store and Main Group shows collapsed Store totals with expandable Daily rows and optional Units.

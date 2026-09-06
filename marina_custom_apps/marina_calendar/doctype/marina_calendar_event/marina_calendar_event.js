@@ -4,6 +4,18 @@ frappe.ui.form.on("Marina Calendar Event", {
             frappe.set_route("List", "Marina Calendar Event", "Calendar", "default");
         }, __("Calendar"));
 
+        if (
+            frm.doc.event_type === "Operational" &&
+            frm.doc.importance === "Critical" &&
+            frm.doc.expected_sales_impact === "Negative" &&
+            frm.doc.store_trading_status === "No Change"
+        ) {
+            frm.dashboard.add_indicator(
+                __("Critical operational event: verify Store Trading Status"),
+                "orange"
+            );
+        }
+
         if (!frm.is_new() && frm.doc.start_date && frm.doc.end_date) {
             const start = frappe.datetime.str_to_obj(frm.doc.start_date);
             const end = frappe.datetime.str_to_obj(frm.doc.end_date);

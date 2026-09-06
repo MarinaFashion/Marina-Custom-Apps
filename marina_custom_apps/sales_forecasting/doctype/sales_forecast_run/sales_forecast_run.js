@@ -20,6 +20,15 @@ frappe.ui.form.on("Sales Forecast Run", {
             frm.add_custom_button(__("Results"), () => {
                 frappe.set_route("List", "Sales Forecast Result", { forecast_run: frm.doc.name });
             }, __("Forecast"));
+            frm.add_custom_button(__("Store / Category Summary"), () => {
+                frappe.set_route("query-report", "Forecast by Store and Main Group", { forecast_run: frm.doc.name });
+            }, __("Forecast"));
+            frm.add_custom_button(__("Accuracy Analysis"), () => {
+                frappe.set_route("query-report", "Forecast Accuracy Analysis", { forecast_run: frm.doc.name });
+            }, __("Forecast"));
+            if (frm.doc.status === "Completed") {
+                frm.add_custom_button(__("Refresh Actuals"), () => refresh_actuals(frm), __("Forecast"));
+            }
         }
         if (frm.doc.status === "Completed") render_preview(frm);
     }
@@ -107,4 +116,25 @@ function render_preview(frm) {
             });
         }
     });
+}
+function refresh_actuals(frm) {
+    frappe.confirm(
+        __("Refresh realized actuals without changing the frozen forecast prediction?"),
+        () => {
+            frappe.call({
+                method: "marina_custom_apps.sales_forecasting.api.queue_refresh_forecast_actuals",
+                args: { run_name: frm.doc.name },
+                freeze: true,
+                freeze_message: __("Queueing actuals refresh..."),
+                callback(r) {
+                    if (!r.exc) {
+                        frappe.show_alert({
+                            message: __("Actuals refresh queued in the long worker. Reload this run after the job completes."),
+                            indicator: "blue"
+                        });
+                    }
+                }
+            });
+        }
+    );
 }

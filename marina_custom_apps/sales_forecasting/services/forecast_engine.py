@@ -21,6 +21,9 @@ from .common import (
 from .data_mart import ensure_data_mart_coverage
 
 
+DORMANT_WARNING_DAYS = 14
+
+
 RESULT_FIELDS = [
     "name", "owner", "creation", "modified", "modified_by", "docstatus", "idx",
     "result_key", "forecast_run", "date", "branch", "main_group",
@@ -65,7 +68,12 @@ def run_forecast(run_name, *, commit=True):
             commit=commit,
         )
 
-        history = _load_history(history_from, history_to, groups)
+        history = _load_history(
+            history_from,
+            history_to,
+            groups,
+            [branch.name for branch in branches],
+        )
         pools = _build_pools(history)
         calendar = load_calendar(forecast_from, forecast_to, cfg)
         plan = (
@@ -77,6 +85,7 @@ def run_forecast(run_name, *, commit=True):
 
         actual_map = _load_actuals(forecast_from, forecast_to, [b.name for b in branches], groups)
         latest_context = _latest_context(history)
+        branch_activity = _branch_activity_context(history, as_of)
 
         rows = []
         total_forecast_sales = total_forecast_units = 0.0
@@ -102,6 +111,9 @@ def run_forecast(run_name, *, commit=True):
             for branch in branches:
                 if branch.opening_date and getdate(branch.opening_date) > day:
                     continue
+                activity = branch_activity.get(branch.name) or {}
+                dormant_days = cint(activity.get("inactive_days"))
+                last_sales_date = activity.get("last_sales_date")
                 for group in groups:
                     cal_ctx = calendar_context(cal, branch, group, cfg.company)
                     target["hijri_day"] = cint(cal_ctx.get("hijri_day"))
@@ -133,6 +145,14 @@ def run_forecast(run_name, *, commit=True):
                         }
                     else:
                         pred = _predict_one(candidates, target, branch, fallback, cfg, plan_features)
+                        if dormant_days >= DORMANT_WARNING_DAYS:
+                            pred["confidence"] = max(10, pred["confidence"] - 15)
+                            pred["drivers"]["dormant_branch_warning"] = (
+                                f"No sales transactions for {dormant_days} day(s) through {as_of}. "
+                                "Verify Marina Calendar closure/reopening events."
+                            )
+                            pred["drivers"]["last_sales_date"] = str(last_sales_date) if last_sales_date else None
+                            pred["drivers"]["inactive_days_as_of"] = dormant_days
                         if target["store_trading_status"] == "Partially Open":
                             pred["confidence"] = max(10, pred["confidence"] - 15)
                             pred["drivers"]["store_trading_status"] = "Partially Open"
@@ -248,10 +268,16 @@ def _set_run(name, **values):
     frappe.db.set_value("Sales Forecast Run", name, values, update_modified=True)
 
 
-def _load_history(start, end, groups):
+def _load_history(start, end, groups, branches):
+    filters = {
+        "date": ["between", [str(start), str(end)]],
+        "main_group": ["in", groups],
+    }
+    if branches:
+        filters["branch"] = ["in", branches]
     return frappe.get_all(
         "Sales Forecast Daily",
-        filters={"date": ["between", [str(start), str(end)]], "main_group": ["in", groups]},
+        filters=filters,
         fields=[
             "date", "branch", "main_group", "city", "cluster", "store_space", "store_open_flag",
             "retail_sales_value", "net_units", "transaction_count", "avg_realized_price",
@@ -439,6 +465,27 @@ def _latest_context(history):
     return out
 
 
+def _branch_activity_context(history, as_of):
+    latest = {}
+    for row in history:
+        if cint(row.transaction_count) <= 0 and flt(row.retail_sales_value) == 0:
+            continue
+        day = getdate(row.date)
+        if day > getdate(as_of):
+            continue
+        previous = latest.get(row.branch)
+        if previous is None or day > previous:
+            latest[row.branch] = day
+
+    result = {}
+    for branch, last_day in latest.items():
+        result[branch] = {
+            "last_sales_date": last_day,
+            "inactive_days": max((getdate(as_of) - last_day).days, 0),
+        }
+    return result
+
+
 def _resolve_plan(run, as_of, forecast_from, forecast_to):
     if run.buying_plan and frappe.db.exists("Forecast Buying Plan", run.buying_plan):
         return frappe.get_doc("Forecast Buying Plan", run.buying_plan)
@@ -574,7 +621,7 @@ def _plan_features(context, group, day):
 
 
 def _load_actuals(start, end, branches, groups):
-    actual_end = min(getdate(end), getdate(frappe.utils.today()))
+    actual_end = min(getdate(end), getdate(add_days(frappe.utils.today(), -1)))
     if getdate(start) > actual_end:
         return {}
     rows = frappe.get_all(
@@ -586,14 +633,120 @@ def _load_actuals(start, end, branches, groups):
         },
         fields=[
             "date", "branch", "main_group", "retail_sales_value", "net_units",
-            "store_open_flag", "transaction_count",
+            "store_open_flag", "transaction_count", "store_trading_status",
         ],
         limit_page_length=0,
     )
+    # The caller only requests completed dates. Presence of an eligible
+    # Date x Branch x Main Group Data Mart row is therefore authoritative
+    # actual coverage, including legitimate zero-sales days.
     return {
         (str(r.date), r.branch, r.main_group): r
         for r in rows
-        if cint(r.store_open_flag) or cint(r.transaction_count)
+    }
+
+
+def refresh_actuals(run_name, *, commit=True):
+    """Refresh realized actuals without changing the frozen forecast prediction."""
+    run = frappe.get_doc("Sales Forecast Run", run_name)
+    if run.status != "Completed":
+        frappe.throw(_("Actuals can be refreshed only for a Completed Forecast Run."))
+
+    start = getdate(run.forecast_from)
+    actual_end = min(getdate(run.forecast_to), getdate(add_days(frappe.utils.today(), -1)))
+    if start > actual_end:
+        return {"run": run.name, "actual_through": None, "actual_rows": 0, "result_rows": cint(run.result_count)}
+
+    eligible = {
+        branch.name
+        for branch in get_branches(settings(), include_disabled_stores=True)
+    }
+    result_branches = set(frappe.get_all(
+        "Sales Forecast Result",
+        filters={"forecast_run": run.name},
+        pluck="branch",
+        limit_page_length=0,
+    ))
+    branches = sorted(eligible.intersection(result_branches))
+    groups = sorted(set(frappe.get_all(
+        "Sales Forecast Result",
+        filters={"forecast_run": run.name},
+        pluck="main_group",
+        limit_page_length=0,
+    )))
+    if not branches or not groups:
+        frappe.throw(_("No eligible store results were found for this Forecast Run."))
+
+    build_data_mart(
+        start, actual_end,
+        commit=False,
+        branch_names=branches,
+        group_names=groups,
+        replace_existing=True,
+    )
+    actual_map = _load_actuals(start, actual_end, branches, groups)
+    results = frappe.get_all(
+        "Sales Forecast Result",
+        filters={"forecast_run": run.name},
+        fields=["name", "date", "branch", "main_group", "forecast_sales"],
+        order_by="date asc, branch asc, main_group asc",
+        limit_page_length=0,
+    )
+
+    total_actual_sales = total_actual_units = 0.0
+    total_abs_error = total_signed_error = 0.0
+    actual_rows = 0
+    for row in results:
+        if row.branch not in eligible or getdate(row.date) > actual_end:
+            continue
+        actual = actual_map.get((str(row.date), row.branch, row.main_group))
+        has_actual = actual is not None
+        actual_sales = flt(actual.get("retail_sales_value")) if has_actual else 0
+        actual_units = flt(actual.get("net_units")) if has_actual else 0
+        abs_error = abs(flt(row.forecast_sales) - actual_sales) if has_actual else 0
+        signed_error = flt(row.forecast_sales) - actual_sales if has_actual else 0
+        ape = abs_error / abs(actual_sales) * 100 if has_actual and actual_sales else 0
+
+        frappe.db.set_value("Sales Forecast Result", row.name, {
+            "has_actual_data": 1 if has_actual else 0,
+            "actual_sales": actual_sales if has_actual else 0,
+            "actual_units": actual_units if has_actual else 0,
+            "absolute_error": abs_error if has_actual else 0,
+            "signed_error": signed_error if has_actual else 0,
+            "absolute_pct_error": ape if has_actual else 0,
+        }, update_modified=False)
+
+        if has_actual:
+            total_actual_sales += actual_sales
+            total_actual_units += actual_units
+            total_abs_error += abs_error
+            total_signed_error += signed_error
+            actual_rows += 1
+
+    wape = total_abs_error / abs(total_actual_sales) * 100 if total_actual_sales else 0
+    bias = total_signed_error / abs(total_actual_sales) * 100 if total_actual_sales else 0
+    mae = total_abs_error / actual_rows if actual_rows else 0
+    accuracy = max(0, 100 - wape) if actual_rows else 0
+
+    _set_run(
+        run.name,
+        actual_sales=total_actual_sales if actual_rows else 0,
+        actual_units=total_actual_units if actual_rows else 0,
+        wape=wape if actual_rows else 0,
+        accuracy_pct=accuracy if actual_rows else 0,
+        bias_pct=bias if actual_rows else 0,
+        mae=mae if actual_rows else 0,
+        actual_result_count=actual_rows,
+    )
+    if commit:
+        frappe.db.commit()
+    return {
+        "run": run.name,
+        "actual_through": str(actual_end),
+        "actual_rows": actual_rows,
+        "result_rows": len(results),
+        "wape": wape if actual_rows else None,
+        "bias": bias if actual_rows else None,
     }
 
 
