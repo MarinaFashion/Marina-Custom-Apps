@@ -25,6 +25,7 @@ from .data_mart import ensure_data_mart_coverage
 DORMANT_WARNING_DAYS = 14
 WEEKDAY_PROFILE_DAYS = 365
 MIN_WEEKDAY_OBSERVATIONS = 8
+ASSORTMENT_FORWARD_HALF_LIFE_DAYS = 30
 
 
 RESULT_FIELDS = [
@@ -115,6 +116,7 @@ def run_forecast(run_name, *, commit=True):
         branch_activity = _branch_activity_context(history, as_of)
 
         rows = []
+        assortment_feature_cache = {}
         total_forecast_sales = total_forecast_units = 0.0
         total_actual_sales = total_actual_units = 0.0
         total_abs_error = total_signed_error = 0.0
@@ -148,19 +150,33 @@ def run_forecast(run_name, *, commit=True):
                     target["event"] = cal_ctx.get("event") or ""
                     target["store_trading_status"] = cal_ctx.get("store_trading_status") or "No Change"
                     plan_features = _plan_features(plan_context, group, day)
-                    assortment_features = _assortment_features(
-                        assortment_context,
-                        group,
-                        day,
+                    assortment_key = (str(day), group)
+                    if assortment_key not in assortment_feature_cache:
+                        assortment_feature_cache[assortment_key] = _assortment_features(
+                            assortment_context,
+                            group,
+                            day,
+                            forecast_to,
+                        )
+                    # A copy is required because per-branch logic adds driver
+                    # fields such as analog_target_new_styles_30d.
+                    assortment_features = dict(
+                        assortment_feature_cache[assortment_key]
                     )
                     recent = latest_context.get((branch.name, group), {})
                     recent_new_styles_30d = cint(recent.get("new_styles_30d"))
-                    known_new_styles_30d = assortment_features.get("known_new_styles_30d")
+                    forward_style_pressure = assortment_features.get(
+                        "assortment_target_style_pressure"
+                    )
                     if (
                         cint(cfg.get("apply_known_assortment_matching"))
-                        and known_new_styles_30d is not None
+                        and assortment_features.get("assortment_available")
                     ):
-                        target["new_styles_30d"] = flt(known_new_styles_30d)
+                        # The historical analog feature is a 30-day new-style
+                        # count. Use a 30-day-equivalent forward pressure score:
+                        # every known display through Forecast To contributes,
+                        # with exponential time decay rather than a hard cutoff.
+                        target["new_styles_30d"] = flt(forward_style_pressure)
                         target["assortment_target_known"] = 1
                         assortment_features["assortment_signal_mode"] = "analog_matching"
                     else:
@@ -468,8 +484,8 @@ def _future_assortment_context(plan_context, as_of, forecast_from, forecast_to, 
     display_field = safe_field(cfg.item_display_date_field, "display_date")
     group_field = safe_field(cfg.item_main_group_field, "custom_item_main_group")
     placeholders = ",".join(["%s"] * len(groups))
-    start = getdate(as_of) - timedelta(days=29)
-    end = getdate(forecast_to) + timedelta(days=30)
+    start = getdate(forecast_from) - timedelta(days=29)
+    end = getdate(forecast_to)
 
     sql = f"""
         select
@@ -517,63 +533,114 @@ def _future_assortment_context(plan_context, as_of, forecast_from, forecast_to, 
     return result
 
 
-def _assortment_features(context, group, day):
-    """Expose known assortment pressure and a leakage-conscious analog target.
+def _assortment_features(context, group, day, forecast_to):
+    """Build a forward-looking assortment signal over the requested horizon.
 
-    ``known_new_styles_30d`` is the rolling 30-day number of styles whose
-    display dates were known by the forecast cutoff. When enabled in Settings,
-    this value replaces only the target assortment similarity feature used by
-    the analog model. No direct category sales multiplier is applied.
+    Every display already known by the forecast cutoff can contribute when its
+    Display Date is still relevant to the requested forecast. There is no
+    30-day future cutoff.
+
+    To remain comparable with the historical ``new_styles_30d`` analog feature,
+    the target combines:
+    - styles displayed in the rolling 30 days through the forecast day; and
+    - all still-future styles through Forecast To, exponentially time-decayed.
+
+    On the display date a style therefore moves from future pressure into the
+    recent 30-day count instead of disappearing from the signal.
     """
-    rows = context.get(group, [])
+    horizon_end = getdate(forecast_to)
+    recent_start = day - timedelta(days=29)
     all_rows = [
         row
         for group_rows in context.values()
         for row in group_rows
     ]
+    rows = context.get(group, [])
+    available = bool(all_rows)
 
-    def in_future_window(row, days):
-        return day <= row["display_date"] <= day + timedelta(days=days - 1)
+    def is_recent(row):
+        display_date = getdate(row["display_date"])
+        return recent_start <= display_date <= day
 
-    known30 = [
-        row
-        for row in rows
-        if day - timedelta(days=29) <= row["display_date"] <= day
-    ]
-    future7 = [row for row in rows if in_future_window(row, 7)]
-    future14 = [row for row in rows if in_future_window(row, 14)]
-    future30 = [row for row in rows if in_future_window(row, 30)]
-    all_future30 = [row for row in all_rows if in_future_window(row, 30)]
+    def is_future(row):
+        display_date = getdate(row["display_date"])
+        return day < display_date <= horizon_end
 
-    known_styles30 = sum(flt(row.get("styles")) for row in known30)
-    styles30 = sum(flt(row.get("styles")) for row in future30)
-    all_styles30 = sum(flt(row.get("styles")) for row in all_future30)
-    qty30 = sum(flt(row.get("qty")) for row in future30)
-    all_qty30 = sum(flt(row.get("qty")) for row in all_future30)
-    value30 = sum(flt(row.get("selling")) for row in future30)
-    all_value30 = sum(flt(row.get("selling")) for row in all_future30)
+    def decay(row):
+        days_ahead = max((getdate(row["display_date"]) - day).days, 0)
+        return 0.5 ** (days_ahead / ASSORTMENT_FORWARD_HALF_LIFE_DAYS)
 
-    source = rows[0].get("source") if rows else None
+    group_recent = [row for row in rows if is_recent(row)]
+    group_future = [row for row in rows if is_future(row)]
+    all_future = [row for row in all_rows if is_future(row)]
+
+    recent_styles = sum(flt(row.get("styles")) for row in group_recent)
+    weighted_future_styles = sum(
+        flt(row.get("styles")) * decay(row) for row in group_future
+    )
+    weighted_all_future_styles = sum(
+        flt(row.get("styles")) * decay(row) for row in all_future
+    )
+    raw_future_styles = sum(flt(row.get("styles")) for row in group_future)
+    raw_all_future_styles = sum(flt(row.get("styles")) for row in all_future)
+
+    weighted_qty = sum(flt(row.get("qty")) * decay(row) for row in group_future)
+    weighted_all_qty = sum(flt(row.get("qty")) * decay(row) for row in all_future)
+    weighted_value = sum(flt(row.get("selling")) * decay(row) for row in group_future)
+    weighted_all_value = sum(flt(row.get("selling")) * decay(row) for row in all_future)
+
+    target_style_pressure = recent_styles + weighted_future_styles
+
+    display_dates = sorted(
+        getdate(row["display_date"])
+        for row in group_future
+        if row.get("display_date")
+    )
+    next_display = display_dates[0] if display_dates else None
+
+    source = None
+    if rows:
+        source = rows[0].get("source")
+    elif all_rows:
+        source = all_rows[0].get("source")
+
     result = {
         "assortment_signal_mode": "diagnostic_only",
         "assortment_source": source,
-        "known_new_styles_30d": round(known_styles30, 2) if rows else None,
-        "future_styles_7d": round(sum(flt(row.get("styles")) for row in future7), 2),
-        "future_styles_14d": round(sum(flt(row.get("styles")) for row in future14), 2),
-        "future_styles_30d": round(styles30, 2),
-        "future_style_share_30d_pct": (
-            round(styles30 / all_styles30 * 100, 2)
-            if all_styles30
+        "assortment_available": 1 if available else 0,
+        "assortment_horizon_end": str(horizon_end),
+        "assortment_decay_half_life_days": ASSORTMENT_FORWARD_HALF_LIFE_DAYS,
+        "recent_styles_30d": round(recent_styles, 2),
+        "future_styles_in_forecast": round(raw_future_styles, 2),
+        "weighted_future_styles_in_forecast": round(weighted_future_styles, 4),
+        "assortment_target_style_pressure": round(target_style_pressure, 4),
+        "future_style_share_in_forecast_pct": (
+            round(raw_future_styles / raw_all_future_styles * 100, 2)
+            if raw_all_future_styles
+            else 0.0 if available else None
+        ),
+        "weighted_future_style_share_pct": (
+            round(
+                weighted_future_styles / weighted_all_future_styles * 100,
+                2,
+            )
+            if weighted_all_future_styles
+            else 0.0 if available else None
+        ),
+        "weighted_planned_qty_share_pct": (
+            round(weighted_qty / weighted_all_qty * 100, 2)
+            if weighted_all_qty
             else None
         ),
-        "planned_qty_share_30d_pct": (
-            round(qty30 / all_qty30 * 100, 2)
-            if all_qty30
+        "weighted_planned_value_share_pct": (
+            round(weighted_value / weighted_all_value * 100, 2)
+            if weighted_all_value
             else None
         ),
-        "planned_value_share_30d_pct": (
-            round(value30 / all_value30 * 100, 2)
-            if all_value30
+        "next_display_date": str(next_display) if next_display else None,
+        "days_to_next_display": (
+            max((next_display - day).days, 0)
+            if next_display
             else None
         ),
     }
@@ -705,7 +772,10 @@ def _predict_one(candidates, target, branch, fallback, cfg, plan_features):
         elif not target["event"] and not row.event:
             w *= 1.05
 
-        if target_new > 0 or cint(target.get("assortment_target_known")):
+        if cint(target.get("assortment_target_known")):
+            diff = abs(flt(row.new_styles_30d) - target_new)
+            w *= 0.65 + 0.35 * math.exp(-diff / max(target_new, 5))
+        elif target_new > 0:
             diff = abs(flt(row.new_styles_30d) - target_new)
             w *= 0.35 + 0.65 * math.exp(-diff / max(target_new, 5))
         markdown_diff = abs(flt(row.avg_markdown_pct) - target_markdown)

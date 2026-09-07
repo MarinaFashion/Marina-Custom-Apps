@@ -91,3 +91,11 @@ Sales Forecast Settings field mappings use dynamic autocomplete dropdowns popula
 - That known assortment count changes analog similarity only; there is no direct Bottoms/Uppers/Dresses sales multiplier.
 - Future style, planned quantity and planned value shares remain visible in model drivers for analysis.
 - Item-master fallback is restricted to Item records created by the as-of date and is flagged in drivers because later Display Date edits are not historically versioned.
+## v0.43.8 forecast-period assortment horizon
+
+- Known future assortment is no longer limited to a fixed 30-day future window.
+- Every display date already known by the forecast cutoff can contribute when it falls inside the requested Forecast From/To period.
+- A 30-day **half-life**, not a cutoff, applies time decay so nearer launches influence the current forecast day more strongly while distant launches still contribute.
+- Drivers expose remaining styles, weighted style pressure, style share, planned quantity/value shares, next display date and days to next display.
+- Forward assortment remains an analog-matching signal only; no direct Main Group multiplier is applied.
+- Forward assortment uses a gentler analog-weight penalty than legacy recent-assortment matching to reduce distortion of branch-level demand allocation.
