@@ -67,6 +67,21 @@ def get_branches(cfg=None, *, include_disabled_stores=False):
         "pos_profile": safe_field(cfg.branch_pos_profile_field, "custom_pos_profile"),
         "city": safe_field(cfg.branch_city_field, "custom_city"),
     }
+
+    branch_meta = frappe.get_meta("Branch")
+    has_forecast_type = branch_meta.has_field("custom_forecast_store_type")
+    has_forecast_include = branch_meta.has_field("custom_include_in_sales_forecast")
+    forecast_type_expr = (
+        "`custom_forecast_store_type`"
+        if has_forecast_type
+        else "''"
+    )
+    forecast_include_expr = (
+        "`custom_include_in_sales_forecast`"
+        if has_forecast_include
+        else "0"
+    )
+
     company_clause = f"where `{fields['company']}` = %s" if cfg.company else ""
     params = [cfg.company] if cfg.company else []
     rows = frappe.db.sql(
@@ -77,7 +92,9 @@ def get_branches(cfg=None, *, include_disabled_stores=False):
                `{fields['cluster']}` as cluster,
                `{fields['warehouse']}` as warehouse,
                `{fields['pos_profile']}` as pos_profile,
-               `{fields['city']}` as city
+               `{fields['city']}` as city,
+               {forecast_type_expr} as forecast_store_type,
+               {forecast_include_expr} as include_in_sales_forecast
         from `tabBranch`
         {company_clause}
         order by name asc
@@ -85,7 +102,7 @@ def get_branches(cfg=None, *, include_disabled_stores=False):
         params,
         as_dict=True,
     )
-    linked = [r for r in rows if r.warehouse]
+    linked = [row for row in rows if row.warehouse]
     if not linked:
         return []
 
@@ -98,23 +115,49 @@ def get_branches(cfg=None, *, include_disabled_stores=False):
     warehouse_filters = {
         "name": ["in", [row.warehouse for row in linked]],
         "is_group": 0,
-        "custom_is_store": 1,
     }
     if not include_disabled_stores:
         warehouse_filters["disabled"] = 0
     if cfg.company:
         warehouse_filters["company"] = cfg.company
 
-    eligible_warehouses = set(
-        frappe.get_all(
-            "Warehouse",
-            filters=warehouse_filters,
-            pluck="name",
-            limit_page_length=0,
-        )
+    warehouse_rows = frappe.get_all(
+        "Warehouse",
+        filters=warehouse_filters,
+        fields=["name", "custom_is_store"],
+        limit_page_length=0,
     )
-    return [row for row in linked if row.warehouse in eligible_warehouses]
+    warehouse_by_name = {row.name: row for row in warehouse_rows}
+    allowed_types = {"Regular Store", "Outlet", "Online"}
 
+    eligible = []
+    for row in linked:
+        warehouse = warehouse_by_name.get(row.warehouse)
+        if not warehouse:
+            continue
+
+        store_type = (row.forecast_store_type or "").strip()
+        if store_type:
+            # Branch classification is authoritative for commercial location
+            # type, but Regular Store must still satisfy the Warehouse selling-
+            # store flag used across Marina inventory processes. Outlet / Online
+            # may be forecast-selling locations without changing custom_is_store.
+            include = cint(row.include_in_sales_forecast)
+            if not include or store_type not in allowed_types:
+                continue
+            if store_type == "Regular Store" and not cint(warehouse.custom_is_store):
+                continue
+            eligible.append(row)
+            continue
+
+        # Backward-compatible fallback for benches before the Branch forecast
+        # fields have been initialized.
+        if cint(warehouse.custom_is_store):
+            row.forecast_store_type = "Regular Store"
+            row.include_in_sales_forecast = 1
+            eligible.append(row)
+
+    return eligible
 
 def detect_calendar_doctype(cfg=None):
     cfg = cfg or settings()

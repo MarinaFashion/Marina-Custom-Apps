@@ -100,6 +100,7 @@ def app_after_migrate():
 
 
 def after_install():
+    _ensure_forecast_branch_fields()
     _repair_settings_defaults()
     _ensure_number_cards()
     _sync_workspace()
@@ -108,12 +109,118 @@ def after_install():
 
 
 def after_migrate():
+    _ensure_forecast_branch_fields()
     _repair_settings_defaults()
     _ensure_number_cards()
     _sync_workspace()
     _ensure_indexes()
     _detect_calendar_safely()
 
+
+def _ensure_forecast_branch_fields():
+    """Add an explicit commercial-location classification on Branch.
+
+    Warehouse.custom_is_store continues to serve inventory/allocation processes.
+    Sales Forecasting can separately include Outlet / Online locations without
+    weakening Warehouse rules used by other Marina modules.
+    """
+    if not frappe.db.exists("DocType", "Branch"):
+        return
+
+    from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+
+    create_custom_fields(
+        {
+            "Branch": [
+                {
+                    "fieldname": "custom_sales_forecast_section",
+                    "label": "Sales Forecasting",
+                    "fieldtype": "Section Break",
+                    "insert_after": "custom_city",
+                    "collapsible": 1,
+                },
+                {
+                    "fieldname": "custom_forecast_store_type",
+                    "label": "Forecast Store Type",
+                    "fieldtype": "Select",
+                    "options": "\nRegular Store\nOutlet\nOnline\nOther",
+                    "insert_after": "custom_sales_forecast_section",
+                    "description": (
+                        "Commercial location type used only by Sales Forecasting. "
+                        "Outlet and Online do not require Warehouse.custom_is_store."
+                    ),
+                },
+                {
+                    "fieldname": "custom_sales_forecast_column_break",
+                    "fieldtype": "Column Break",
+                    "insert_after": "custom_forecast_store_type",
+                },
+                {
+                    "fieldname": "custom_include_in_sales_forecast",
+                    "label": "Include in Sales Forecast",
+                    "fieldtype": "Check",
+                    "default": 0,
+                    "insert_after": "custom_sales_forecast_column_break",
+                    "description": (
+                        "Include this Branch in Sales Forecasting when Forecast Store Type "
+                        "is Regular Store, Outlet or Online."
+                    ),
+                },
+            ]
+        },
+        update=True,
+    )
+
+    meta = frappe.get_meta("Branch")
+    if not (
+        meta.has_field("custom_warehouse")
+        and meta.has_field("custom_forecast_store_type")
+        and meta.has_field("custom_include_in_sales_forecast")
+    ):
+        return
+
+    branches = frappe.get_all(
+        "Branch",
+        filters={"custom_warehouse": ["!=", ""]},
+        fields=[
+            "name",
+            "custom_warehouse",
+            "custom_forecast_store_type",
+            "custom_include_in_sales_forecast",
+        ],
+        limit_page_length=0,
+    )
+    if not branches:
+        return
+
+    warehouses = frappe.get_all(
+        "Warehouse",
+        filters={
+            "name": ["in", [row.custom_warehouse for row in branches]],
+            "is_group": 0,
+        },
+        fields=["name", "custom_is_store"],
+        limit_page_length=0,
+    )
+    warehouse_by_name = {row.name: row for row in warehouses}
+
+    for branch in branches:
+        # Initialize only unclassified branches. Once a user classifies a Branch
+        # or clears its Include flag, later migrations must not undo that choice.
+        if (branch.custom_forecast_store_type or "").strip():
+            continue
+        warehouse = warehouse_by_name.get(branch.custom_warehouse)
+        if not warehouse or not cint(warehouse.custom_is_store):
+            continue
+        frappe.db.set_value(
+            "Branch",
+            branch.name,
+            {
+                "custom_forecast_store_type": "Regular Store",
+                "custom_include_in_sales_forecast": 1,
+            },
+            update_modified=False,
+        )
 
 def _repair_settings_defaults():
     if not frappe.db.exists("DocType", "Sales Forecast Settings"):

@@ -67,7 +67,7 @@ def execute(filters=None):
             "date": mapped.get("date"),
             "branch": mapped.get("branch"),
             "main_group": mapped.get("main_group"),
-            **_metrics(rows),
+            **_bucket_metrics(rows),
         })
 
     columns = [
@@ -85,7 +85,10 @@ def execute(filters=None):
         {"label": _("Coverage %"), "fieldname": "coverage_pct", "fieldtype": "Percent", "width": 95},
     ]
 
-    overall = _metrics(source)
+    # Overall WAPE must use the same grain selected by the report. Example:
+    # Branch level = sum(abs(monthly branch forecast - monthly branch actual))
+    #                / sum(monthly branch actual), not detail daily/group error.
+    overall = _overall_metrics(data)
     summary = [
         {"value": overall["forecast_sales"], "indicator": "Blue", "label": _("Forecast"), "datatype": "Currency"},
         {"value": overall["actual_sales"], "indicator": "Green", "label": _("Actual"), "datatype": "Currency"},
@@ -100,12 +103,16 @@ def execute(filters=None):
     return columns, data, None, _daily_chart(source), summary
 
 
-def _metrics(rows):
+def _bucket_metrics(rows):
+    """Aggregate Forecast/Actual first, then measure error at this bucket grain."""
     result_rows = len(rows)
     actual_rows = sum(1 for row in rows if int(row.has_actual_data or 0))
     forecast_sales = sum(flt(row.forecast_sales) for row in rows)
-    covered_forecast = sum(flt(row.forecast_sales) for row in rows if int(row.has_actual_data or 0))
-    actual_sales = sum(flt(row.actual_sales) for row in rows if int(row.has_actual_data or 0))
+    actual_sales = sum(
+        flt(row.actual_sales)
+        for row in rows
+        if int(row.has_actual_data or 0)
+    )
     coverage = actual_rows / result_rows * 100 if result_rows else 0
     complete = result_rows > 0 and actual_rows == result_rows
 
@@ -122,10 +129,67 @@ def _metrics(rows):
             "coverage_pct": coverage,
         }
 
-    abs_error = sum(abs(flt(row.forecast_sales) - flt(row.actual_sales)) for row in rows)
-    signed_error = covered_forecast - actual_sales
-    wape = abs_error / abs(actual_sales) * 100 if actual_sales else (0 if abs_error == 0 else None)
-    bias = signed_error / abs(actual_sales) * 100 if actual_sales else (0 if signed_error == 0 else None)
+    signed_error = forecast_sales - actual_sales
+    abs_error = abs(signed_error)
+    wape = (
+        abs_error / abs(actual_sales) * 100
+        if actual_sales
+        else (0 if abs_error == 0 else None)
+    )
+    bias = (
+        signed_error / abs(actual_sales) * 100
+        if actual_sales
+        else (0 if signed_error == 0 else None)
+    )
+    accuracy = max(0, 100 - wape) if wape is not None else None
+
+    return {
+        "forecast_sales": forecast_sales,
+        "actual_sales": actual_sales,
+        "variance": signed_error,
+        "wape": wape,
+        "accuracy": accuracy,
+        "bias": bias,
+        "actual_rows": actual_rows,
+        "result_rows": result_rows,
+        "coverage_pct": coverage,
+        "_absolute_error": abs_error,
+    }
+
+
+def _overall_metrics(data):
+    result_rows = sum(int(row.get("result_rows") or 0) for row in data)
+    actual_rows = sum(int(row.get("actual_rows") or 0) for row in data)
+    forecast_sales = sum(flt(row.get("forecast_sales")) for row in data)
+    actual_sales = sum(flt(row.get("actual_sales")) for row in data)
+    coverage = actual_rows / result_rows * 100 if result_rows else 0
+    complete = result_rows > 0 and actual_rows == result_rows
+
+    if not complete:
+        return {
+            "forecast_sales": forecast_sales,
+            "actual_sales": actual_sales,
+            "variance": None,
+            "wape": None,
+            "accuracy": None,
+            "bias": None,
+            "actual_rows": actual_rows,
+            "result_rows": result_rows,
+            "coverage_pct": coverage,
+        }
+
+    signed_error = forecast_sales - actual_sales
+    abs_error = sum(flt(row.get("_absolute_error")) for row in data)
+    wape = (
+        abs_error / abs(actual_sales) * 100
+        if actual_sales
+        else (0 if abs_error == 0 else None)
+    )
+    bias = (
+        signed_error / abs(actual_sales) * 100
+        if actual_sales
+        else (0 if signed_error == 0 else None)
+    )
     accuracy = max(0, 100 - wape) if wape is not None else None
 
     return {
@@ -139,7 +203,6 @@ def _metrics(rows):
         "result_rows": result_rows,
         "coverage_pct": coverage,
     }
-
 
 def _daily_chart(rows):
     daily = defaultdict(list)

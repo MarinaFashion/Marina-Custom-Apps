@@ -74,3 +74,12 @@ Sales Forecast Settings field mappings use dynamic autocomplete dropdowns popula
 - `Has Actual Data` is authoritative for all accuracy calculations; completed generated Data Mart rows count as realized actual coverage even when sales are zero.
 - Forecast Accuracy Analysis supports Detail, Daily, Branch, Main Group and Branch x Main Group levels.
 - Forecast by Store and Main Group shows collapsed Store totals with expandable Daily rows and optional Units.
+## v0.43.6 selling-location, weekday and assortment foundation
+
+- Branch now has an explicit Sales Forecasting classification: Regular Store, Outlet, Online or Other, plus an Include in Sales Forecast flag.
+- Existing active Warehouse selling stores are initialized as Regular Store + Included during migration; later user classifications are never overwritten.
+- Outlet/Online locations can participate in forecasting without changing Warehouse.custom_is_store, protecting Stock Allocation and other warehouse processes.
+- A trailing 365-day Company x Main Group weekday curve is learned strictly through the run as-of date.
+- Weekday factors redistribute daily timing inside each Branch x Main Group while preserving that Branch x Group period forecast sales total.
+- Future assortment pressure (7/14/30-day style counts and 30-day mix; Buying Plan quantity/value shares when available) is recorded in model drivers in diagnostic-only mode and does not yet alter forecast amount.
+- Refresh Actuals creates only missing Sales Forecast Daily coverage; it no longer silently replaces historical Data Mart rows.

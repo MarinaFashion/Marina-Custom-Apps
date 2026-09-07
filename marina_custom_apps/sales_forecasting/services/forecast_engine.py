@@ -16,12 +16,15 @@ from .common import (
     load_calendar,
     main_groups,
     salary_phase,
+    safe_field,
     settings,
 )
 from .data_mart import ensure_data_mart_coverage
 
 
 DORMANT_WARNING_DAYS = 14
+WEEKDAY_PROFILE_DAYS = 365
+MIN_WEEKDAY_OBSERVATIONS = 8
 
 
 RESULT_FIELDS = [
@@ -53,7 +56,8 @@ def run_forecast(run_name, *, commit=True):
         )
         history_to = as_of
 
-        branches = get_branches(cfg)
+        all_eligible_branches = get_branches(cfg)
+        branches = all_eligible_branches
         if run.branch:
             branches = [b for b in branches if b.name == run.branch]
         groups = [run.main_group] if run.main_group else main_groups(cfg)
@@ -82,6 +86,29 @@ def run_forecast(run_name, *, commit=True):
             else None
         )
         plan_context = _plan_context(plan, as_of, cfg) if plan else {}
+
+        # Keep weekday timing at the declared Company x Main Group scope even
+        # when the Forecast Run itself is filtered to one Branch. Reuse the
+        # already-loaded history for company-wide runs; only a branch-filtered
+        # run needs one additional read-only history query.
+        weekday_history = history
+        if run.branch:
+            weekday_history = _load_history(
+                max(history_from, as_of - timedelta(days=WEEKDAY_PROFILE_DAYS - 1)),
+                history_to,
+                groups,
+                [branch.name for branch in all_eligible_branches],
+            )
+        weekday_profile = _weekday_profile(weekday_history, as_of)
+
+        assortment_context = _future_assortment_context(
+            plan_context,
+            as_of,
+            forecast_from,
+            forecast_to,
+            groups,
+            cfg,
+        )
 
         actual_map = _load_actuals(forecast_from, forecast_to, [b.name for b in branches], groups)
         latest_context = _latest_context(history)
@@ -121,6 +148,11 @@ def run_forecast(run_name, *, commit=True):
                     target["event"] = cal_ctx.get("event") or ""
                     target["store_trading_status"] = cal_ctx.get("store_trading_status") or "No Change"
                     plan_features = _plan_features(plan_context, group, day)
+                    assortment_features = _assortment_features(
+                        assortment_context,
+                        group,
+                        day,
+                    )
                     recent = latest_context.get((branch.name, group), {})
                     target["new_styles_30d"] = (
                         plan_features.get("new_styles_30d")
@@ -157,6 +189,11 @@ def run_forecast(run_name, *, commit=True):
                             pred["confidence"] = max(10, pred["confidence"] - 15)
                             pred["drivers"]["store_trading_status"] = "Partially Open"
                             pred["drivers"]["warning"] = "Partial operation; no automatic sales multiplier applied"
+                    pred["drivers"]["forecast_store_type"] = (
+                        branch.get("forecast_store_type") or "Regular Store"
+                    )
+                    pred["drivers"].update(assortment_features)
+
                     actual = actual_map.get((str(day), branch.name, group))
 
                     actual_sales = flt(actual.get("retail_sales_value")) if actual else 0
@@ -188,6 +225,19 @@ def run_forecast(run_name, *, commit=True):
                         total_signed_error += signed_error
                         actual_rows += 1
             day += timedelta(days=1)
+
+        # The analog model establishes the demand level. The learned weekday
+        # curve controls timing only: redistribution is normalized separately
+        # for every Branch x Main Group so period forecast sales are preserved.
+        _apply_weekday_profile(rows, weekday_profile)
+        metrics = _result_metrics(rows)
+        total_forecast_sales = metrics["forecast_sales"]
+        total_forecast_units = metrics["forecast_units"]
+        total_actual_sales = metrics["actual_sales"]
+        total_actual_units = metrics["actual_units"]
+        total_abs_error = metrics["absolute_error"]
+        total_signed_error = metrics["signed_error"]
+        actual_rows = metrics["actual_rows"]
 
         frappe.db.delete("Sales Forecast Result", {"forecast_run": run.name})
         if rows:
@@ -242,6 +292,263 @@ def run_forecast(run_name, *, commit=True):
         frappe.db.commit()
         raise
 
+
+def _weekday_profile(history, as_of):
+    """Learn trailing Company x Main Group weekday demand indices as-of cutoff."""
+    cutoff = getdate(as_of)
+    start = cutoff - timedelta(days=WEEKDAY_PROFILE_DAYS - 1)
+
+    daily = defaultdict(float)
+    for row in history:
+        day = getdate(row.date)
+        if day < start or day > cutoff:
+            continue
+        if (row.store_trading_status or "No Change") == "Closed":
+            continue
+        daily[(row.main_group, day)] += flt(row.retail_sales_value)
+
+    values = defaultdict(lambda: defaultdict(list))
+    for (group, day), sales in daily.items():
+        values[group][day.strftime("%a")].append(sales)
+
+    profile = {}
+    weekday_order = ("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+    for group, weekday_values in values.items():
+        averages = {}
+        valid = True
+        for weekday in weekday_order:
+            observations = weekday_values.get(weekday, [])
+            if len(observations) < MIN_WEEKDAY_OBSERVATIONS:
+                valid = False
+                break
+            averages[weekday] = sum(observations) / len(observations)
+
+        if not valid:
+            profile[group] = {weekday: 1.0 for weekday in weekday_order}
+            continue
+
+        baseline = sum(averages.values()) / len(weekday_order)
+        if baseline <= 0:
+            profile[group] = {weekday: 1.0 for weekday in weekday_order}
+            continue
+        profile[group] = {
+            weekday: averages[weekday] / baseline
+            for weekday in weekday_order
+        }
+
+    return profile
+
+
+def _apply_weekday_profile(rows, profile):
+    """Redistribute daily timing without changing Branch x Group period sales."""
+    if not rows or not profile:
+        return
+
+    idx = {fieldname: i for i, fieldname in enumerate(RESULT_FIELDS)}
+    buckets = defaultdict(list)
+    for row in rows:
+        buckets[(row[idx["branch"]], row[idx["main_group"]])].append(row)
+
+    for (_, group), bucket in buckets.items():
+        factors = profile.get(group)
+        if not factors:
+            continue
+
+        base_total = sum(flt(row[idx["forecast_sales"]]) for row in bucket)
+        weighted_total = 0.0
+        for row in bucket:
+            weekday = getdate(row[idx["date"]]).strftime("%a")
+            weighted_total += (
+                flt(row[idx["forecast_sales"]])
+                * flt(factors.get(weekday) or 1.0)
+            )
+
+        if base_total <= 0 or weighted_total <= 0:
+            continue
+
+        normalizer = base_total / weighted_total
+        for row in bucket:
+            weekday = getdate(row[idx["date"]]).strftime("%a")
+            weekday_index = flt(factors.get(weekday) or 1.0)
+            adjustment = weekday_index * normalizer
+
+            for fieldname in (
+                "forecast_sales",
+                "forecast_sales_low",
+                "forecast_sales_high",
+                "forecast_units",
+            ):
+                row[idx[fieldname]] = flt(row[idx[fieldname]]) * adjustment
+
+            drivers = frappe.parse_json(row[idx["drivers"]]) or {}
+            drivers["weekday_profile_index"] = round(weekday_index, 4)
+            drivers["weekday_profile_normalizer"] = round(normalizer, 4)
+            drivers["weekday_adjustment_factor"] = round(adjustment, 4)
+            drivers["weekday_profile_window_days"] = WEEKDAY_PROFILE_DAYS
+            drivers["weekday_profile_scope"] = "Company x Main Group"
+            row[idx["drivers"]] = json.dumps(drivers, ensure_ascii=False)
+
+
+def _result_metrics(rows):
+    """Recompute totals and actual errors after post-model timing redistribution."""
+    idx = {fieldname: i for i, fieldname in enumerate(RESULT_FIELDS)}
+    metrics = {
+        "forecast_sales": 0.0,
+        "forecast_units": 0.0,
+        "actual_sales": 0.0,
+        "actual_units": 0.0,
+        "absolute_error": 0.0,
+        "signed_error": 0.0,
+        "actual_rows": 0,
+    }
+
+    for row in rows:
+        forecast_sales = flt(row[idx["forecast_sales"]])
+        metrics["forecast_sales"] += forecast_sales
+        metrics["forecast_units"] += flt(row[idx["forecast_units"]])
+
+        if not cint(row[idx["has_actual_data"]]):
+            continue
+
+        actual_sales = flt(row[idx["actual_sales"]])
+        actual_units = flt(row[idx["actual_units"]])
+        absolute_error = abs(forecast_sales - actual_sales)
+        signed_error = forecast_sales - actual_sales
+        ape = (
+            absolute_error / abs(actual_sales) * 100
+            if actual_sales
+            else 0
+        )
+
+        row[idx["absolute_error"]] = absolute_error
+        row[idx["signed_error"]] = signed_error
+        row[idx["absolute_pct_error"]] = ape
+
+        metrics["actual_sales"] += actual_sales
+        metrics["actual_units"] += actual_units
+        metrics["absolute_error"] += absolute_error
+        metrics["signed_error"] += signed_error
+        metrics["actual_rows"] += 1
+
+    return metrics
+
+
+def _future_assortment_context(plan_context, as_of, forecast_from, forecast_to, groups, cfg):
+    """Return leakage-conscious future assortment context for diagnostics.
+
+    Approved Buying Plan is authoritative when available. Otherwise, use only
+    Item/style records that were already created by the forecast as-of date.
+    Item-derived features remain diagnostic-only because field edits after as-of
+    cannot be reconstructed from current master data.
+    """
+    if plan_context:
+        result = defaultdict(list)
+        for group, rows in plan_context.items():
+            for row in rows:
+                copied = dict(row)
+                copied["source"] = "Buying Plan"
+                result[group].append(copied)
+        return result
+
+    display_field = safe_field(cfg.item_display_date_field, "display_date")
+    group_field = safe_field(cfg.item_main_group_field, "custom_item_main_group")
+    placeholders = ",".join(["%s"] * len(groups))
+    start = max(getdate(forecast_from), getdate(as_of) + timedelta(days=1))
+    end = getdate(forecast_to) + timedelta(days=30)
+
+    sql = f"""
+        select
+            coalesce(nullif(i.variant_of, ''), i.name) as style,
+            coalesce(
+                nullif(cast(i.`{group_field}` as char), ''),
+                nullif(cast(template.`{group_field}` as char), '')
+            ) as main_group,
+            coalesce(i.`{display_field}`, template.`{display_field}`) as display_date
+        from `tabItem` i
+        left join `tabItem` template on template.name = i.variant_of
+        where i.disabled = 0
+          and date(i.creation) <= %s
+          and coalesce(i.`{display_field}`, template.`{display_field}`) between %s and %s
+          and coalesce(
+                nullif(cast(i.`{group_field}` as char), ''),
+                nullif(cast(template.`{group_field}` as char), '')
+              ) in ({placeholders})
+        group by style, main_group, display_date
+    """
+    data = frappe.db.sql(
+        sql,
+        [str(as_of), str(start), str(end), *groups],
+        as_dict=True,
+    )
+
+    result = defaultdict(list)
+    seen = set()
+    for row in data:
+        if not row.display_date or not row.main_group:
+            continue
+        key = (row.style, row.main_group, str(row.display_date))
+        if key in seen:
+            continue
+        seen.add(key)
+        result[row.main_group].append(
+            {
+                "display_date": getdate(row.display_date),
+                "styles": 1.0,
+                "qty": 0.0,
+                "selling": 0.0,
+                "source": "Item master (created by as-of; diagnostic only)",
+            }
+        )
+    return result
+
+
+def _assortment_features(context, group, day):
+    """Expose future assortment pressure without changing forecast amount yet."""
+    rows = context.get(group, [])
+    all_rows = [
+        row
+        for group_rows in context.values()
+        for row in group_rows
+    ]
+
+    def in_window(row, days):
+        return day <= row["display_date"] <= day + timedelta(days=days - 1)
+
+    future7 = [row for row in rows if in_window(row, 7)]
+    future14 = [row for row in rows if in_window(row, 14)]
+    future30 = [row for row in rows if in_window(row, 30)]
+    all_future30 = [row for row in all_rows if in_window(row, 30)]
+
+    styles30 = sum(flt(row.get("styles")) for row in future30)
+    all_styles30 = sum(flt(row.get("styles")) for row in all_future30)
+    qty30 = sum(flt(row.get("qty")) for row in future30)
+    all_qty30 = sum(flt(row.get("qty")) for row in all_future30)
+    value30 = sum(flt(row.get("selling")) for row in future30)
+    all_value30 = sum(flt(row.get("selling")) for row in all_future30)
+
+    source = rows[0].get("source") if rows else None
+    return {
+        "assortment_signal_mode": "diagnostic_only",
+        "assortment_source": source,
+        "future_styles_7d": round(sum(flt(row.get("styles")) for row in future7), 2),
+        "future_styles_14d": round(sum(flt(row.get("styles")) for row in future14), 2),
+        "future_styles_30d": round(styles30, 2),
+        "future_style_share_30d_pct": (
+            round(styles30 / all_styles30 * 100, 2)
+            if all_styles30
+            else None
+        ),
+        "planned_qty_share_30d_pct": (
+            round(qty30 / all_qty30 * 100, 2)
+            if all_qty30
+            else None
+        ),
+        "planned_value_share_30d_pct": (
+            round(value30 / all_value30 * 100, 2)
+            if all_value30
+            else None
+        ),
+    }
 
 def _validate_run(run):
     if run.status == "Completed":
@@ -677,12 +984,16 @@ def refresh_actuals(run_name, *, commit=True):
     if not branches or not groups:
         frappe.throw(_("No eligible store results were found for this Forecast Run."))
 
-    build_data_mart(
-        start, actual_end,
-        commit=False,
+    # Preserve Sales Forecast Daily immutability. Refresh Actuals creates only
+    # missing realized rows. Corrected historical transactions require the
+    # explicit System Manager Data Mart Maintenance -> Delete & Rebuild action.
+    ensure_data_mart_coverage(
+        start,
+        actual_end,
         branch_names=branches,
         group_names=groups,
-        replace_existing=True,
+        commit=False,
+        include_disabled_stores=True,
     )
     actual_map = _load_actuals(start, actual_end, branches, groups)
     results = frappe.get_all(
