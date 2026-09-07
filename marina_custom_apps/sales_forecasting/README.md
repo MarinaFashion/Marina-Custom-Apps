@@ -83,3 +83,11 @@ Sales Forecast Settings field mappings use dynamic autocomplete dropdowns popula
 - Weekday factors redistribute daily timing inside each Branch x Main Group while preserving that Branch x Group period forecast sales total.
 - Future assortment pressure (7/14/30-day style counts and 30-day mix; Buying Plan quantity/value shares when available) is recorded in model drivers in diagnostic-only mode and does not yet alter forecast amount.
 - Refresh Actuals creates only missing Sales Forecast Daily coverage; it no longer silently replaces historical Data Mart rows.
+## v0.43.7 assortment-aware analog matching
+
+- The 365-day weekday profile is retained in model drivers for diagnostics only. It no longer applies a second post-model multiplier because August validation showed a slight deterioration in daily WAPE and the analog model already weights exact weekday strongly.
+- A new setting, `Use Known Future Assortment in Analog Matching`, is enabled by default.
+- The model reconstructs the rolling 30-day new-style count for each future Main Group using display dates known by the forecast cutoff.
+- That known assortment count changes analog similarity only; there is no direct Bottoms/Uppers/Dresses sales multiplier.
+- Future style, planned quantity and planned value shares remain visible in model drivers for analysis.
+- Item-master fallback is restricted to Item records created by the as-of date and is flagged in drivers because later Display Date edits are not historically versioned.

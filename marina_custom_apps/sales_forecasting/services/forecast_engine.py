@@ -154,11 +154,27 @@ def run_forecast(run_name, *, commit=True):
                         day,
                     )
                     recent = latest_context.get((branch.name, group), {})
-                    target["new_styles_30d"] = (
-                        plan_features.get("new_styles_30d")
-                        if plan_features.get("new_styles_30d") is not None
-                        else cint(recent.get("new_styles_30d"))
+                    recent_new_styles_30d = cint(recent.get("new_styles_30d"))
+                    known_new_styles_30d = assortment_features.get("known_new_styles_30d")
+                    if (
+                        cint(cfg.get("apply_known_assortment_matching"))
+                        and known_new_styles_30d is not None
+                    ):
+                        target["new_styles_30d"] = flt(known_new_styles_30d)
+                        target["assortment_target_known"] = 1
+                        assortment_features["assortment_signal_mode"] = "analog_matching"
+                    else:
+                        target["assortment_target_known"] = 0
+                        target["new_styles_30d"] = (
+                            plan_features.get("new_styles_30d")
+                            if plan_features.get("new_styles_30d") is not None
+                            else recent_new_styles_30d
+                        )
+                        assortment_features["assortment_signal_mode"] = "diagnostic_only"
+                    assortment_features["analog_target_new_styles_30d"] = round(
+                        flt(target["new_styles_30d"]), 2
                     )
+                    assortment_features["recent_asof_new_styles_30d"] = recent_new_styles_30d
                     target["target_markdown_pct"] = 0.0 if plan_features.get("new_styles_30d", 0) else flt(recent.get("avg_markdown_pct"))
 
                     candidates, fallback = _candidate_pool(
@@ -192,6 +208,13 @@ def run_forecast(run_name, *, commit=True):
                     pred["drivers"]["forecast_store_type"] = (
                         branch.get("forecast_store_type") or "Regular Store"
                     )
+                    weekday_index = flt(
+                        (weekday_profile.get(group) or {}).get(day.strftime("%a")) or 1.0
+                    )
+                    pred["drivers"]["weekday_signal_mode"] = "diagnostic_only"
+                    pred["drivers"]["weekday_profile_index"] = round(weekday_index, 4)
+                    pred["drivers"]["weekday_profile_window_days"] = WEEKDAY_PROFILE_DAYS
+                    pred["drivers"]["weekday_profile_scope"] = "Company x Main Group"
                     pred["drivers"].update(assortment_features)
 
                     actual = actual_map.get((str(day), branch.name, group))
@@ -226,18 +249,10 @@ def run_forecast(run_name, *, commit=True):
                         actual_rows += 1
             day += timedelta(days=1)
 
-        # The analog model establishes the demand level. The learned weekday
-        # curve controls timing only: redistribution is normalized separately
-        # for every Branch x Main Group so period forecast sales are preserved.
-        _apply_weekday_profile(rows, weekday_profile)
-        metrics = _result_metrics(rows)
-        total_forecast_sales = metrics["forecast_sales"]
-        total_forecast_units = metrics["forecast_units"]
-        total_actual_sales = metrics["actual_sales"]
-        total_actual_units = metrics["actual_units"]
-        total_abs_error = metrics["absolute_error"]
-        total_signed_error = metrics["signed_error"]
-        actual_rows = metrics["actual_rows"]
+        # Weekday profile is diagnostic-only in v0.43.7. August validation
+        # showed that applying a second post-model weekday multiplier slightly
+        # worsened daily WAPE because exact weekday is already strongly weighted
+        # in analog selection. Keep the learned index for analysis only.
 
         frappe.db.delete("Sales Forecast Result", {"forecast_run": run.name})
         if rows:
@@ -453,7 +468,7 @@ def _future_assortment_context(plan_context, as_of, forecast_from, forecast_to, 
     display_field = safe_field(cfg.item_display_date_field, "display_date")
     group_field = safe_field(cfg.item_main_group_field, "custom_item_main_group")
     placeholders = ",".join(["%s"] * len(groups))
-    start = max(getdate(forecast_from), getdate(as_of) + timedelta(days=1))
+    start = getdate(as_of) - timedelta(days=29)
     end = getdate(forecast_to) + timedelta(days=30)
 
     sql = f"""
@@ -503,7 +518,13 @@ def _future_assortment_context(plan_context, as_of, forecast_from, forecast_to, 
 
 
 def _assortment_features(context, group, day):
-    """Expose future assortment pressure without changing forecast amount yet."""
+    """Expose known assortment pressure and a leakage-conscious analog target.
+
+    ``known_new_styles_30d`` is the rolling 30-day number of styles whose
+    display dates were known by the forecast cutoff. When enabled in Settings,
+    this value replaces only the target assortment similarity feature used by
+    the analog model. No direct category sales multiplier is applied.
+    """
     rows = context.get(group, [])
     all_rows = [
         row
@@ -511,14 +532,20 @@ def _assortment_features(context, group, day):
         for row in group_rows
     ]
 
-    def in_window(row, days):
+    def in_future_window(row, days):
         return day <= row["display_date"] <= day + timedelta(days=days - 1)
 
-    future7 = [row for row in rows if in_window(row, 7)]
-    future14 = [row for row in rows if in_window(row, 14)]
-    future30 = [row for row in rows if in_window(row, 30)]
-    all_future30 = [row for row in all_rows if in_window(row, 30)]
+    known30 = [
+        row
+        for row in rows
+        if day - timedelta(days=29) <= row["display_date"] <= day
+    ]
+    future7 = [row for row in rows if in_future_window(row, 7)]
+    future14 = [row for row in rows if in_future_window(row, 14)]
+    future30 = [row for row in rows if in_future_window(row, 30)]
+    all_future30 = [row for row in all_rows if in_future_window(row, 30)]
 
+    known_styles30 = sum(flt(row.get("styles")) for row in known30)
     styles30 = sum(flt(row.get("styles")) for row in future30)
     all_styles30 = sum(flt(row.get("styles")) for row in all_future30)
     qty30 = sum(flt(row.get("qty")) for row in future30)
@@ -527,9 +554,10 @@ def _assortment_features(context, group, day):
     all_value30 = sum(flt(row.get("selling")) for row in all_future30)
 
     source = rows[0].get("source") if rows else None
-    return {
+    result = {
         "assortment_signal_mode": "diagnostic_only",
         "assortment_source": source,
+        "known_new_styles_30d": round(known_styles30, 2) if rows else None,
         "future_styles_7d": round(sum(flt(row.get("styles")) for row in future7), 2),
         "future_styles_14d": round(sum(flt(row.get("styles")) for row in future14), 2),
         "future_styles_30d": round(styles30, 2),
@@ -549,6 +577,13 @@ def _assortment_features(context, group, day):
             else None
         ),
     }
+    if source and source.startswith("Item master"):
+        result["assortment_backtest_caution"] = (
+            "Item master was created by the forecast cutoff, but later edits to "
+            "Display Date are not historically versioned. Prefer Buying Plan "
+            "versions for strict historical backtests."
+        )
+    return result
 
 def _validate_run(run):
     if run.status == "Completed":
@@ -670,7 +705,7 @@ def _predict_one(candidates, target, branch, fallback, cfg, plan_features):
         elif not target["event"] and not row.event:
             w *= 1.05
 
-        if target_new > 0:
+        if target_new > 0 or cint(target.get("assortment_target_known")):
             diff = abs(flt(row.new_styles_30d) - target_new)
             w *= 0.35 + 0.65 * math.exp(-diff / max(target_new, 5))
         markdown_diff = abs(flt(row.avg_markdown_pct) - target_markdown)

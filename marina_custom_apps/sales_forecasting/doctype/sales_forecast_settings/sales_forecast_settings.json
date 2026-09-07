@@ -61,7 +61,8 @@
   "model_column_break",
   "minimum_analog_samples",
   "confidence_z",
-  "apply_buying_plan_adjustment"
+  "apply_buying_plan_adjustment",
+  "apply_known_assortment_matching"
  ],
  "fields": [
   {
@@ -435,6 +436,13 @@
    "fieldtype": "Check",
    "label": "Apply Buying Plan Assortment Adjustment",
    "default": "1"
+  },
+  {
+   "fieldname": "apply_known_assortment_matching",
+   "fieldtype": "Check",
+   "label": "Use Known Future Assortment in Analog Matching",
+   "default": "1",
+   "description": "Use display dates known by the forecast cutoff to improve Main Group analog selection. This changes analog similarity only; it does not apply a direct category multiplier."
   }
  ],
  "issingle": 1,

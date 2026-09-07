@@ -249,6 +249,8 @@ def _repair_settings_defaults():
     # Zero is a legitimate explicit choice; repair only a missing value.
     if cfg.get("apply_buying_plan_adjustment") in (None, ""):
         updates["apply_buying_plan_adjustment"] = 1
+    if cfg.get("apply_known_assortment_matching") in (None, ""):
+        updates["apply_known_assortment_matching"] = 1
 
     for fieldname, value in updates.items():
         frappe.db.set_single_value("Sales Forecast Settings", fieldname, value)
