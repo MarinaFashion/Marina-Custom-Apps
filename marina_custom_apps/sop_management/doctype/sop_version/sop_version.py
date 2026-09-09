@@ -1,10 +1,42 @@
+import re
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import cint
+from frappe.utils import cint, sanitize_html, strip_html_tags
 
 
 LOCKED_STATUSES = {"Published", "Superseded"}
+ADVANCED_HTML_MODE = "Advanced HTML"
+LOCAL_IMAGE_PREFIXES = ("/files/", "/private/files/")
+_IMAGE_SRC_RE = re.compile(
+    r"""<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["']""",
+    re.IGNORECASE,
+)
+
+
+def sanitize_sop_html(value):
+    """Sanitize HTML and restrict images to ERPNext File URLs."""
+    sanitized = sanitize_html(value or "", always_sanitize=True)
+
+    for src in _IMAGE_SRC_RE.findall(sanitized):
+        src = (src or "").strip()
+        lower = src.lower()
+        if lower.startswith(("http://", "https://", "//", "data:")):
+            frappe.throw(
+                _(
+                    "Advanced HTML images must be uploaded to ERPNext and use "
+                    "/files/ or /private/files/ URLs."
+                )
+            )
+        if src and not src.startswith(LOCAL_IMAGE_PREFIXES):
+            frappe.throw(
+                _("Unsupported image URL {0}. Upload the image to ERPNext Files first.").format(
+                    frappe.bold(src)
+                )
+            )
+
+    return sanitized
 
 
 class SOPVersion(Document):
@@ -43,7 +75,15 @@ class SOPVersion(Document):
                 )
             )
 
-        self._validate_language_content()
+        self.content_mode = self.content_mode or "Standard Rich Text"
+
+        if self.content_mode == ADVANCED_HTML_MODE:
+            self.html_content = sanitize_sop_html(self.html_content)
+
+        # Draft versions are working documents and may be incomplete.
+        # Completeness becomes mandatory when the version leaves Draft.
+        if self.status != "Draft":
+            self.validate_content_completeness()
 
         before = self.get_doc_before_save()
 
@@ -68,6 +108,14 @@ class SOPVersion(Document):
             frappe.throw(
                 _("Published or superseded SOP Versions cannot be deleted.")
             )
+
+    def validate_content_completeness(self):
+        if self.content_mode == ADVANCED_HTML_MODE:
+            sanitized = sanitize_sop_html(self.html_content)
+            if not strip_html_tags(sanitized or "").strip():
+                frappe.throw(_("Advanced HTML Body is required before review."))
+        else:
+            self._validate_language_content()
 
     def _validate_language_content(self):
         if not self.sections:

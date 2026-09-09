@@ -12,8 +12,12 @@
   "status",
   "column_break_1",
   "language",
+  "content_mode",
   "previous_version",
   "change_summary",
+  "advanced_html_section",
+  "html_content",
+  "html_preview",
   "approval_section",
   "effective_from",
   "effective_to",
@@ -76,6 +80,14 @@
    "reqd": 1
   },
   {
+   "fieldname": "content_mode",
+   "fieldtype": "Select",
+   "label": "Content Mode",
+   "options": "Standard Rich Text\nAdvanced HTML",
+   "default": "Standard Rich Text",
+   "reqd": 1
+  },
+  {
    "fieldname": "previous_version",
    "fieldtype": "Link",
    "label": "Previous Version",
@@ -86,6 +98,25 @@
    "fieldname": "change_summary",
    "fieldtype": "Small Text",
    "label": "Change Summary"
+  },
+  {
+   "fieldname": "advanced_html_section",
+   "fieldtype": "Section Break",
+   "label": "Advanced HTML Body",
+   "depends_on": "eval:doc.content_mode=='Advanced HTML'"
+  },
+  {
+   "fieldname": "html_content",
+   "fieldtype": "Code",
+   "label": "HTML Source",
+   "options": "HTML",
+   "depends_on": "eval:doc.content_mode=='Advanced HTML'"
+  },
+  {
+   "fieldname": "html_preview",
+   "fieldtype": "HTML",
+   "label": "Sanitized Preview",
+   "depends_on": "eval:doc.content_mode=='Advanced HTML'"
   },
   {
    "fieldname": "approval_section",
@@ -136,14 +167,15 @@
   {
    "fieldname": "sections_section",
    "fieldtype": "Section Break",
-   "label": "SOP Sections"
+   "label": "SOP Sections",
+   "depends_on": "eval:doc.content_mode!='Advanced HTML'"
   },
   {
    "fieldname": "sections",
    "fieldtype": "Table",
    "label": "Sections",
    "options": "SOP Section",
-   "reqd": 1
+   "depends_on": "eval:doc.content_mode!='Advanced HTML'"
   }
  ],
  "index_web_pages_for_search": 1,

@@ -22,12 +22,14 @@ DEFAULT_TYPES = (
 def after_install():
     ensure_roles()
     ensure_default_types()
+    ensure_controlled_print_format()
     sync_unified_workspace()
 
 
 def after_migrate():
     ensure_roles()
     ensure_default_types()
+    ensure_controlled_print_format()
     sync_unified_workspace()
 
 
@@ -65,6 +67,300 @@ def ensure_default_types():
             }
         ).insert(ignore_permissions=True)
 
+
+CONTROLLED_PRINT_FORMAT = "Marina SOP Controlled Document"
+
+
+def ensure_controlled_print_format():
+    """Create/update the Marina-controlled SOP/JD presentation layer.
+
+    Content remains stored as rich HTML in SOP Section rows. The print format
+    supplies the branded, consistent document shell for preview/print/PDF.
+    """
+    if not frappe.db.exists("DocType", "Print Format"):
+        return
+
+    html = r"""
+{% set parent = frappe.get_doc("SOP Document", doc.sop_document) %}
+{% set versions = frappe.get_all(
+    "SOP Version",
+    filters={"sop_document": doc.sop_document},
+    fields=["version_no", "status", "effective_from", "approved_by", "approved_on", "published_by", "published_on", "change_summary"],
+    order_by="version_no desc"
+) %}
+
+<style>
+.sop-controlled {
+    font-family: Arial, "Helvetica Neue", sans-serif;
+    color: #263238;
+    font-size: 10.5pt;
+    line-height: 1.55;
+}
+.sop-controlled .brand-bar {
+    border-top: 7px solid #243b53;
+    border-bottom: 2px solid #d6a84b;
+    padding: 14px 0 12px;
+    margin-bottom: 14px;
+}
+.sop-controlled .brand {
+    font-size: 19pt;
+    font-weight: 700;
+    letter-spacing: .6px;
+    color: #243b53;
+}
+.sop-controlled .doc-kind {
+    font-size: 9pt;
+    color: #607d8b;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.sop-controlled .title-en,
+.sop-controlled .title-ar {
+    font-size: 17pt;
+    font-weight: 700;
+    color: #182b3a;
+    margin: 10px 0 3px;
+}
+.sop-controlled .title-ar {
+    direction: rtl;
+    text-align: right;
+}
+.sop-controlled .meta {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 22px;
+    table-layout: fixed;
+}
+.sop-controlled .meta th,
+.sop-controlled .meta td {
+    border: 1px solid #cfd8dc;
+    padding: 7px 8px;
+    vertical-align: top;
+}
+.sop-controlled .meta th {
+    background: #eef3f6;
+    color: #243b53;
+    font-weight: 700;
+    width: 16%;
+}
+.sop-controlled .section {
+    margin: 0 0 22px;
+    page-break-inside: avoid;
+}
+.sop-controlled .section-heading {
+    background: #243b53;
+    color: #fff;
+    padding: 7px 10px;
+    font-size: 12pt;
+    font-weight: 700;
+    border-left: 5px solid #d6a84b;
+    margin-bottom: 9px;
+}
+.sop-controlled .section-heading.rtl {
+    direction: rtl;
+    text-align: right;
+    border-left: 0;
+    border-right: 5px solid #d6a84b;
+}
+.sop-controlled .sop-body {
+    padding: 0 4px;
+}
+.sop-controlled .sop-body.rtl {
+    direction: rtl;
+    text-align: right;
+}
+.sop-controlled .sop-body table,
+.sop-controlled .sop-custom-content table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 10px 0 15px !important;
+}
+.sop-controlled .sop-body table th,
+.sop-controlled .sop-body table td,
+.sop-controlled .sop-custom-content table th,
+.sop-controlled .sop-custom-content table td {
+    border: 1px solid #b0bec5 !important;
+    padding: 7px 8px !important;
+    vertical-align: top !important;
+}
+.sop-controlled .sop-body table th,
+.sop-controlled .sop-custom-content table th {
+    background: #e8eef2 !important;
+    color: #243b53 !important;
+    font-weight: 700 !important;
+}
+.sop-controlled .sop-body h1,
+.sop-controlled .sop-body h2,
+.sop-controlled .sop-body h3,
+.sop-controlled .sop-body h4 {
+    color: #243b53;
+    margin-top: 14px;
+}
+.sop-controlled .sop-body ul,
+.sop-controlled .sop-body ol {
+    padding-left: 22px;
+}
+.sop-controlled .revision-title {
+    margin-top: 26px;
+    font-size: 12pt;
+    font-weight: 700;
+    color: #243b53;
+    border-bottom: 2px solid #d6a84b;
+    padding-bottom: 4px;
+}
+.sop-controlled .revision {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-size: 9pt;
+}
+.sop-controlled .revision th,
+.sop-controlled .revision td {
+    border: 1px solid #cfd8dc;
+    padding: 6px 7px;
+}
+.sop-controlled .revision th {
+    background: #eef3f6;
+    color: #243b53;
+}
+.sop-controlled .control-footer {
+    margin-top: 25px;
+    padding-top: 8px;
+    border-top: 1px solid #b0bec5;
+    font-size: 8.5pt;
+    color: #607d8b;
+    display: flex;
+    justify-content: space-between;
+}
+@media print {
+    .sop-controlled .section { page-break-inside: avoid; }
+    .sop-controlled .revision { page-break-inside: avoid; }
+}
+</style>
+
+<div class="sop-controlled">
+    <div class="brand-bar">
+        <div class="brand">MARINA FASHION</div>
+        <div class="doc-kind">{{ parent.sop_type or "Controlled Document" }}</div>
+        {% if parent.title_en %}
+            <div class="title-en">{{ parent.title_en }}</div>
+        {% endif %}
+        {% if parent.title_ar %}
+            <div class="title-ar">{{ parent.title_ar }}</div>
+        {% endif %}
+    </div>
+
+    <table class="meta">
+        <tr>
+            <th>Document No.</th><td>{{ parent.name }}</td>
+            <th>Version</th><td>{{ doc.version_no }}</td>
+        </tr>
+        <tr>
+            <th>Department</th><td>{{ parent.department or "" }}</td>
+            <th>Status</th><td>{{ doc.status }}</td>
+        </tr>
+        <tr>
+            <th>Effective Date</th><td>{{ doc.effective_from or "" }}</td>
+            <th>Language</th><td>{{ doc.language or parent.language or "" }}</td>
+        </tr>
+        <tr>
+            <th>Process Owner</th><td>{{ parent.process_owner or "" }}</td>
+            <th>Approved By</th><td>{{ doc.approved_by or "" }}</td>
+        </tr>
+    </table>
+
+    {% if parent.summary %}
+        <div class="section">
+            <div class="section-heading">Document Summary</div>
+            <div class="sop-body">{{ parent.summary }}</div>
+        </div>
+    {% endif %}
+
+    {% if doc.content_mode == "Advanced HTML" %}
+        <div class="sop-custom-content">{{ (doc.html_content or "") | safe }}</div>
+    {% else %}
+        {% for row in doc.sections %}
+            {% if doc.language in ("English", "Bilingual") and (row.heading_en or row.content_en) %}
+                <div class="section">
+                    <div class="section-heading">
+                        {% if row.section_no %}{{ row.section_no }}. {% endif %}{{ row.heading_en or "" }}
+                    </div>
+                    <div class="sop-body">{{ (row.content_en or "") | safe }}</div>
+                </div>
+            {% endif %}
+
+            {% if doc.language in ("Arabic", "Bilingual") and (row.heading_ar or row.content_ar) %}
+                <div class="section">
+                    <div class="section-heading rtl">
+                        {% if row.section_no %}{{ row.section_no }}. {% endif %}{{ row.heading_ar or "" }}
+                    </div>
+                    <div class="sop-body rtl">{{ (row.content_ar or "") | safe }}</div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+
+    <div class="revision-title">Revision History</div>
+    <table class="revision">
+        <thead>
+            <tr>
+                <th>Version</th>
+                <th>Status</th>
+                <th>Effective Date</th>
+                <th>Change Summary</th>
+                <th>Approved By</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in versions %}
+            <tr>
+                <td>{{ row.version_no }}</td>
+                <td>{{ row.status }}</td>
+                <td>{{ row.effective_from or "" }}</td>
+                <td>{{ row.change_summary or "" }}</td>
+                <td>{{ row.approved_by or "" }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="control-footer">
+        <span>Controlled document â€” Marina Fashion</span>
+        <span>{{ parent.name }} Â· Version {{ doc.version_no }}</span>
+    </div>
+</div>
+"""
+
+    values = {
+        "doc_type": "SOP Version",
+        "print_format_type": "Jinja",
+        "custom_format": 1,
+        "disabled": 0,
+        "html": html,
+    }
+
+    if frappe.db.exists("Print Format", CONTROLLED_PRINT_FORMAT):
+        doc = frappe.get_doc("Print Format", CONTROLLED_PRINT_FORMAT)
+        for fieldname, value in values.items():
+            if doc.meta.has_field(fieldname):
+                doc.set(fieldname, value)
+        if doc.meta.has_field("module"):
+            doc.module = "SOP Management"
+        if doc.meta.has_field("standard"):
+            doc.standard = "Yes"
+        doc.save(ignore_permissions=True)
+    else:
+        payload = {
+            "doctype": "Print Format",
+            "name": CONTROLLED_PRINT_FORMAT,
+            **values,
+        }
+        meta = frappe.get_meta("Print Format")
+        if meta.has_field("module"):
+            payload["module"] = "SOP Management"
+        if meta.has_field("standard"):
+            payload["standard"] = "Yes"
+        frappe.get_doc(payload).insert(ignore_permissions=True)
 
 def sync_unified_workspace():
     """Force the shipped umbrella workspace into the v15 database.

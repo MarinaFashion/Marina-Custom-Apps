@@ -2,6 +2,11 @@ import frappe
 from frappe import _
 from frappe.utils import now_datetime, today
 
+from marina_custom_apps.sop_management.doctype.sop_version.sop_version import (
+    ADVANCED_HTML_MODE,
+    sanitize_sop_html,
+)
+
 
 MANAGER_ROLES = {"SOP Manager", "System Manager"}
 EDITOR_ROLES = {"SOP Editor", "SOP Manager", "System Manager"}
@@ -35,6 +40,9 @@ def create_new_version(sop_document):
     version.status = "Draft"
     if source:
         version.previous_version = source.name
+        version.content_mode = source.content_mode or "Standard Rich Text"
+        if version.content_mode == ADVANCED_HTML_MODE:
+            version.html_content = source.html_content
         for row in source.sections:
             version.append(
                 "sections",
@@ -47,6 +55,7 @@ def create_new_version(sop_document):
                 },
             )
     else:
+        version.content_mode = "Standard Rich Text"
         version.append("sections", {"section_no": "1"})
 
     version.insert()
@@ -54,11 +63,20 @@ def create_new_version(sop_document):
 
 
 @frappe.whitelist()
+def preview_advanced_html(html_content=None):
+    _require_any_role(EDITOR_ROLES)
+    return sanitize_sop_html(html_content or "")
+
+@frappe.whitelist()
 def submit_for_review(version_name):
     _require_any_role(EDITOR_ROLES)
     doc = frappe.get_doc("SOP Version", version_name)
     if doc.status != "Draft":
         frappe.throw(_("Only a Draft SOP Version can be submitted for review."))
+
+    # Drafts may be incomplete; review cannot start without required content.
+    doc.validate_content_completeness()
+
     frappe.flags.in_sop_publication = True
     try:
         doc.status = "Under Review"
@@ -201,6 +219,17 @@ def get_published_sop(sop_document):
     if version.status != "Published":
         frappe.throw(_("The current SOP Version is not published."))
 
+    history = frappe.get_list(
+        "SOP Version",
+        filters={"sop_document": doc.name},
+        fields=[
+            "name", "version_no", "status", "effective_from",
+            "approved_by", "published_on", "change_summary",
+        ],
+        order_by="version_no desc",
+        limit_page_length=100,
+    )
+
     return {
         "document": {
             "name": doc.name,
@@ -211,10 +240,15 @@ def get_published_sop(sop_document):
             "department": doc.department,
             "language": doc.language,
             "summary": doc.summary,
+            "current_version": version.name,
             "version_no": version.version_no,
             "effective_from": version.effective_from,
+            "approved_by": version.approved_by,
             "published_on": version.published_on,
+            "content_mode": version.content_mode or "Standard Rich Text",
+            "html_content": version.html_content if version.content_mode == ADVANCED_HTML_MODE else None,
         },
+        "revision_history": history,
         "sections": [
             {
                 "section_no": row.section_no,

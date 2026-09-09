@@ -42,3 +42,28 @@ Those belong to later SOP phases after the Phase 1 lifecycle is validated.
 - Server-enforced lifecycle transitions prevent REST/API users from bypassing Draft â†’ Review â†’ Approval â†’ Publication.
 - Published SOPs use a controlled Archive action instead of deletion.
 - SOP Library search uses permission-respecting queries so restricted document metadata is not leaked.
+## v0.44.1 Draft version creation fix
+
+- Draft SOP Versions may be created and saved before content is entered.
+- Required language content is enforced when submitting a Draft for review.
+- Open in SOP Library is shown only when the SOP has a published current version.
+## v0.45.0 Professional controlled-document presentation
+
+- SOP Section content remains rich HTML via Frappe Text Editor fields.
+- Word/Excel tables pasted into rich content are rendered with controlled Marina table styling in the Library and Print/PDF output.
+- A standard `Marina SOP Controlled Document` Jinja Print Format is created idempotently during install/migrate.
+- The controlled format supplies Marina branding, metadata header, colored section headings, table borders/header styling, revision history, and a controlled-document footer.
+- SOP Version includes a `Document Preview` action.
+- Published SOP Library includes `Print / PDF` and renders the same controlled visual hierarchy.
+- Revision History is generated from SOP Version records rather than manually typed by users.
+
+The presentation layer intentionally standardizes fonts, headings, metadata and table appearance so authors focus on content rather than manually formatting every document.
+### Advanced HTML authoring
+
+- `Content Mode` can be `Standard Rich Text` or `Advanced HTML`.
+- Advanced HTML uses an HTML source editor and a server-sanitized live preview.
+- Frappe HTML sanitization is forced on every save/preview.
+- JavaScript, unsafe event attributes and dangerous markup are not trusted.
+- Images must be uploaded to ERPNext Files and use `/files/` or `/private/files/`; remote and base64/data images are rejected.
+- Advanced HTML controls the document body only. Marina branding, metadata, approval/version information, revision history and footer remain controlled by the system.
+- The same sanitized body is used by SOP Library and controlled Print/PDF output.
