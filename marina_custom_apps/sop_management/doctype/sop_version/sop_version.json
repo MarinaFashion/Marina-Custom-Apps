@@ -1,0 +1,203 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2026-09-09 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "version_section",
+  "naming_series",
+  "sop_document",
+  "version_no",
+  "status",
+  "column_break_1",
+  "language",
+  "previous_version",
+  "change_summary",
+  "approval_section",
+  "effective_from",
+  "effective_to",
+  "approved_by",
+  "approved_on",
+  "column_break_2",
+  "published_by",
+  "published_on",
+  "sections_section",
+  "sections"
+ ],
+ "fields": [
+  {
+   "fieldname": "version_section",
+   "fieldtype": "Section Break",
+   "label": "Version"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "SOP-V-.#####",
+   "default": "SOP-V-.#####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sop_document",
+   "fieldtype": "Link",
+   "label": "SOP Document",
+   "options": "SOP Document",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "version_no",
+   "fieldtype": "Int",
+   "label": "Version No.",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nUnder Review\nApproved\nPublished\nSuperseded",
+   "default": "Draft",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "language",
+   "fieldtype": "Select",
+   "label": "Language",
+   "options": "English\nArabic\nBilingual",
+   "default": "Bilingual",
+   "reqd": 1
+  },
+  {
+   "fieldname": "previous_version",
+   "fieldtype": "Link",
+   "label": "Previous Version",
+   "options": "SOP Version",
+   "read_only": 1
+  },
+  {
+   "fieldname": "change_summary",
+   "fieldtype": "Small Text",
+   "label": "Change Summary"
+  },
+  {
+   "fieldname": "approval_section",
+   "fieldtype": "Section Break",
+   "label": "Approval & Publication"
+  },
+  {
+   "fieldname": "effective_from",
+   "fieldtype": "Date",
+   "label": "Effective From"
+  },
+  {
+   "fieldname": "effective_to",
+   "fieldtype": "Date",
+   "label": "Effective To",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_on",
+   "fieldtype": "Datetime",
+   "label": "Approved On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "published_by",
+   "fieldtype": "Link",
+   "label": "Published By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "published_on",
+   "fieldtype": "Datetime",
+   "label": "Published On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sections_section",
+   "fieldtype": "Section Break",
+   "label": "SOP Sections"
+  },
+  {
+   "fieldname": "sections",
+   "fieldtype": "Table",
+   "label": "Sections",
+   "options": "SOP Section",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-09 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "SOP Management",
+ "name": "SOP Version",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "SOP Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "SOP Editor",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1
+  },
+  {
+   "role": "SOP Viewer",
+   "read": 1,
+   "print": 1,
+   "report": 1
+  },
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  }
+ ],
+ "search_fields": "sop_document,change_summary",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

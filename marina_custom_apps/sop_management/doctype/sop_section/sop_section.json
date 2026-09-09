@@ -1,0 +1,63 @@
+{
+ "actions": [],
+ "creation": "2026-09-09 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_no",
+  "heading_en",
+  "heading_ar",
+  "column_break_1",
+  "content_en",
+  "content_ar"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_no",
+   "fieldtype": "Data",
+   "label": "Section No.",
+   "in_list_view": 1,
+   "columns": 1
+  },
+  {
+   "fieldname": "heading_en",
+   "fieldtype": "Data",
+   "label": "Heading (English)",
+   "in_list_view": 1,
+   "columns": 3
+  },
+  {
+   "fieldname": "heading_ar",
+   "fieldtype": "Data",
+   "label": "Heading (Arabic)",
+   "in_list_view": 1,
+   "columns": 3
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "content_en",
+   "fieldtype": "Text Editor",
+   "label": "Content (English)"
+  },
+  {
+   "fieldname": "content_ar",
+   "fieldtype": "Text Editor",
+   "label": "Content (Arabic)"
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-09-09 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "SOP Management",
+ "name": "SOP Section",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "idx",
+ "sort_order": "ASC",
+ "states": []
+}

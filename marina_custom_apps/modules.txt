@@ -5,3 +5,4 @@ Stock Auto Allocation
 Cycle Count
 Sales Forecasting
 Marina Calendar
+SOP Management

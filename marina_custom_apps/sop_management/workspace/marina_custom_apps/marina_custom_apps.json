@@ -1,0 +1,215 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"mc-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Marina Custom Apps</b></span>\",\"col\":12}},{\"id\":\"sop-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h5\\\"><b>SOP Management</b></span>\",\"col\":12}},{\"id\":\"soplib\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"SOP Library\",\"col\":3}},{\"id\":\"sopdocs\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"SOP Documents\",\"col\":3}},{\"id\":\"soptypes\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"SOP Types\",\"col\":3}},{\"id\":\"sp1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"plan-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h5\\\"><b>Planning & Calendar</b></span>\",\"col\":12}},{\"id\":\"forecast\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Forecast Runs\",\"col\":3}},{\"id\":\"calendar\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Marina Calendar Events\",\"col\":3}},{\"id\":\"sp2\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"inv-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h5\\\"><b>Inventory & Distribution</b></span>\",\"col\":12}},{\"id\":\"audit\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Transfer Audit Runs\",\"col\":3}},{\"id\":\"dispatch\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"DC Dispatch Runs\",\"col\":3}},{\"id\":\"allocation\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Allocation Runs\",\"col\":3}},{\"id\":\"cycle\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Cycle Count Plans\",\"col\":3}}]",
+ "creation": "2026-09-09 00:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "organization",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Marina Custom Apps",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "SOP Management",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "SOP Library",
+   "link_count": 0,
+   "link_to": "sop-library",
+   "link_type": "Page",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "SOP Document",
+   "link_count": 0,
+   "link_to": "SOP Document",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "SOP Type",
+   "link_count": 0,
+   "link_to": "SOP Type",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Planning & Calendar",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sales Forecast Run",
+   "link_count": 0,
+   "link_to": "Sales Forecast Run",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Marina Calendar Event",
+   "link_count": 0,
+   "link_to": "Marina Calendar Event",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Inventory & Distribution",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Stock Transfer Audit Run",
+   "link_count": 0,
+   "link_to": "Stock Transfer Audit Run",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "DC Dispatch Run",
+   "link_count": 0,
+   "link_to": "DC Dispatch Run",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Stock Allocation Run",
+   "link_count": 0,
+   "link_to": "Stock Allocation Run",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Cycle Count Plan",
+   "link_count": 0,
+   "link_to": "Cycle Count Plan",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-09-09 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "SOP Management",
+ "name": "Marina Custom Apps",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 1.0,
+ "shortcuts": [
+  {
+   "color": "Blue",
+   "label": "SOP Library",
+   "link_to": "sop-library",
+   "type": "Page"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "SOP Documents",
+   "link_to": "SOP Document",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "SOP Types",
+   "link_to": "SOP Type",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Sales Forecast Runs",
+   "link_to": "Sales Forecast Run",
+   "type": "DocType"
+  },
+  {
+   "color": "Purple",
+   "doc_view": "List",
+   "label": "Marina Calendar Events",
+   "link_to": "Marina Calendar Event",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "label": "Transfer Audit Runs",
+   "link_to": "Stock Transfer Audit Run",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "DC Dispatch Runs",
+   "link_to": "DC Dispatch Run",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Stock Allocation Runs",
+   "link_to": "Stock Allocation Run",
+   "type": "DocType"
+  },
+  {
+   "color": "Yellow",
+   "doc_view": "List",
+   "label": "Cycle Count Plans",
+   "link_to": "Cycle Count Plan",
+   "type": "DocType"
+  }
+ ],
+ "title": "Marina Custom Apps"
+}

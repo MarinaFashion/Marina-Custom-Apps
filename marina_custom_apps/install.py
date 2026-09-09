@@ -53,6 +53,8 @@ def after_install():
     stock_allocation_after_install()
     from marina_custom_apps.cycle_count.install import after_install as cycle_count_after_install
     cycle_count_after_install()
+    from marina_custom_apps.sop_management.install import after_install as sop_after_install
+    sop_after_install()
 
 
 def after_migrate():
@@ -76,6 +78,8 @@ def after_migrate():
     stock_allocation_after_migrate()
     from marina_custom_apps.cycle_count.install import after_migrate as cycle_count_after_migrate
     cycle_count_after_migrate()
+    from marina_custom_apps.sop_management.install import after_migrate as sop_after_migrate
+    sop_after_migrate()
 
 
 def _ensure_custom_fields():

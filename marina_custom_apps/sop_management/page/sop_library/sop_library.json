@@ -1,0 +1,33 @@
+{
+ "content": null,
+ "creation": "2026-09-09 00:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Page",
+ "icon": "book",
+ "idx": 0,
+ "modified": "2026-09-09 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "SOP Management",
+ "name": "sop-library",
+ "owner": "Administrator",
+ "page_name": "sop-library",
+ "roles": [
+  {
+   "role": "SOP Viewer"
+  },
+  {
+   "role": "SOP Editor"
+  },
+  {
+   "role": "SOP Manager"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "SOP Library"
+}

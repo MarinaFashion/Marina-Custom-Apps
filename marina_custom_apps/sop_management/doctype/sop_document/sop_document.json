@@ -1,0 +1,213 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2026-09-09 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "identity_section",
+  "naming_series",
+  "display_title",
+  "status",
+  "column_break_1",
+  "sop_type",
+  "department",
+  "language",
+  "titles_section",
+  "title_en",
+  "column_break_2",
+  "title_ar",
+  "ownership_section",
+  "process_owner",
+  "parent_sop_document",
+  "column_break_3",
+  "keywords",
+  "summary",
+  "publication_section",
+  "current_version",
+  "current_version_no"
+ ],
+ "fields": [
+  {
+   "fieldname": "identity_section",
+   "fieldtype": "Section Break",
+   "label": "SOP Identity"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "SOP-.#####",
+   "default": "SOP-.#####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "display_title",
+   "fieldtype": "Data",
+   "label": "Display Title",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nPublished\nArchived",
+   "default": "Draft",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sop_type",
+   "fieldtype": "Link",
+   "label": "SOP Type",
+   "options": "SOP Type",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "language",
+   "fieldtype": "Select",
+   "label": "Language",
+   "options": "English\nArabic\nBilingual",
+   "default": "Bilingual",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "titles_section",
+   "fieldtype": "Section Break",
+   "label": "Titles"
+  },
+  {
+   "fieldname": "title_en",
+   "fieldtype": "Data",
+   "label": "Title (English)"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "title_ar",
+   "fieldtype": "Data",
+   "label": "Title (Arabic)"
+  },
+  {
+   "fieldname": "ownership_section",
+   "fieldtype": "Section Break",
+   "label": "Ownership & Classification"
+  },
+  {
+   "fieldname": "process_owner",
+   "fieldtype": "Link",
+   "label": "Process Owner",
+   "options": "User"
+  },
+  {
+   "fieldname": "parent_sop_document",
+   "fieldtype": "Link",
+   "label": "Parent SOP",
+   "options": "SOP Document"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "keywords",
+   "fieldtype": "Small Text",
+   "label": "Keywords"
+  },
+  {
+   "fieldname": "summary",
+   "fieldtype": "Small Text",
+   "label": "Summary"
+  },
+  {
+   "fieldname": "publication_section",
+   "fieldtype": "Section Break",
+   "label": "Current Publication"
+  },
+  {
+   "fieldname": "current_version",
+   "fieldtype": "Link",
+   "label": "Current Published Version",
+   "options": "SOP Version",
+   "read_only": 1
+  },
+  {
+   "fieldname": "current_version_no",
+   "fieldtype": "Int",
+   "label": "Current Version No.",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-09 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "SOP Management",
+ "name": "SOP Document",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "SOP Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "SOP Editor",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1
+  },
+  {
+   "role": "SOP Viewer",
+   "read": 1,
+   "print": 1,
+   "report": 1
+  },
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  }
+ ],
+ "search_fields": "display_title,title_en,title_ar,keywords",
+ "show_name_in_global_search": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "display_title",
+ "track_changes": 1
+}
