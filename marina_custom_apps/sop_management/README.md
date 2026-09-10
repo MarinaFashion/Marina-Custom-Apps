@@ -69,7 +69,7 @@ The presentation layer intentionally standardizes fonts, headings, metadata and 
 - The same sanitized body is used by SOP Library and controlled Print/PDF output.
 ## v0.46.0 Brand, hierarchy and access control
 - Uses Marina Fashion palette: #551C25, #F2EBE7, #C0A392, #E4D5C4, #2D2926.
-- Header: Marina Fashion - SOP System / Ù…Ø§Ø±ÙŠÙ†Ø§ ÙØ§Ø´ÙˆÙ† - Ø¯Ù„ÙŠÙ„ Ø§Ù„Ø§Ø¬Ø±Ø§Ø¡Ø§Øª Ø§Ù„Ù‚ÙŠØ§Ø³ÙŠØ©.
+- Header: Marina Fashion - SOP System / Arabic SOP System title (RTL).
 - Adds user-controlled Document No.; unique, required before review, locked after first publication.
 - Library hierarchy: SOP > SOP Type > published document.
 - Adds Applicable For, Visibility and Allowed Audience.

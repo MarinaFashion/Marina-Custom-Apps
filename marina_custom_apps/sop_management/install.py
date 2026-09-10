@@ -253,7 +253,7 @@ def ensure_controlled_print_format():
 <div class="sop-controlled">
     <div class="brand-bar">
         {% if doc.language in ("English", "Bilingual") %}<div class="brand">Marina Fashion - SOP System</div>{% endif %}
-        {% if doc.language in ("Arabic", "Bilingual") %}<div class="brand title-ar" style="font-size:15pt">Ù…Ø§Ø±ÙŠÙ†Ø§ ÙØ§Ø´ÙˆÙ† - Ø¯Ù„ÙŠÙ„ Ø§Ù„Ø§Ø¬Ø±Ø§Ø¡Ø§Øª Ø§Ù„Ù‚ÙŠØ§Ø³ÙŠØ©</div>{% endif %}
+        {% if doc.language in ("Arabic", "Bilingual") %}<div class="brand title-ar" style="font-size:15pt">&#1605;&#1575;&#1585;&#1610;&#1606;&#1575; &#1601;&#1575;&#1588;&#1608;&#1606; - &#1583;&#1604;&#1610;&#1604; &#1575;&#1604;&#1575;&#1580;&#1585;&#1575;&#1569;&#1575;&#1578; &#1575;&#1604;&#1602;&#1610;&#1575;&#1587;&#1610;&#1577;</div>{% endif %}
         <div class="doc-kind">{{ parent.sop_type or "Controlled Document" }}</div>
         {% if parent.title_en %}
             <div class="title-en">{{ parent.title_en }}</div>
