@@ -194,7 +194,7 @@ def search_library(search_text=None, sop_type=None, department=None, language=No
         filters=filters,
         fields=[
             "name", "document_no", "display_title", "title_en", "title_ar", "sop_type",
-            "department", "language", "summary", "keywords",
+            "department", "language", "summary", "summary_ar", "keywords", "keywords_ar",
             "current_version", "current_version_no", "modified",
         ],
         order_by="sop_type asc, display_title asc",
@@ -206,7 +206,7 @@ def search_library(search_text=None, sop_type=None, department=None, language=No
         def matches(row):
             haystack = " ".join(
                 str(row.get(field) or "")
-                for field in ("name", "document_no", "display_title", "title_en", "title_ar", "summary", "keywords", "sop_type", "department")
+                for field in ("name", "document_no", "display_title", "title_en", "title_ar", "summary", "summary_ar", "keywords", "keywords_ar", "sop_type", "department")
             ).lower()
             return needle in haystack
         rows = [row for row in rows if matches(row)]
@@ -258,6 +258,9 @@ def get_published_sop(sop_document):
             "department": doc.department,
             "language": doc.language,
             "summary": doc.summary,
+            "summary_ar": doc.summary_ar,
+            "keywords": doc.keywords,
+            "keywords_ar": doc.keywords_ar,
             "current_version": version.name,
             "version_no": version.version_no,
             "effective_from": version.effective_from,

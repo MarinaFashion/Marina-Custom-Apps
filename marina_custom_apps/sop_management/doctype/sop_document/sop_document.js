@@ -9,6 +9,11 @@ frappe.ui.form.on("SOP Document", {
             });
         }
 
+        frm.add_custom_button(__("Versions"), () => {
+            frappe.route_options = { sop_document: frm.doc.name };
+            frappe.set_route("List", "SOP Version");
+        });
+
         if (frappe.user.has_role("SOP Editor") || frappe.user.has_role("SOP Manager") || frappe.user.has_role("System Manager")) {
             frm.add_custom_button(__("Create New Version"), () => {
                 frappe.call({

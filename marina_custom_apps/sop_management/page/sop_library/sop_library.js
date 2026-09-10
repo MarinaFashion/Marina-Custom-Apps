@@ -218,11 +218,25 @@ frappe.pages["sop-library"].on_page_load = function(wrapper) {
             frappe.set_route("Form", "SOP Document", doc.name);
         });
 
-        if (doc.summary) {
+        if (lang === "English" && doc.summary) {
             viewer.append(`
                 <div class="sop-section-title">${__("Document Summary")}</div>
                 <div class="sop-rich">${esc(doc.summary)}</div>
             `);
+        } else if (lang === "Arabic" && doc.summary_ar) {
+            viewer.append(`
+                <section dir="rtl" style="text-align:right;margin-bottom:20px">
+                    <div class="sop-section-title rtl">\u0645\u0644\u062e\u0635 \u0627\u0644\u0648\u062b\u064a\u0642\u0629</div>
+                    <div class="sop-rich">${esc(doc.summary_ar)}</div>
+                </section>
+            `);
+        } else if (lang === "Bilingual") {
+            if (doc.summary) {
+                viewer.append(`<div class="sop-section-title">${__("Document Summary")}</div><div class="sop-rich">${esc(doc.summary)}</div>`);
+            }
+            if (doc.summary_ar) {
+                viewer.append(`<section dir="rtl" style="text-align:right;margin-bottom:20px"><div class="sop-section-title rtl">\u0645\u0644\u062e\u0635 \u0627\u0644\u0648\u062b\u064a\u0642\u0629</div><div class="sop-rich">${esc(doc.summary_ar)}</div></section>`);
+            }
         }
 
         if (doc.content_mode === "Advanced HTML") {

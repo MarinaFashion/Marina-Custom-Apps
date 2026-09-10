@@ -104,3 +104,9 @@ Each specialist workspace remains responsible for its own DocTypes, reports, pag
 - Arabic SOPs show only the Arabic SOP System title.
 - Bilingual SOPs show the English title once and the Arabic title once.
 - SOP Type expand/collapse arrows use ASCII-safe HTML entities to avoid mojibake and inconsistent rendering.
+## v0.47.0 Bilingual metadata and version navigation
+- Adds Keywords (Arabic) and Summary (Arabic); existing fields become English-labelled without changing stored data.
+- Library and Print/PDF render summaries by document language.
+- Arabic keywords participate in Library search.
+- Adds SOP Document -> SOP Version dashboard relationship, a Versions button, and Open SOP Document on versions.
+- Preserves approved workspace icons and enforces order: Marina Calendar, Sales Forecasting, DC Dispatch, Stock Auto Allocation, Stock Transfer Audit, Cycle Count, SOP Management.

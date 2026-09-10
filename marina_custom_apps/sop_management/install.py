@@ -282,10 +282,16 @@ def ensure_controlled_print_format():
         </tr>
     </table>
 
-    {% if parent.summary %}
+    {% if doc.language in ("English", "Bilingual") and parent.summary %}
         <div class="section">
             <div class="section-heading">Document Summary</div>
             <div class="sop-body">{{ parent.summary }}</div>
+        </div>
+    {% endif %}
+    {% if doc.language in ("Arabic", "Bilingual") and parent.summary_ar %}
+        <div class="section">
+            <div class="section-heading rtl">&#1605;&#1604;&#1582;&#1589; &#1575;&#1604;&#1608;&#1579;&#1610;&#1602;&#1577;</div>
+            <div class="sop-body rtl">{{ parent.summary_ar }}</div>
         </div>
     {% endif %}
 
@@ -531,24 +537,22 @@ def sync_module_workspace_hierarchy():
         base / "workspace" / "sop_management" / "sop_management.json"
     )
 
-    child_names = (
-        "Marina Calendar",
-        "Cycle Count",
-        "Stock Transfer Audit",
-        "Stock Auto Allocation",
-        "Sales Forecasting",
-        "DC Dispatch",
-        "SOP Management",
+    workspace_order = (
+        ("Marina Calendar", 2.0),
+        ("Sales Forecasting", 3.0),
+        ("DC Dispatch", 4.0),
+        ("Stock Auto Allocation", 5.0),
+        ("Stock Transfer Audit", 6.0),
+        ("Cycle Count", 7.0),
+        ("SOP Management", 8.0),
     )
 
-    # Existing specialist workspace JSON files remain owned by their modules.
-    # We only enforce their parent relationship in the database.
-    for name in child_names:
+    # Preserve the approved icons; enforce only hierarchy and exact order.
+    for name, sequence_id in workspace_order:
         if frappe.db.exists("Workspace", name):
             frappe.db.set_value(
                 "Workspace",
                 name,
-                "parent_page",
-                "Marina Custom Apps",
+                {"parent_page": "Marina Custom Apps", "sequence_id": sequence_id},
                 update_modified=False,
             )

@@ -1,0 +1,23 @@
+warning: in the working copy of 'marina_custom_apps/__init__.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'marina_custom_apps/hooks.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'marina_custom_apps/sop_management/README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'marina_custom_apps/sop_management/api.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'marina_custom_apps/sop_management/doctype/sop_document/sop_document.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'marina_custom_apps/sop_management/doctype/sop_document/sop_document.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'marina_custom_apps/sop_management/doctype/sop_version/sop_version.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'marina_custom_apps/sop_management/install.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'marina_custom_apps/sop_management/page/sop_library/sop_library.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'pyproject.toml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'setup.py', LF will be replaced by CRLF the next time Git touches it
+ marina_custom_apps/__init__.py                     |  2 [32m+[m[31m-[m
+ marina_custom_apps/hooks.py                        |  2 [32m+[m[31m-[m
+ marina_custom_apps/sop_management/README.md        |  6 [32m++++[m
+ marina_custom_apps/sop_management/api.py           |  7 [32m+++[m[31m--[m
+ .../doctype/sop_document/sop_document.js           |  5 [32m++++[m
+ .../doctype/sop_document/sop_document.json         | 32 [32m+++++++++++++++++[m[31m-----[m
+ .../doctype/sop_version/sop_version.js             |  6 [32m++++[m
+ marina_custom_apps/sop_management/install.py       | 32 [32m++++++++++++[m[31m----------[m
+ .../sop_management/page/sop_library/sop_library.js | 16 [32m++++++++++[m[31m-[m
+ pyproject.toml                                     |  2 [32m+[m[31m-[m
+ setup.py                                           |  2 [32m+[m[31m-[m
+ 11 files changed, 84 insertions(+), 28 deletions(-)

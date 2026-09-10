@@ -4,6 +4,12 @@ frappe.ui.form.on("SOP Version", {
 
         if (frm.is_new()) return;
 
+        if (frm.doc.sop_document) {
+            frm.add_custom_button(__("Open SOP Document"), () => {
+                frappe.set_route("Form", "SOP Document", frm.doc.sop_document);
+            });
+        }
+
         frm.add_custom_button(__("Document Preview"), () => {
             const params = new URLSearchParams({
                 doctype: "SOP Version",

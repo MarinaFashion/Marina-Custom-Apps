@@ -21,9 +21,12 @@
   "ownership_section",
   "process_owner",
   "parent_sop_document",
-  "column_break_3",
+  "metadata_section",
   "keywords",
   "summary",
+  "column_break_3",
+  "keywords_ar",
+  "summary_ar",
   "access_section",
   "visibility",
   "applicable_for_section",
@@ -136,18 +139,33 @@
    "options": "SOP Document"
   },
   {
-   "fieldname": "column_break_3",
-   "fieldtype": "Column Break"
+   "fieldname": "metadata_section",
+   "fieldtype": "Section Break",
+   "label": "Search & Summary"
   },
   {
    "fieldname": "keywords",
    "fieldtype": "Small Text",
-   "label": "Keywords"
+   "label": "Keywords (English)"
   },
   {
    "fieldname": "summary",
    "fieldtype": "Small Text",
-   "label": "Summary"
+   "label": "Summary (English)"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "keywords_ar",
+   "fieldtype": "Small Text",
+   "label": "Keywords (Arabic)"
+  },
+  {
+   "fieldname": "summary_ar",
+   "fieldtype": "Small Text",
+   "label": "Summary (Arabic)"
   },
   {
    "fieldname": "access_section",
@@ -208,7 +226,7 @@
   }
  ],
  "index_web_pages_for_search": 1,
- "links": [],
+ "links": [{"link_doctype":"SOP Version","link_fieldname":"sop_document"}],
  "modified": "2026-09-09 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "SOP Management",
@@ -256,7 +274,7 @@
    "share": 1
   }
  ],
- "search_fields": "document_no,display_title,title_en,title_ar,keywords",
+ "search_fields": "document_no,display_title,title_en,title_ar,keywords,keywords_ar",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
