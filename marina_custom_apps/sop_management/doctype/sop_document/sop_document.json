@@ -7,6 +7,7 @@
  "field_order": [
   "identity_section",
   "naming_series",
+  "document_no",
   "display_title",
   "status",
   "column_break_1",
@@ -23,6 +24,12 @@
   "column_break_3",
   "keywords",
   "summary",
+  "access_section",
+  "visibility",
+  "applicable_for_section",
+  "applicable_for",
+  "allowed_audience_section",
+  "allowed_audience",
   "publication_section",
   "current_version",
   "current_version_no"
@@ -40,6 +47,13 @@
    "options": "SOP-.#####",
    "default": "SOP-.#####",
    "reqd": 1
+  },
+  {
+   "fieldname": "document_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Document No.",
+   "description": "Business-facing document number. Required before Submit for Review."
   },
   {
    "fieldname": "display_title",
@@ -136,6 +150,45 @@
    "label": "Summary"
   },
   {
+   "fieldname": "access_section",
+   "fieldtype": "Section Break",
+   "label": "Access & Applicability"
+  },
+  {
+   "default": "Everyone",
+   "fieldname": "visibility",
+   "fieldtype": "Select",
+   "label": "Visibility",
+   "options": "Everyone\nRestricted",
+   "reqd": 1
+  },
+  {
+   "fieldname": "applicable_for_section",
+   "fieldtype": "Section Break",
+   "label": "Applicable For"
+  },
+  {
+   "fieldname": "applicable_for",
+   "fieldtype": "Table",
+   "label": "Applicable For",
+   "options": "SOP Audience Rule",
+   "description": "Who this SOP applies to."
+  },
+  {
+   "depends_on": "eval:doc.visibility=='Restricted'",
+   "fieldname": "allowed_audience_section",
+   "fieldtype": "Section Break",
+   "label": "Allowed Audience"
+  },
+  {
+   "depends_on": "eval:doc.visibility=='Restricted'",
+   "fieldname": "allowed_audience",
+   "fieldtype": "Table",
+   "label": "Allowed Audience",
+   "options": "SOP Audience Rule",
+   "description": "Who can read it. If empty, Applicable For is used."
+  },
+  {
    "fieldname": "publication_section",
    "fieldtype": "Section Break",
    "label": "Current Publication"
@@ -203,7 +256,7 @@
    "share": 1
   }
  ],
- "search_fields": "display_title,title_en,title_ar,keywords",
+ "search_fields": "document_no,display_title,title_en,title_ar,keywords",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",

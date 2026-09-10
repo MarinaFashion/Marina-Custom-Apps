@@ -4,7 +4,7 @@ app_publisher = "Marina Trading Company"
 app_description = "Marina Trading Company custom Frappe/ERPNext modules"
 app_email = "it@marinafashion.com.sa"
 app_license = "MIT"
-app_version = "0.45.0"
+app_version = "0.46.0"
 
 required_apps = ["erpnext"]
 
@@ -62,8 +62,12 @@ scheduler_events = {
 
 permission_query_conditions = {
     "Store Cycle Count": "marina_custom_apps.cycle_count.permissions.store_cycle_count_query",
+    "SOP Document": "marina_custom_apps.sop_management.permissions.sop_document_query",
+    "SOP Version": "marina_custom_apps.sop_management.permissions.sop_version_query",
 }
 
 has_permission = {
     "Store Cycle Count": "marina_custom_apps.cycle_count.permissions.store_cycle_count_permission",
+    "SOP Document": "marina_custom_apps.sop_management.permissions.sop_document_permission",
+    "SOP Version": "marina_custom_apps.sop_management.permissions.sop_version_permission",
 }

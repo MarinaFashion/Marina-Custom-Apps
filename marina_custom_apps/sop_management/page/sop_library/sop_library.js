@@ -13,41 +13,45 @@ frappe.pages["sop-library"].on_page_load = function(wrapper) {
 
     const body = $(`
         <style>
-            .sop-library .sop-viewer { color:#263238; }
+            .sop-library .sop-viewer { color:#2D2926; }
             .sop-library .sop-doc-head {
-                border-top:6px solid #243b53;
-                border-bottom:2px solid #d6a84b;
+                border-top:6px solid #551C25;
+                border-bottom:2px solid #C0A392;
                 padding:14px 0 12px;
                 margin-bottom:14px;
             }
             .sop-library .sop-doc-brand {
-                color:#243b53;font-weight:700;font-size:20px;letter-spacing:.5px;
+                color:#551C25;font-weight:700;font-size:20px;letter-spacing:.5px;
             }
             .sop-library .sop-meta {
                 display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));
                 border:1px solid var(--border-color);margin:12px 0 20px;
             }
             .sop-library .sop-meta > div { padding:8px;border-right:1px solid var(--border-color); }
-            .sop-library .sop-meta .k { background:var(--subtle-fg);font-weight:600;color:#243b53; }
+            .sop-library .sop-meta .k { background:var(--subtle-fg);font-weight:600;color:#551C25; }
             .sop-library .sop-section-title {
-                background:#243b53;color:white;border-left:5px solid #d6a84b;
+                background:#551C25;color:white;border-left:5px solid #C0A392;
                 padding:8px 10px;margin:18px 0 9px;font-weight:700;
             }
             .sop-library .sop-section-title.rtl {
-                direction:rtl;text-align:right;border-left:0;border-right:5px solid #d6a84b;
+                direction:rtl;text-align:right;border-left:0;border-right:5px solid #C0A392;
             }
             .sop-library .sop-rich table,.sop-library .sop-custom-content table {
                 width:100% !important;border-collapse:collapse !important;margin:10px 0 15px !important;
             }
             .sop-library .sop-rich th,.sop-library .sop-rich td,.sop-library .sop-custom-content th,.sop-library .sop-custom-content td {
-                border:1px solid #b0bec5 !important;padding:7px 8px !important;vertical-align:top;
+                border:1px solid #C0A392 !important;padding:7px 8px !important;vertical-align:top;
             }
-            .sop-library .sop-rich th,.sop-library .sop-custom-content th { background:#e8eef2 !important;color:#243b53 !important; }
+            .sop-library .sop-rich th,.sop-library .sop-custom-content th { background:#E4D5C4 !important;color:#551C25 !important; }
             .sop-library .sop-revision { width:100%;border-collapse:collapse;margin-top:8px;font-size:12px; }
             .sop-library .sop-revision th,.sop-library .sop-revision td {
                 border:1px solid var(--border-color);padding:6px;
             }
-            .sop-library .sop-revision th { background:var(--subtle-fg); }
+            .sop-library .sop-revision th { background:#F2EBE7;color:#551C25; }
+            .sop-library .sop-tree-root {padding:12px 14px;font-weight:700;color:#551C25;background:#F2EBE7;border-bottom:1px solid #E4D5C4;}
+            .sop-library .sop-type-head {display:flex;gap:7px;padding:10px 14px;cursor:pointer;font-weight:700;color:#551C25;}
+            .sop-library .sop-type-head:hover,.sop-library .sop-result:hover {background:#F2EBE7;}
+            .sop-library .sop-result {padding:12px 16px 12px 36px;border-top:1px solid var(--border-color);cursor:pointer;}
             @media (max-width: 900px) {
                 .sop-library .sop-layout { grid-template-columns:1fr !important; }
                 .sop-library .sop-filter-row { grid-template-columns:1fr 1fr !important; }
@@ -132,19 +136,31 @@ frappe.pages["sop-library"].on_page_load = function(wrapper) {
             results.html(`<div class="text-muted" style="padding:20px">${__("No published SOPs found.")}</div>`);
             return;
         }
+        results.append(`<div class="sop-tree-root">SOP</div>`);
+        const grouped = {};
         state.rows.forEach(row => {
-            const card = $(`
-                <div class="sop-result" data-name="${esc(row.name)}"
-                    style="padding:14px 16px;border-bottom:1px solid var(--border-color);cursor:pointer;">
-                    <div style="font-weight:600">${esc(titleFor(row))}</div>
-                    <div class="text-muted small" style="margin-top:4px">
-                        ${esc(row.name)} · ${esc(row.sop_type)} · v${esc(row.current_version_no)}
-                    </div>
+            const key = row.sop_type || __("Other");
+            (grouped[key] ||= []).push(row);
+        });
+        Object.keys(grouped).forEach(typeName => {
+            const group = $(`<div class="sop-type-group"></div>`);
+            const head = $(`<div class="sop-type-head"><span class="caret">â–¾</span><span>${esc(typeName)}</span><span class="text-muted small">(${grouped[typeName].length})</span></div>`);
+            const children = $(`<div class="sop-type-children"></div>`);
+            grouped[typeName].forEach(row => {
+                const card = $(`<div class="sop-result" data-name="${esc(row.name)}">
+                    <div style="font-weight:700">${esc(titleFor(row))}</div>
+                    <div class="text-muted small" style="margin-top:4px">${esc(row.document_no || row.name)} Â· ${esc(row.sop_type)} Â· v${esc(row.current_version_no)}</div>
                     <div class="small" style="margin-top:4px">${esc(row.department || "")}</div>
-                </div>
-            `);
-            card.on("click", () => openSOP(row.name));
-            results.append(card);
+                </div>`);
+                card.on("click", () => openSOP(row.name));
+                children.append(card);
+            });
+            head.on("click", () => {
+                const visible=children.is(":visible");
+                children.toggle(!visible);
+                head.find(".caret").text(visible ? "â–¸" : "â–¾");
+            });
+            group.append(head,children); results.append(group);
         });
     }
 
@@ -169,7 +185,11 @@ frappe.pages["sop-library"].on_page_load = function(wrapper) {
 
         const header = $(`
             <div class="sop-doc-head">
-                <div class="sop-doc-brand">MARINA FASHION</div>
+                ${lang === "Arabic"
+                    ? `<div class="sop-doc-brand" dir="rtl" style="text-align:right">Ù…Ø§Ø±ÙŠÙ†Ø§ ÙØ§Ø´ÙˆÙ† - Ø¯Ù„ÙŠÙ„ Ø§Ù„Ø§Ø¬Ø±Ø§Ø¡Ø§Øª Ø§Ù„Ù‚ÙŠØ§Ø³ÙŠØ©</div>`
+                    : lang === "Bilingual"
+                        ? `<div class="sop-doc-brand">Marina Fashion - SOP System</div><div class="sop-doc-brand" dir="rtl" style="text-align:right;font-size:17px">Ù…Ø§Ø±ÙŠÙ†Ø§ ÙØ§Ø´ÙˆÙ† - Ø¯Ù„ÙŠÙ„ Ø§Ù„Ø§Ø¬Ø±Ø§Ø¡Ø§Øª Ø§Ù„Ù‚ÙŠØ§Ø³ÙŠØ©</div>`
+                        : `<div class="sop-doc-brand">Marina Fashion - SOP System</div>`}
                 <div class="text-muted small">${esc(doc.sop_type || "Controlled Document")}</div>
                 <h3 style="margin:6px 0">${esc(lang === "Arabic" ? (doc.title_ar || doc.title_en) : (doc.title_en || doc.title_ar))}</h3>
             </div>
@@ -178,7 +198,7 @@ frappe.pages["sop-library"].on_page_load = function(wrapper) {
                 <button class="btn btn-sm btn-default sop-open-record">${__("Open SOP Record")}</button>
             </div>
             <div class="sop-meta">
-                <div class="k">${__("Document No.")}</div><div>${esc(doc.name)}</div>
+                <div class="k">${__("Document No.")}</div><div>${esc(doc.document_no || doc.name)}</div>
                 <div class="k">${__("Version")}</div><div>${esc(doc.version_no)}</div>
                 <div class="k">${__("Department")}</div><div>${esc(doc.department || "")}</div>
                 <div class="k">${__("Effective Date")}</div><div>${esc(doc.effective_from || "")}</div>

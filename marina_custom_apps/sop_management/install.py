@@ -22,15 +22,19 @@ DEFAULT_TYPES = (
 def after_install():
     ensure_roles()
     ensure_default_types()
+    ensure_document_numbers()
     ensure_controlled_print_format()
     sync_unified_workspace()
+    sync_module_workspace_hierarchy()
 
 
 def after_migrate():
     ensure_roles()
     ensure_default_types()
+    ensure_document_numbers()
     ensure_controlled_print_format()
     sync_unified_workspace()
+    sync_module_workspace_hierarchy()
 
 
 def ensure_roles():
@@ -68,6 +72,14 @@ def ensure_default_types():
         ).insert(ignore_permissions=True)
 
 
+def ensure_document_numbers():
+    if not frappe.db.exists("DocType", "SOP Document"):
+        return
+    rows = frappe.get_all("SOP Document", filters={"document_no": ["is", "not set"]}, pluck="name", limit_page_length=0)
+    for name in rows:
+        frappe.db.set_value("SOP Document", name, "document_no", name, update_modified=False)
+
+
 CONTROLLED_PRINT_FORMAT = "Marina SOP Controlled Document"
 
 
@@ -92,13 +104,13 @@ def ensure_controlled_print_format():
 <style>
 .sop-controlled {
     font-family: Arial, "Helvetica Neue", sans-serif;
-    color: #263238;
+    color: #2D2926;
     font-size: 10.5pt;
     line-height: 1.55;
 }
 .sop-controlled .brand-bar {
-    border-top: 7px solid #243b53;
-    border-bottom: 2px solid #d6a84b;
+    border-top: 7px solid #551C25;
+    border-bottom: 2px solid #C0A392;
     padding: 14px 0 12px;
     margin-bottom: 14px;
 }
@@ -106,11 +118,11 @@ def ensure_controlled_print_format():
     font-size: 19pt;
     font-weight: 700;
     letter-spacing: .6px;
-    color: #243b53;
+    color: #551C25;
 }
 .sop-controlled .doc-kind {
     font-size: 9pt;
-    color: #607d8b;
+    color: #6B5B57;
     text-transform: uppercase;
     letter-spacing: 1px;
 }
@@ -118,7 +130,7 @@ def ensure_controlled_print_format():
 .sop-controlled .title-ar {
     font-size: 17pt;
     font-weight: 700;
-    color: #182b3a;
+    color: #2D2926;
     margin: 10px 0 3px;
 }
 .sop-controlled .title-ar {
@@ -133,13 +145,13 @@ def ensure_controlled_print_format():
 }
 .sop-controlled .meta th,
 .sop-controlled .meta td {
-    border: 1px solid #cfd8dc;
+    border: 1px solid #E4D5C4;
     padding: 7px 8px;
     vertical-align: top;
 }
 .sop-controlled .meta th {
-    background: #eef3f6;
-    color: #243b53;
+    background: #F2EBE7;
+    color: #551C25;
     font-weight: 700;
     width: 16%;
 }
@@ -148,19 +160,19 @@ def ensure_controlled_print_format():
     page-break-inside: avoid;
 }
 .sop-controlled .section-heading {
-    background: #243b53;
+    background: #551C25;
     color: #fff;
     padding: 7px 10px;
     font-size: 12pt;
     font-weight: 700;
-    border-left: 5px solid #d6a84b;
+    border-left: 5px solid #C0A392;
     margin-bottom: 9px;
 }
 .sop-controlled .section-heading.rtl {
     direction: rtl;
     text-align: right;
     border-left: 0;
-    border-right: 5px solid #d6a84b;
+    border-right: 5px solid #C0A392;
 }
 .sop-controlled .sop-body {
     padding: 0 4px;
@@ -179,21 +191,21 @@ def ensure_controlled_print_format():
 .sop-controlled .sop-body table td,
 .sop-controlled .sop-custom-content table th,
 .sop-controlled .sop-custom-content table td {
-    border: 1px solid #b0bec5 !important;
+    border: 1px solid #C0A392 !important;
     padding: 7px 8px !important;
     vertical-align: top !important;
 }
 .sop-controlled .sop-body table th,
 .sop-controlled .sop-custom-content table th {
-    background: #e8eef2 !important;
-    color: #243b53 !important;
+    background: #E4D5C4 !important;
+    color: #551C25 !important;
     font-weight: 700 !important;
 }
 .sop-controlled .sop-body h1,
 .sop-controlled .sop-body h2,
 .sop-controlled .sop-body h3,
 .sop-controlled .sop-body h4 {
-    color: #243b53;
+    color: #551C25;
     margin-top: 14px;
 }
 .sop-controlled .sop-body ul,
@@ -204,8 +216,8 @@ def ensure_controlled_print_format():
     margin-top: 26px;
     font-size: 12pt;
     font-weight: 700;
-    color: #243b53;
-    border-bottom: 2px solid #d6a84b;
+    color: #551C25;
+    border-bottom: 2px solid #C0A392;
     padding-bottom: 4px;
 }
 .sop-controlled .revision {
@@ -216,19 +228,19 @@ def ensure_controlled_print_format():
 }
 .sop-controlled .revision th,
 .sop-controlled .revision td {
-    border: 1px solid #cfd8dc;
+    border: 1px solid #E4D5C4;
     padding: 6px 7px;
 }
 .sop-controlled .revision th {
-    background: #eef3f6;
-    color: #243b53;
+    background: #F2EBE7;
+    color: #551C25;
 }
 .sop-controlled .control-footer {
     margin-top: 25px;
     padding-top: 8px;
-    border-top: 1px solid #b0bec5;
+    border-top: 1px solid #C0A392;
     font-size: 8.5pt;
-    color: #607d8b;
+    color: #6B5B57;
     display: flex;
     justify-content: space-between;
 }
@@ -240,7 +252,8 @@ def ensure_controlled_print_format():
 
 <div class="sop-controlled">
     <div class="brand-bar">
-        <div class="brand">MARINA FASHION</div>
+        {% if doc.language in ("English", "Bilingual") %}<div class="brand">Marina Fashion - SOP System</div>{% endif %}
+        {% if doc.language in ("Arabic", "Bilingual") %}<div class="brand title-ar" style="font-size:15pt">Ù…Ø§Ø±ÙŠÙ†Ø§ ÙØ§Ø´ÙˆÙ† - Ø¯Ù„ÙŠÙ„ Ø§Ù„Ø§Ø¬Ø±Ø§Ø¡Ø§Øª Ø§Ù„Ù‚ÙŠØ§Ø³ÙŠØ©</div>{% endif %}
         <div class="doc-kind">{{ parent.sop_type or "Controlled Document" }}</div>
         {% if parent.title_en %}
             <div class="title-en">{{ parent.title_en }}</div>
@@ -252,7 +265,7 @@ def ensure_controlled_print_format():
 
     <table class="meta">
         <tr>
-            <th>Document No.</th><td>{{ parent.name }}</td>
+            <th>Document No.</th><td>{{ parent.document_no or parent.name }}</td>
             <th>Version</th><td>{{ doc.version_no }}</td>
         </tr>
         <tr>
@@ -325,8 +338,8 @@ def ensure_controlled_print_format():
     </table>
 
     <div class="control-footer">
-        <span>Controlled document â€” Marina Fashion</span>
-        <span>{{ parent.name }} Â· Version {{ doc.version_no }}</span>
+        <span>Controlled document &mdash; Marina Fashion</span>
+        <span>{{ parent.document_no or parent.name }} &middot; Version {{ doc.version_no }}</span>
     </div>
 </div>
 """
@@ -466,3 +479,76 @@ def sync_unified_workspace():
         )
 
     frappe.clear_cache(doctype="Workspace")
+
+def _sync_workspace_file(workspace_file):
+    """Create/update one shipped Workspace without deleting sibling workspaces."""
+    if not workspace_file.exists():
+        return
+
+    data = json.loads(workspace_file.read_text(encoding="utf-8"))
+    name = data["name"]
+
+    child_tables = (
+        "links",
+        "shortcuts",
+        "number_cards",
+        "charts",
+        "custom_blocks",
+        "quick_lists",
+        "roles",
+    )
+
+    if frappe.db.exists("Workspace", name):
+        doc = frappe.get_doc("Workspace", name)
+        for fieldname in (
+            "label", "title", "module", "icon", "public", "is_hidden",
+            "hide_custom", "content", "parent_page", "sequence_id",
+        ):
+            if fieldname in data:
+                doc.set(fieldname, data.get(fieldname))
+
+        for table_field in child_tables:
+            doc.set(table_field, [])
+            for row in data.get(table_field, []):
+                doc.append(table_field, row)
+
+        if doc.meta.has_field("standard"):
+            doc.standard = 1
+        doc.save(ignore_permissions=True)
+    else:
+        frappe.get_doc(data).insert(ignore_permissions=True)
+
+
+def sync_module_workspace_hierarchy():
+    """Make Marina Custom Apps the parent launcher for Marina module workspaces."""
+    if not frappe.db.exists("DocType", "Workspace"):
+        return
+
+    base = Path(__file__).resolve().parent
+
+    # SOP Management is new in this release, so sync its full workspace here.
+    _sync_workspace_file(
+        base / "workspace" / "sop_management" / "sop_management.json"
+    )
+
+    child_names = (
+        "Marina Calendar",
+        "Cycle Count",
+        "Stock Transfer Audit",
+        "Stock Auto Allocation",
+        "Sales Forecasting",
+        "DC Dispatch",
+        "SOP Management",
+    )
+
+    # Existing specialist workspace JSON files remain owned by their modules.
+    # We only enforce their parent relationship in the database.
+    for name in child_names:
+        if frappe.db.exists("Workspace", name):
+            frappe.db.set_value(
+                "Workspace",
+                name,
+                "parent_page",
+                "Marina Custom Apps",
+                update_modified=False,
+            )

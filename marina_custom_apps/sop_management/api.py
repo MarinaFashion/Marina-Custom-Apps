@@ -74,7 +74,11 @@ def submit_for_review(version_name):
     if doc.status != "Draft":
         frappe.throw(_("Only a Draft SOP Version can be submitted for review."))
 
-    # Drafts may be incomplete; review cannot start without required content.
+    # Drafts may be incomplete; review cannot start without controlled metadata.
+    parent = frappe.get_doc("SOP Document", doc.sop_document)
+    if not (parent.document_no or "").strip():
+        frappe.throw(_("Document No. is required before Submit for Review."))
+    parent.validate_access_configuration(require_audience=True)
     doc.validate_content_completeness()
 
     frappe.flags.in_sop_publication = True
@@ -111,6 +115,9 @@ def publish_version(version_name):
         frappe.throw(_("Only an Approved SOP Version can be published."))
 
     parent = frappe.get_doc("SOP Document", doc.sop_document)
+    if not (parent.document_no or "").strip():
+        frappe.throw(_("Document No. is required before publication."))
+    parent.validate_access_configuration(require_audience=True)
 
     frappe.flags.in_sop_publication = True
     try:
@@ -186,7 +193,7 @@ def search_library(search_text=None, sop_type=None, department=None, language=No
         "SOP Document",
         filters=filters,
         fields=[
-            "name", "display_title", "title_en", "title_ar", "sop_type",
+            "name", "document_no", "display_title", "title_en", "title_ar", "sop_type",
             "department", "language", "summary", "keywords",
             "current_version", "current_version_no", "modified",
         ],
@@ -199,11 +206,21 @@ def search_library(search_text=None, sop_type=None, department=None, language=No
         def matches(row):
             haystack = " ".join(
                 str(row.get(field) or "")
-                for field in ("name", "display_title", "title_en", "title_ar", "summary", "keywords", "sop_type", "department")
+                for field in ("name", "document_no", "display_title", "title_en", "title_ar", "summary", "keywords", "sop_type", "department")
             ).lower()
             return needle in haystack
         rows = [row for row in rows if matches(row)]
 
+    type_rows = frappe.get_all(
+        "SOP Type", filters={"is_active": 1},
+        fields=["name", "sort_order"], order_by="sort_order asc, type_name asc"
+    )
+    type_order = {row.name: (row.sort_order or 0) for row in type_rows}
+    rows.sort(key=lambda row: (
+        type_order.get(row.sop_type, 999999),
+        (row.sop_type or "").lower(),
+        (row.display_title or "").lower(),
+    ))
     return rows[:limit]
 
 
@@ -233,6 +250,7 @@ def get_published_sop(sop_document):
     return {
         "document": {
             "name": doc.name,
+            "document_no": doc.document_no,
             "title_en": doc.title_en,
             "title_ar": doc.title_ar,
             "display_title": doc.display_title,

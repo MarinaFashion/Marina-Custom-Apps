@@ -1,0 +1,38 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>SOP Management</b></span>\",\"col\":12}},{\"id\":\"lib\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"SOP Library\",\"col\":3}},{\"id\":\"docs\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"SOP Documents\",\"col\":3}},{\"id\":\"vers\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"SOP Versions\",\"col\":3}},{\"id\":\"types\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"SOP Types\",\"col\":3}}]",
+ "creation": "2026-09-10 00:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "file-text",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "SOP Management",
+ "links": [
+  {"hidden":0,"is_query_report":0,"label":"SOP Library","link_count":0,"link_to":"sop-library","link_type":"Page","onboard":1,"type":"Link"},
+  {"hidden":0,"is_query_report":0,"label":"SOP Document","link_count":0,"link_to":"SOP Document","link_type":"DocType","onboard":1,"type":"Link"},
+  {"hidden":0,"is_query_report":0,"label":"SOP Version","link_count":0,"link_to":"SOP Version","link_type":"DocType","onboard":0,"type":"Link"},
+  {"hidden":0,"is_query_report":0,"label":"SOP Type","link_count":0,"link_to":"SOP Type","link_type":"DocType","onboard":0,"type":"Link"}
+ ],
+ "modified": "2026-09-10 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "SOP Management",
+ "name": "SOP Management",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "Marina Custom Apps",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 8.0,
+ "shortcuts": [
+  {"color":"Purple","label":"SOP Library","link_to":"sop-library","type":"Page"},
+  {"color":"Green","doc_view":"List","label":"SOP Documents","link_to":"SOP Document","type":"DocType"},
+  {"color":"Blue","doc_view":"List","label":"SOP Versions","link_to":"SOP Version","type":"DocType"},
+  {"color":"Grey","doc_view":"List","label":"SOP Types","link_to":"SOP Type","type":"DocType"}
+ ],
+ "title": "SOP Management"
+}
