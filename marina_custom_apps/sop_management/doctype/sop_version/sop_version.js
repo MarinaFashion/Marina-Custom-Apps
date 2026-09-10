@@ -36,12 +36,55 @@ frappe.ui.form.on("SOP Version", {
         }
 
         if (frm.doc.status === "Approved" &&
-            (frappe.user.has_role("SOP Manager") || frappe.user.has_role("System Manager"))) {
+            (frappe.user.has_role("SOP Manager") || frappe.user.has_role("System Manager") || frappe.session.user === "Administrator")) {
             frm.add_custom_button(__("Publish"), () => {
                 frappe.confirm(
                     __("Publish this version and supersede the previous published version?"),
                     () => sop_action(frm, "publish_version")
                 );
+            }, __("Workflow"));
+        }
+
+        const can_manage_version =
+            frappe.session.user === "Administrator" ||
+            frappe.user.has_role("SOP Manager") ||
+            frappe.user.has_role("System Manager");
+
+        if (can_manage_version && frm.doc.status !== "Cancelled") {
+            frm.add_custom_button(__("Cancel Version"), () => {
+                const dialog = new frappe.ui.Dialog({
+                    title: __("Cancel SOP Version"),
+                    fields: [
+                        {
+                            fieldname: "reason",
+                            fieldtype: "Small Text",
+                            label: __("Cancellation Reason"),
+                            reqd: 1
+                        }
+                    ],
+                    primary_action_label: __("Cancel Version"),
+                    primary_action(values) {
+                        const reason = (values.reason || "").trim();
+                        if (!reason) {
+                            frappe.msgprint(__("Cancellation Reason is required."));
+                            return;
+                        }
+                        dialog.hide();
+                        frappe.call({
+                            method: "marina_custom_apps.sop_management.api.cancel_version",
+                            args: {
+                                version_name: frm.doc.name,
+                                reason
+                            },
+                            freeze: true,
+                            freeze_message: __("Cancelling SOP Version..."),
+                            callback() {
+                                frm.reload_doc();
+                            }
+                        });
+                    }
+                });
+                dialog.show();
             }, __("Workflow"));
         }
     }

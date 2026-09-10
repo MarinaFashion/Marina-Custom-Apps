@@ -3,16 +3,69 @@ import re
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import cint, sanitize_html, strip_html_tags
+from frappe.utils import cint, now_datetime, sanitize_html, strip_html_tags
 
 
-LOCKED_STATUSES = {"Published", "Superseded"}
+EDIT_LOCKED_STATUSES = {"Published", "Superseded", "Cancelled"}
 ADVANCED_HTML_MODE = "Advanced HTML"
 LOCAL_IMAGE_PREFIXES = ("/files/", "/private/files/")
 _IMAGE_SRC_RE = re.compile(
     r"""<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["']""",
     re.IGNORECASE,
 )
+
+
+def _newer_version(sop_document, version_no, exclude_name=None):
+    filters = {
+        "sop_document": sop_document,
+        "version_no": [">", cint(version_no)],
+    }
+    if exclude_name:
+        filters["name"] = ["!=", exclude_name]
+
+    rows = frappe.get_all(
+        "SOP Version",
+        filters=filters,
+        fields=["name", "version_no", "status"],
+        order_by="version_no asc",
+        limit_page_length=1,
+    )
+    return rows[0] if rows else None
+
+
+def assert_latest_version(doc):
+    newer = _newer_version(doc.sop_document, doc.version_no, doc.name)
+    if newer:
+        frappe.throw(
+            _(
+                "Only the latest SOP Version may be cancelled or deleted. "
+                "Newer version {0} (Version {1}) already exists."
+            ).format(frappe.bold(newer.name), newer.version_no)
+        )
+
+
+def write_version_action_log(doc, action, reason, previous_status=None, restored_version=None):
+    if not frappe.db.exists("DocType", "SOP Version Action Log"):
+        return
+
+    payload = {
+        "doctype": "SOP Version Action Log",
+        "sop_document": doc.sop_document,
+        "version_name": doc.name,
+        "version_no": doc.version_no,
+        "action": action,
+        "previous_status": previous_status or doc.status,
+        "reason": (reason or "").strip(),
+        "action_by": frappe.session.user,
+        "action_on": now_datetime(),
+        "restored_version": restored_version,
+    }
+
+    frappe.flags.in_sop_version_action_log = True
+    try:
+        frappe.get_doc(payload).insert(ignore_permissions=True)
+    finally:
+        frappe.flags.in_sop_version_action_log = False
 
 
 def sanitize_sop_html(value):
@@ -82,7 +135,7 @@ class SOPVersion(Document):
 
         # Draft versions are working documents and may be incomplete.
         # Completeness becomes mandatory when the version leaves Draft.
-        if self.status != "Draft":
+        if self.status not in {"Draft", "Cancelled"}:
             self.validate_content_completeness()
 
         before = self.get_doc_before_save()
@@ -98,16 +151,43 @@ class SOPVersion(Document):
                     _("Use the SOP workflow actions to change Version status.")
                 )
 
-        if before and before.status in LOCKED_STATUSES and not frappe.flags.in_sop_publication:
+        if before and before.status in EDIT_LOCKED_STATUSES and not frappe.flags.in_sop_publication:
             frappe.throw(
-                _("Published or superseded SOP Versions are immutable. Create a new version.")
+                _("Published, superseded, or cancelled SOP Versions are immutable.")
             )
 
     def on_trash(self):
-        if self.status in LOCKED_STATUSES:
+        if self.status != "Cancelled":
             frappe.throw(
-                _("Published or superseded SOP Versions cannot be deleted.")
+                _("Cancel the latest SOP Version before deleting it.")
             )
+
+        assert_latest_version(self)
+
+        parent = frappe.get_doc("SOP Document", self.sop_document)
+        if parent.current_version == self.name:
+            frappe.throw(
+                _("This version is still the current published version. Cancel it first.")
+            )
+
+        previous_reason = frappe.get_all(
+            "SOP Version Action Log",
+            filters={
+                "version_name": self.name,
+                "action": "Cancelled",
+            },
+            fields=["reason"],
+            order_by="action_on desc",
+            limit_page_length=1,
+        )
+        reason = previous_reason[0].reason if previous_reason else "Deleted after cancellation."
+
+        write_version_action_log(
+            self,
+            action="Deleted",
+            reason=reason,
+            previous_status="Cancelled",
+        )
 
     def validate_content_completeness(self):
         if self.content_mode == ADVANCED_HTML_MODE:

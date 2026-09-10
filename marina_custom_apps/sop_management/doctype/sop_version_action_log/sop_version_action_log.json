@@ -1,0 +1,107 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-09-10 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "sop_document",
+  "version_name",
+  "version_no",
+  "action",
+  "previous_status",
+  "restored_version",
+  "reason",
+  "action_by",
+  "action_on"
+ ],
+ "fields": [
+  {
+   "fieldname": "sop_document",
+   "fieldtype": "Data",
+   "label": "SOP Document",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "version_name",
+   "fieldtype": "Data",
+   "label": "SOP Version",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "version_no",
+   "fieldtype": "Int",
+   "label": "Version No.",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "action",
+   "fieldtype": "Select",
+   "label": "Action",
+   "options": "Cancelled\nDeleted",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "previous_status",
+   "fieldtype": "Data",
+   "label": "Previous Status",
+   "read_only": 1
+  },
+  {
+   "fieldname": "restored_version",
+   "fieldtype": "Data",
+   "label": "Restored Version",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Small Text",
+   "label": "Reason",
+   "read_only": 1
+  },
+  {
+   "fieldname": "action_by",
+   "fieldtype": "Link",
+   "label": "Action By",
+   "options": "User",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "action_on",
+   "fieldtype": "Datetime",
+   "label": "Action On",
+   "read_only": 1,
+   "in_list_view": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-09-10 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "SOP Management",
+ "name": "SOP Version Action Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "SOP Manager",
+   "read": 1,
+   "export": 1,
+   "report": 1
+  },
+  {
+   "role": "System Manager",
+   "read": 1,
+   "export": 1,
+   "report": 1
+  }
+ ],
+ "sort_field": "action_on",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

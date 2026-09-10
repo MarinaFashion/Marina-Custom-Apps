@@ -4,7 +4,9 @@ from frappe.utils import now_datetime, today
 
 from marina_custom_apps.sop_management.doctype.sop_version.sop_version import (
     ADVANCED_HTML_MODE,
+    assert_latest_version,
     sanitize_sop_html,
+    write_version_action_log,
 )
 
 
@@ -13,6 +15,8 @@ EDITOR_ROLES = {"SOP Editor", "SOP Manager", "System Manager"}
 
 
 def _require_any_role(roles):
+    if frappe.session.user == "Administrator":
+        return
     user_roles = set(frappe.get_roles())
     if not user_roles.intersection(roles):
         frappe.throw(_("You are not permitted to perform this SOP action."), frappe.PermissionError)
@@ -148,6 +152,91 @@ def publish_version(version_name):
         "version": doc.name,
         "version_no": doc.version_no,
         "status": doc.status,
+    }
+
+
+def _restore_previous_published_version(parent, cancelled_version):
+    rows = frappe.get_all(
+        "SOP Version",
+        filters={
+            "sop_document": parent.name,
+            "version_no": ["<", cancelled_version.version_no],
+            "status": ["in", ["Published", "Superseded"]],
+        },
+        fields=["name", "version_no"],
+        order_by="version_no desc",
+        limit_page_length=1,
+    )
+
+    if rows:
+        previous = frappe.get_doc("SOP Version", rows[0].name)
+        previous.status = "Published"
+        previous.effective_to = None
+        previous.save(ignore_permissions=True)
+
+        parent.current_version = previous.name
+        parent.current_version_no = previous.version_no
+        parent.status = "Published"
+        parent.save(ignore_permissions=True)
+        return previous.name
+
+    parent.current_version = None
+    parent.current_version_no = 0
+    parent.status = "Draft"
+    parent.save(ignore_permissions=True)
+    return None
+
+
+@frappe.whitelist()
+def cancel_version(version_name, reason):
+    _require_any_role(MANAGER_ROLES)
+
+    reason = (reason or "").strip()
+    if not reason:
+        frappe.throw(_("Cancellation Reason is required."))
+
+    doc = frappe.get_doc("SOP Version", version_name)
+    assert_latest_version(doc)
+
+    if doc.status == "Cancelled":
+        frappe.throw(_("This SOP Version is already cancelled."))
+
+    previous_status = doc.status
+    parent = frappe.get_doc("SOP Document", doc.sop_document)
+    restored_version = None
+
+    if previous_status == "Published" and parent.current_version != doc.name:
+        frappe.throw(
+            _("Published SOP Version {0} is not the current version of {1}.").format(
+                frappe.bold(doc.name), frappe.bold(parent.name)
+            )
+        )
+
+    frappe.flags.in_sop_publication = True
+    try:
+        doc.status = "Cancelled"
+        if previous_status == "Published" and not doc.effective_to:
+            doc.effective_to = today()
+        doc.save(ignore_permissions=True)
+
+        if previous_status == "Published":
+            restored_version = _restore_previous_published_version(parent, doc)
+    finally:
+        frappe.flags.in_sop_publication = False
+
+    write_version_action_log(
+        doc,
+        action="Cancelled",
+        reason=reason,
+        previous_status=previous_status,
+        restored_version=restored_version,
+    )
+
+    return {
+        "name": doc.name,
+        "status": doc.status,
+        "previous_status": previous_status,
+        "restored_version": restored_version,
     }
 
 
