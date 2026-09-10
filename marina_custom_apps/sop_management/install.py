@@ -94,6 +94,15 @@ def ensure_controlled_print_format():
 
     html = r"""
 {% set parent = frappe.get_doc("SOP Document", doc.sop_document) %}
+{% set lang = doc.language or parent.language or "English" %}
+{% set status_ar = {
+    "Draft": "مسودة",
+    "Pending Approval": "بانتظار الاعتماد",
+    "Approved": "معتمد",
+    "Published": "منشور",
+    "Archived": "مؤرشف",
+    "Cancelled": "ملغى"
+} %}
 {% set versions = frappe.get_all(
     "SOP Version",
     filters={"sop_document": doc.sop_document},
@@ -154,6 +163,11 @@ def ensure_controlled_print_format():
     color: #551C25;
     font-weight: 700;
     width: 16%;
+}
+.sop-controlled .meta.rtl,
+.sop-controlled .revision.rtl {
+    direction: rtl;
+    text-align: right;
 }
 .sop-controlled .section {
     margin: 0 0 22px;
@@ -252,43 +266,47 @@ def ensure_controlled_print_format():
 
 <div class="sop-controlled">
     <div class="brand-bar">
-        {% if doc.language in ("English", "Bilingual") %}<div class="brand">Marina Fashion - SOP System</div>{% endif %}
-        {% if doc.language in ("Arabic", "Bilingual") %}<div class="brand title-ar" style="font-size:15pt">&#1605;&#1575;&#1585;&#1610;&#1606;&#1575; &#1601;&#1575;&#1588;&#1608;&#1606; - &#1583;&#1604;&#1610;&#1604; &#1575;&#1604;&#1575;&#1580;&#1585;&#1575;&#1569;&#1575;&#1578; &#1575;&#1604;&#1602;&#1610;&#1575;&#1587;&#1610;&#1577;</div>{% endif %}
-        <div class="doc-kind">{{ parent.sop_type or "Controlled Document" }}</div>
-        {% if parent.title_en %}
+        {% if lang in ("English", "Bilingual") %}
+            <div class="brand">Marina Fashion - SOP System</div>
+            <div class="doc-kind">{{ parent.sop_type or "Controlled Document" }}</div>
+        {% endif %}
+        {% if lang in ("Arabic", "Bilingual") %}
+            <div class="brand title-ar" style="font-size:15pt">مارينا فاشون - دليل الإجراءات القياسية التشغيلية</div>
+        {% endif %}
+        {% if lang in ("English", "Bilingual") and parent.title_en %}
             <div class="title-en">{{ parent.title_en }}</div>
         {% endif %}
-        {% if parent.title_ar %}
+        {% if lang in ("Arabic", "Bilingual") and parent.title_ar %}
             <div class="title-ar">{{ parent.title_ar }}</div>
         {% endif %}
     </div>
 
-    <table class="meta">
+    <table class="meta{% if lang == "Arabic" %} rtl{% endif %}">
         <tr>
-            <th>Document No.</th><td>{{ parent.document_no or parent.name }}</td>
-            <th>Version</th><td>{{ doc.version_no }}</td>
+            <th>{% if lang == "Arabic" %}رقم الوثيقة{% elif lang == "Bilingual" %}Document No. / رقم الوثيقة{% else %}Document No.{% endif %}</th><td>{{ parent.document_no or parent.name }}</td>
+            <th>{% if lang == "Arabic" %}الإصدار{% elif lang == "Bilingual" %}Version / الإصدار{% else %}Version{% endif %}</th><td>{{ doc.version_no }}</td>
         </tr>
         <tr>
-            <th>Department</th><td>{{ parent.department or "" }}</td>
-            <th>Status</th><td>{{ doc.status }}</td>
+            <th>{% if lang == "Arabic" %}الإدارة{% elif lang == "Bilingual" %}Department / الإدارة{% else %}Department{% endif %}</th><td>{{ parent.department or "" }}</td>
+            <th>{% if lang == "Arabic" %}الحالة{% elif lang == "Bilingual" %}Status / الحالة{% else %}Status{% endif %}</th><td>{% if lang == "Arabic" %}{{ status_ar.get(doc.status, doc.status) }}{% else %}{{ doc.status }}{% endif %}</td>
         </tr>
         <tr>
-            <th>Effective Date</th><td>{{ doc.effective_from or "" }}</td>
-            <th>Language</th><td>{{ doc.language or parent.language or "" }}</td>
+            <th>{% if lang == "Arabic" %}تاريخ السريان{% elif lang == "Bilingual" %}Effective Date / تاريخ السريان{% else %}Effective Date{% endif %}</th><td>{{ doc.effective_from or "" }}</td>
+            <th>{% if lang == "Arabic" %}اللغة{% elif lang == "Bilingual" %}Language / اللغة{% else %}Language{% endif %}</th><td>{% if lang == "Arabic" %}العربية{% elif lang == "Bilingual" %}Bilingual / ثنائي اللغة{% else %}English{% endif %}</td>
         </tr>
         <tr>
-            <th>Process Owner</th><td>{{ parent.process_owner or "" }}</td>
-            <th>Approved By</th><td>{{ doc.approved_by or "" }}</td>
+            <th>{% if lang == "Arabic" %}مالك العملية{% elif lang == "Bilingual" %}Process Owner / مالك العملية{% else %}Process Owner{% endif %}</th><td>{{ parent.process_owner or "" }}</td>
+            <th>{% if lang == "Arabic" %}اعتمد بواسطة{% elif lang == "Bilingual" %}Approved By / اعتمد بواسطة{% else %}Approved By{% endif %}</th><td>{{ doc.approved_by or "" }}</td>
         </tr>
     </table>
 
-    {% if doc.language in ("English", "Bilingual") and parent.summary %}
+    {% if lang in ("English", "Bilingual") and parent.summary %}
         <div class="section">
             <div class="section-heading">Document Summary</div>
             <div class="sop-body">{{ parent.summary }}</div>
         </div>
     {% endif %}
-    {% if doc.language in ("Arabic", "Bilingual") and parent.summary_ar %}
+    {% if lang in ("Arabic", "Bilingual") and parent.summary_ar %}
         <div class="section">
             <div class="section-heading rtl">&#1605;&#1604;&#1582;&#1589; &#1575;&#1604;&#1608;&#1579;&#1610;&#1602;&#1577;</div>
             <div class="sop-body rtl">{{ parent.summary_ar }}</div>
@@ -299,7 +317,7 @@ def ensure_controlled_print_format():
         <div class="sop-custom-content">{{ (doc.html_content or "") | safe }}</div>
     {% else %}
         {% for row in doc.sections %}
-            {% if doc.language in ("English", "Bilingual") and (row.heading_en or row.content_en) %}
+            {% if lang in ("English", "Bilingual") and (row.heading_en or row.content_en) %}
                 <div class="section">
                     <div class="section-heading">
                         {% if row.section_no %}{{ row.section_no }}. {% endif %}{{ row.heading_en or "" }}
@@ -308,7 +326,7 @@ def ensure_controlled_print_format():
                 </div>
             {% endif %}
 
-            {% if doc.language in ("Arabic", "Bilingual") and (row.heading_ar or row.content_ar) %}
+            {% if lang in ("Arabic", "Bilingual") and (row.heading_ar or row.content_ar) %}
                 <div class="section">
                     <div class="section-heading rtl">
                         {% if row.section_no %}{{ row.section_no }}. {% endif %}{{ row.heading_ar or "" }}
@@ -319,22 +337,24 @@ def ensure_controlled_print_format():
         {% endfor %}
     {% endif %}
 
-    <div class="revision-title">Revision History</div>
-    <table class="revision">
+    <div class="revision-title{% if lang == "Arabic" %} title-ar{% endif %}">
+        {% if lang == "Arabic" %}سجل المراجعات{% elif lang == "Bilingual" %}Revision History / سجل المراجعات{% else %}Revision History{% endif %}
+    </div>
+    <table class="revision{% if lang == "Arabic" %} rtl{% endif %}">
         <thead>
             <tr>
-                <th>Version</th>
-                <th>Status</th>
-                <th>Effective Date</th>
-                <th>Change Summary</th>
-                <th>Approved By</th>
+                <th>{% if lang == "Arabic" %}الإصدار{% elif lang == "Bilingual" %}Version / الإصدار{% else %}Version{% endif %}</th>
+                <th>{% if lang == "Arabic" %}الحالة{% elif lang == "Bilingual" %}Status / الحالة{% else %}Status{% endif %}</th>
+                <th>{% if lang == "Arabic" %}تاريخ السريان{% elif lang == "Bilingual" %}Effective Date / تاريخ السريان{% else %}Effective Date{% endif %}</th>
+                <th>{% if lang == "Arabic" %}ملخص التغيير{% elif lang == "Bilingual" %}Change Summary / ملخص التغيير{% else %}Change Summary{% endif %}</th>
+                <th>{% if lang == "Arabic" %}اعتمد بواسطة{% elif lang == "Bilingual" %}Approved By / اعتمد بواسطة{% else %}Approved By{% endif %}</th>
             </tr>
         </thead>
         <tbody>
         {% for row in versions %}
             <tr>
                 <td>{{ row.version_no }}</td>
-                <td>{{ row.status }}</td>
+                <td>{% if lang == "Arabic" %}{{ status_ar.get(row.status, row.status) }}{% else %}{{ row.status }}{% endif %}</td>
                 <td>{{ row.effective_from or "" }}</td>
                 <td>{{ row.change_summary or "" }}</td>
                 <td>{{ row.approved_by or "" }}</td>
@@ -343,9 +363,17 @@ def ensure_controlled_print_format():
         </tbody>
     </table>
 
-    <div class="control-footer">
-        <span>Controlled document &mdash; Marina Fashion</span>
-        <span>{{ parent.document_no or parent.name }} &middot; Version {{ doc.version_no }}</span>
+    <div class="control-footer{% if lang == "Arabic" %} title-ar{% endif %}">
+        {% if lang == "Arabic" %}
+            <span>وثيقة خاضعة للرقابة &mdash; مارينا فاشون</span>
+            <span>{{ parent.document_no or parent.name }} &middot; الإصدار {{ doc.version_no }}</span>
+        {% elif lang == "Bilingual" %}
+            <span>Controlled document / وثيقة خاضعة للرقابة &mdash; Marina Fashion / مارينا فاشون</span>
+            <span>{{ parent.document_no or parent.name }} &middot; Version / الإصدار {{ doc.version_no }}</span>
+        {% else %}
+            <span>Controlled document &mdash; Marina Fashion</span>
+            <span>{{ parent.document_no or parent.name }} &middot; Version {{ doc.version_no }}</span>
+        {% endif %}
     </div>
 </div>
 """
