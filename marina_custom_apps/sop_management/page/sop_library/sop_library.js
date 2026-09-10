@@ -144,7 +144,7 @@ frappe.pages["sop-library"].on_page_load = function(wrapper) {
         });
         Object.keys(grouped).forEach(typeName => {
             const group = $(`<div class="sop-type-group"></div>`);
-            const head = $(`<div class="sop-type-head"><span class="caret">â–¾</span><span>${esc(typeName)}</span><span class="text-muted small">(${grouped[typeName].length})</span></div>`);
+            const head = $(`<div class="sop-type-head"><span class="caret">&#9662;</span><span>${esc(typeName)}</span><span class="text-muted small">(${grouped[typeName].length})</span></div>`);
             const children = $(`<div class="sop-type-children"></div>`);
             grouped[typeName].forEach(row => {
                 const card = $(`<div class="sop-result" data-name="${esc(row.name)}">
@@ -158,7 +158,7 @@ frappe.pages["sop-library"].on_page_load = function(wrapper) {
             head.on("click", () => {
                 const visible=children.is(":visible");
                 children.toggle(!visible);
-                head.find(".caret").text(visible ? "\\u25B8" : "\\u25BE");
+                head.find(".caret").html(visible ? "&#9656;" : "&#9662;");
             });
             group.append(head,children); results.append(group);
         });
@@ -188,9 +188,8 @@ frappe.pages["sop-library"].on_page_load = function(wrapper) {
                 ${lang === "Arabic"
                     ? `<div class="sop-doc-brand" dir="rtl" style="text-align:right">\u0645\u0627\u0631\u064a\u0646\u0627 \u0641\u0627\u0634\u0648\u0646 - \u062f\u0644\u064a\u0644 \u0627\u0644\u0627\u062c\u0631\u0627\u0621\u0627\u062a \u0627\u0644\u0642\u064a\u0627\u0633\u064a\u0629</div>`
                     : lang === "Bilingual"
-                        ? `<div class="sop-doc-brand">\u0645\u0627\u0631\u064a\u0646\u0627 \u0641\u0627\u0634\u0648\u0646 - \u062f\u0644\u064a\u0644 \u0627\u0644\u0627\u062c\u0631\u0627\u0621\u0627\u062a \u0627\u0644\u0642\u064a\u0627\u0633\u064a\u0629</div><div class="sop-doc-brand" dir="rtl" style="text-align:right;font-size:17px">\u0645\u0627\u0631\u064a\u0646\u0627 \u0641\u0627\u0634\u0648\u0646 - \u062f\u0644\u064a\u0644 \u0627\u0644\u0627\u062c\u0631\u0627\u0621\u0627\u062a \u0627\u0644\u0642\u064a\u0627\u0633\u064a\u0629</div>`
-                        : `<div class="sop-doc-brand">\u0645\u0627\u0631\u064a\u0646\u0627 \u0641\u0627\u0634\u0648\u0646 - \u062f\u0644\u064a\u0644 \u0627\u0644\u0627\u062c\u0631\u0627\u0621\u0627\u062a \u0627\u0644\u0642\u064a\u0627\u0633\u064a\u0629</div>`}
-                <div class="text-muted small">${esc(doc.sop_type || "Controlled Document")}</div>
+                        ? `<div class="sop-doc-brand">Marina Fashion - SOP System</div><div class="sop-doc-brand" dir="rtl" style="text-align:right;font-size:17px">\u0645\u0627\u0631\u064a\u0646\u0627 \u0641\u0627\u0634\u0648\u0646 - \u062f\u0644\u064a\u0644 \u0627\u0644\u0627\u062c\u0631\u0627\u0621\u0627\u062a \u0627\u0644\u0642\u064a\u0627\u0633\u064a\u0629</div>`
+                        : `<div class="sop-doc-brand">Marina Fashion - SOP System</div>`}                <div class="text-muted small">${esc(doc.sop_type || "Controlled Document")}</div>
                 <h3 style="margin:6px 0">${esc(lang === "Arabic" ? (doc.title_ar || doc.title_en) : (doc.title_en || doc.title_ar))}</h3>
             </div>
             <div style="display:flex;gap:8px;margin-bottom:12px">

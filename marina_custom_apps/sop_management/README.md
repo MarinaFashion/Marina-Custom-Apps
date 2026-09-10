@@ -98,3 +98,9 @@ Its user-facing module workspaces are:
 - SOP Management
 
 Each specialist workspace remains responsible for its own DocTypes, reports, pages and settings. Existing specialist workspace source files are not rewritten simply to establish hierarchy; migration enforces their `parent_page` in the database. SOP Management has its own dedicated workspace.
+## v0.46.2 Library language and hierarchy fix
+
+- English SOPs show only `Marina Fashion - SOP System` in the Library header.
+- Arabic SOPs show only the Arabic SOP System title.
+- Bilingual SOPs show the English title once and the Arabic title once.
+- SOP Type expand/collapse arrows use ASCII-safe HTML entities to avoid mojibake and inconsistent rendering.
