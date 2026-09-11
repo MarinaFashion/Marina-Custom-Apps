@@ -110,3 +110,8 @@ Each specialist workspace remains responsible for its own DocTypes, reports, pag
 - Arabic keywords participate in Library search.
 - Adds SOP Document -> SOP Version dashboard relationship, a Versions button, and Open SOP Document on versions.
 - Preserves approved workspace icons and enforces order: Marina Calendar, Sales Forecasting, DC Dispatch, Stock Auto Allocation, Stock Transfer Audit, Cycle Count, SOP Management.
+## v0.47.4 Library department hierarchy and document ordering
+- SOP Library hierarchy is now SOP -> SOP Type -> Department -> SOP Document.
+- Department is mandatory on SOP Document.
+- Departments are alphabetical within each SOP Type.
+- SOP Documents are ordered by business Document No. ascending within each Department.

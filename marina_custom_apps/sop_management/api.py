@@ -350,7 +350,8 @@ def search_library(search_text=None, sop_type=None, department=None, language=No
     rows.sort(key=lambda row: (
         type_order.get(row.sop_type, 999999),
         (row.sop_type or "").lower(),
-        (row.display_title or "").lower(),
+        (row.department or "").lower(),
+        (row.document_no or row.name or "").lower(),
     ))
     return rows[:limit]
 

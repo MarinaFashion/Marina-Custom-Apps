@@ -50,8 +50,9 @@ frappe.pages["sop-library"].on_page_load = function(wrapper) {
             .sop-library .sop-revision th { background:#F2EBE7;color:#551C25; }
             .sop-library .sop-tree-root {padding:12px 14px;font-weight:700;color:#551C25;background:#F2EBE7;border-bottom:1px solid #E4D5C4;}
             .sop-library .sop-type-head {display:flex;gap:7px;padding:10px 14px;cursor:pointer;font-weight:700;color:#551C25;}
-            .sop-library .sop-type-head:hover,.sop-library .sop-result:hover {background:#F2EBE7;}
-            .sop-library .sop-result {padding:12px 16px 12px 36px;border-top:1px solid var(--border-color);cursor:pointer;}
+            .sop-library .sop-department-head {display:flex;gap:7px;padding:9px 14px 9px 30px;cursor:pointer;font-weight:600;color:#2D2926;border-top:1px solid var(--border-color);}
+            .sop-library .sop-type-head:hover,.sop-library .sop-department-head:hover,.sop-library .sop-result:hover {background:#F2EBE7;}
+            .sop-library .sop-result {padding:11px 16px 11px 54px;border-top:1px solid var(--border-color);cursor:pointer;}
             @media (max-width: 900px) {
                 .sop-library .sop-layout { grid-template-columns:1fr !important; }
                 .sop-library .sop-filter-row { grid-template-columns:1fr 1fr !important; }
@@ -144,23 +145,56 @@ frappe.pages["sop-library"].on_page_load = function(wrapper) {
         });
         Object.keys(grouped).forEach(typeName => {
             const group = $(`<div class="sop-type-group"></div>`);
-            const head = $(`<div class="sop-type-head"><span class="caret">&#9662;</span><span>${esc(typeName)}</span><span class="text-muted small">(${grouped[typeName].length})</span></div>`);
-            const children = $(`<div class="sop-type-children"></div>`);
+            const typeHead = $(`<div class="sop-type-head"><span class="caret">&#9662;</span><span>${esc(typeName)}</span><span class="text-muted small">(${grouped[typeName].length})</span></div>`);
+            const typeChildren = $(`<div class="sop-type-children"></div>`);
+
+            const byDepartment = {};
             grouped[typeName].forEach(row => {
-                const card = $(`<div class="sop-result" data-name="${esc(row.name)}">
-                    <div style="font-weight:700">${esc(titleFor(row))}</div>
-                    <div class="text-muted small" style="margin-top:4px">${esc(row.document_no || row.name)} &middot; ${esc(row.sop_type)} &middot; v${esc(row.current_version_no)}</div>
-                    <div class="small" style="margin-top:4px">${esc(row.department || "")}</div>
-                </div>`);
-                card.on("click", () => openSOP(row.name));
-                children.append(card);
+                (byDepartment[row.department] ||= []).push(row);
             });
-            head.on("click", () => {
-                const visible=children.is(":visible");
-                children.toggle(!visible);
-                head.find(".caret").html(visible ? "&#9656;" : "&#9662;");
+
+            Object.keys(byDepartment)
+                .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }))
+                .forEach(departmentName => {
+                    const departmentRows = byDepartment[departmentName].sort((a, b) =>
+                        (a.document_no || a.name || "").localeCompare(
+                            b.document_no || b.name || "",
+                            undefined,
+                            { numeric: true, sensitivity: "base" }
+                        )
+                    );
+
+                    const departmentGroup = $(`<div class="sop-department-group"></div>`);
+                    const departmentHead = $(`<div class="sop-department-head"><span class="caret">&#9662;</span><span>${esc(departmentName)}</span><span class="text-muted small">(${departmentRows.length})</span></div>`);
+                    const departmentChildren = $(`<div class="sop-department-children"></div>`);
+
+                    departmentRows.forEach(row => {
+                        const card = $(`<div class="sop-result" data-name="${esc(row.name)}">
+                            <div style="font-weight:700">${esc(titleFor(row))}</div>
+                            <div class="text-muted small" style="margin-top:4px">${esc(row.document_no || row.name)} &middot; v${esc(row.current_version_no)}</div>
+                        </div>`);
+                        card.on("click", () => openSOP(row.name));
+                        departmentChildren.append(card);
+                    });
+
+                    departmentHead.on("click", () => {
+                        const visible = departmentChildren.is(":visible");
+                        departmentChildren.toggle(!visible);
+                        departmentHead.find(".caret").html(visible ? "&#9656;" : "&#9662;");
+                    });
+
+                    departmentGroup.append(departmentHead, departmentChildren);
+                    typeChildren.append(departmentGroup);
+                });
+
+            typeHead.on("click", () => {
+                const visible = typeChildren.is(":visible");
+                typeChildren.toggle(!visible);
+                typeHead.find(".caret").html(visible ? "&#9656;" : "&#9662;");
             });
-            group.append(head,children); results.append(group);
+
+            group.append(typeHead, typeChildren);
+            results.append(group);
         });
     }
 
