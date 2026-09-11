@@ -41,7 +41,7 @@
    "fieldname": "action",
    "fieldtype": "Select",
    "label": "Action",
-   "options": "Cancelled\nDeleted",
+   "options": "Unpublished\nCancelled\nDeleted",
    "read_only": 1,
    "in_list_view": 1
   },

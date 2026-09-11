@@ -155,12 +155,12 @@ def publish_version(version_name):
     }
 
 
-def _restore_previous_published_version(parent, cancelled_version):
+def _restore_previous_published_version(parent, current_version):
     rows = frappe.get_all(
         "SOP Version",
         filters={
             "sop_document": parent.name,
-            "version_no": ["<", cancelled_version.version_no],
+            "version_no": ["<", current_version.version_no],
             "status": ["in", ["Published", "Superseded"]],
         },
         fields=["name", "version_no"],
@@ -188,6 +188,59 @@ def _restore_previous_published_version(parent, cancelled_version):
 
 
 @frappe.whitelist()
+def unpublish_version(version_name, reason):
+    _require_any_role(MANAGER_ROLES)
+
+    reason = (reason or "").strip()
+    if not reason:
+        frappe.throw(_("Unpublish Reason is required."))
+
+    doc = frappe.get_doc("SOP Version", version_name)
+    assert_latest_version(doc)
+
+    if doc.status != "Published":
+        frappe.throw(_("Only the latest Published SOP Version can be unpublished."))
+
+    parent = frappe.get_doc("SOP Document", doc.sop_document)
+    if parent.current_version != doc.name:
+        frappe.throw(
+            _("Published SOP Version {0} is not the current version of {1}.").format(
+                frappe.bold(doc.name), frappe.bold(parent.name)
+            )
+        )
+
+    frappe.flags.in_sop_publication = True
+    try:
+        restored_version = _restore_previous_published_version(parent, doc)
+
+        doc.status = "Draft"
+        doc.effective_from = None
+        doc.effective_to = None
+        doc.approved_by = None
+        doc.approved_on = None
+        doc.published_by = None
+        doc.published_on = None
+        doc.save(ignore_permissions=True)
+    finally:
+        frappe.flags.in_sop_publication = False
+
+    write_version_action_log(
+        doc,
+        action="Unpublished",
+        reason=reason,
+        previous_status="Published",
+        restored_version=restored_version,
+    )
+
+    return {
+        "name": doc.name,
+        "status": doc.status,
+        "previous_status": "Published",
+        "restored_version": restored_version,
+    }
+
+
+@frappe.whitelist()
 def cancel_version(version_name, reason):
     _require_any_role(MANAGER_ROLES)
 
@@ -198,29 +251,19 @@ def cancel_version(version_name, reason):
     doc = frappe.get_doc("SOP Version", version_name)
     assert_latest_version(doc)
 
+    if doc.status == "Published":
+        frappe.throw(_("A Published SOP Version must be unpublished before it can be cancelled."))
+    if doc.status == "Superseded":
+        frappe.throw(_("A Superseded SOP Version cannot be cancelled while it is part of published history."))
     if doc.status == "Cancelled":
         frappe.throw(_("This SOP Version is already cancelled."))
 
     previous_status = doc.status
-    parent = frappe.get_doc("SOP Document", doc.sop_document)
-    restored_version = None
-
-    if previous_status == "Published" and parent.current_version != doc.name:
-        frappe.throw(
-            _("Published SOP Version {0} is not the current version of {1}.").format(
-                frappe.bold(doc.name), frappe.bold(parent.name)
-            )
-        )
 
     frappe.flags.in_sop_publication = True
     try:
         doc.status = "Cancelled"
-        if previous_status == "Published" and not doc.effective_to:
-            doc.effective_to = today()
         doc.save(ignore_permissions=True)
-
-        if previous_status == "Published":
-            restored_version = _restore_previous_published_version(parent, doc)
     finally:
         frappe.flags.in_sop_publication = False
 
@@ -229,14 +272,13 @@ def cancel_version(version_name, reason):
         action="Cancelled",
         reason=reason,
         previous_status=previous_status,
-        restored_version=restored_version,
     )
 
     return {
         "name": doc.name,
         "status": doc.status,
         "previous_status": previous_status,
-        "restored_version": restored_version,
+        "restored_version": None,
     }
 
 

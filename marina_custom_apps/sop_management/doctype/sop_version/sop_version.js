@@ -50,7 +50,48 @@ frappe.ui.form.on("SOP Version", {
             frappe.user.has_role("SOP Manager") ||
             frappe.user.has_role("System Manager");
 
-        if (can_manage_version && frm.doc.status !== "Cancelled") {
+        if (can_manage_version && frm.doc.status === "Published") {
+            frm.add_custom_button(__("Unpublish"), () => {
+                const dialog = new frappe.ui.Dialog({
+                    title: __("Unpublish SOP Version"),
+                    fields: [
+                        {
+                            fieldname: "reason",
+                            fieldtype: "Small Text",
+                            label: __("Unpublish Reason"),
+                            reqd: 1
+                        }
+                    ],
+                    primary_action_label: __("Unpublish"),
+                    primary_action(values) {
+                        const reason = (values.reason || "").trim();
+                        if (!reason) {
+                            frappe.msgprint(__("Unpublish Reason is required."));
+                            return;
+                        }
+                        dialog.hide();
+                        frappe.call({
+                            method: "marina_custom_apps.sop_management.api.unpublish_version",
+                            args: {
+                                version_name: frm.doc.name,
+                                reason
+                            },
+                            freeze: true,
+                            freeze_message: __("Unpublishing SOP Version..."),
+                            callback() {
+                                frm.reload_doc();
+                            }
+                        });
+                    }
+                });
+                dialog.show();
+            }, __("Workflow"));
+        }
+
+        if (
+            can_manage_version &&
+            !["Published", "Superseded", "Cancelled"].includes(frm.doc.status)
+        ) {
             frm.add_custom_button(__("Cancel Version"), () => {
                 const dialog = new frappe.ui.Dialog({
                     title: __("Cancel SOP Version"),
