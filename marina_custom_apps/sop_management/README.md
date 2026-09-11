@@ -126,3 +126,8 @@ Each specialist workspace remains responsible for its own DocTypes, reports, pag
 - Adds the Python package `marina_custom_apps.marina_custom_apps` required by Frappe for the new `Marina Custom Apps` Module Def.
 - Fixes `ModuleNotFoundError: No module named 'marina_custom_apps.marina_custom_apps'` during `bench migrate`.
 - No navigation design, business logic, permissions, DocTypes, or workspace content changed from v0.47.5.
+## v0.47.7 Module Def migration fix
+
+- Ensures the `Marina Custom Apps` Module Def row exists before saving the umbrella Workspace.
+- Fixes `LinkValidationError: Could not find Module: Marina Custom Apps` on already-installed sites during `after_migrate`.
+- Keeps the v0.47.5 navigation architecture and v0.47.6 Python module package unchanged.

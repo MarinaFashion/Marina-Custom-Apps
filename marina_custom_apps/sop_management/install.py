@@ -24,6 +24,7 @@ def after_install():
     ensure_default_types()
     ensure_document_numbers()
     ensure_controlled_print_format()
+    ensure_umbrella_module_def()
     sync_unified_workspace()
     sync_module_workspace_hierarchy()
 
@@ -33,8 +34,46 @@ def after_migrate():
     ensure_default_types()
     ensure_document_numbers()
     ensure_controlled_print_format()
+    ensure_umbrella_module_def()
     sync_unified_workspace()
     sync_module_workspace_hierarchy()
+
+
+def ensure_umbrella_module_def():
+    """Ensure the umbrella Workspace module exists on already-installed sites.
+
+    Adding a new entry to modules.txt gives Frappe the module package to sync,
+    but existing sites do not necessarily get a matching Module Def row before
+    after_migrate hooks run. Workspace.module is a Link to Module Def, so the
+    row must exist before saving the Marina Custom Apps workspace.
+    """
+    if not frappe.db.exists("DocType", "Module Def"):
+        return
+
+    module_name = "Marina Custom Apps"
+    app_name = "marina_custom_apps"
+
+    if frappe.db.exists("Module Def", module_name):
+        frappe.db.set_value(
+            "Module Def",
+            module_name,
+            {
+                "module_name": module_name,
+                "app_name": app_name,
+                "custom": 0,
+            },
+            update_modified=False,
+        )
+        return
+
+    frappe.get_doc(
+        {
+            "doctype": "Module Def",
+            "module_name": module_name,
+            "app_name": app_name,
+            "custom": 0,
+        }
+    ).insert(ignore_permissions=True)
 
 
 def ensure_roles():
