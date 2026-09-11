@@ -121,3 +121,8 @@ Each specialist workspace remains responsible for its own DocTypes, reports, pag
 - All seven specialist workspace source files are normalized under `Marina Custom Apps`.
 - Umbrella shortcuts now open specialist workspace routes rather than bypassing them to a DocType.
 - Approved order and specialist icons are preserved.
+## v0.47.6 Frappe module package fix
+
+- Adds the Python package `marina_custom_apps.marina_custom_apps` required by Frappe for the new `Marina Custom Apps` Module Def.
+- Fixes `ModuleNotFoundError: No module named 'marina_custom_apps.marina_custom_apps'` during `bench migrate`.
+- No navigation design, business logic, permissions, DocTypes, or workspace content changed from v0.47.5.
