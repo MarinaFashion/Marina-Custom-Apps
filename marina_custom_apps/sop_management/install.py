@@ -560,7 +560,9 @@ def sync_module_workspace_hierarchy():
 
     base = Path(__file__).resolve().parent
 
-    # SOP Management is new in this release, so sync its full workspace here.
+    # SOP Management is owned by this module, so sync its full workspace here.
+    # Other specialist workspaces remain owned by their respective modules;
+    # below we only enforce their shared parent and approved sequence in DB.
     _sync_workspace_file(
         base / "workspace" / "sop_management" / "sop_management.json"
     )

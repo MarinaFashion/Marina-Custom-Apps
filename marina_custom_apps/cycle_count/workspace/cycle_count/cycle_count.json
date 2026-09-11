@@ -1,6 +1,8 @@
 {
     "doctype":  "Workspace",
     "name":  "Cycle Count",
+    "parent_page": "Marina Custom Apps",
+    "sequence_id": 7.0,
     "label":  "Cycle Count",
     "title":  "Cycle Count",
     "module":  "Cycle Count",

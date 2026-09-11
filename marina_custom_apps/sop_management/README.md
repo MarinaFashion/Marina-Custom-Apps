@@ -115,3 +115,9 @@ Each specialist workspace remains responsible for its own DocTypes, reports, pag
 - Department is mandatory on SOP Document.
 - Departments are alphabetical within each SOP Type.
 - SOP Documents are ordered by business Document No. ascending within each Department.
+## v0.47.5 Marina workspace navigation architecture
+- `Marina Custom Apps` now has its own Frappe module identity instead of using `SOP Management`.
+- SOP DocTypes therefore resolve under the `SOP Management` workspace.
+- All seven specialist workspace source files are normalized under `Marina Custom Apps`.
+- Umbrella shortcuts now open specialist workspace routes rather than bypassing them to a DocType.
+- Approved order and specialist icons are preserved.

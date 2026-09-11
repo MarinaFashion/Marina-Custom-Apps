@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"main-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Marina Custom Apps</b></span>\",\"col\":12}},{\"id\":\"intro\",\"type\":\"paragraph\",\"data\":{\"text\":\"<span class=\\\"text-muted\\\">Open a Marina module below. Each module keeps its own workspace, documents, reports and settings.</span>\",\"col\":12}},{\"id\":\"calendar\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Marina Calendar\",\"col\":3}},{\"id\":\"cycle\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Cycle Count\",\"col\":3}},{\"id\":\"audit\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Transfer Audit\",\"col\":3}},{\"id\":\"allocation\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Auto Allocation\",\"col\":3}},{\"id\":\"forecast\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Forecasting\",\"col\":3}},{\"id\":\"dispatch\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"DC Dispatch\",\"col\":3}},{\"id\":\"sop\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"SOP Management\",\"col\":3}}]",
+ "content": "[{\"id\":\"main-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Marina Custom Apps</b></span>\",\"col\":12}},{\"id\":\"intro\",\"type\":\"paragraph\",\"data\":{\"text\":\"<span class=\\\"text-muted\\\">Open a Marina module below. Each module keeps its own workspace, documents, reports and settings.</span>\",\"col\":12}},{\"id\":\"calendar\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Marina Calendar\",\"col\":3}},{\"id\":\"forecast\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Sales Forecasting\",\"col\":3}},{\"id\":\"dispatch\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"DC Dispatch\",\"col\":3}},{\"id\":\"allocation\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Auto Allocation\",\"col\":3}},{\"id\":\"audit\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Stock Transfer Audit\",\"col\":3}},{\"id\":\"cycle\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Cycle Count\",\"col\":3}},{\"id\":\"sop\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"SOP Management\",\"col\":3}}]",
  "creation": "2026-09-09 00:00:00.000000",
  "custom_blocks": [],
  "docstatus": 0,
@@ -12,9 +12,9 @@
  "is_hidden": 0,
  "label": "Marina Custom Apps",
  "links": [],
- "modified": "2026-09-10 00:00:00.000000",
+ "modified": "2026-09-12 00:00:00.000000",
  "modified_by": "Administrator",
- "module": "SOP Management",
+ "module": "Marina Custom Apps",
  "name": "Marina Custom Apps",
  "number_cards": [],
  "owner": "Administrator",
@@ -24,13 +24,13 @@
  "roles": [],
  "sequence_id": 1.0,
  "shortcuts": [
-  {"color":"Blue","doc_view":"List","label":"Marina Calendar","link_to":"Marina Calendar Event","type":"DocType"},
-  {"color":"Green","doc_view":"List","label":"Cycle Count","link_to":"Cycle Count Plan","type":"DocType"},
-  {"color":"Orange","doc_view":"List","label":"Stock Transfer Audit","link_to":"Stock Transfer Audit Run","type":"DocType"},
-  {"color":"Green","doc_view":"List","label":"Stock Auto Allocation","link_to":"Stock Allocation Run","type":"DocType"},
-  {"color":"Blue","doc_view":"List","label":"Sales Forecasting","link_to":"Sales Forecast Run","type":"DocType"},
-  {"color":"Blue","doc_view":"List","label":"DC Dispatch","link_to":"DC Dispatch Run","type":"DocType"},
-  {"color":"Purple","label":"SOP Management","link_to":"sop-library","type":"Page"}
+  {"color":"Blue","label":"Marina Calendar","type":"URL","url":"/app/marina-calendar"},
+  {"color":"Blue","label":"Sales Forecasting","type":"URL","url":"/app/sales-forecasting"},
+  {"color":"Blue","label":"DC Dispatch","type":"URL","url":"/app/dc-dispatch"},
+  {"color":"Green","label":"Stock Auto Allocation","type":"URL","url":"/app/stock-auto-allocation"},
+  {"color":"Orange","label":"Stock Transfer Audit","type":"URL","url":"/app/stock-transfer-audit"},
+  {"color":"Green","label":"Cycle Count","type":"URL","url":"/app/cycle-count"},
+  {"color":"Purple","label":"SOP Management","type":"URL","url":"/app/sop-management"}
  ],
  "title": "Marina Custom Apps"
 }
