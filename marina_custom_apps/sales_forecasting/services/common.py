@@ -209,7 +209,7 @@ def load_calendar(start_date, end_date, cfg=None):
         rows = frappe.get_all(
             doctype,
             filters={"date": ["between", [start_date, end_date]]},
-            fields=["date", "hijri_date", "hijri_m_name", "day", "month", "year"],
+            fields=["date", "hijri_date", "hijri_m_name", "day", "month", "year", "seasonal_matching_basis"],
             order_by="date asc",
             limit_page_length=0,
         )
@@ -222,6 +222,7 @@ def load_calendar(start_date, end_date, cfg=None):
                 "hijri_day": cint(row.day),
                 "hijri_month": cint(row.month),
                 "hijri_year": cint(row.year),
+                "seasonal_matching_basis": row.get("seasonal_matching_basis") or "Auto",
             }
             for row in rows
         }

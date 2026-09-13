@@ -20,6 +20,7 @@ from .common import (
     settings,
 )
 from .data_mart import ensure_data_mart_coverage
+from marina_custom_apps.marina_calendar.seasonal_matching import matching_basis, seasonal_weight
 
 
 DORMANT_WARNING_DAYS = 14
@@ -127,6 +128,7 @@ def run_forecast(run_name, *, commit=True):
         while day <= forecast_to:
             cal = calendar.get(str(day), {})
             target = {
+                "seasonal_matching_basis": matching_basis(cal.get("hijri_month"), cal.get("seasonal_matching_basis")),
                 "date": day,
                 "weekday": day.strftime("%a"),
                 "is_weekend": is_weekend(day),
@@ -138,6 +140,10 @@ def run_forecast(run_name, *, commit=True):
                 "as_of_date": as_of,
             }
             for branch in branches:
+                if target["seasonal_matching_basis"] == "Hijri" and not (
+                    1 <= target["hijri_month"] <= 12 and 1 <= target["hijri_day"] <= 30
+                ):
+                    frappe.throw(_("Enter a valid Hijri day and month on Marina Calendar Date {0} before forecasting.").format(day))
                 if branch.opening_date and getdate(branch.opening_date) > day:
                     continue
                 activity = branch_activity.get(branch.name) or {}
@@ -228,6 +234,10 @@ def run_forecast(run_name, *, commit=True):
                         (weekday_profile.get(group) or {}).get(day.strftime("%a")) or 1.0
                     )
                     pred["drivers"]["weekday_signal_mode"] = "diagnostic_only"
+                    pred["drivers"]["seasonal_matching_basis"] = target["seasonal_matching_basis"]
+                    pred["drivers"]["seasonal_matching_version"] = "v1"
+                    if not target["hijri_month"]:
+                        pred["drivers"]["seasonal_matching_warning"] = "Hijri month missing; Auto defaults to Gregorian unless explicitly overridden."
                     pred["drivers"]["weekday_profile_index"] = round(weekday_index, 4)
                     pred["drivers"]["weekday_profile_window_days"] = WEEKDAY_PROFILE_DAYS
                     pred["drivers"]["weekday_profile_scope"] = "Company x Main Group"
@@ -760,13 +770,14 @@ def _predict_one(candidates, target, branch, fallback, cfg, plan_features):
             w *= 1.25
         if row.salary_phase == target["salary_phase"]:
             w *= 1.45
-        if cint(target.get("hijri_month")) and cint(row.hijri_month) == cint(target["hijri_month"]):
-            w *= 1.8
-            if cint(target.get("hijri_day")) and cint(row.hijri_day):
-                dist = abs(cint(row.hijri_day) - cint(target["hijri_day"]))
-                w *= 1 + math.exp(-dist / 5.0)
-        elif cint(row.gregorian_month) == cint(target["gregorian_month"]):
-            w *= 1.1
+        basis = target["seasonal_matching_basis"]
+        if basis == "Hijri":
+            w *= seasonal_weight(basis, cint(target.get("hijri_month")),
+                                 cint(target.get("hijri_day")), cint(row.hijri_month), cint(row.hijri_day))
+        else:
+            historical_date = getdate(row.date)
+            w *= seasonal_weight(basis, target_date.month, target_date.day,
+                                 historical_date.month, historical_date.day)
         if target["event"] and row.event == target["event"]:
             w *= 1.6
         elif not target["event"] and not row.event:
@@ -841,6 +852,8 @@ def _predict_one(candidates, target, branch, fallback, cfg, plan_features):
         "confidence": confidence,
         "samples": len(weighted),
         "drivers": {
+            "seasonal_matching_basis": target["seasonal_matching_basis"],
+            "seasonal_matching_version": "v1",
             "fallback": fallback,
             "trend_factor": round(trend, 4),
             "store_space_factor": round(scale, 4),

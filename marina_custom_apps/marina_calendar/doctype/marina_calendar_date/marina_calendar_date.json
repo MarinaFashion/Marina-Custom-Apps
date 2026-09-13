@@ -26,12 +26,22 @@
   "day",
   "month",
   "year",
+  "seasonal_matching_basis",
   "events_section",
   "event_count",
   "event_summary",
   "events"
  ],
  "fields": [
+  {
+   "fieldname": "seasonal_matching_basis",
+   "fieldtype": "Select",
+   "label": "Seasonal Matching Basis",
+   "options": "Auto\nHijri\nGregorian",
+   "default": "Auto",
+   "description": "Auto: Hijri for months 8, 9, 11 and 12; Gregorian otherwise. Uses your manually entered Hijri month. Select Hijri or Gregorian to override.",
+   "in_standard_filter": 1
+  },
   {
    "fieldname": "date",
    "fieldtype": "Date",
