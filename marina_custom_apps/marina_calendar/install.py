@@ -1,167 +1,21 @@
-import hashlib
 import json
-from datetime import timedelta
 from pathlib import Path
 
 import frappe
-from frappe.utils import getdate
 
 
 NEW_DATE_DOCTYPE = "Marina Calendar Date"
 NEW_EVENT_DOCTYPE = "Marina Calendar Event"
-LEGACY_REQUIRED_FIELDS = {"date", "hijri_date", "hijri_m_name", "day", "month", "year"}
-LEGACY_OPTIONAL_FIELDS = {"month_name", "week_day", "event"}
-
-
 def after_install():
     _ensure_indexes()
-    migrate_legacy_calendar()
     _sync_workspace()
     _point_forecasting_to_marina_calendar()
 
 
 def after_migrate():
     _ensure_indexes()
-    migrate_legacy_calendar()
     _sync_workspace()
     _point_forecasting_to_marina_calendar()
-
-
-
-def detect_legacy_calendar_doctype():
-    if not frappe.db.exists("DocType", "DocType"):
-        return None
-
-    candidates = []
-    for name in frappe.get_all(
-        "DocType",
-        filters={"custom": 1},
-        pluck="name",
-        limit_page_length=0,
-    ):
-        if name in {NEW_DATE_DOCTYPE, NEW_EVENT_DOCTYPE, "Marina Calendar Date Event"}:
-            continue
-        try:
-            fields = {f.fieldname for f in frappe.get_meta(name).fields}
-        except Exception:
-            continue
-        if LEGACY_REQUIRED_FIELDS.issubset(fields):
-            score = len(LEGACY_REQUIRED_FIELDS & fields) + len(LEGACY_OPTIONAL_FIELDS & fields)
-            candidates.append((score, name))
-
-    candidates.sort(key=lambda x: (-x[0], x[1]))
-    return candidates[0][1] if candidates else None
-
-
-def migrate_legacy_calendar():
-    if not frappe.db.exists("DocType", NEW_DATE_DOCTYPE):
-        return {"migrated": False, "reason": "New calendar DocType not installed"}
-
-    legacy = detect_legacy_calendar_doctype()
-    if not legacy:
-        return {"migrated": False, "reason": "No legacy custom calendar detected"}
-
-    meta_fields = {f.fieldname for f in frappe.get_meta(legacy).fields}
-    fields = ["name", "date", "hijri_date", "hijri_m_name", "day", "month", "year"]
-    for optional in ("month_name", "week_day", "event"):
-        if optional in meta_fields:
-            fields.append(optional)
-
-    rows = frappe.get_all(
-        legacy,
-        fields=fields,
-        order_by="date asc",
-        limit_page_length=0,
-    )
-
-    date_count = 0
-    for row in rows:
-        if not row.date:
-            continue
-        name = str(getdate(row.date))
-        values = {
-            "date": name,
-            "hijri_date": row.get("hijri_date") or "",
-            "hijri_m_name": row.get("hijri_m_name") or "",
-            "day": row.get("day") or 0,
-            "month": row.get("month") or 0,
-            "year": row.get("year") or 0,
-            "legacy_source_doctype": legacy,
-            "legacy_source_name": row.name,
-            "legacy_event": row.get("event") or "",
-        }
-        if frappe.db.exists(NEW_DATE_DOCTYPE, name):
-            doc = frappe.get_doc(NEW_DATE_DOCTYPE, name)
-            changed = False
-            for field in ("hijri_date", "hijri_m_name", "day", "month", "year", "legacy_source_doctype", "legacy_source_name", "legacy_event"):
-                if not doc.get(field) and values.get(field):
-                    doc.set(field, values.get(field))
-                    changed = True
-            if changed:
-                doc.save(ignore_permissions=True)
-        else:
-            frappe.get_doc({"doctype": NEW_DATE_DOCTYPE, **values}).insert(ignore_permissions=True)
-        date_count += 1
-
-    event_count = _migrate_legacy_events(legacy, rows) if "event" in meta_fields else 0
-    return {
-        "migrated": True,
-        "legacy_doctype": legacy,
-        "calendar_dates": date_count,
-        "calendar_events_created": event_count,
-    }
-
-
-def _migrate_legacy_events(legacy_doctype, rows):
-    sequences = []
-    current = None
-
-    for row in rows:
-        text = (row.get("event") or "").strip()
-        if not text or not row.date:
-            if current:
-                sequences.append(current)
-                current = None
-            continue
-
-        day = getdate(row.date)
-        if current and current["event_name"] == text and day == current["end_date"] + timedelta(days=1):
-            current["end_date"] = day
-            continue
-
-        if current:
-            sequences.append(current)
-        current = {"event_name": text, "start_date": day, "end_date": day}
-
-    if current:
-        sequences.append(current)
-
-    created = 0
-    for seq in sequences:
-        raw = f"{legacy_doctype}|{seq['event_name']}|{seq['start_date']}|{seq['end_date']}"
-        legacy_key = "legacy-" + hashlib.sha1(raw.encode("utf-8")).hexdigest()
-        if frappe.db.exists(NEW_EVENT_DOCTYPE, {"legacy_key": legacy_key}):
-            continue
-
-        frappe.get_doc({
-            "doctype": NEW_EVENT_DOCTYPE,
-            "event_name": seq["event_name"],
-            "event_type": "Other",
-            "start_date": str(seq["start_date"]),
-            "end_date": str(seq["end_date"]),
-            "all_day": 1,
-            "importance": "Medium",
-            "expected_sales_impact": "Unknown",
-            "impact_strength": "Medium",
-            "forecast_relevant": 1,
-            "scope": "Company",
-            "company": "Marina" if frappe.db.exists("Company", "Marina") else "",
-            "source": f"Imported from {legacy_doctype}.event",
-            "legacy_key": legacy_key,
-        }).insert(ignore_permissions=True)
-        created += 1
-
-    return created
 
 
 def _point_forecasting_to_marina_calendar():

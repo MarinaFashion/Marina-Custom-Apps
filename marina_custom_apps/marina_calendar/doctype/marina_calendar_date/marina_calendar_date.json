@@ -29,11 +29,7 @@
   "events_section",
   "event_count",
   "event_summary",
-  "events",
-  "legacy_section",
-  "legacy_source_doctype",
-  "legacy_source_name",
-  "legacy_event"
+  "events"
  ],
  "fields": [
   {
@@ -122,31 +118,6 @@
    "fieldtype": "Table",
    "label": "Events",
    "options": "Marina Calendar Date Event",
-   "read_only": 1
-  },
-  {
-   "fieldname": "legacy_section",
-   "fieldtype": "Section Break",
-   "label": "Legacy Migration",
-   "collapsible": 1,
-   "collapsed": 1
-  },
-  {
-   "fieldname": "legacy_source_doctype",
-   "fieldtype": "Data",
-   "label": "Legacy Source DocType",
-   "read_only": 1
-  },
-  {
-   "fieldname": "legacy_source_name",
-   "fieldtype": "Data",
-   "label": "Legacy Source Record",
-   "read_only": 1
-  },
-  {
-   "fieldname": "legacy_event",
-   "fieldtype": "Small Text",
-   "label": "Legacy Event Text",
    "read_only": 1
   }
  ],

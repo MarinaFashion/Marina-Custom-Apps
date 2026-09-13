@@ -41,9 +41,7 @@
   "details_section",
   "source",
   "notes",
-  "disabled",
-  "legacy_section",
-  "legacy_key"
+  "disabled"
  ],
  "fields": [
   {
@@ -216,19 +214,6 @@
    "label": "Disabled",
    "default": "0",
    "in_standard_filter": 1
-  },
-  {
-   "fieldname": "legacy_section",
-   "fieldtype": "Section Break",
-   "label": "Legacy Migration",
-   "collapsible": 1,
-   "collapsed": 1
-  },
-  {
-   "fieldname": "legacy_key",
-   "fieldtype": "Data",
-   "label": "Legacy Import Key",
-   "read_only": 1
   }
  ],
  "permissions": [
