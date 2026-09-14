@@ -1,5 +1,9 @@
 import unittest
-from marina_custom_apps.marina_calendar.seasonal_matching import matching_basis, seasonal_weight
+from marina_custom_apps.marina_calendar.seasonal_matching import (
+    hijri_month_rows,
+    matching_basis,
+    seasonal_weight,
+)
 
 
 class SeasonalMatchingTests(unittest.TestCase):
@@ -28,6 +32,14 @@ class SeasonalMatchingTests(unittest.TestCase):
 
     def test_missing_historical_hijri(self):
         self.assertEqual(seasonal_weight('Hijri', 9, 10, None, None), 1)
+
+    def test_hijri_primary_pool_excludes_other_months_and_invalid_days(self):
+        rows = [
+            {'id': 'ramadan', 'hijri_month': 9, 'hijri_day': 10},
+            {'id': 'shaban', 'hijri_month': 8, 'hijri_day': 10},
+            {'id': 'missing-day', 'hijri_month': 9, 'hijri_day': None},
+        ]
+        self.assertEqual([r['id'] for r in hijri_month_rows(rows, 9)], ['ramadan'])
 
 
 if __name__ == '__main__':

@@ -20,7 +20,11 @@ from .common import (
     settings,
 )
 from .data_mart import ensure_data_mart_coverage
-from marina_custom_apps.marina_calendar.seasonal_matching import matching_basis, seasonal_weight
+from marina_custom_apps.marina_calendar.seasonal_matching import (
+    hijri_month_rows,
+    matching_basis,
+    seasonal_weight,
+)
 
 
 DORMANT_WARNING_DAYS = 14
@@ -199,8 +203,8 @@ def run_forecast(run_name, *, commit=True):
                     assortment_features["recent_asof_new_styles_30d"] = recent_new_styles_30d
                     target["target_markdown_pct"] = 0.0 if plan_features.get("new_styles_30d", 0) else flt(recent.get("avg_markdown_pct"))
 
-                    candidates, fallback = _candidate_pool(
-                        pools, branch, group, cint(cfg.minimum_analog_samples or 20)
+                    candidates, fallback, seasonal_pool_mode, trend_candidates = _candidate_pool(
+                        pools, branch, group, cint(cfg.minimum_analog_samples or 20), target
                     )
                     if target["store_trading_status"] == "Closed":
                         pred = {
@@ -214,7 +218,11 @@ def run_forecast(run_name, *, commit=True):
                             },
                         }
                     else:
-                        pred = _predict_one(candidates, target, branch, fallback, cfg, plan_features)
+                        pred = _predict_one(
+                            candidates, target, branch, fallback, cfg, plan_features,
+                            trend_candidates=trend_candidates,
+                            seasonal_pool_mode=seasonal_pool_mode,
+                        )
                         if dormant_days >= DORMANT_WARNING_DAYS:
                             pred["confidence"] = max(10, pred["confidence"] - 15)
                             pred["drivers"]["dormant_branch_warning"] = (
@@ -235,7 +243,8 @@ def run_forecast(run_name, *, commit=True):
                     )
                     pred["drivers"]["weekday_signal_mode"] = "diagnostic_only"
                     pred["drivers"]["seasonal_matching_basis"] = target["seasonal_matching_basis"]
-                    pred["drivers"]["seasonal_matching_version"] = "v1"
+                    pred["drivers"]["seasonal_matching_version"] = "v2"
+                    pred["drivers"].setdefault("seasonal_pool_mode", seasonal_pool_mode)
                     if not target["hijri_month"]:
                         pred["drivers"]["seasonal_matching_warning"] = "Hijri month missing; Auto defaults to Gregorian unless explicitly overridden."
                     pred["drivers"]["weekday_profile_index"] = round(weekday_index, 4)
@@ -732,22 +741,37 @@ def _build_pools(history):
     return pools
 
 
-def _candidate_pool(pools, branch, group, minimum):
-    rows = pools["branch"].get((branch.name, group), [])
-    if len(rows) >= minimum:
-        return rows, "Branch"
+def _candidate_pool(pools, branch, group, minimum, target):
+    levels = [("Branch", pools["branch"].get((branch.name, group), []))]
     if branch.cluster:
-        rows = pools["cluster"].get((branch.cluster, group), [])
-        if len(rows) >= minimum:
-            return rows, "Cluster"
+        levels.append(("Cluster", pools["cluster"].get((branch.cluster, group), [])))
     if branch.city:
-        rows = pools["city"].get((branch.city, group), [])
-        if len(rows) >= minimum:
-            return rows, "City"
-    return pools["company"].get(group, []), "Company"
+        levels.append(("City", pools["city"].get((branch.city, group), [])))
+    levels.append(("Company", pools["company"].get(group, [])))
+
+    if target.get("seasonal_matching_basis") == "Hijri":
+        sparse = None
+        for fallback, broad_rows in levels:
+            seasonal_rows = hijri_month_rows(broad_rows, target.get("hijri_month"))
+            if seasonal_rows:
+                sparse = (seasonal_rows, fallback, broad_rows)
+            if len(seasonal_rows) >= minimum:
+                return seasonal_rows, fallback, "Hijri Month Primary", broad_rows
+        if sparse:
+            seasonal_rows, fallback, broad_rows = sparse
+            return seasonal_rows, fallback, "Hijri Month Sparse", broad_rows
+
+    for fallback, broad_rows in levels:
+        if len(broad_rows) >= minimum or fallback == "Company":
+            mode = "Broad Fallback" if target.get("seasonal_matching_basis") == "Hijri" else "Gregorian Weighted"
+            return broad_rows, fallback, mode, broad_rows
+    return [], "Company", "Broad Fallback", []
 
 
-def _predict_one(candidates, target, branch, fallback, cfg, plan_features):
+def _predict_one(
+    candidates, target, branch, fallback, cfg, plan_features,
+    trend_candidates=None, seasonal_pool_mode=None,
+):
     if not candidates:
         return {
             "forecast_sales": 0, "forecast_units": 0, "forecast_asp": 0,
@@ -809,7 +833,7 @@ def _predict_one(candidates, target, branch, fallback, cfg, plan_features):
         / max(sum(w for r, w in weighted if flt(r.avg_realized_price) > 0), 0.000001)
     )
 
-    trend = _trend_factor(candidates, getdate(target.get("as_of_date")))
+    trend = _trend_factor(trend_candidates or candidates, getdate(target.get("as_of_date")))
     scale = 1.0
     if fallback != "Branch" and flt(branch.store_space) > 0:
         avg_space = sum(flt(r.store_space) * w for r, w in weighted if flt(r.store_space) > 0) / max(
@@ -853,7 +877,8 @@ def _predict_one(candidates, target, branch, fallback, cfg, plan_features):
         "samples": len(weighted),
         "drivers": {
             "seasonal_matching_basis": target["seasonal_matching_basis"],
-            "seasonal_matching_version": "v1",
+            "seasonal_matching_version": "v2",
+            "seasonal_pool_mode": seasonal_pool_mode,
             "fallback": fallback,
             "trend_factor": round(trend, 4),
             "store_space_factor": round(scale, 4),
