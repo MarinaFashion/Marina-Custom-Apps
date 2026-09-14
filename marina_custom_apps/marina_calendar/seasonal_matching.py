@@ -1,13 +1,11 @@
 """Seasonal analog weights; no date conversion or database access."""
 import math
 
-HIJRI_MONTHS = {8, 9, 11, 12}
-
-
 def matching_basis(month, override=None):
+    """Return the calendar basis selected explicitly on the calendar date."""
     if override in ("Hijri", "Gregorian"):
         return override
-    return "Hijri" if int(month or 0) in HIJRI_MONTHS else "Gregorian"
+    return None
 
 
 def seasonal_weight(basis, target_month, target_day, historical_month, historical_day):

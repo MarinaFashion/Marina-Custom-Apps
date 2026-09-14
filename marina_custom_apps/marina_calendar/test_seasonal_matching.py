@@ -7,15 +7,16 @@ from marina_custom_apps.marina_calendar.seasonal_matching import (
 
 
 class SeasonalMatchingTests(unittest.TestCase):
-    def test_auto_all_months(self):
+    def test_basis_requires_manual_selection(self):
         for month in range(1, 13):
-            self.assertEqual(matching_basis(month), 'Hijri' if month in (8, 9, 11, 12) else 'Gregorian')
+            self.assertIsNone(matching_basis(month))
+        self.assertIsNone(matching_basis(9, 'Auto'))
 
-    def test_overrides_and_existing_blank_rows(self):
+    def test_manual_basis_options(self):
         self.assertEqual(matching_basis(9, 'Gregorian'), 'Gregorian')
         self.assertEqual(matching_basis(3, 'Hijri'), 'Hijri')
-        self.assertEqual(matching_basis(8, ''), 'Hijri')
-        self.assertEqual(matching_basis(None), 'Gregorian')
+        self.assertIsNone(matching_basis(8, ''))
+        self.assertIsNone(matching_basis(None))
 
     def test_same_day_preferred(self):
         for basis in ('Hijri', 'Gregorian'):
@@ -24,7 +25,7 @@ class SeasonalMatchingTests(unittest.TestCase):
 
     def test_dhul_hijjah_whole_month_day_matching(self):
         for day in (1, 9, 10, 15, 20, 30):
-            self.assertEqual(matching_basis(12), 'Hijri')
+            self.assertEqual(matching_basis(12, 'Hijri'), 'Hijri')
             self.assertGreater(seasonal_weight('Hijri', 12, day, 12, day),
                                seasonal_weight('Hijri', 12, day, 12, day - 1 or 2))
         self.assertGreater(seasonal_weight('Hijri', 12, 9, 12, 10), 1)

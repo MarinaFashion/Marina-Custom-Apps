@@ -222,7 +222,7 @@ def load_calendar(start_date, end_date, cfg=None):
                 "hijri_day": cint(row.day),
                 "hijri_month": cint(row.month),
                 "hijri_year": cint(row.year),
-                "seasonal_matching_basis": row.get("seasonal_matching_basis") or "Auto",
+                "seasonal_matching_basis": row.get("seasonal_matching_basis") or "",
             }
             for row in rows
         }

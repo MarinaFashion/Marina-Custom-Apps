@@ -37,9 +37,9 @@
    "fieldname": "seasonal_matching_basis",
    "fieldtype": "Select",
    "label": "Seasonal Matching Basis",
-   "options": "Auto\nHijri\nGregorian",
-   "default": "Auto",
-   "description": "Auto: Hijri for months 8, 9, 11 and 12; Gregorian otherwise. Uses your manually entered Hijri month. Select Hijri or Gregorian to override.",
+   "options": "Hijri\nGregorian",
+   "description": "Required manual choice controlling whether the forecast matches this date to historical Hijri or Gregorian dates.",
+   "reqd": 1,
    "in_standard_filter": 1
   },
   {

@@ -26,7 +26,7 @@ Paste the Buying Plan directly from Excel. Stored inputs are Year, Season, Colle
 Read-only data mart at Date x Branch x Main Group. It stores demand, operating status, assortment/newness, inventory availability, markdown, Hijri/event features and salary phase. Scheduled refresh updates recent history each night.
 
 ### Sales Forecast Run
-Supports Future and Backtest runs. The MVP engine is `Marina Analog Ensemble v1`: weighted historical analogs with recency, weekday/weekend, Hijri position, salary phase, events, assortment newness, markdown, stockout awareness, branch/cluster/city fallback, store-space scaling, trend and Buying Plan price/supply context. Hijri-driven periods use observations from the corresponding Hijri month as their primary pool; broader history is used only when that seasonal pool is unavailable.
+Supports Future and Backtest runs. The MVP engine is `Marina Analog Ensemble v1`: weighted historical analogs with recency, weekday/weekend, Hijri position, salary phase, events, assortment newness, markdown, stockout awareness, branch/cluster/city fallback, store-space scaling, trend and Buying Plan price/supply context. Each calendar date requires a manual Hijri or Gregorian matching choice. Hijri-driven dates use observations from the corresponding Hijri month as their primary pool; broader history is used only when that seasonal pool is unavailable.
 
 ### Sales Forecast Result
 Daily Branch x Main Group forecast, interval, confidence, actuals (when available), errors and diagnostic driver JSON.

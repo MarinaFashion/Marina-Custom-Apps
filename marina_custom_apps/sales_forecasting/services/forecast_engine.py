@@ -131,8 +131,16 @@ def run_forecast(run_name, *, commit=True):
         day = forecast_from
         while day <= forecast_to:
             cal = calendar.get(str(day), {})
+            seasonal_basis = matching_basis(
+                cal.get("hijri_month"), cal.get("seasonal_matching_basis")
+            )
+            if not seasonal_basis:
+                frappe.throw(_(
+                    "Select Hijri or Gregorian in Seasonal Matching Basis on Marina Calendar Date {0} "
+                    "before forecasting."
+                ).format(day))
             target = {
-                "seasonal_matching_basis": matching_basis(cal.get("hijri_month"), cal.get("seasonal_matching_basis")),
+                "seasonal_matching_basis": seasonal_basis,
                 "date": day,
                 "weekday": day.strftime("%a"),
                 "is_weekend": is_weekend(day),
@@ -245,8 +253,6 @@ def run_forecast(run_name, *, commit=True):
                     pred["drivers"]["seasonal_matching_basis"] = target["seasonal_matching_basis"]
                     pred["drivers"]["seasonal_matching_version"] = "v2"
                     pred["drivers"].setdefault("seasonal_pool_mode", seasonal_pool_mode)
-                    if not target["hijri_month"]:
-                        pred["drivers"]["seasonal_matching_warning"] = "Hijri month missing; Auto defaults to Gregorian unless explicitly overridden."
                     pred["drivers"]["weekday_profile_index"] = round(weekday_index, 4)
                     pred["drivers"]["weekday_profile_window_days"] = WEEKDAY_PROFILE_DAYS
                     pred["drivers"]["weekday_profile_scope"] = "Company x Main Group"
