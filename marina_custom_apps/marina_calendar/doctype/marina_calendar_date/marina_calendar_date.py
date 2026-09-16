@@ -1,4 +1,5 @@
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import getdate
 
@@ -12,6 +13,16 @@ class MarinaCalendarDate(Document):
         if not self.date:
             return
         value = getdate(self.date)
+        if not self.is_new():
+            stored_date = frappe.db.get_value(self.doctype, self.name, "date")
+            if stored_date and getdate(stored_date) != value:
+                frappe.throw(_("Date cannot be changed after a Marina Calendar Date is created."))
+        duplicate = frappe.db.exists(
+            self.doctype,
+            {"date": value, "name": ["!=", self.name]},
+        )
+        if duplicate:
+            frappe.throw(_("A Marina Calendar Date already exists for {0}.").format(value))
         self.month_name = value.strftime("%B")
         self.week_day = value.strftime("%A")
         names = []

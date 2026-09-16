@@ -1076,9 +1076,29 @@ def _plan_features(context, group, day):
     }
 
 
-def _load_actuals(start, end, branches, groups):
-    actual_end = min(getdate(end), getdate(add_days(frappe.utils.today(), -1)))
-    if getdate(start) > actual_end:
+def _actual_data_through(start, end, branches, groups):
+    """Last completed day with retail transactions in the requested scope."""
+    candidate_end = min(getdate(end), getdate(add_days(frappe.utils.today(), -1)))
+    if getdate(start) > candidate_end:
+        return None
+    rows = frappe.get_all(
+        "Sales Forecast Daily",
+        filters={
+            "date": ["between", [str(start), str(candidate_end)]],
+            "branch": ["in", branches],
+            "main_group": ["in", groups],
+            "transaction_count": [">", 0],
+        },
+        fields=["date"],
+        order_by="date desc",
+        limit_page_length=1,
+    )
+    return getdate(rows[0].date) if rows else None
+
+
+def _load_actuals(start, end, branches, groups, actual_through=None):
+    actual_end = actual_through or _actual_data_through(start, end, branches, groups)
+    if not actual_end or getdate(start) > getdate(actual_end):
         return {}
     rows = frappe.get_all(
         "Sales Forecast Daily",
@@ -1093,9 +1113,9 @@ def _load_actuals(start, end, branches, groups):
         ],
         limit_page_length=0,
     )
-    # The caller only requests completed dates. Presence of an eligible
-    # Date x Branch x Main Group Data Mart row is therefore authoritative
-    # actual coverage, including legitimate zero-sales days.
+    # Empty Data Mart rows may exist beyond the latest imported sales date.
+    # Restricting them to actual_end preserves legitimate zero-sales rows
+    # inside a completed period without treating missing future data as zero.
     return {
         (str(r.date), r.branch, r.main_group): r
         for r in rows
@@ -1144,7 +1164,10 @@ def refresh_actuals(run_name, *, commit=True):
         commit=False,
         include_disabled_stores=True,
     )
-    actual_map = _load_actuals(start, actual_end, branches, groups)
+    actual_through = _actual_data_through(start, actual_end, branches, groups)
+    actual_map = _load_actuals(
+        start, actual_end, branches, groups, actual_through=actual_through
+    )
     results = frappe.get_all(
         "Sales Forecast Result",
         filters={"forecast_run": run.name},
@@ -1157,7 +1180,7 @@ def refresh_actuals(run_name, *, commit=True):
     total_abs_error = total_signed_error = 0.0
     actual_rows = 0
     for row in results:
-        if row.branch not in eligible or getdate(row.date) > actual_end:
+        if row.branch not in eligible:
             continue
         actual = actual_map.get((str(row.date), row.branch, row.main_group))
         has_actual = actual is not None
@@ -1202,7 +1225,7 @@ def refresh_actuals(run_name, *, commit=True):
         frappe.db.commit()
     return {
         "run": run.name,
-        "actual_through": str(actual_end),
+        "actual_through": str(actual_through) if actual_through else None,
         "actual_rows": actual_rows,
         "result_rows": len(results),
         "wape": wape if actual_rows else None,

@@ -4,7 +4,7 @@ app_publisher = "Marina Trading Company"
 app_description = "Marina Trading Company custom Frappe/ERPNext modules"
 app_email = "it@marinafashion.com.sa"
 app_license = "MIT"
-app_version = "0.47.12"
+app_version = "0.47.13"
 
 required_apps = ["erpnext"]
 
