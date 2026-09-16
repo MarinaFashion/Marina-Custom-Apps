@@ -14,6 +14,7 @@
   "store_to_dc_sla_days",
   "critical_grace_days",
   "audit_section",
+  "audit_process_start_date",
   "pending_audit_sla_days",
   "large_variance_qty_threshold",
   "audit_column",
@@ -77,7 +78,15 @@
   {
    "fieldname": "audit_section",
    "fieldtype": "Section Break",
-   "label": "Audit Escalation"
+   "label": "Audit Control"
+  },
+  {
+   "fieldname": "audit_process_start_date",
+   "fieldtype": "Date",
+   "label": "Audit Process Start Date",
+   "default": "2026-09-16",
+   "reqd": 1,
+   "description": "Receive Stock posted before this date belongs to the legacy process and is excluded from Stock Transfer Audit Runs."
   },
   {
    "fieldname": "pending_audit_sla_days",

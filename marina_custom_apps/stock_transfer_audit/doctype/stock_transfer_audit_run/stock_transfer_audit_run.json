@@ -16,6 +16,8 @@
   "clean_count",
   "variance_count",
   "summary_column",
+  "legacy_excluded_count",
+  "previously_audited_count",
   "total_variance_qty",
   "total_abs_variance_qty",
   "transfers_section",
@@ -78,6 +80,19 @@
   {
    "fieldname": "summary_column",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "legacy_excluded_count",
+   "fieldtype": "Int",
+   "label": "Legacy Receipts Excluded",
+   "read_only": 1,
+   "description": "Submitted Receive Stock entries before the configured Audit Process Start Date."
+  },
+  {
+   "fieldname": "previously_audited_count",
+   "fieldtype": "Int",
+   "label": "Previously Audited Excluded",
+   "read_only": 1
   },
   {
    "fieldname": "total_variance_qty",
