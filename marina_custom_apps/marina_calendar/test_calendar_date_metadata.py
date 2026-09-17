@@ -17,6 +17,11 @@ class CalendarDateMetadataTests(unittest.TestCase):
     def test_data_import_is_enabled(self):
         self.assertEqual(self.definition.get("allow_import"), 1)
 
+    def test_date_naming_is_handled_by_controller(self):
+        # Frappe v15 converts a ``field:date`` naming rule to unique=1 while
+        # saving Customize Form, but Date is not a supported unique fieldtype.
+        self.assertFalse(self.definition.get("autoname"))
+
     def test_date_field_does_not_use_unsupported_unique_flag(self):
         date_field = next(
             row for row in self.definition["fields"] if row["fieldname"] == "date"

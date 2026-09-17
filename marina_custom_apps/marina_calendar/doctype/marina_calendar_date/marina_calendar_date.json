@@ -12,7 +12,6 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "autoname": "field:date",
  "module": "Marina Calendar",
  "name": "Marina Calendar Date",
  "field_order": [

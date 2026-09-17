@@ -35,8 +35,14 @@ def _repair_calendar_date_metadata():
     frappe.db.set_value(
         "DocType",
         NEW_DATE_DOCTYPE,
-        "allow_import",
-        1,
+        {
+            "allow_import": 1,
+            # The controller's autoname() method already uses the Gregorian
+            # date. Keeping ``field:date`` here makes Frappe v15 force the
+            # Date DocField to unique=1 every time Customize Form is saved,
+            # then reject it because Date is not a supported unique type.
+            "autoname": "",
+        },
         update_modified=False,
     )
 

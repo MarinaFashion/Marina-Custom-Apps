@@ -5,6 +5,7 @@ App-managed calendar foundation for Marina Custom Apps.
 ## Source of truth
 
 - `Marina Calendar Date`: one row per Gregorian date with Hijri attributes and a read-only Events child table.
+- Calendar Date naming is handled by its controller so Customize Form remains compatible with Frappe v15's Date-field validation.
 - Calendar dates support the standard Data Import Tool. The Gregorian date is the document name, and duplicate dates are rejected by server validation.
 - `Marina Calendar Event`: the editable source of truth for events. Events can span a date range and can be scoped to Company, City or Branch, with an optional Main Group.
 - `Marina Calendar Date Event`: read-only synchronized child rows shown on each date.
