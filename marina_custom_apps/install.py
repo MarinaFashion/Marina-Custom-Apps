@@ -274,6 +274,8 @@ def _force_sync_stock_transfer_workspace():
                 doc.set(fieldname, data.get(fieldname))
 
         for table_field in child_tables:
+            if table_field == "roles":
+                continue
             doc.set(table_field, [])
             for row in data.get(table_field, []):
                 doc.append(table_field, row)

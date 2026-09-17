@@ -533,7 +533,17 @@ def sync_unified_workspace():
         ):
             if fieldname in data:
                 doc.set(fieldname, data.get(fieldname))
+        # The umbrella is a navigation container, not a business module.
+        # Leaving its module blank prevents Frappe from rejecting the parent
+        # before it evaluates the Workspace Roles table.
+        doc.module = ""
+
+        # Workspace roles are an administrator-managed access control. Seed
+        # them from JSON on insert, but do not erase later role additions on
+        # every app migration.
         for table_field in child_tables:
+            if table_field == "roles":
+                continue
             doc.set(table_field, [])
             for row in data.get(table_field, []):
                 doc.append(table_field, row)
@@ -580,7 +590,10 @@ def _sync_workspace_file(workspace_file):
             if fieldname in data:
                 doc.set(fieldname, data.get(fieldname))
 
+        # Preserve administrator-managed Workspace Roles on existing sites.
         for table_field in child_tables:
+            if table_field == "roles":
+                continue
             doc.set(table_field, [])
             for row in data.get(table_field, []):
                 doc.append(table_field, row)

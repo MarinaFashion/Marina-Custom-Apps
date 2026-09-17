@@ -117,6 +117,8 @@ def _sync_workspace():
             if field in data:
                 doc.set(field, data.get(field))
         for table in child_tables:
+            if table == "roles":
+                continue
             doc.set(table, [])
             for row in data.get(table, []):
                 doc.append(table, row)

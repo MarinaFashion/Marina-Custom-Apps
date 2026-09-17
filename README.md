@@ -4,6 +4,11 @@ Umbrella Frappe / ERPNext custom application for **Marina Trading Company**.
 
 Marina Custom Apps consolidates Marina's inventory planning, stock-transfer execution, transit control, and post-transfer auditing into one maintained Frappe application.
 
+The **Marina Custom Apps** workspace is a neutral navigation parent. Its child
+workspaces remain independently protected by Frappe module access, Workspace
+Roles, and DocType permissions. Administrator-added Workspace Roles are
+preserved during app migrations.
+
 ---
 
 ## Included Modules
