@@ -6,16 +6,68 @@ import frappe
 
 NEW_DATE_DOCTYPE = "Marina Calendar Date"
 NEW_EVENT_DOCTYPE = "Marina Calendar Event"
+
+
 def after_install():
+    _repair_calendar_date_metadata()
     _ensure_indexes()
     _sync_workspace()
     _point_forecasting_to_marina_calendar()
 
 
 def after_migrate():
+    _repair_calendar_date_metadata()
     _ensure_indexes()
     _sync_workspace()
     _point_forecasting_to_marina_calendar()
+
+
+def _repair_calendar_date_metadata():
+    """Keep bulk import enabled and remove the obsolete Date-unique metadata.
+
+    Marina Calendar Date already uses the Gregorian date as its document name,
+    and its controller rejects duplicate dates. Frappe v15 does not allow a
+    Date field to carry the DocField unique flag when Customize Form is saved.
+    """
+    if not frappe.db.exists("DocType", NEW_DATE_DOCTYPE):
+        return
+
+    frappe.db.set_value(
+        "DocType",
+        NEW_DATE_DOCTYPE,
+        "allow_import",
+        1,
+        update_modified=False,
+    )
+
+    date_field = frappe.db.exists(
+        "DocField",
+        {
+            "parent": NEW_DATE_DOCTYPE,
+            "parenttype": "DocType",
+            "fieldname": "date",
+        },
+    )
+    if date_field:
+        frappe.db.set_value(
+            "DocField",
+            date_field,
+            "unique",
+            0,
+            update_modified=False,
+        )
+
+    if frappe.db.exists("DocType", "Property Setter"):
+        frappe.db.delete(
+            "Property Setter",
+            {
+                "doc_type": NEW_DATE_DOCTYPE,
+                "field_name": "date",
+                "property": "unique",
+            },
+        )
+
+    frappe.clear_cache(doctype=NEW_DATE_DOCTYPE)
 
 
 def _point_forecasting_to_marina_calendar():
