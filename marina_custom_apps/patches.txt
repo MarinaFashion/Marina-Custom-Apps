@@ -1,2 +1,4 @@
+[pre_model_sync]
+
 [post_model_sync]
 marina_custom_apps.patches.v0_47_20.reset_operational_naming_series

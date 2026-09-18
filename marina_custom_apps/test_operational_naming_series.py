@@ -42,6 +42,12 @@ class OperationalNamingSeriesTests(unittest.TestCase):
                 self.assertIn(static_prefix, source)
         self.assertTrue(any(isinstance(node, ast.FunctionDef) and node.name == "execute" for node in tree.body))
 
+    def test_patch_file_declares_both_frappe_patch_phases(self):
+        patches = (self.app_root / "patches.txt").read_text(encoding="utf-8")
+        self.assertIn("[pre_model_sync]", patches)
+        self.assertIn("[post_model_sync]", patches)
+        self.assertLess(patches.index("[pre_model_sync]"), patches.index("[post_model_sync]"))
+
 
 if __name__ == "__main__":
     unittest.main()
