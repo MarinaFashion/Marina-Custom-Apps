@@ -1,3 +1,4 @@
+import ast
 import json
 import unittest
 from pathlib import Path
@@ -28,13 +29,26 @@ class PermissionManagerIntegrationTests(unittest.TestCase):
         modules = (self.app_root / "modules.txt").read_text(encoding="utf-8").splitlines()
         self.assertIn("Permission Manager", modules)
 
-    def test_workspace_is_a_system_manager_child(self):
+    def test_workspace_matches_standalone_source(self):
         self.assertEqual(self.workspace.get("module"), "Permission Manager")
-        self.assertEqual(self.workspace.get("parent_page"), "Marina Custom Apps")
+        self.assertEqual(self.workspace.get("parent_page"), "")
+        self.assertEqual(self.workspace.get("sequence_id"), 50.0)
         self.assertEqual(
             {row.get("role") for row in self.workspace.get("roles", [])},
             {"System Manager"},
         )
+
+    def test_migration_places_workspace_under_marina_umbrella(self):
+        tree = ast.parse((self.module_root / "install.py").read_text(encoding="utf-8"))
+        constants = {
+            node.targets[0].id: ast.literal_eval(node.value)
+            for node in tree.body
+            if isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+        }
+        self.assertEqual(constants["PARENT_WORKSPACE"], "Marina Custom Apps")
+        self.assertEqual(constants["WORKSPACE_NAME"], "Permission Manager Dashboard")
 
     def test_standalone_python_namespace_is_removed(self):
         stale = []

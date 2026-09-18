@@ -27,6 +27,15 @@ class MarinaUserPermissionManager {
     this.values_truncated = false;
     this.value_limit = 0;
     this.active_mode = "Permissions for User";
+    this.workflow = "create";
+    this.review_rows = [];
+    this.review_initial = new Map();
+    this.review_pending = new Set();
+    this.review_deleted = new Set();
+    this.review_loaded = false;
+    this.review_has_more = false;
+    this.review_next_start = 0;
+    this.review_loaded_filters = null;
 
     this.make_controls();
     this.make_body();
@@ -56,7 +65,9 @@ class MarinaUserPermissionManager {
       get_query: () => ({
         filters: { user_type: "System User", name: ["not in", ["Administrator", "Guest"]] },
       }),
-      change: () => this.handle_user_selection_change(),
+      change: () => this.is_review_mode()
+        ? this.handle_review_filter_change()
+        : this.handle_user_selection_change(),
     });
 
     this.allow_field = this.page.add_field({
@@ -112,7 +123,7 @@ class MarinaUserPermissionManager {
       fieldtype: "Select",
       options: ["All", "Active", "Inactive"],
       default: "Active",
-      change: () => this.render(),
+      change: () => this.is_review_mode() ? this.handle_review_filter_change() : this.render(),
     });
 
     this.status_field = this.page.add_field({
@@ -127,11 +138,19 @@ class MarinaUserPermissionManager {
       fieldname: "search",
       label: __("Search User"),
       fieldtype: "Data",
-      change: () => this.render(),
+      change: () => this.is_review_mode() ? this.handle_review_filter_change() : this.render(),
     });
 
     this.page.set_primary_action(__("Save Changes"), () => this.save_changes(), "check");
     this.page.add_inner_button(__("Discard Changes"), () => this.discard_changes());
+    this.page.add_inner_button(
+      __("Load Current Permissions"),
+      () => this.open_review_mode()
+    );
+    this.page.add_inner_button(
+      __("Create / Manage Permissions"),
+      () => this.open_create_mode()
+    );
     this.page.add_inner_button(
       __("User Permission List"),
       () => frappe.set_route("List", "User Permission"),
@@ -177,6 +196,17 @@ class MarinaUserPermissionManager {
     this.body.on("change", ".upm-value-default", (event) => this.handle_value_default(event));
     this.body.on("change", ".upm-bulk-value", (event) => this.handle_bulk_value(event));
     this.body.on("click", ".upm-value-link", (event) => this.handle_value_link(event));
+    this.body.on("change", ".upm-review-delete", (event) => this.handle_review_delete(event));
+    this.body.on("change", ".upm-review-delete-all", (event) => this.handle_review_delete_all(event));
+    this.body.on("change", ".upm-review-apply-all", (event) => this.handle_review_apply_all(event));
+    this.body.on("change", ".upm-review-default", (event) => this.handle_review_default(event));
+    this.body.on("click", ".upm-review-applicable", (event) => this.handle_review_applicable(event));
+    this.body.on("click", ".upm-review-load-more", () => this.load_current_permissions(true));
+    this.body.on("click", ".upm-review-link", (event) => this.handle_review_link(event));
+  }
+
+  is_review_mode() {
+    return this.workflow === "review";
   }
 
   is_value_mode() {
@@ -184,12 +214,55 @@ class MarinaUserPermissionManager {
   }
 
   has_pending() {
-    return this.value_pending.size > 0 || this.pending.size > 0;
+    return this.value_pending.size > 0 || this.pending.size > 0
+      || this.review_pending.size > 0 || this.review_deleted.size > 0;
   }
 
   apply_all_enabled() {
     const value = this.apply_all_field.get_value();
     return value === true || value === 1 || value === "1" || value === "true";
+  }
+
+  open_review_mode() {
+    if (this.is_review_mode()) {
+      if (this.has_pending()) {
+        frappe.confirm(
+          __("Discard the unsaved review changes and reload current permissions?"),
+          () => this.load_current_permissions()
+        );
+      } else {
+        this.load_current_permissions();
+      }
+      return;
+    }
+    const open = async () => {
+      this.workflow = "review";
+      this.clear_loaded_rule();
+      this.clear_loaded_values();
+      this.configure_mode();
+      await this.with_suppressed_changes(() => this.user_status_field.set_value("All"));
+      await this.load_current_permissions();
+    };
+    if (this.has_pending()) {
+      frappe.confirm(__("Discard the unsaved User Permission changes?"), open);
+    } else {
+      open();
+    }
+  }
+
+  open_create_mode() {
+    const open = () => {
+      this.workflow = "create";
+      this.clear_review();
+      this.configure_mode();
+      this.show_mode_empty();
+      this.update_save_button();
+    };
+    if (this.has_pending()) {
+      frappe.confirm(__("Discard the unsaved User Permission changes?"), open);
+    } else {
+      open();
+    }
   }
 
   handle_mode_change() {
@@ -215,7 +288,34 @@ class MarinaUserPermissionManager {
   }
 
   configure_mode() {
+    if (this.is_review_mode()) {
+      this.mode_field.toggle(false);
+      this.user_field.toggle(true);
+      this.user_field.df.reqd = 0;
+      this.user_field.refresh();
+      this.allow_field.df.reqd = 0;
+      this.allow_field.refresh();
+      this.value_field.toggle(false);
+      this.apply_all_field.toggle(false);
+      this.default_field.toggle(false);
+      this.applicable_field.toggle(true);
+      this.applicable_field.df.reqd = 0;
+      this.user_status_field.toggle(true);
+      this.status_field.df.options = [
+        "", "Modified", "Marked for Deletion", "Default", "Apply To All", "Scoped",
+      ];
+      this.status_field.set_value("");
+      this.status_field.refresh();
+      this.search_field.df.label = __("Search Permissions");
+      this.search_field.refresh();
+      this.search_field.$input?.attr("placeholder", __("Search Permissions"));
+      this.update_scope_controls();
+      return;
+    }
     const value_mode = this.is_value_mode();
+    this.mode_field.toggle(true);
+    this.allow_field.df.reqd = 1;
+    this.allow_field.refresh();
     this.user_field.toggle(value_mode);
     this.user_field.df.reqd = value_mode ? 1 : 0;
     this.value_field.toggle(!value_mode);
@@ -230,6 +330,7 @@ class MarinaUserPermissionManager {
     this.search_field.df.label = value_mode ? __("Search Value") : __("Search User");
     this.search_field.set_value("");
     this.search_field.refresh();
+    this.search_field.$input?.attr("placeholder", value_mode ? __("Search Value") : __("Search User"));
     this.update_scope_controls();
   }
 
@@ -252,6 +353,10 @@ class MarinaUserPermissionManager {
 
   handle_allow_change() {
     if (this.suppress_changes) return;
+    if (this.is_review_mode()) {
+      this.handle_review_filter_change();
+      return;
+    }
     const proceed = async () => {
       const allow = this.allow_field.get_value();
       if (this.is_value_mode()) this.clear_loaded_values();
@@ -282,6 +387,10 @@ class MarinaUserPermissionManager {
 
   handle_identity_change() {
     if (this.suppress_changes) return;
+    if (this.is_review_mode()) {
+      this.handle_review_filter_change();
+      return;
+    }
     this.confirm_current_change(() => (
       this.is_value_mode() ? this.load_user_values() : this.load_from_controls()
     ));
@@ -317,6 +426,14 @@ class MarinaUserPermissionManager {
   }
 
   update_scope_controls() {
+    if (this.is_review_mode()) {
+      this.apply_all_field.toggle(false);
+      this.default_field.toggle(false);
+      this.applicable_field.toggle(true);
+      this.applicable_field.df.reqd = 0;
+      this.applicable_field.refresh();
+      return;
+    }
     const apply_all = this.apply_all_enabled();
     this.applicable_field.toggle(!apply_all);
     this.applicable_field.df.reqd = apply_all ? 0 : 1;
@@ -349,6 +466,93 @@ class MarinaUserPermissionManager {
 
   value_rule_is_complete(rule) {
     return Boolean(rule.user && rule.allow && (rule.apply_to_all_doctypes || rule.applicable_for));
+  }
+
+  handle_review_filter_change() {
+    if (!this.review_loaded || this.suppress_changes) return;
+    const reload = () => this.load_current_permissions();
+    if (this.has_pending()) {
+      frappe.confirm(
+        __("Discard unsaved review changes and apply the new filters?"),
+        reload,
+        () => this.restore_review_filter_controls()
+      );
+    } else {
+      reload();
+    }
+  }
+
+  clear_review() {
+    this.review_rows = [];
+    this.review_initial.clear();
+    this.review_pending.clear();
+    this.review_deleted.clear();
+    this.review_loaded = false;
+    this.review_has_more = false;
+    this.review_next_start = 0;
+    this.review_loaded_filters = null;
+  }
+
+  review_filters() {
+    return {
+      user: this.user_field.get_value() || "",
+      user_status: this.user_status_field.get_value() || "All",
+      allow: this.allow_field.get_value() || "",
+      applicable_for: this.applicable_field.get_value() || "",
+      search: this.search_field.get_value() || "",
+    };
+  }
+
+  async load_current_permissions(append = false) {
+    if (!this.is_review_mode()) return;
+    if (append && this.has_pending()) {
+      frappe.msgprint(__("Save or discard the current changes before loading more records."));
+      return;
+    }
+    const filters = this.review_filters();
+    const response = await frappe.call({
+      method: "marina_custom_apps.permission_manager.api.user_permissions.get_current_user_permissions",
+      args: {
+        ...filters,
+        start: append ? this.review_next_start : 0,
+        page_length: 200,
+      },
+      freeze: true,
+      freeze_message: __("Loading current User Permissions..."),
+    });
+    const result = response.message || {};
+    if (!append) this.clear_review();
+    const rows = result.rows || [];
+    rows.forEach((row) => {
+      row.enabled = Boolean(row.enabled);
+      row.apply_to_all_doctypes = Boolean(row.apply_to_all_doctypes);
+      row.is_default = Boolean(row.is_default);
+      row.applicable_for = row.applicable_for || "";
+      this.review_rows.push(row);
+      this.review_initial.set(row.name, {
+        apply_to_all_doctypes: row.apply_to_all_doctypes,
+        applicable_for: row.applicable_for,
+        is_default: row.is_default,
+      });
+    });
+    this.review_loaded = true;
+    this.review_has_more = Boolean(result.has_more);
+    this.review_next_start = result.next_start || this.review_rows.length;
+    this.review_loaded_filters = filters;
+    this.update_save_button();
+    this.render();
+  }
+
+  async restore_review_filter_controls() {
+    if (!this.review_loaded_filters) return;
+    const filters = this.review_loaded_filters;
+    await this.with_suppressed_changes(async () => {
+      await this.user_field.set_value(filters.user || "");
+      await this.user_status_field.set_value(filters.user_status || "All");
+      await this.allow_field.set_value(filters.allow || "");
+      await this.applicable_field.set_value(filters.applicable_for || "");
+      await this.search_field.set_value(filters.search || "");
+    });
   }
 
   async load_user_values() {
@@ -480,8 +684,109 @@ class MarinaUserPermissionManager {
   }
 
   render() {
+    if (this.is_review_mode()) {
+      this.render_review_mode();
+      return;
+    }
     if (this.is_value_mode()) this.render_values_mode();
     else this.render_users_mode();
+  }
+
+  visible_review_rows() {
+    const status = this.status_field.get_value();
+    return this.review_rows.filter((row) => {
+      if (status === "Modified" && !this.review_pending.has(row.name)) return false;
+      if (status === "Marked for Deletion" && !this.review_deleted.has(row.name)) return false;
+      if (status === "Default" && !row.is_default) return false;
+      if (status === "Apply To All" && !row.apply_to_all_doctypes) return false;
+      if (status === "Scoped" && row.apply_to_all_doctypes) return false;
+      return true;
+    });
+  }
+
+  render_review_mode() {
+    if (!this.review_loaded) {
+      this.show_empty(__("Use Load Current Permissions to review existing User Permission records."));
+      return;
+    }
+    const visible = this.visible_review_rows();
+    const inactive = this.review_rows.filter((row) => !row.enabled).length;
+    const rows = visible.length
+      ? visible.map((row) => this.render_review_row(row)).join("")
+      : `<tr><td colspan="9" class="text-muted text-center p-4">${__("No permissions match the current filters.")}</td></tr>`;
+    const more = this.review_has_more
+      ? `<button class="btn btn-default btn-sm upm-review-load-more">${__("Load More")}</button>`
+      : "";
+    this.body.html(`
+      <section class="upm-summary">
+        <div><strong>${__("Current User Permissions")}</strong></div>
+        <div class="upm-metrics">
+          <span>${this.review_rows.length} ${__("loaded")}</span>
+          <span>${inactive} ${__("belong to inactive users")}</span>
+          <span>${this.review_pending.size} ${__("modified")}</span>
+          <span>${this.review_deleted.size} ${__("marked for deletion")}</span>
+          ${more}
+        </div>
+      </section>
+      <div class="alert alert-info upm-help">
+        ${__("This view loads existing records only. User, Allow, and Value stay unchanged; scope and Default can be edited, and selected records can be deleted.")}
+      </div>
+      <div class="upm-table-wrap upm-review-table-wrap">
+        <table class="table table-bordered upm-table upm-review-table">
+          <colgroup>
+            <col style="width:18%"><col style="width:8%">
+            <col style="width:13%"><col style="width:20%"><col style="width:8%">
+            <col style="width:14%"><col style="width:7%"><col style="width:8%"><col style="width:4%">
+          </colgroup>
+          <thead><tr>
+            <th>${__("User")}</th>
+            <th>${__("Status")}</th>
+            <th>${__("Allow")}</th>
+            <th>${__("Value")}</th>
+            <th>${__("Apply All")}</th>
+            <th>${__("Applicable For")}</th>
+            <th>${__("Default")}</th>
+            <th>${__("Permission")}</th>
+            <th class="upm-check-cell"><input type="checkbox" class="upm-review-delete-all" title="${__("Mark visible records for deletion")}"></th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `);
+    const deleted = visible.filter((row) => this.review_deleted.has(row.name)).length;
+    this.body.find(".upm-review-delete-all")
+      .prop("checked", Boolean(visible.length && deleted === visible.length))
+      .prop("indeterminate", deleted > 0 && deleted < visible.length);
+  }
+
+  render_review_row(row) {
+    const modified = this.review_pending.has(row.name) || this.review_deleted.has(row.name);
+    const deleting = this.review_deleted.has(row.name);
+    const row_class = `${modified ? " upm-row-modified" : ""}${deleting ? " upm-row-deleted" : ""}`;
+    const user_label = row.full_name === row.user
+      ? this.escape(row.user)
+      : `${this.escape(row.full_name)}<div class="text-muted">${this.escape(row.user)}</div>`;
+    const user_link = `<a class="upm-review-link" href="/app/user/${encodeURIComponent(row.user)}" data-doctype="User" data-name="${this.escape(row.user)}">${user_label} ↗</a>`;
+    const allow_link = `<a class="upm-review-link" href="/app/doctype/${frappe.router.slug(row.allow)}" data-doctype="DocType" data-name="${this.escape(row.allow)}">${this.escape(row.allow)} ↗</a>`;
+    const value_link = row.missing
+      ? `${this.escape(row.label)} <span class="indicator-pill orange">${__("Missing")}</span>`
+      : `<a class="upm-review-link" href="/app/${frappe.router.slug(row.allow)}/${encodeURIComponent(row.for_value)}" data-doctype="${this.escape(row.allow)}" data-name="${this.escape(row.for_value)}">${this.escape(row.label)} ↗</a>`;
+    const applicable = row.apply_to_all_doctypes
+      ? `<span class="text-muted">${__("All document types")}</span>`
+      : `<button class="btn btn-link btn-xs upm-review-applicable" data-name="${this.escape(row.name)}" ${deleting ? "disabled" : ""}>${this.escape(row.applicable_for || __("Select"))} ✎</button>`;
+    const permission = `<a class="upm-permission-link" href="/app/user-permission/${encodeURIComponent(row.name)}" data-name="${this.escape(row.name)}">${this.escape(row.name)} ↗</a>`;
+    return `
+      <tr class="upm-review-row${row_class}" data-name="${this.escape(row.name)}">
+        <td>${user_link}</td>
+        <td><span class="indicator-pill ${row.enabled ? "green" : "gray"}">${row.enabled ? __("Active") : __("Inactive")}</span></td>
+        <td>${allow_link}</td>
+        <td>${value_link}</td>
+        <td class="upm-check-cell"><input type="checkbox" class="upm-review-apply-all" data-name="${this.escape(row.name)}" ${row.apply_to_all_doctypes ? "checked" : ""} ${deleting ? "disabled" : ""}></td>
+        <td>${applicable}</td>
+        <td class="upm-check-cell"><input type="checkbox" class="upm-review-default" data-name="${this.escape(row.name)}" ${row.is_default ? "checked" : ""} ${deleting ? "disabled" : ""}></td>
+        <td>${permission}</td>
+        <td class="upm-check-cell"><input type="checkbox" class="upm-review-delete" data-name="${this.escape(row.name)}" ${deleting ? "checked" : ""}></td>
+      </tr>`;
   }
 
   render_users_mode() {
@@ -556,7 +861,7 @@ class MarinaUserPermissionManager {
       : this.current_value_rule.applicable_for;
     const rows = values.length
       ? values.map((value) => this.render_value(value)).join("")
-      : `<tr><td colspan="5" class="text-muted text-center p-4">${__("No values match the current filters.")}</td></tr>`;
+      : `<tr><td colspan="4" class="text-muted text-center p-4">${__("No values match the current filters.")}</td></tr>`;
     const inactive_warning = this.selected_user.enabled ? "" : `
       <div class="alert alert-warning upm-help">
         ${__("This user is inactive. Existing permissions can be removed, but new permissions cannot be assigned.")}
@@ -586,10 +891,9 @@ class MarinaUserPermissionManager {
       </div>
       <div class="upm-table-wrap">
         <table class="table table-bordered upm-table">
-          <colgroup><col style="width:31%"><col style="width:27%"><col style="width:20%"><col style="width:10%"><col style="width:12%"></colgroup>
+          <colgroup><col style="width:44%"><col style="width:28%"><col style="width:12%"><col style="width:16%"></colgroup>
           <thead><tr>
             <th>${__("Value")}</th>
-            <th>${__("Technical Name")}</th>
             <th>${__("User Permission Record")}</th>
             <th>${__("Default")}</th>
             <th class="upm-check-cell"><label><input type="checkbox" class="upm-bulk-value"> ${__("Assigned")}</label></th>
@@ -616,7 +920,6 @@ class MarinaUserPermissionManager {
     return `
       <tr class="upm-value-row${modified}" data-value="${this.escape(value.for_value)}">
         <td>${value_link}${missing}</td>
-        <td>${this.escape(value.for_value)}</td>
         <td>${value.assigned ? permission_link : `<span class="text-muted">—</span>`}</td>
         <td class="upm-check-cell"><input type="checkbox" class="upm-value-default"
           data-value="${this.escape(value.for_value)}" ${value.is_default ? "checked" : ""}
@@ -756,7 +1059,141 @@ class MarinaUserPermissionManager {
       .prop("disabled", !manageable.length);
   }
 
+  review_row(name) {
+    return this.review_rows.find((row) => row.name === name);
+  }
+
+  update_review_pending(row) {
+    const initial = this.review_initial.get(row.name);
+    const changed = initial && (
+      row.apply_to_all_doctypes !== initial.apply_to_all_doctypes
+      || row.applicable_for !== initial.applicable_for
+      || row.is_default !== initial.is_default
+    );
+    if (changed) this.review_pending.add(row.name);
+    else this.review_pending.delete(row.name);
+  }
+
+  handle_review_delete(event) {
+    const input = $(event.currentTarget);
+    const name = input.attr("data-name");
+    if (input.is(":checked")) this.review_deleted.add(name);
+    else this.review_deleted.delete(name);
+    this.update_save_button();
+    this.render();
+  }
+
+  handle_review_delete_all(event) {
+    const deleting = $(event.currentTarget).is(":checked");
+    this.visible_review_rows().forEach((row) => {
+      if (deleting) this.review_deleted.add(row.name);
+      else this.review_deleted.delete(row.name);
+    });
+    this.update_save_button();
+    this.render();
+  }
+
+  handle_review_apply_all(event) {
+    const input = $(event.currentTarget);
+    const row = this.review_row(input.attr("data-name"));
+    if (!row) return;
+    row.apply_to_all_doctypes = input.is(":checked");
+    if (row.apply_to_all_doctypes) row.applicable_for = "";
+    this.update_review_pending(row);
+    this.update_save_button();
+    this.render();
+  }
+
+  handle_review_default(event) {
+    const input = $(event.currentTarget);
+    const row = this.review_row(input.attr("data-name"));
+    if (!row) return;
+    row.is_default = input.is(":checked");
+    this.update_review_pending(row);
+    this.update_save_button();
+    this.render();
+  }
+
+  handle_review_applicable(event) {
+    event.preventDefault();
+    const row = this.review_row($(event.currentTarget).attr("data-name"));
+    if (!row || row.apply_to_all_doctypes || this.review_deleted.has(row.name)) return;
+    frappe.prompt(
+      [{
+        fieldname: "applicable_for",
+        label: __("Applicable For"),
+        fieldtype: "Link",
+        options: "DocType",
+        reqd: 1,
+        default: row.applicable_for,
+        get_query: () => ({
+          query: "frappe.core.doctype.user_permission.user_permission.get_applicable_for_doctype_list",
+          doctype: row.allow,
+        }),
+      }],
+      (values) => {
+        row.applicable_for = values.applicable_for;
+        this.update_review_pending(row);
+        this.update_save_button();
+        this.render();
+      },
+      __("Change Permission Scope"),
+      __("Apply")
+    );
+  }
+
+  handle_review_link(event) {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) return;
+    event.preventDefault();
+    const link = $(event.currentTarget);
+    const open = () => frappe.set_route("Form", link.attr("data-doctype"), link.attr("data-name"));
+    if (this.has_pending()) {
+      frappe.confirm(__("Open this record and leave the current unsaved changes?"), open);
+    } else {
+      open();
+    }
+  }
+
+  save_review_changes() {
+    const names = new Set([...this.review_pending, ...this.review_deleted]);
+    if (!names.size) {
+      frappe.show_alert({ message: __("There are no changes to save."), indicator: "blue" });
+      return;
+    }
+    const changes = [...names].map((name) => {
+      const row = this.review_row(name);
+      return {
+        name,
+        deleted: this.review_deleted.has(name) ? 1 : 0,
+        apply_to_all_doctypes: row.apply_to_all_doctypes ? 1 : 0,
+        applicable_for: row.applicable_for || "",
+        is_default: row.is_default ? 1 : 0,
+      };
+    });
+    frappe.confirm(
+      __("Save {0} existing User Permission changes? Records marked for deletion will be permanently removed.", [changes.length]),
+      async () => {
+        const response = await frappe.call({
+          method: "marina_custom_apps.permission_manager.api.user_permissions.save_current_user_permissions",
+          args: { changes },
+          freeze: true,
+          freeze_message: __("Saving current User Permissions..."),
+        });
+        const result = response.message || {};
+        frappe.show_alert({
+          message: __("Updated {0} and deleted {1} User Permissions.", [result.updated, result.deleted]),
+          indicator: "green",
+        });
+        await this.load_current_permissions();
+      }
+    );
+  }
+
   save_changes() {
+    if (this.is_review_mode()) {
+      this.save_review_changes();
+      return;
+    }
     if (this.is_value_mode()) {
       this.save_value_changes();
       return;
@@ -843,6 +1280,22 @@ class MarinaUserPermissionManager {
   }
 
   discard_changes() {
+    if (this.is_review_mode()) {
+      if (!this.review_pending.size && !this.review_deleted.size) return;
+      frappe.confirm(__("Discard all unsaved User Permission changes?"), () => {
+        this.review_rows.forEach((row) => {
+          const initial = this.review_initial.get(row.name);
+          row.apply_to_all_doctypes = initial.apply_to_all_doctypes;
+          row.applicable_for = initial.applicable_for;
+          row.is_default = initial.is_default;
+        });
+        this.review_pending.clear();
+        this.review_deleted.clear();
+        this.update_save_button();
+        this.render();
+      });
+      return;
+    }
     if (this.is_value_mode()) {
       this.discard_value_changes();
       return;
@@ -898,7 +1351,9 @@ class MarinaUserPermissionManager {
   }
 
   update_save_button() {
-    const count = this.is_value_mode() ? this.value_pending.size : this.pending.size;
+    const count = this.is_review_mode()
+      ? new Set([...this.review_pending, ...this.review_deleted]).size
+      : (this.is_value_mode() ? this.value_pending.size : this.pending.size);
     const label = count ? __("Save Changes ({0})", [count]) : __("Save Changes");
     this.page.set_primary_action(label, () => this.save_changes(), "check");
     this.page.btn_primary.prop("disabled", !count);

@@ -25,7 +25,8 @@ preserved during app migrations.
 
 ## Permission Manager transition
 
-Permission Manager v0.4.1 is integrated into this app without changing its
+Permission Manager v0.5.0 (source commit `e512f16`) is integrated into this app
+without changing its
 Desk routes or the names of its standard records. Existing Custom DocPerm,
 Custom Role, Block Module, Workspace Role, and User Permission records remain
 Frappe-owned data and are reused. During the transition, migrate Marina Custom

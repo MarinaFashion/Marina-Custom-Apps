@@ -7,6 +7,8 @@ import frappe
 from marina_custom_apps.permission_manager.api.user_permissions import (
 	_as_bool,
 	_rule_filters,
+	get_current_user_permissions,
+	save_current_user_permissions,
 	save_user_permission_values,
 	save_user_permission_users,
 )
@@ -224,3 +226,116 @@ class TestBulkUserPermissions(TestCase):
 		delete_doc.assert_called_once_with(
 			"User Permission", "UP-0002", ignore_permissions=True
 		)
+
+	@patch("marina_custom_apps.permission_manager.api.user_permissions._only_system_manager")
+	@patch.object(frappe, "get_meta", return_value=SimpleNamespace(title_field="title"))
+	@patch.object(frappe.db, "exists", return_value=True)
+	@patch.object(frappe, "get_all")
+	def test_current_permissions_include_user_status_and_value_label(
+		self, get_all, db_exists, get_meta, _only_system_manager
+	):
+		def rows(doctype, **kwargs):
+			if doctype == "User":
+				return [frappe._dict(name="inactive@example.com", full_name="Inactive User", enabled=0)]
+			if doctype == "User Permission":
+				return [
+					frappe._dict(
+						name="UP-0003",
+						user="inactive@example.com",
+						allow="POS Profile",
+						for_value="POS19",
+						apply_to_all_doctypes=0,
+						applicable_for="Sales Invoice",
+						is_default=0,
+					)
+				]
+			if doctype == "POS Profile":
+				return [frappe._dict(name="POS19", title="Makkah Mall")]
+			return []
+
+		get_all.side_effect = rows
+		result = get_current_user_permissions(user_status="Inactive")
+
+		self.assertEqual(result["rows"][0]["label"], "Makkah Mall")
+		self.assertFalse(result["rows"][0]["enabled"])
+		self.assertEqual(result["rows"][0]["applicable_for"], "Sales Invoice")
+
+	@patch("marina_custom_apps.permission_manager.api.user_permissions._only_system_manager")
+	@patch.object(frappe, "delete_doc")
+	@patch.object(frappe, "get_all")
+	def test_review_can_delete_existing_permission_for_inactive_user(
+		self, get_all, delete_doc, _only_system_manager
+	):
+		permission = frappe._dict(
+			name="UP-0004",
+			user="inactive@example.com",
+			allow="POS Profile",
+			for_value="POS19",
+			apply_to_all_doctypes=0,
+			applicable_for="Sales Invoice",
+			is_default=0,
+		)
+
+		def rows(doctype, **kwargs):
+			if doctype == "User":
+				return [frappe._dict(name="inactive@example.com")]
+			if doctype == "User Permission":
+				return [permission]
+			return []
+
+		get_all.side_effect = rows
+		result = save_current_user_permissions([{"name": "UP-0004", "deleted": 1}])
+
+		self.assertEqual(result, {"updated": 0, "deleted": 1})
+		delete_doc.assert_called_once_with("User Permission", "UP-0004", ignore_permissions=True)
+
+	@patch("marina_custom_apps.permission_manager.api.user_permissions._only_system_manager")
+	@patch(
+		"marina_custom_apps.permission_manager.api.user_permissions._validate_allow_scope",
+		return_value=(False, "Sales Invoice"),
+	)
+	@patch.object(frappe, "get_all")
+	def test_review_blocks_overlapping_default_permissions(
+		self, get_all, _validate_allow_scope, _only_system_manager
+	):
+		first = frappe._dict(
+			name="UP-0005",
+			user="active@example.com",
+			allow="POS Profile",
+			for_value="POS19",
+			apply_to_all_doctypes=0,
+			applicable_for="Sales Invoice",
+			is_default=0,
+		)
+		second = frappe._dict(
+			name="UP-0006",
+			user="active@example.com",
+			allow="POS Profile",
+			for_value="POS20",
+			apply_to_all_doctypes=0,
+			applicable_for="Sales Invoice",
+			is_default=1,
+		)
+		permission_calls = 0
+
+		def rows(doctype, **kwargs):
+			nonlocal permission_calls
+			if doctype == "User":
+				return [frappe._dict(name="active@example.com")]
+			if doctype == "User Permission":
+				permission_calls += 1
+				return [first] if permission_calls == 1 else [first, second]
+			return []
+
+		get_all.side_effect = rows
+		with self.assertRaises(frappe.ValidationError):
+			save_current_user_permissions(
+				[
+					{
+						"name": "UP-0005",
+						"apply_to_all_doctypes": 0,
+						"applicable_for": "Sales Invoice",
+						"is_default": 1,
+					}
+				]
+			)

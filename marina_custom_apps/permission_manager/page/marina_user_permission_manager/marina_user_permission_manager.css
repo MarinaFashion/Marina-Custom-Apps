@@ -85,6 +85,15 @@
   border-left: 3px solid var(--upm-accent);
 }
 
+.upm-row-deleted td {
+  color: var(--text-muted);
+  text-decoration-color: var(--text-muted);
+}
+
+.upm-row-deleted td:not(:last-child) {
+  opacity: 0.65;
+}
+
 .upm-root input[type="checkbox"] {
   accent-color: var(--upm-accent);
   height: 15px;
@@ -92,13 +101,29 @@
 }
 
 .upm-permission-link,
-.upm-value-link {
+.upm-value-link,
+.upm-review-link,
+.upm-review-applicable {
   color: var(--upm-accent);
+}
+
+.upm-permission-link {
   margin-left: 0.5rem;
 }
 
 .upm-value-link {
   margin-left: 0;
+}
+
+.upm-review-applicable {
+  overflow-wrap: anywhere;
+  padding: 0;
+  text-align: left;
+  white-space: normal;
+}
+
+.upm-review-table-wrap {
+  max-height: 72vh;
 }
 
 @media (max-width: 767px) {

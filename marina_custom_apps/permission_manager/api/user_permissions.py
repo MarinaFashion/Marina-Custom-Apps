@@ -9,6 +9,9 @@ from frappe.utils import cint, cstr
 
 MAX_BATCH_USERS = 500
 MAX_PERMISSION_VALUES = 2000
+DEFAULT_REVIEW_PAGE_LENGTH = 200
+MAX_REVIEW_PAGE_LENGTH = 500
+MAX_REVIEW_CHANGES = 2000
 STANDARD_USERS = ("Administrator", "Guest")
 
 
@@ -94,6 +97,295 @@ def _desk_users() -> list[Any]:
 		fields=["name", "full_name", "enabled"],
 		order_by="enabled desc, full_name asc, name asc",
 	)
+
+
+def _review_user_filters(user: str | None, user_status: str | None) -> dict[str, Any]:
+	filters: dict[str, Any] = {
+		"user_type": "System User",
+		"name": ("not in", STANDARD_USERS),
+	}
+	if user:
+		filters["name"] = user
+	status = cstr(user_status or "All").strip()
+	if status == "Active":
+		filters["enabled"] = 1
+	elif status == "Inactive":
+		filters["enabled"] = 0
+	elif status != "All":
+		frappe.throw(_("User Status must be All, Active, or Inactive."))
+	return filters
+
+
+@frappe.whitelist()
+def get_current_user_permissions(
+	user: str | None = None,
+	user_status: str | None = "All",
+	allow: str | None = None,
+	applicable_for: str | None = None,
+	search: str | None = None,
+	start: int | str = 0,
+	page_length: int | str = DEFAULT_REVIEW_PAGE_LENGTH,
+) -> dict[str, Any]:
+	"""Return existing User Permission records for bulk review and maintenance."""
+	_only_system_manager()
+	start = max(cint(start), 0)
+	page_length = min(max(cint(page_length) or DEFAULT_REVIEW_PAGE_LENGTH, 1), MAX_REVIEW_PAGE_LENGTH)
+	users = frappe.get_all(
+		"User",
+		filters=_review_user_filters(user, user_status),
+		fields=["name", "full_name", "enabled"],
+	)
+	user_map = {row.name: row for row in users}
+	if not user_map:
+		return {"rows": [], "has_more": False, "next_start": start, "page_length": page_length}
+
+	filters: dict[str, Any] = {"user": ("in", list(user_map))}
+	if allow:
+		filters["allow"] = allow
+	if applicable_for:
+		filters["applicable_for"] = applicable_for
+
+	search = cstr(search).strip()
+	or_filters = None
+	if search:
+		matching_users = [
+			row.name
+			for row in users
+			if search.casefold() in f"{row.name} {row.full_name or ''}".casefold()
+		]
+		or_filters = {
+			"allow": ("like", f"%{search}%"),
+			"for_value": ("like", f"%{search}%"),
+		}
+		if matching_users:
+			or_filters["user"] = ("in", matching_users)
+
+	permissions = frappe.get_all(
+		"User Permission",
+		filters=filters,
+		or_filters=or_filters,
+		fields=[
+			"name",
+			"user",
+			"allow",
+			"for_value",
+			"apply_to_all_doctypes",
+			"applicable_for",
+			"is_default",
+		],
+		order_by="user asc, allow asc, for_value asc, name asc",
+		limit_start=start,
+		limit_page_length=page_length + 1,
+	)
+	has_more = len(permissions) > page_length
+	permissions = permissions[:page_length]
+
+	labels: dict[tuple[str, str], str] = {}
+	values_by_allow: dict[str, list[str]] = defaultdict(list)
+	for row in permissions:
+		values_by_allow[row.allow].append(row.for_value)
+	for doctype, values in values_by_allow.items():
+		if not frappe.db.exists("DocType", doctype):
+			continue
+		meta = frappe.get_meta(doctype)
+		title_field = meta.title_field if meta.title_field and meta.title_field != "name" else None
+		fields = ["name", title_field] if title_field else ["name"]
+		for value in frappe.get_all(
+			doctype,
+			filters={"name": ("in", list(set(values)))},
+			fields=fields,
+			ignore_permissions=True,
+		):
+			labels[(doctype, value.name)] = value.get(title_field) or value.name if title_field else value.name
+
+	rows = []
+	for permission in permissions:
+		user_row = user_map[permission.user]
+		label = labels.get((permission.allow, permission.for_value))
+		rows.append(
+			{
+				"name": permission.name,
+				"user": permission.user,
+				"full_name": user_row.full_name or permission.user,
+				"enabled": bool(user_row.enabled),
+				"allow": permission.allow,
+				"for_value": permission.for_value,
+				"label": label or permission.for_value,
+				"missing": label is None,
+				"apply_to_all_doctypes": bool(permission.apply_to_all_doctypes),
+				"applicable_for": cstr(permission.applicable_for),
+				"is_default": bool(permission.is_default),
+			}
+		)
+
+	return {
+		"rows": rows,
+		"has_more": has_more,
+		"next_start": start + len(rows),
+		"page_length": page_length,
+	}
+
+
+def _scopes_overlap(first: dict[str, Any], second: dict[str, Any]) -> bool:
+	return bool(first["apply_to_all_doctypes"] or second["apply_to_all_doctypes"]) or (
+		cstr(first["applicable_for"]) == cstr(second["applicable_for"])
+	)
+
+
+@frappe.whitelist()
+def save_current_user_permissions(changes: str | list[dict[str, Any]]) -> dict[str, int]:
+	"""Update scope/default fields or delete existing User Permission records."""
+	_only_system_manager()
+	parsed_changes = frappe.parse_json(changes) if isinstance(changes, str) else changes
+	if not isinstance(parsed_changes, list):
+		frappe.throw(_("User Permission changes must be a list."))
+	if len(parsed_changes) > MAX_REVIEW_CHANGES:
+		frappe.throw(
+			_("A maximum of {0} existing permissions can be changed in one save.").format(
+				MAX_REVIEW_CHANGES
+			)
+		)
+	if any(not isinstance(change, dict) or not change.get("name") for change in parsed_changes):
+		frappe.throw(_("Every existing User Permission change must include its record name."))
+
+	names = [cstr(change["name"]) for change in parsed_changes]
+	if len(names) != len(set(names)):
+		frappe.throw(_("Each User Permission record can appear only once in the change list."))
+	existing = {
+		row.name: row
+		for row in frappe.get_all(
+			"User Permission",
+			filters={"name": ("in", names or [""])},
+			fields=[
+				"name",
+				"user",
+				"allow",
+				"for_value",
+				"apply_to_all_doctypes",
+				"applicable_for",
+				"is_default",
+			],
+		)
+	}
+	if set(existing) != set(names):
+		frappe.throw(_("One or more User Permission records no longer exist. Reload and try again."))
+	manageable_users = {
+		row.name
+		for row in frappe.get_all(
+			"User",
+			filters={
+				"user_type": "System User",
+				"name": ("in", list({row.user for row in existing.values()}) or [""]),
+			},
+			fields=["name"],
+		)
+	}
+	if any(row.user in STANDARD_USERS or row.user not in manageable_users for row in existing.values()):
+		frappe.throw(_("One or more User Permission records do not belong to a manageable Desk user."))
+
+	desired: dict[str, dict[str, Any]] = {}
+	affected_pairs: set[tuple[str, str]] = set()
+	default_candidates: set[str] = set()
+	for change in parsed_changes:
+		name = cstr(change["name"])
+		row = existing[name]
+		deleted = _as_bool(change.get("deleted"))
+		state = {
+			"name": name,
+			"user": row.user,
+			"allow": row.allow,
+			"for_value": row.for_value,
+			"deleted": deleted,
+			"apply_to_all_doctypes": bool(row.apply_to_all_doctypes),
+			"applicable_for": cstr(row.applicable_for),
+			"is_default": bool(row.is_default),
+		}
+		if not deleted:
+			apply_all, applicable = _validate_allow_scope(
+				row.allow,
+				change.get("apply_to_all_doctypes", row.apply_to_all_doctypes),
+				change.get("applicable_for", row.applicable_for),
+			)
+			state.update(
+				{
+					"apply_to_all_doctypes": apply_all,
+					"applicable_for": applicable,
+					"is_default": _as_bool(change.get("is_default", row.is_default)),
+				}
+			)
+		desired[name] = state
+		affected_pairs.add((row.user, row.allow))
+		if not deleted and state["is_default"] and (
+			not bool(row.is_default)
+			or bool(row.apply_to_all_doctypes) != state["apply_to_all_doctypes"]
+			or cstr(row.applicable_for) != state["applicable_for"]
+		):
+			default_candidates.add(name)
+
+	# Validate defaults introduced or moved by this request against the complete final state.
+	for user, allow in affected_pairs:
+		final_rows = []
+		for row in frappe.get_all(
+			"User Permission",
+			filters={"user": user, "allow": allow},
+			fields=["name", "for_value", "apply_to_all_doctypes", "applicable_for", "is_default"],
+		):
+			state = desired.get(row.name)
+			if state and state["deleted"]:
+				continue
+			final_rows.append(state or row)
+		defaults = [row for row in final_rows if bool(row["is_default"])]
+		for first in defaults:
+			if first["name"] not in default_candidates:
+				continue
+			for second in defaults:
+				if first["name"] != second["name"] and _scopes_overlap(first, second):
+					frappe.throw(
+						_("Conflicting default {0} permissions remain for {1}: {2} and {3}.").format(
+							frappe.bold(allow), user, first["for_value"], second["for_value"]
+						)
+					)
+
+	updated_names: set[str] = set()
+	deleted = 0
+	# Clear defaults first so moving a default between scopes cannot trip document validation.
+	for name, state in desired.items():
+		row = existing[name]
+		if row.is_default and (
+			state["deleted"]
+			or not state["is_default"]
+			or bool(row.apply_to_all_doctypes) != state["apply_to_all_doctypes"]
+			or cstr(row.applicable_for) != state["applicable_for"]
+		):
+			doc = frappe.get_doc("User Permission", name)
+			doc.is_default = 0
+			doc.save(ignore_permissions=True)
+			updated_names.add(name)
+
+	for name, state in desired.items():
+		if state["deleted"]:
+			frappe.delete_doc("User Permission", name, ignore_permissions=True)
+			deleted += 1
+
+	for name, state in desired.items():
+		if state["deleted"]:
+			continue
+		row = existing[name]
+		scope_changed = (
+			bool(row.apply_to_all_doctypes) != state["apply_to_all_doctypes"]
+			or cstr(row.applicable_for) != state["applicable_for"]
+		)
+		current_default = bool(row.is_default) and name not in updated_names
+		if scope_changed or current_default != state["is_default"]:
+			doc = frappe.get_doc("User Permission", name)
+			doc.apply_to_all_doctypes = int(state["apply_to_all_doctypes"])
+			doc.applicable_for = state["applicable_for"]
+			doc.is_default = int(state["is_default"])
+			doc.save(ignore_permissions=True)
+			updated_names.add(name)
+
+	deleted_names = {name for name, state in desired.items() if state["deleted"]}
+	return {"updated": len(updated_names - deleted_names), "deleted": deleted}
 
 
 @frappe.whitelist()
