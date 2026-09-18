@@ -1,12 +1,13 @@
 {
  "actions": [],
  "allow_rename": 0,
- "autoname": "format:SFR-{YYYY}-{#####}",
+ "autoname": "naming_series:",
  "creation": "2026-09-03 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "setup_section",
+  "naming_series",
   "run_type",
   "status",
   "as_of_date",
@@ -44,6 +45,15 @@
    "fieldname": "setup_section",
    "fieldtype": "Section Break",
    "label": "Forecast Setup"
+  },
+  {
+   "default": "SFR-.YYYY.-.#####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "SFR-.YYYY.-.#####",
+   "reqd": 1,
+   "set_only_once": 1
   },
   {
    "fieldname": "run_type",

@@ -34,6 +34,10 @@ Apps before removing the standalone `marina_permission_manager` app. After the
 standalone app is removed, run migrate again so Marina Custom Apps recreates
 and takes ownership of the shared module assets.
 
+Operational document identifiers use configurable Naming Series. The v0.47.20
+migration resets each Marina operational series once so its next generated
+number starts at `00001`; existing document names are not renamed.
+
 ---
 
 ## 1. Stock Transfer Control

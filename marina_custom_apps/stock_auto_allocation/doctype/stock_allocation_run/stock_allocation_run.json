@@ -1,12 +1,13 @@
 {
  "actions": [],
  "allow_rename": 0,
- "autoname": "SAR-.YYYY.-.#####",
+ "autoname": "naming_series:",
  "creation": "2026-08-04 00:00:00.000000",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "naming_series",
   "company",
   "dc_warehouse",
   "status",
@@ -46,6 +47,15 @@
   "amended_from"
  ],
  "fields": [
+  {
+   "default": "SAR-.YYYY.-.#####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "SAR-.YYYY.-.#####",
+   "reqd": 1,
+   "set_only_once": 1
+  },
   {
    "fieldname": "company",
    "fieldtype": "Link",

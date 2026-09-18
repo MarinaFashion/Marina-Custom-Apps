@@ -1,12 +1,13 @@
 {
  "actions": [],
  "allow_rename": 0,
- "autoname": "format:STA-RUN-{#####}",
+ "autoname": "naming_series:",
  "creation": "2026-08-27 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "date_section",
+  "naming_series",
   "from_date",
   "to_date",
   "status_column",
@@ -28,6 +29,15 @@
    "fieldname": "date_section",
    "fieldtype": "Section Break",
    "label": "Audit Period"
+  },
+  {
+   "default": "STA-RUN-.#####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "STA-RUN-.#####",
+   "reqd": 1,
+   "set_only_once": 1
   },
   {
    "fieldname": "from_date",

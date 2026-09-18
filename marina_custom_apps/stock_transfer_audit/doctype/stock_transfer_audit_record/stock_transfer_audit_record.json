@@ -1,12 +1,13 @@
 {
  "actions": [],
  "allow_rename": 0,
- "autoname": "format:STA-REC-{#####}",
+ "autoname": "naming_series:",
  "creation": "2026-08-27 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "identity_section",
+  "naming_series",
   "record_type",
   "processing_status",
   "audit_result",
@@ -39,6 +40,15 @@
    "fieldname": "identity_section",
    "fieldtype": "Section Break",
    "label": "Audit Identity"
+  },
+  {
+   "default": "STA-REC-.#####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "STA-REC-.#####",
+   "reqd": 1,
+   "set_only_once": 1
   },
   {
    "fieldname": "record_type",
