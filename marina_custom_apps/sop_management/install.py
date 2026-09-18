@@ -627,6 +627,7 @@ def sync_module_workspace_hierarchy():
         ("Stock Transfer Audit", 6.0),
         ("Cycle Count", 7.0),
         ("SOP Management", 8.0),
+        ("Permission Manager Dashboard", 9.0),
     )
 
     # Preserve the approved icons; enforce only hierarchy and exact order.

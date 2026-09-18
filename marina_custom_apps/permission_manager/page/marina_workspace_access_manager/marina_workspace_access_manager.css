@@ -1,0 +1,112 @@
+.wam-root {
+  --wam-accent: #551c25;
+  margin-top: 1rem;
+}
+
+.wam-summary {
+  align-items: center;
+  background: var(--fg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem;
+}
+
+.wam-open-workspace {
+  color: var(--wam-accent) !important;
+  font-size: 1.1rem;
+  font-weight: 650;
+  padding: 0;
+}
+
+.wam-metrics {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}
+
+.wam-notice {
+  margin: 0.75rem 0 0;
+}
+
+.wam-help {
+  font-size: var(--text-sm);
+  margin: 0.75rem 0;
+}
+
+.wam-empty {
+  align-items: center;
+  background: var(--fg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  display: flex;
+  justify-content: center;
+  min-height: 280px;
+  padding: 2rem;
+}
+
+.wam-table-wrap {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  max-height: 68vh;
+  overflow: auto;
+}
+
+.wam-table {
+  margin: 0;
+  min-width: 0;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.wam-table th,
+.wam-table td {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  padding: 0.55rem 0.65rem !important;
+  vertical-align: middle !important;
+}
+
+.wam-table thead th {
+  background: var(--subtle-fg);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.wam-check-cell {
+  text-align: center;
+}
+
+.wam-check-cell label {
+  font-weight: 600;
+  margin: 0;
+}
+
+.wam-row-modified td {
+  background: var(--alert-bg);
+}
+
+.wam-row-modified td:first-child {
+  border-left: 3px solid var(--wam-accent);
+}
+
+.wam-root input[type="checkbox"] {
+  accent-color: var(--wam-accent);
+  height: 15px;
+  width: 15px;
+}
+
+@media (max-width: 767px) {
+  .wam-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .wam-table {
+    min-width: 680px;
+  }
+}

@@ -1,0 +1,114 @@
+.upm-root {
+  --upm-accent: #551c25;
+  margin-top: 1rem;
+}
+
+.upm-summary {
+  align-items: center;
+  background: var(--fg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  display: flex;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+}
+
+.upm-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.upm-metrics span {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.upm-help {
+  margin: 0.75rem 0;
+}
+
+.upm-empty {
+  align-items: center;
+  background: var(--fg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  display: flex;
+  justify-content: center;
+  min-height: 280px;
+  padding: 2rem;
+}
+
+.upm-table-wrap {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  max-height: 68vh;
+  overflow: auto;
+}
+
+.upm-table {
+  margin: 0;
+  min-width: 0;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.upm-table th,
+.upm-table td {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  padding: 0.5rem 0.6rem !important;
+  vertical-align: middle !important;
+}
+
+.upm-table thead th {
+  background: var(--subtle-fg);
+  position: sticky;
+  text-align: center;
+  top: 0;
+  z-index: 2;
+}
+
+.upm-check-cell {
+  text-align: center;
+}
+
+.upm-check-cell label {
+  margin: 0;
+}
+
+.upm-row-modified td {
+  background: var(--alert-bg);
+}
+
+.upm-row-modified td:first-child {
+  border-left: 3px solid var(--upm-accent);
+}
+
+.upm-root input[type="checkbox"] {
+  accent-color: var(--upm-accent);
+  height: 15px;
+  width: 15px;
+}
+
+.upm-permission-link,
+.upm-value-link {
+  color: var(--upm-accent);
+  margin-left: 0.5rem;
+}
+
+.upm-value-link {
+  margin-left: 0;
+}
+
+@media (max-width: 767px) {
+  .upm-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .upm-table {
+    min-width: 720px;
+  }
+}

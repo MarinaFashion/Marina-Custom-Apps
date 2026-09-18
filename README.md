@@ -19,6 +19,19 @@ preserved during app migrations.
 | **Stock Transfer Audit** | Reconciles sent vs received quantities and manages transfer discrepancies. |
 | **DC Dispatch** | Plans the initial dispatch of new merchandise from the Distribution Center to stores. |
 | **Stock Auto Allocation** | Reallocates existing stock between DC and stores based on sales performance, availability, and sell-through potential. |
+| **Permission Manager** | Provides System Managers with bulk role, module, Workspace, Page, Report, and User Permission controls. |
+
+---
+
+## Permission Manager transition
+
+Permission Manager v0.4.1 is integrated into this app without changing its
+Desk routes or the names of its standard records. Existing Custom DocPerm,
+Custom Role, Block Module, Workspace Role, and User Permission records remain
+Frappe-owned data and are reused. During the transition, migrate Marina Custom
+Apps before removing the standalone `marina_permission_manager` app. After the
+standalone app is removed, run migrate again so Marina Custom Apps recreates
+and takes ownership of the shared module assets.
 
 ---
 

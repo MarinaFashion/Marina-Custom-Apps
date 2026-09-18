@@ -1,0 +1,21 @@
+{
+  "creation": "2026-09-17 00:00:00.000000",
+  "docstatus": 0,
+  "doctype": "Page",
+  "icon": "fa fa-lock",
+  "idx": 0,
+  "modified": "2026-09-17 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "Permission Manager",
+  "name": "marina-permission-manager",
+  "owner": "Administrator",
+  "page_name": "marina-permission-manager",
+  "roles": [
+    {
+      "role": "System Manager"
+    }
+  ],
+  "standard": "Yes",
+  "system_page": 0,
+  "title": "Permission Manager"
+}

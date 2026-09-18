@@ -1,0 +1,135 @@
+.mum-root {
+  --mpm-accent: #551c25;
+  --mpm-soft: #f2ebe7;
+  margin-top: 1rem;
+}
+
+.mum-root .mpm-empty {
+  align-items: center;
+  background: var(--fg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  display: flex;
+  justify-content: center;
+  min-height: 280px;
+  padding: 2rem;
+}
+
+.mum-root .mpm-table-wrap {
+  max-height: 68vh;
+  overflow: auto;
+}
+
+.mum-root .mpm-table {
+  margin: 0;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.mum-root .mpm-table th,
+.mum-root .mpm-table td {
+  font-size: 12px;
+  padding: 0.45rem 0.5rem !important;
+  vertical-align: middle !important;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.mum-root .mpm-table thead th {
+  background: var(--subtle-fg);
+  position: sticky;
+  text-align: center;
+  top: 0;
+  z-index: 3;
+}
+
+.mum-root .mpm-check-cell {
+  width: 13%;
+  text-align: center;
+}
+
+.mum-root .mpm-row-modified td {
+  background-color: var(--alert-bg);
+}
+
+.mum-root .mpm-row-modified .mum-user-column {
+  border-left: 3px solid var(--mpm-accent);
+}
+
+.mum-root input[type="checkbox"] {
+  accent-color: var(--mpm-accent);
+  cursor: pointer;
+  height: 15px;
+  width: 15px;
+}
+
+.mum-summary {
+  align-items: center;
+  background: var(--fg-color);
+  border: 1px solid var(--border-color);
+  border-bottom: 0;
+  border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  padding: 0.8rem 1rem;
+}
+
+.mum-summary span:not(:first-child) {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.mum-warning {
+  margin-bottom: 0.75rem;
+}
+
+.mum-table-wrap {
+  border: 1px solid var(--border-color);
+  border-radius: 0 0 var(--border-radius-md) var(--border-radius-md);
+}
+
+.mum-table {
+  min-width: 0;
+}
+
+.mum-user-column {
+  background: var(--fg-color);
+  left: 0;
+  position: sticky;
+  text-align: left !important;
+  width: 31%;
+  z-index: 2;
+}
+
+.mum-email-column {
+  width: 37%;
+}
+
+.mum-profile-column {
+  width: 19%;
+}
+
+.mum-table thead .mum-user-column {
+  background: var(--subtle-fg);
+  z-index: 5;
+}
+
+.mum-bulk-label {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.4rem;
+  justify-content: center;
+  margin: 0;
+}
+
+.mum-help {
+  font-size: var(--text-sm);
+  padding: 0.75rem 0.25rem;
+}
+
+@media (max-width: 767px) {
+  .mum-table {
+    min-width: 620px;
+  }
+}

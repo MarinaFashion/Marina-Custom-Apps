@@ -55,6 +55,8 @@ def after_install():
     cycle_count_after_install()
     from marina_custom_apps.sop_management.install import after_install as sop_after_install
     sop_after_install()
+    from marina_custom_apps.permission_manager.install import after_install as permission_manager_after_install
+    permission_manager_after_install()
 
 
 def after_migrate():
@@ -80,6 +82,8 @@ def after_migrate():
     cycle_count_after_migrate()
     from marina_custom_apps.sop_management.install import after_migrate as sop_after_migrate
     sop_after_migrate()
+    from marina_custom_apps.permission_manager.install import after_migrate as permission_manager_after_migrate
+    permission_manager_after_migrate()
 
 
 def _ensure_custom_fields():

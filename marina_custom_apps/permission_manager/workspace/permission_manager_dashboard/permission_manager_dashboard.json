@@ -1,0 +1,186 @@
+{
+  "charts": [],
+  "content": "[{\"id\":\"pm-overview-header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Access Overview</b></span>\",\"col\":12}},{\"id\":\"pm-active-users\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Active Desk Users\",\"col\":4}},{\"id\":\"pm-active-modules\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Active Modules\",\"col\":4}},{\"id\":\"pm-active-workspaces\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Active Workspaces\",\"col\":4}},{\"id\":\"pm-spacer-1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"pm-management-header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Permission Management</b></span>\",\"col\":12}},{\"id\":\"pm-role-matrix\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Role Permission Matrix\",\"col\":3}},{\"id\":\"pm-user-modules\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"User Module Access\",\"col\":3}},{\"id\":\"pm-page-report-matrix\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Page and Report Permissions\",\"col\":3}},{\"id\":\"pm-workspace-access\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Workspace Access Manager\",\"col\":3}},{\"id\":\"pm-user-permissions\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Bulk User Permissions\",\"col\":3}},{\"id\":\"pm-spacer-2\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"pm-reports-header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Access Reports</b></span>\",\"col\":12}},{\"id\":\"pm-users-per-module\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Users Available per Module\",\"col\":4}},{\"id\":\"pm-user-module-summary\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"User Module Access Summary\",\"col\":4}},{\"id\":\"pm-spacer-3\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"pm-config-header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Configuration</b></span>\",\"col\":12}},{\"id\":\"pm-config-card\",\"type\":\"card\",\"data\":{\"card_name\":\"Access Configuration\",\"col\":6}},{\"id\":\"pm-standard-card\",\"type\":\"card\",\"data\":{\"card_name\":\"Standard Permission Tools\",\"col\":6}}]",
+  "creation": "2026-09-18 00:00:00.000000",
+  "custom_blocks": [],
+  "docstatus": 0,
+  "doctype": "Workspace",
+  "for_user": "",
+  "hide_custom": 0,
+  "icon": "lock",
+  "idx": 0,
+  "is_hidden": 0,
+  "label": "Permission Manager Dashboard",
+  "links": [
+    {
+      "hidden": 0,
+      "is_query_report": 0,
+      "label": "Access Configuration",
+      "link_count": 5,
+      "onboard": 0,
+      "type": "Card Break"
+    },
+    {
+      "hidden": 0,
+      "is_query_report": 0,
+      "label": "Users",
+      "link_count": 0,
+      "link_to": "User",
+      "link_type": "DocType",
+      "onboard": 0,
+      "type": "Link"
+    },
+    {
+      "hidden": 0,
+      "is_query_report": 0,
+      "label": "Roles",
+      "link_count": 0,
+      "link_to": "Role",
+      "link_type": "DocType",
+      "onboard": 0,
+      "type": "Link"
+    },
+    {
+      "hidden": 0,
+      "is_query_report": 0,
+      "label": "Role Profiles",
+      "link_count": 0,
+      "link_to": "Role Profile",
+      "link_type": "DocType",
+      "onboard": 0,
+      "type": "Link"
+    },
+    {
+      "hidden": 0,
+      "is_query_report": 0,
+      "label": "Module Profiles",
+      "link_count": 0,
+      "link_to": "Module Profile",
+      "link_type": "DocType",
+      "onboard": 0,
+      "type": "Link"
+    },
+    {
+      "hidden": 0,
+      "is_query_report": 0,
+      "label": "Workspaces",
+      "link_count": 0,
+      "link_to": "Workspace",
+      "link_type": "DocType",
+      "onboard": 0,
+      "type": "Link"
+    },
+    {
+      "hidden": 0,
+      "is_query_report": 0,
+      "label": "Standard Permission Tools",
+      "link_count": 3,
+      "onboard": 0,
+      "type": "Card Break"
+    },
+    {
+      "hidden": 0,
+      "is_query_report": 0,
+      "label": "Role Permission for Page and Report",
+      "link_count": 0,
+      "link_to": "Role Permission for Page and Report",
+      "link_type": "DocType",
+      "onboard": 0,
+      "type": "Link"
+    },
+    {
+      "hidden": 0,
+      "is_query_report": 0,
+      "label": "User Permissions",
+      "link_count": 0,
+      "link_to": "User Permission",
+      "link_type": "DocType",
+      "onboard": 0,
+      "type": "Link"
+    },
+    {
+      "hidden": 0,
+      "is_query_report": 0,
+      "label": "Document Shares",
+      "link_count": 0,
+      "link_to": "Document Share Report",
+      "link_type": "Report",
+      "onboard": 0,
+      "type": "Link"
+    }
+  ],
+  "modified": "2026-09-18 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "Permission Manager",
+  "name": "Permission Manager Dashboard",
+  "number_cards": [
+    {
+      "label": "Active Desk Users",
+      "number_card_name": "Active Desk Users"
+    },
+    {
+      "label": "Active Modules",
+      "number_card_name": "Active Modules"
+    },
+    {
+      "label": "Active Workspaces",
+      "number_card_name": "Active Workspaces"
+    }
+  ],
+  "owner": "Administrator",
+  "parent_page": "Marina Custom Apps",
+  "public": 1,
+  "quick_lists": [],
+  "restrict_to_domain": "",
+  "roles": [
+    {
+      "role": "System Manager"
+    }
+  ],
+  "sequence_id": 9.0,
+  "shortcuts": [
+    {
+      "color": "Grey",
+      "label": "Role Permission Matrix",
+      "link_to": "marina-permission-manager",
+      "type": "Page"
+    },
+    {
+      "color": "Grey",
+      "label": "User Module Access",
+      "link_to": "marina-user-module-manager",
+      "type": "Page"
+    },
+    {
+      "color": "Grey",
+      "label": "Page and Report Permissions",
+      "link_to": "marina-page-report-permission-manager",
+      "type": "Page"
+    },
+    {
+      "color": "Grey",
+      "label": "Workspace Access Manager",
+      "link_to": "marina-workspace-access-manager",
+      "type": "Page"
+    },
+    {
+      "color": "Grey",
+      "label": "Bulk User Permissions",
+      "link_to": "marina-user-permission-manager",
+      "type": "Page"
+    },
+    {
+      "color": "Grey",
+      "label": "Users Available per Module",
+      "link_to": "Users Available per Module",
+      "type": "Report"
+    },
+    {
+      "color": "Grey",
+      "label": "User Module Access Summary",
+      "link_to": "User Module Access Summary",
+      "type": "Report"
+    }
+  ],
+  "title": "Permission Manager Dashboard"
+}

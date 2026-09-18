@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Permission Manager">
+  <rect width="64" height="64" rx="14" fill="#551C25"/>
+  <rect x="12" y="15" width="40" height="34" rx="6" fill="#F2EBE7"/>
+  <path d="M20 25h24M20 32h24M20 39h24" stroke="#C0A392" stroke-width="3" stroke-linecap="round"/>
+  <path d="m22 24 2 2 4-5M22 31l2 2 4-5M22 38l2 2 4-5" fill="none" stroke="#551C25" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M37 21h8M37 28h8M37 35h8" stroke="#551C25" stroke-width="2.5" stroke-linecap="round"/>
+</svg>

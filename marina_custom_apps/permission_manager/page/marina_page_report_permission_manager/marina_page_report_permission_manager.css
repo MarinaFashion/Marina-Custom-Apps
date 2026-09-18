@@ -1,0 +1,146 @@
+.prpm-root {
+  --prpm-accent: #551c25;
+  --prpm-soft: #f2ebe7;
+  margin-top: 1rem;
+}
+
+.prpm-empty {
+  align-items: center;
+  background: var(--fg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  display: flex;
+  justify-content: center;
+  min-height: 280px;
+  padding: 2rem;
+}
+
+.prpm-app-title {
+  color: var(--prpm-accent);
+  font-weight: 650;
+  margin: 1.5rem 0 0.65rem;
+}
+
+.prpm-module {
+  background: var(--fg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+}
+
+.prpm-module-header {
+  align-items: center;
+  background: var(--fg-color);
+  border: 0;
+  color: var(--text-color);
+  display: flex;
+  gap: 0.65rem;
+  padding: 0.8rem 1rem;
+  text-align: left;
+  width: 100%;
+}
+
+.prpm-module-header:hover {
+  background: var(--prpm-soft);
+}
+
+.prpm-caret {
+  color: var(--prpm-accent);
+  width: 1rem;
+}
+
+.prpm-module-name {
+  font-weight: 600;
+}
+
+.prpm-module-summary {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  margin-left: auto;
+}
+
+.prpm-table-wrap {
+  border-top: 1px solid var(--border-color);
+  max-height: 68vh;
+  overflow: auto;
+}
+
+.prpm-table {
+  margin: 0;
+  min-width: 960px;
+}
+
+.prpm-table th,
+.prpm-table td {
+  font-size: 12px;
+  padding: 0.45rem 0.5rem !important;
+  vertical-align: middle !important;
+  white-space: nowrap;
+}
+
+.prpm-table thead th {
+  background: var(--subtle-fg);
+  position: sticky;
+  text-align: center;
+  top: 0;
+  z-index: 3;
+}
+
+.prpm-name-column {
+  background: var(--fg-color);
+  left: 0;
+  min-width: 240px;
+  position: sticky;
+  text-align: left !important;
+  z-index: 2;
+}
+
+.prpm-table thead .prpm-name-column {
+  background: var(--subtle-fg);
+  z-index: 5;
+}
+
+.prpm-resource-link {
+  color: var(--prpm-accent);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.prpm-resource-link:hover,
+.prpm-resource-link:focus {
+  color: var(--prpm-accent);
+  text-decoration: underline;
+}
+
+.prpm-check-cell {
+  min-width: 105px;
+  text-align: center;
+}
+
+.prpm-bulk-label {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.4rem;
+  justify-content: center;
+  margin: 0;
+}
+
+.prpm-row-modified td {
+  background-color: var(--alert-bg);
+}
+
+.prpm-row-modified .prpm-name-column {
+  border-left: 3px solid var(--prpm-accent);
+}
+
+.prpm-root input[type="checkbox"] {
+  accent-color: var(--prpm-accent);
+  cursor: pointer;
+  height: 15px;
+  width: 15px;
+}
+
+.prpm-root input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
