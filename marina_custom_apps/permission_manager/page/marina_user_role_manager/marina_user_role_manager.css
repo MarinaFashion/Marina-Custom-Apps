@@ -1,0 +1,12 @@
+.mrm-root { --mrm-accent: #551c25; margin-top: 1rem; }
+.mrm-root .mrm-empty { display:flex; align-items:center; justify-content:center; min-height:240px; background:var(--fg-color); border:1px solid var(--border-color); border-radius:var(--border-radius-md); padding:2rem; }
+.mrm-root .mrm-summary { background:var(--fg-color); border:1px solid var(--border-color); border-radius:var(--border-radius-md) var(--border-radius-md) 0 0; padding:0.9rem 1rem; display:flex; gap:1rem; flex-wrap:wrap; }
+.mrm-root .mrm-table-wrap { max-height:68vh; overflow:auto; border:1px solid var(--border-color); border-top:0; border-radius:0 0 var(--border-radius-md) var(--border-radius-md); }
+.mrm-root .mrm-table { margin:0; min-width:650px; }
+.mrm-root .mrm-table th, .mrm-root .mrm-table td { padding:0.5rem !important; vertical-align:middle !important; overflow-wrap:anywhere; }
+.mrm-root .mrm-table thead th { background:var(--subtle-fg); position:sticky; top:0; z-index:2; }
+.mrm-root .mrm-modified td { background:var(--alert-bg); }
+.mrm-root .mrm-table input[type="checkbox"] { accent-color:var(--mrm-accent); width:16px; height:16px; cursor:pointer; }
+.mrm-root .mrm-table input[type="checkbox"]:disabled { cursor:not-allowed; }
+.mrm-root .mrm-check { width:150px; text-align:center; }
+.mrm-root .mrm-help { font-size:var(--text-sm); padding:0.8rem 0.2rem; }
