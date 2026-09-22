@@ -15,6 +15,7 @@ class MarinaPageReportPermissionManager {
     this.rows = [];
     this.initial_access = new Map();
     this.pending = new Set();
+    this.selected_open = new Set();
     this.current_role = null;
     this.current_resource_type = "Page";
     this.groups = [];
@@ -120,6 +121,13 @@ class MarinaPageReportPermissionManager {
     });
     this.body.on("change", ".prpm-allowed", (event) => this.handle_access_change(event));
     this.body.on("change", ".prpm-bulk-allowed", (event) => this.handle_bulk_change(event));
+    this.body.on("change", ".prpm-select-open", (event) => this.handle_open_selection(event));
+    this.body.on("change", ".prpm-bulk-select-open", (event) =>
+      this.handle_bulk_open_selection(event)
+    );
+    this.body.on("click", ".prpm-select-visible-open", () => this.select_visible_open());
+    this.body.on("click", ".prpm-clear-open-selection", () => this.clear_open_selection());
+    this.body.on("click", ".prpm-restrict-open", () => this.open_restriction_dialog());
     this.body.on("click", ".prpm-resource-link", (event) => this.handle_resource_link(event));
   }
 
@@ -128,9 +136,9 @@ class MarinaPageReportPermissionManager {
     const next_type = this.resource_type_field.get_value() || "Page";
     if (next_role === this.current_role && next_type === this.current_resource_type) return;
 
-    if (this.pending.size && this.current_role) {
+    if ((this.pending.size || this.selected_open.size) && this.current_role) {
       frappe.confirm(
-        __("Discard the unsaved Page or Report permission changes?"),
+        __("Discard the unsaved permission changes and bulk selection?"),
         () => this.load_matrix(next_role, next_type),
         () => {
           this.role_field.set_value(this.current_role);
@@ -148,6 +156,7 @@ class MarinaPageReportPermissionManager {
       this.current_resource_type = resource_type;
       this.rows = [];
       this.pending.clear();
+      this.selected_open.clear();
       this.update_save_button();
       this.show_empty(__("Select a Role to load {0} permissions.", [resource_type]));
       return;
@@ -164,6 +173,7 @@ class MarinaPageReportPermissionManager {
     this.rows = response.message.rows || [];
     this.initial_access.clear();
     this.pending.clear();
+    this.selected_open.clear();
     this.rows.forEach((row) => {
       row.allowed = Boolean(row.allowed);
       this.initial_access.set(row.resource, row.allowed);
@@ -246,7 +256,7 @@ class MarinaPageReportPermissionManager {
       return;
     }
 
-    const html = [];
+    const html = [this.render_bulk_toolbar(rows)];
     let current_app = null;
     this.groups.forEach((group, index) => {
       if (group.app !== current_app) {
@@ -269,6 +279,30 @@ class MarinaPageReportPermissionManager {
     });
     this.body.html(html.join(""));
     this.groups.forEach((group, index) => this.update_bulk_checkbox(group, index));
+    this.groups.forEach((group, index) => this.update_bulk_open_checkbox(group, index));
+  }
+
+  render_bulk_toolbar(rows) {
+    const visible_open = rows.filter((row) => row.open_to_all).length;
+    const selected = this.selected_open.size;
+    return `
+      <div class="prpm-restriction-toolbar">
+        <div>
+          <strong>${__("Open-to-All Restriction")}</strong>
+          <div class="text-muted small prpm-selection-summary">
+            ${__("{0} selected; {1} open resources currently visible", [selected, visible_open])}
+          </div>
+        </div>
+        <div class="prpm-restriction-actions">
+          <button type="button" class="btn btn-xs btn-default prpm-select-visible-open"
+            ${visible_open ? "" : "disabled"}>${__("Select Visible Open to All")}</button>
+          <button type="button" class="btn btn-xs btn-default prpm-clear-open-selection"
+            ${selected ? "" : "disabled"}>${__("Clear Selection")}</button>
+          <button type="button" class="btn btn-xs btn-primary prpm-restrict-open"
+            ${selected ? "" : "disabled"}>${__("Restrict Selected ({0})", [selected])}</button>
+        </div>
+      </div>
+    `;
   }
 
   render_group_table(group, group_index) {
@@ -277,6 +311,10 @@ class MarinaPageReportPermissionManager {
       <div class="prpm-table-wrap">
         <table class="table table-bordered prpm-table">
           <thead><tr>
+            <th class="prpm-select-cell">
+              <input type="checkbox" class="prpm-bulk-select-open" data-group-index="${group_index}"
+                title="${this.escape(__("Select open resources in this module"))}">
+            </th>
             <th class="prpm-name-column">${this.escape(this.current_resource_type)}</th>
             <th>${__("Technical Name")}</th>
             <th>${__("Reference / Type")}</th>
@@ -301,11 +339,17 @@ class MarinaPageReportPermissionManager {
     const source_color = row.source === "custom" ? "orange" : row.source === "open" ? "blue" : "gray";
     const disabled = row.open_to_all ? "disabled" : "";
     const title = row.open_to_all
-      ? __("Open to all roles. Use the standard manager to replace open access with an explicit role list.")
+      ? __("Open to all roles. Select this row and use Restrict Selected to assign an explicit role list.")
       : "";
     const href = this.resource_href(row);
     return `
       <tr class="prpm-row${modified}" data-resource="${this.escape(row.resource)}">
+        <td class="prpm-select-cell">
+          <input type="checkbox" class="prpm-select-open" data-resource="${this.escape(row.resource)}"
+            ${this.selected_open.has(row.resource) ? "checked" : ""}
+            ${row.open_to_all ? "" : "disabled"}
+            title="${this.escape(row.open_to_all ? __("Select for explicit role restriction") : __("Only Open-to-All resources can be converted"))}">
+        </td>
         <td class="prpm-name-column">
           <a class="prpm-resource-link" href="${this.escape(href)}"
             data-resource="${this.escape(row.resource)}" title="${__("Open {0}", [this.escape(row.label)])}">
@@ -343,9 +387,9 @@ class MarinaPageReportPermissionManager {
     const row = this.row_by_resource(resource);
     if (!row) return;
     const open = () => frappe.set_route(this.resource_route(row));
-    if (this.pending.size) {
+    if (this.pending.size || this.selected_open.size) {
       frappe.confirm(
-        __("Open this {0} and leave the current unsaved permission changes?", [row.resource_type]),
+        __("Open this {0} and leave the current unsaved changes or bulk selection?", [row.resource_type]),
         open
       );
       return;
@@ -360,6 +404,151 @@ class MarinaPageReportPermissionManager {
     const section = this.body.find(`.prpm-module[data-group-index='${index}']`);
     section.find(".prpm-caret").text(group.open ? "▾" : "▸");
     section.find(".prpm-module-body").prop("hidden", !group.open);
+  }
+
+  handle_open_selection(event) {
+    const input = $(event.currentTarget);
+    const resource = input.attr("data-resource");
+    const row = this.row_by_resource(resource);
+    if (!row || !row.open_to_all) return;
+    if (input.is(":checked")) {
+      this.selected_open.add(resource);
+    } else {
+      this.selected_open.delete(resource);
+    }
+    const group_index = Number(input.closest(".prpm-module").attr("data-group-index"));
+    this.update_bulk_open_checkbox(this.groups[group_index], group_index);
+    this.update_restriction_toolbar();
+  }
+
+  handle_bulk_open_selection(event) {
+    const input = $(event.currentTarget);
+    const group_index = Number(input.attr("data-group-index"));
+    const group = this.groups[group_index];
+    if (!group) return;
+    group.rows.filter((row) => row.open_to_all).forEach((row) => {
+      if (input.is(":checked")) {
+        this.selected_open.add(row.resource);
+      } else {
+        this.selected_open.delete(row.resource);
+      }
+    });
+    input.closest(".prpm-module").find(".prpm-select-open").each((_, element) => {
+      const row_input = $(element);
+      row_input.prop("checked", this.selected_open.has(row_input.attr("data-resource")));
+    });
+    this.update_bulk_open_checkbox(group, group_index);
+    this.update_restriction_toolbar();
+  }
+
+  select_visible_open() {
+    this.visible_rows()
+      .filter((row) => row.open_to_all)
+      .forEach((row) => this.selected_open.add(row.resource));
+    this.render();
+  }
+
+  clear_open_selection() {
+    this.selected_open.clear();
+    this.render();
+  }
+
+  update_restriction_toolbar() {
+    const selected = this.selected_open.size;
+    const visible_open = this.visible_rows().filter((row) => row.open_to_all).length;
+    this.body
+      .find(".prpm-selection-summary")
+      .text(__("{0} selected; {1} open resources currently visible", [selected, visible_open]));
+    this.body.find(".prpm-clear-open-selection").prop("disabled", !selected);
+    this.body
+      .find(".prpm-restrict-open")
+      .prop("disabled", !selected)
+      .text(__("Restrict Selected ({0})", [selected]));
+  }
+
+  update_bulk_open_checkbox(group, group_index) {
+    if (!group) return;
+    const eligible = group.rows.filter((row) => row.open_to_all);
+    const selected = eligible.filter((row) => this.selected_open.has(row.resource)).length;
+    this.body
+      .find(`.prpm-module[data-group-index='${group_index}'] .prpm-bulk-select-open`)
+      .prop("checked", Boolean(eligible.length && selected === eligible.length))
+      .prop("indeterminate", selected > 0 && selected < eligible.length)
+      .prop("disabled", !eligible.length);
+  }
+
+  open_restriction_dialog() {
+    if (!this.selected_open.size) return;
+    if (this.pending.size) {
+      frappe.msgprint(__("Save or discard the current Allowed changes before restricting open resources."));
+      return;
+    }
+
+    const selected_count = this.selected_open.size;
+    const dialog = new frappe.ui.Dialog({
+      title: __("Restrict {0} Open-to-All {1}", [selected_count, this.current_resource_type]),
+      fields: [
+        {
+          fieldtype: "HTML",
+          fieldname: "explanation",
+          options: `<p>${__(
+            "Open access will be replaced by the exact role list below. Roles not selected will lose access to these resources."
+          )}</p>`,
+        },
+        {
+          fieldtype: "Table",
+          fieldname: "roles",
+          label: __("Roles That Retain Access"),
+          cannot_add_rows: false,
+          cannot_delete_rows: false,
+          in_place_edit: true,
+          data: this.current_role ? [{ role: this.current_role }] : [],
+          fields: [
+            {
+              fieldtype: "Link",
+              fieldname: "role",
+              label: __("Role"),
+              options: "Role",
+              reqd: 1,
+              in_list_view: 1,
+              get_query: () => ({
+                filters: { disabled: 0, name: ["not in", ["All", "Guest", "Desk User"]] },
+              }),
+            },
+          ],
+        },
+      ],
+      primary_action_label: __("Restrict Selected"),
+      primary_action: async (values) => {
+        const roles = [...new Set((values.roles || []).map((row) => row.role).filter(Boolean))];
+        if (!roles.length) {
+          frappe.msgprint(__("Select at least one Role that should retain access."));
+          return;
+        }
+        dialog.hide();
+        const response = await frappe.call({
+          method: "marina_custom_apps.permission_manager.api.page_reports.restrict_open_resources",
+          args: {
+            resource_type: this.current_resource_type,
+            resources: [...this.selected_open],
+            roles,
+          },
+          freeze: true,
+          freeze_message: __("Replacing open access with explicit roles..."),
+        });
+        const result = response.message || {};
+        frappe.show_alert({
+          message: __("Restricted {0} resources; skipped {1} resources changed by another user.", [
+            result.updated_rows || 0,
+            result.skipped_rows || 0,
+          ]),
+          indicator: "green",
+        });
+        this.selected_open.clear();
+        await this.load_matrix(this.current_role, this.current_resource_type);
+      },
+    });
+    dialog.show();
   }
 
   handle_access_change(event) {
@@ -443,12 +632,13 @@ class MarinaPageReportPermissionManager {
   }
 
   discard_changes() {
-    if (!this.pending.size) return;
-    frappe.confirm(__("Discard all unsaved Page and Report permission changes?"), () => {
+    if (!this.pending.size && !this.selected_open.size) return;
+    frappe.confirm(__("Discard all unsaved permission changes and bulk selections?"), () => {
       this.rows.forEach((row) => {
         row.allowed = this.initial_access.get(row.resource);
       });
       this.pending.clear();
+      this.selected_open.clear();
       this.update_save_button();
       this.render();
     });

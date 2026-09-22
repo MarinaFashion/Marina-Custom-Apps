@@ -36,6 +36,11 @@ and takes ownership of the shared module assets.
 
 The User Role Manager provides Role → Users and User → Roles views. Role Profile users are read-only there; direct assignments save through Frappe User validation.
 
+Page and Report Permissions can bulk-convert Open-to-All resources to an exact
+explicit role list. The conversion requires at least one enabled non-automatic
+role, skips resources that were changed concurrently, and clears permission
+caches after the atomic update.
+
 Operational document identifiers use configurable Naming Series. The v0.47.20
 migration resets each Marina operational series once so its next generated
 number starts at `00001`; existing document names are not renamed.

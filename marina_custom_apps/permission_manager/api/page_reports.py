@@ -211,6 +211,107 @@ def _clear_role_user_caches(role: str) -> None:
 		frappe.clear_cache(user=user)
 
 
+def _replace_open_resource_roles(
+	resource_type: str,
+	resources: list[str],
+	roles: set[str],
+) -> dict[str, int]:
+	"""Replace effective open access with one explicit role list.
+
+	Resources that are no longer open when the request is processed are skipped. This keeps
+	bulk conversion safe when another administrator changes permissions after the matrix loads.
+	"""
+	standard_roles = _roles_by_parent(resource_type, resources)
+	custom_docs = _custom_role_documents(resource_type, resources)
+	custom_roles = _roles_by_parent(
+		"Custom Role",
+		[doc.name for doc in custom_docs.values()],
+	)
+	fieldname = resource_type.lower()
+	updated_rows = 0
+	skipped_rows = 0
+
+	for resource in resources:
+		custom_doc_row = custom_docs.get(resource)
+		if custom_doc_row:
+			is_open = bool(custom_roles[custom_doc_row.name].intersection(AUTOMATIC_ROLES))
+		else:
+			standard = standard_roles[resource]
+			is_open = not standard or bool(standard.intersection(AUTOMATIC_ROLES))
+
+		if not is_open:
+			skipped_rows += 1
+			continue
+
+		if custom_doc_row:
+			custom_doc = frappe.get_doc("Custom Role", custom_doc_row.name)
+		else:
+			custom_doc = frappe.get_doc(
+				{
+					"doctype": "Custom Role",
+					fieldname: resource,
+					"ref_doctype": frappe.db.get_value("Report", resource, "ref_doctype")
+					if resource_type == "Report"
+					else None,
+				}
+			)
+
+		custom_doc.set("roles", [])
+		for role in sorted(roles):
+			custom_doc.append("roles", {"role": role})
+		if custom_doc_row:
+			custom_doc.save(ignore_permissions=True)
+		else:
+			custom_doc.insert(ignore_permissions=True)
+		updated_rows += 1
+
+	return {"updated_rows": updated_rows, "skipped_rows": skipped_rows}
+
+
+@frappe.whitelist()
+def restrict_open_resources(
+	resource_type: str,
+	resources: str | list[str],
+	roles: str | list[str],
+) -> dict[str, int]:
+	"""Convert open Pages or Reports to an exact, explicitly selected role list."""
+	_only_system_manager()
+	_validate_resource_type(resource_type)
+
+	parsed_resources = frappe.parse_json(resources) if isinstance(resources, str) else resources
+	parsed_roles = frappe.parse_json(roles) if isinstance(roles, str) else roles
+	if not isinstance(parsed_resources, list) or not all(
+		isinstance(resource, str) and resource for resource in parsed_resources
+	):
+		frappe.throw(_("Selected Pages or Reports must be a list."))
+	if not isinstance(parsed_roles, list) or not all(
+		isinstance(role, str) and role for role in parsed_roles
+	):
+		frappe.throw(_("Allowed Roles must be a list."))
+
+	parsed_resources = list(dict.fromkeys(parsed_resources))
+	parsed_roles = list(dict.fromkeys(parsed_roles))
+	if not parsed_resources:
+		frappe.throw(_("Select at least one open Page or Report."))
+	if len(parsed_resources) > MAX_BATCH_ROWS:
+		frappe.throw(_("A maximum of {0} rows can be restricted in one action.").format(MAX_BATCH_ROWS))
+	if not parsed_roles:
+		frappe.throw(_("Select at least one Role that should retain access."))
+	for role in parsed_roles:
+		_validate_role(role)
+
+	allowed_resources = {resource.name for resource in _get_resources(resource_type)}
+	if not set(parsed_resources).issubset(allowed_resources):
+		frappe.throw(_("One or more Pages or Reports cannot be managed here."))
+
+	result = _replace_open_resource_roles(resource_type, parsed_resources, set(parsed_roles))
+	if result["updated_rows"]:
+		# Open access affects every Desk user, so invalidate permission metadata globally rather
+		# than clearing only the newly selected roles.
+		frappe.clear_cache()
+	return result
+
+
 @frappe.whitelist()
 def save_page_report_matrix(
 	role: str,

@@ -21,6 +21,25 @@
   margin: 1.5rem 0 0.65rem;
 }
 
+.prpm-restriction-toolbar {
+  align-items: center;
+  background: var(--fg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+}
+
+.prpm-restriction-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
 .prpm-module {
   background: var(--fg-color);
   border: 1px solid var(--border-color);
@@ -89,11 +108,26 @@
 
 .prpm-name-column {
   background: var(--fg-color);
-  left: 0;
+  left: 46px;
   min-width: 240px;
   position: sticky;
   text-align: left !important;
   z-index: 2;
+}
+
+.prpm-select-cell {
+  background: var(--fg-color);
+  left: 0;
+  min-width: 46px;
+  position: sticky;
+  text-align: center;
+  width: 46px;
+  z-index: 3;
+}
+
+.prpm-table thead .prpm-select-cell {
+  background: var(--subtle-fg);
+  z-index: 6;
 }
 
 .prpm-table thead .prpm-name-column {
@@ -143,4 +177,15 @@
 
 .prpm-root input[type="checkbox"]:disabled {
   cursor: not-allowed;
+}
+
+@media (max-width: 767px) {
+  .prpm-restriction-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .prpm-restriction-actions {
+    justify-content: flex-start;
+  }
 }
