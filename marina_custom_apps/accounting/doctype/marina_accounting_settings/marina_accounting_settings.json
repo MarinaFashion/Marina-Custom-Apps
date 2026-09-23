@@ -1,0 +1,57 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-09-23 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "account_search_section",
+  "enable_bilingual_account_search",
+  "account_search_help"
+ ],
+ "fields": [
+  {
+   "fieldname": "account_search_section",
+   "fieldtype": "Section Break",
+   "label": "Bilingual Account Search"
+  },
+  {
+   "default": "1",
+   "description": "Show and search Arabic and English Account names in Journal Entry. Disable this to return immediately to ERPNext standard Account search.",
+   "fieldname": "enable_bilingual_account_search",
+   "fieldtype": "Check",
+   "label": "Enable Bilingual Account Search"
+  },
+  {
+   "fieldname": "account_search_help",
+   "fieldtype": "HTML",
+   "options": "<p>Maintain <strong>Arabic Account Name</strong> on each Account. This feature never renames the Account or changes existing accounting entries.</p>"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-09-23 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Marina Custom Apps",
+ "name": "Marina Accounting Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Accounts Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

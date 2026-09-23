@@ -41,6 +41,12 @@ explicit role list. The conversion requires at least one enabled non-automatic
 role, skips resources that were changed concurrently, and clears permission
 caches after the atomic update.
 
+Journal Entry account selection supports an optional bilingual Arabic/English
+search. Arabic names are stored in `Account.custom_account_name_arabic`; the
+original Account identifiers are never renamed. The feature can be disabled
+immediately from **Marina Accounting Settings** to restore ERPNext's standard
+account query without removing data.
+
 Operational document identifiers use configurable Naming Series. The v0.47.20
 migration resets each Marina operational series once so its next generated
 number starts at `00001`; existing document names are not renamed.

@@ -27,6 +27,21 @@ STOCK_ENTRY_DETAIL_FIELDS = [
 ]
 
 CUSTOM_FIELDS = {
+    "Account": [
+        {
+            "fieldname": "custom_account_name_arabic",
+            "label": "Arabic Account Name",
+            "fieldtype": "Data",
+            "insert_after": "account_name",
+            "in_list_view": 1,
+            "in_standard_filter": 1,
+            "in_global_search": 1,
+            "description": (
+                "Arabic display and search name used by Marina bilingual account search. "
+                "The standard Account name and all accounting links remain unchanged."
+            ),
+        }
+    ],
     "Stock Entry": STOCK_ENTRY_FIELDS,
     "Stock Entry Detail": STOCK_ENTRY_DETAIL_FIELDS,
 }
@@ -45,6 +60,7 @@ NUMBER_CARDS = [
 
 def after_install():
     _ensure_custom_fields()
+    _ensure_bilingual_account_search_default()
     _ensure_notification_type()
     _ensure_number_cards()
     from marina_custom_apps.dc_dispatch.install import after_install as dc_dispatch_after_install
@@ -61,6 +77,7 @@ def after_install():
 
 def after_migrate():
     _ensure_custom_fields()
+    _ensure_bilingual_account_search_default()
     _cleanup_legacy_original_send_stock_field()
     _cleanup_legacy_sent_qty_field()
     _backfill_audit_correction_links()
@@ -88,6 +105,21 @@ def after_migrate():
 
 def _ensure_custom_fields():
     create_custom_fields(CUSTOM_FIELDS, update=True)
+
+
+def _ensure_bilingual_account_search_default():
+    """Enable the feature once without undoing a later user opt-out."""
+    import frappe
+
+    doctype = "Marina Accounting Settings"
+    fieldname = "enable_bilingual_account_search"
+    if not frappe.db.exists("DocType", doctype):
+        return
+
+    current = frappe.db.get_single_value(doctype, fieldname)
+    if current is None:
+        frappe.db.set_single_value(doctype, fieldname, 1)
+    frappe.clear_cache(doctype=doctype)
 
 
 def _cleanup_legacy_original_send_stock_field():

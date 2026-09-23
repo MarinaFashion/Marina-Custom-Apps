@@ -4,7 +4,7 @@ app_publisher = "Marina Trading Company"
 app_description = "Marina Trading Company custom Frappe/ERPNext modules"
 app_email = "it@marinafashion.com.sa"
 app_license = "MIT"
-app_version = "0.47.23"
+app_version = "0.47.24"
 
 required_apps = ["erpnext"]
 
@@ -37,6 +37,7 @@ doc_events = {
 }
 
 doctype_js = {
+    "Journal Entry": "public/js/bilingual_account_search.js",
     "Stock Entry": "public/js/stock_entry_control.js",
     "DC Dispatch Run": "public/js/dc_dispatch_run_v063.js",
     "Material Request": "public/js/material_request_logistics.js",
