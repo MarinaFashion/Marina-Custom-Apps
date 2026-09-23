@@ -207,3 +207,8 @@ Designed for:
 - Frappe Framework
 - ERPNext
 - Marina Trading Company retail and inventory operations
+
+As of v0.47.25, the Marina Accounting Settings DocType is stored under its registered
+**Marina Custom Apps** module directory so normal Frappe migration discovers
+and synchronizes it. This correction does not alter imported Arabic Account
+names or any accounting transactions.
