@@ -2,3 +2,4 @@
 
 [post_model_sync]
 marina_custom_apps.patches.v0_47_20.reset_operational_naming_series
+marina_custom_apps.patches.v0_50_0.migrate_terminal_location_to_history

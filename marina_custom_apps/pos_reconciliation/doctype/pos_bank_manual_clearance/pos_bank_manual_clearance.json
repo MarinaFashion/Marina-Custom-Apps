@@ -1,0 +1,37 @@
+{
+  "autoname": "field:bank_transaction",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "field_order": [
+    "bank_transaction",
+    "active",
+    "reason",
+    "clearance_section",
+    "cleared_by",
+    "cleared_on",
+    "reopen_section",
+    "reopened_by",
+    "reopened_on"
+  ],
+  "fields": [
+    {"fieldname": "bank_transaction", "fieldtype": "Link", "in_list_view": 1, "in_standard_filter": 1, "label": "Bank POS Transaction", "options": "Bank POS Transaction", "reqd": 1, "set_only_once": 1, "unique": 1},
+    {"default": "1", "fieldname": "active", "fieldtype": "Check", "in_list_view": 1, "in_standard_filter": 1, "label": "Active"},
+    {"fieldname": "reason", "fieldtype": "Small Text", "label": "Reason", "reqd": 1},
+    {"fieldname": "clearance_section", "fieldtype": "Section Break", "label": "Clearance"},
+    {"fieldname": "cleared_by", "fieldtype": "Link", "label": "Cleared By", "options": "User", "read_only": 1},
+    {"fieldname": "cleared_on", "fieldtype": "Datetime", "label": "Cleared On", "read_only": 1},
+    {"fieldname": "reopen_section", "fieldtype": "Section Break", "label": "Reopened"},
+    {"fieldname": "reopened_by", "fieldtype": "Link", "label": "Reopened By", "options": "User", "read_only": 1},
+    {"fieldname": "reopened_on", "fieldtype": "Datetime", "label": "Reopened On", "read_only": 1}
+  ],
+  "name": "POS Bank Manual Clearance",
+  "module": "POS Reconciliation",
+  "permissions": [
+    {"create": 1, "delete": 0, "export": 1, "read": 1, "report": 1, "role": "Accounts Manager", "write": 1},
+    {"create": 1, "delete": 1, "export": 1, "read": 1, "report": 1, "role": "System Manager", "write": 1}
+  ],
+  "search_fields": "bank_transaction,reason,cleared_by",
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "track_changes": 1
+}

@@ -4,6 +4,7 @@
   "engine": "InnoDB",
   "field_order": [
     "pos_profile",
+    "address",
     "from_date",
     "to_date"
   ],
@@ -12,9 +13,15 @@
       "fieldname": "pos_profile",
       "fieldtype": "Link",
       "in_list_view": 1,
-      "label": "Location",
+      "label": "POS Profile",
       "options": "POS Profile",
       "reqd": 1
+    },
+    {
+      "fieldname": "address",
+      "fieldtype": "Small Text",
+      "in_list_view": 1,
+      "label": "Address / Location"
     },
     {
       "fieldname": "from_date",

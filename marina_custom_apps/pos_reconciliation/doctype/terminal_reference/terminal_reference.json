@@ -7,12 +7,9 @@
     "details_section",
     "terminal_id",
     "retailer_identifier",
-    "branch_name",
     "details_column_break",
     "integration_date",
     "disabled",
-    "address_section",
-    "address",
     "locations_section",
     "locations"
   ],
@@ -42,14 +39,6 @@
       "reqd": 1
     },
     {
-      "fieldname": "branch_name",
-      "fieldtype": "Data",
-      "in_list_view": 1,
-      "in_standard_filter": 1,
-      "label": "Branch Name",
-      "reqd": 1
-    },
-    {
       "fieldname": "details_column_break",
       "fieldtype": "Column Break"
     },
@@ -69,16 +58,6 @@
       "label": "Disabled"
     },
     {
-      "fieldname": "address_section",
-      "fieldtype": "Section Break",
-      "label": "Location"
-    },
-    {
-      "fieldname": "address",
-      "fieldtype": "Small Text",
-      "label": "Address"
-    },
-    {
       "fieldname": "locations_section",
       "fieldtype": "Section Break",
       "label": "Location History"
@@ -88,7 +67,7 @@
       "fieldtype": "Table",
       "label": "Locations",
       "options": "Terminal Location History",
-      "description": "Effective-dated POS Profile assignment for this physical terminal."
+      "description": "Effective-dated POS Profile and physical location assignment for this terminal."
     }
   ],
   "name": "Terminal Reference",
@@ -119,8 +98,8 @@
       "write": 1
     }
   ],
-  "search_fields": "terminal_id,retailer_identifier,branch_name",
-  "sort_field": "branch_name",
+  "search_fields": "terminal_id,retailer_identifier",
+  "sort_field": "terminal_id",
   "sort_order": "ASC",
   "track_changes": 1
 }

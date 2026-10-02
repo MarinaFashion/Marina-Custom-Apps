@@ -1,6 +1,6 @@
 {
   "charts": [],
-  "content": "[{\"id\":\"pr-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>POS Reconciliation</b></span>\",\"col\":12}},{\"id\":\"pr-s1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Bank POS Transactions\",\"col\":4}},{\"id\":\"pr-s2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Terminal References\",\"col\":4}},{\"id\":\"pr-sp1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"pr-rhead\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Reports</b></span>\",\"col\":12}},{\"id\":\"pr-r1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Commission by Store & Device\",\"col\":4}},{\"id\":\"pr-r2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Card Type Summary by Store\",\"col\":4}}]",
+  "content": "[{\"id\":\"pr-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>POS Reconciliation</b></span>\",\"col\":12}},{\"id\":\"pr-s1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Bank POS Transactions\",\"col\":3}},{\"id\":\"pr-s2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Terminal References\",\"col\":3}},{\"id\":\"pr-s3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Reconciliation Runs\",\"col\":3}},{\"id\":\"pr-s4\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Reconciliation Records\",\"col\":3}},{\"id\":\"pr-sp1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"pr-rhead\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Reports</b></span>\",\"col\":12}},{\"id\":\"pr-r0\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Reconciliation Results\",\"col\":4}},{\"id\":\"pr-r1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Commission by Store & Device\",\"col\":4}},{\"id\":\"pr-r2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Card Type Summary by Store\",\"col\":4}}]",
   "creation": "2026-10-02 00:00:00.000000",
   "custom_blocks": [],
   "docstatus": 0,
@@ -43,12 +43,45 @@
       "type": "Link"
     },
     {
+      "dependencies": "",
+      "hidden": 0,
+      "is_query_report": 0,
+      "label": "POS Reconciliation Run",
+      "link_count": 0,
+      "link_to": "POS Reconciliation Run",
+      "link_type": "DocType",
+      "onboard": 1,
+      "type": "Link"
+    },
+    {
+      "dependencies": "",
+      "hidden": 0,
+      "is_query_report": 0,
+      "label": "POS Reconciliation Record",
+      "link_count": 0,
+      "link_to": "POS Reconciliation Record",
+      "link_type": "DocType",
+      "onboard": 1,
+      "type": "Link"
+    },
+    {
       "hidden": 0,
       "is_query_report": 0,
       "label": "Reports",
       "link_count": 0,
       "onboard": 0,
       "type": "Card Break"
+    },
+    {
+      "dependencies": "",
+      "hidden": 0,
+      "is_query_report": 1,
+      "label": "POS Reconciliation Results",
+      "link_count": 0,
+      "link_to": "POS Reconciliation Results",
+      "link_type": "Report",
+      "onboard": 0,
+      "type": "Link"
     },
     {
       "dependencies": "",
@@ -105,6 +138,26 @@
       "label": "Terminal References",
       "link_to": "Terminal Reference",
       "type": "DocType"
+    },
+    {
+      "color": "Orange",
+      "doc_view": "List",
+      "label": "Reconciliation Runs",
+      "link_to": "POS Reconciliation Run",
+      "type": "DocType"
+    },
+    {
+      "color": "Red",
+      "doc_view": "List",
+      "label": "Reconciliation Records",
+      "link_to": "POS Reconciliation Record",
+      "type": "DocType"
+    },
+    {
+      "color": "Orange",
+      "label": "Reconciliation Results",
+      "link_to": "POS Reconciliation Results",
+      "type": "Report"
     },
     {
       "color": "Blue",
