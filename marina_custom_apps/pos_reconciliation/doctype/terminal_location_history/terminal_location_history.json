@@ -1,0 +1,36 @@
+{
+  "doctype": "DocType",
+  "editable_grid": 1,
+  "engine": "InnoDB",
+  "field_order": [
+    "pos_profile",
+    "from_date",
+    "to_date"
+  ],
+  "fields": [
+    {
+      "fieldname": "pos_profile",
+      "fieldtype": "Link",
+      "in_list_view": 1,
+      "label": "Location",
+      "options": "POS Profile",
+      "reqd": 1
+    },
+    {
+      "fieldname": "from_date",
+      "fieldtype": "Date",
+      "in_list_view": 1,
+      "label": "From Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "to_date",
+      "fieldtype": "Date",
+      "in_list_view": 1,
+      "label": "To Date"
+    }
+  ],
+  "istable": 1,
+  "module": "POS Reconciliation",
+  "name": "Terminal Location History"
+}

@@ -12,24 +12,112 @@
     "integration_date",
     "disabled",
     "address_section",
-    "address"
+    "address",
+    "locations_section",
+    "locations"
   ],
   "fields": [
-    {"fieldname": "details_section", "fieldtype": "Section Break", "label": "Terminal Details"},
-    {"fieldname": "terminal_id", "fieldtype": "Data", "in_list_view": 1, "in_standard_filter": 1, "label": "Terminal ID", "reqd": 1, "search_index": 1, "set_only_once": 1, "unique": 1},
-    {"fieldname": "retailer_identifier", "fieldtype": "Data", "in_list_view": 1, "in_standard_filter": 1, "label": "Retailer / Site ID", "reqd": 1},
-    {"fieldname": "branch_name", "fieldtype": "Data", "in_list_view": 1, "in_standard_filter": 1, "label": "Branch Name", "reqd": 1},
-    {"fieldname": "details_column_break", "fieldtype": "Column Break"},
-    {"description": "Date this terminal started sending integrated POS transactions to ERPNext. Bank transactions before this date are outside ERP reconciliation scope.", "fieldname": "integration_date", "fieldtype": "Date", "in_list_view": 1, "in_standard_filter": 1, "label": "Integration Date"},
-    {"default": "0", "fieldname": "disabled", "fieldtype": "Check", "in_standard_filter": 1, "label": "Disabled"},
-    {"fieldname": "address_section", "fieldtype": "Section Break", "label": "Location"},
-    {"fieldname": "address", "fieldtype": "Small Text", "label": "Address"}
+    {
+      "fieldname": "details_section",
+      "fieldtype": "Section Break",
+      "label": "Terminal Details"
+    },
+    {
+      "fieldname": "terminal_id",
+      "fieldtype": "Data",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "label": "Terminal ID",
+      "reqd": 1,
+      "search_index": 1,
+      "set_only_once": 1,
+      "unique": 1
+    },
+    {
+      "fieldname": "retailer_identifier",
+      "fieldtype": "Data",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "label": "Retailer / Site ID",
+      "reqd": 1
+    },
+    {
+      "fieldname": "branch_name",
+      "fieldtype": "Data",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "label": "Branch Name",
+      "reqd": 1
+    },
+    {
+      "fieldname": "details_column_break",
+      "fieldtype": "Column Break"
+    },
+    {
+      "description": "Date this terminal started sending integrated POS transactions to ERPNext. Bank transactions before this date are outside ERP reconciliation scope.",
+      "fieldname": "integration_date",
+      "fieldtype": "Date",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "label": "Integration Date"
+    },
+    {
+      "default": "0",
+      "fieldname": "disabled",
+      "fieldtype": "Check",
+      "in_standard_filter": 1,
+      "label": "Disabled"
+    },
+    {
+      "fieldname": "address_section",
+      "fieldtype": "Section Break",
+      "label": "Location"
+    },
+    {
+      "fieldname": "address",
+      "fieldtype": "Small Text",
+      "label": "Address"
+    },
+    {
+      "fieldname": "locations_section",
+      "fieldtype": "Section Break",
+      "label": "Location History"
+    },
+    {
+      "fieldname": "locations",
+      "fieldtype": "Table",
+      "label": "Locations",
+      "options": "Terminal Location History",
+      "description": "Effective-dated POS Profile assignment for this physical terminal."
+    }
   ],
   "name": "Terminal Reference",
   "module": "POS Reconciliation",
   "permissions": [
-    {"create": 1, "delete": 0, "email": 0, "export": 1, "print": 1, "read": 1, "report": 1, "role": "Accounts Manager", "share": 1, "write": 1},
-    {"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "System Manager", "share": 1, "write": 1}
+    {
+      "create": 1,
+      "delete": 0,
+      "email": 0,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "Accounts Manager",
+      "share": 1,
+      "write": 1
+    },
+    {
+      "create": 1,
+      "delete": 1,
+      "email": 1,
+      "export": 1,
+      "print": 1,
+      "read": 1,
+      "report": 1,
+      "role": "System Manager",
+      "share": 1,
+      "write": 1
+    }
   ],
   "search_fields": "terminal_id,retailer_identifier,branch_name",
   "sort_field": "branch_name",

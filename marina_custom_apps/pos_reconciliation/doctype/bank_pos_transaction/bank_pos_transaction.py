@@ -4,6 +4,8 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from marina_custom_apps.pos_reconciliation.location_service import resolve_pos_profile
+
 KEY_SEPARATOR = "|"
 
 TRANSACTION_TYPE_ALIASES = {
@@ -65,6 +67,7 @@ class BankPOSTransaction(Document):
             self.auth_code,
             self.transaction_type,
         )
+        self._assign_pos_profile_on_insert()
         self._protect_source_identity()
 
     def _normalize_source_values(self):
@@ -80,6 +83,10 @@ class BankPOSTransaction(Document):
         self.rejection_reason = clean_text(self.rejection_reason)
         self.settlement_number = clean_text(self.settlement_number)
         self.pos_reconciliation_number = clean_text(self.pos_reconciliation_number)
+
+    def _assign_pos_profile_on_insert(self):
+        if self.is_new() and self.terminal_id and self.transaction_date:
+            self.pos_profile = resolve_pos_profile(self.terminal_id, self.transaction_date)
 
     def _protect_source_identity(self):
         previous = self.get_doc_before_save()
@@ -97,3 +104,71 @@ class BankPOSTransaction(Document):
                     ", ".join(changed)
                 )
             )
+
+
+@frappe.whitelist()
+def refresh_all_bank_transaction_locations():
+    if not frappe.has_permission("Bank POS Transaction", ptype="write"):
+        frappe.throw(_("You do not have permission to update Bank POS Transaction."), frappe.PermissionError)
+
+    terminals = frappe.get_all(
+        "Terminal Reference",
+        fields=["name", "terminal_id"],
+        limit_page_length=0,
+    )
+    terminal_by_name = {row.name: row.terminal_id for row in terminals if row.terminal_id}
+    periods_by_terminal = {row.terminal_id: [] for row in terminals if row.terminal_id}
+
+    if terminal_by_name:
+        for row in frappe.get_all(
+            "Terminal Location History",
+            filters={"parent": ["in", list(terminal_by_name)]},
+            fields=["parent", "pos_profile", "from_date", "to_date"],
+            order_by="parent asc, from_date asc, idx asc",
+            limit_page_length=0,
+        ):
+            terminal_id = terminal_by_name.get(row.parent)
+            if terminal_id:
+                periods_by_terminal.setdefault(terminal_id, []).append(row)
+
+    transactions = frappe.get_all(
+        "Bank POS Transaction",
+        fields=["name", "terminal_id", "transaction_date", "pos_profile"],
+        order_by="transaction_date asc, name asc",
+        limit_page_length=0,
+    )
+
+    from marina_custom_apps.pos_reconciliation.location_service import select_pos_profile
+
+    updated = 0
+    resolved = 0
+    unresolved = 0
+
+    for row in transactions:
+        pos_profile = select_pos_profile(
+            periods_by_terminal.get(row.terminal_id, []),
+            row.transaction_date,
+        )
+        if pos_profile:
+            resolved += 1
+        else:
+            unresolved += 1
+
+        old_value = row.pos_profile or None
+        new_value = pos_profile or None
+        if old_value != new_value:
+            frappe.db.set_value(
+                "Bank POS Transaction",
+                row.name,
+                "pos_profile",
+                new_value,
+                update_modified=False,
+            )
+            updated += 1
+
+    return {
+        "total": len(transactions),
+        "resolved": resolved,
+        "unresolved": unresolved,
+        "updated": updated,
+    }

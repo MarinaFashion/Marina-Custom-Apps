@@ -1,6 +1,6 @@
 {
   "charts": [],
-  "content": "[{\"id\":\"pr-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>POS Reconciliation</b></span>\",\"col\":12}},{\"id\":\"pr-s1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Bank POS Transactions\",\"col\":4}},{\"id\":\"pr-s2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Terminal References\",\"col\":4}}]",
+  "content": "[{\"id\":\"pr-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>POS Reconciliation</b></span>\",\"col\":12}},{\"id\":\"pr-s1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Bank POS Transactions\",\"col\":4}},{\"id\":\"pr-s2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Terminal References\",\"col\":4}},{\"id\":\"pr-sp1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"pr-rhead\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Reports</b></span>\",\"col\":12}},{\"id\":\"pr-r1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Commission by Store & Device\",\"col\":4}},{\"id\":\"pr-r2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Card Type Summary by Store\",\"col\":4}}]",
   "creation": "2026-10-02 00:00:00.000000",
   "custom_blocks": [],
   "docstatus": 0,
@@ -12,9 +12,66 @@
   "is_hidden": 0,
   "label": "POS Reconciliation",
   "links": [
-    {"hidden": 0, "is_query_report": 0, "label": "POS Reconciliation", "link_count": 0, "onboard": 0, "type": "Card Break"},
-    {"dependencies": "", "hidden": 0, "is_query_report": 0, "label": "Bank POS Transaction", "link_count": 0, "link_to": "Bank POS Transaction", "link_type": "DocType", "onboard": 1, "type": "Link"},
-    {"dependencies": "", "hidden": 0, "is_query_report": 0, "label": "Terminal Reference", "link_count": 0, "link_to": "Terminal Reference", "link_type": "DocType", "onboard": 1, "type": "Link"}
+    {
+      "hidden": 0,
+      "is_query_report": 0,
+      "label": "POS Reconciliation",
+      "link_count": 0,
+      "onboard": 0,
+      "type": "Card Break"
+    },
+    {
+      "dependencies": "",
+      "hidden": 0,
+      "is_query_report": 0,
+      "label": "Bank POS Transaction",
+      "link_count": 0,
+      "link_to": "Bank POS Transaction",
+      "link_type": "DocType",
+      "onboard": 1,
+      "type": "Link"
+    },
+    {
+      "dependencies": "",
+      "hidden": 0,
+      "is_query_report": 0,
+      "label": "Terminal Reference",
+      "link_count": 0,
+      "link_to": "Terminal Reference",
+      "link_type": "DocType",
+      "onboard": 1,
+      "type": "Link"
+    },
+    {
+      "hidden": 0,
+      "is_query_report": 0,
+      "label": "Reports",
+      "link_count": 0,
+      "onboard": 0,
+      "type": "Card Break"
+    },
+    {
+      "dependencies": "",
+      "hidden": 0,
+      "is_query_report": 1,
+      "label": "POS Commission by Store and Device",
+      "link_count": 0,
+      "link_to": "POS Commission by Store and Device",
+      "link_type": "Report",
+      "onboard": 0,
+      "type": "Link"
+    },
+    {
+      "dependencies": "",
+      "hidden": 0,
+      "is_query_report": 1,
+      "label": "POS Card Type Summary by Store",
+      "link_count": 0,
+      "link_to": "POS Card Type Summary by Store",
+      "link_type": "Report",
+      "onboard": 0,
+      "type": "Link"
+    }
   ],
   "modified": "2026-10-02 00:00:00.000000",
   "modified_by": "Administrator",
@@ -26,13 +83,41 @@
   "public": 1,
   "quick_lists": [],
   "roles": [
-    {"role": "Accounts Manager"},
-    {"role": "System Manager"}
+    {
+      "role": "Accounts Manager"
+    },
+    {
+      "role": "System Manager"
+    }
   ],
   "sequence_id": 10.0,
   "shortcuts": [
-    {"color": "Blue", "doc_view": "List", "label": "Bank POS Transactions", "link_to": "Bank POS Transaction", "type": "DocType"},
-    {"color": "Grey", "doc_view": "List", "label": "Terminal References", "link_to": "Terminal Reference", "type": "DocType"}
+    {
+      "color": "Blue",
+      "doc_view": "List",
+      "label": "Bank POS Transactions",
+      "link_to": "Bank POS Transaction",
+      "type": "DocType"
+    },
+    {
+      "color": "Grey",
+      "doc_view": "List",
+      "label": "Terminal References",
+      "link_to": "Terminal Reference",
+      "type": "DocType"
+    },
+    {
+      "color": "Blue",
+      "label": "Commission by Store & Device",
+      "link_to": "POS Commission by Store and Device",
+      "type": "Report"
+    },
+    {
+      "color": "Green",
+      "label": "Card Type Summary by Store",
+      "link_to": "POS Card Type Summary by Store",
+      "type": "Report"
+    }
   ],
   "title": "POS Reconciliation"
 }
