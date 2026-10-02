@@ -223,6 +223,17 @@ def _base_result(run, bank=None, alhamrani=None):
         bank_transaction=bank.name if bank else None,
         alhamrani_transaction=alhamrani.name if alhamrani else None,
     )
+
+    # Currency fields in Frappe/MariaDB are NOT NULL numeric columns.
+    # For one-sided reconciliation records, persist the missing side as 0.00
+    # rather than Python None so bulk_insert remains valid.
+    bank_amount = flt(bank.transaction_amount, 2) if bank else 0.0
+    alhamrani_amount = (
+        flt(alhamrani.amount, 2)
+        if alhamrani and alhamrani.amount is not None
+        else 0.0
+    )
+
     return {
         "name": _record_name(record_key),
         "run": run.name,
@@ -234,13 +245,9 @@ def _base_result(run, bank=None, alhamrani=None):
         "bank_transaction": bank.name if bank else None,
         "alhamrani_doctype": ALHAMRANI_DOCTYPE,
         "alhamrani_transaction": alhamrani.name if alhamrani else None,
-        "bank_amount": flt(bank.transaction_amount, 2) if bank else None,
-        "alhamrani_amount": flt(alhamrani.amount, 2) if alhamrani and alhamrani.amount is not None else None,
-        "amount_difference": (
-            flt(bank.transaction_amount, 2) - flt(alhamrani.amount, 2)
-            if bank and alhamrani and alhamrani.amount is not None
-            else None
-        ),
+        "bank_amount": bank_amount,
+        "alhamrani_amount": alhamrani_amount,
+        "amount_difference": bank_amount - alhamrani_amount,
         "bank_card_type": normalize_card_type(bank.card_type) if bank else None,
         "alhamrani_card_type": normalize_card_type(alhamrani.card_type) if alhamrani else None,
         "bank_masked_pan": bank.masked_card_number if bank else None,
