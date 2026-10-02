@@ -1,0 +1,22 @@
+{
+ "creation": "2026-10-03 00:30:00.000000",
+ "currency": "SAR",
+ "docstatus": 0,
+ "doctype": "Number Card",
+ "document_type": "Bank POS Transaction",
+ "dynamic_filters_json": "[]",
+ "filters_json": "[]",
+ "idx": 0,
+ "is_public": 1,
+ "is_standard": 1,
+ "label": "Visa Amount",
+ "method": "marina_custom_apps.pos_reconciliation.dashboard_cards.get_visa_amount_card",
+ "modified": "2026-10-03 00:30:00.000000",
+ "modified_by": "Administrator",
+ "module": "POS Reconciliation",
+ "name": "POS Reconciliation - Visa Amount",
+ "owner": "Administrator",
+ "show_full_number": 0,
+ "show_percentage_stats": 0,
+ "type": "Custom"
+}
