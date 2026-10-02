@@ -8,8 +8,8 @@ from frappe import _
 from frappe.utils import add_days, cstr, flt, get_datetime, getdate
 
 from marina_custom_apps.pos_reconciliation.doctype.bank_pos_transaction.bank_pos_transaction import (
-    build_reconciliation_key,
     normalize_transaction_type,
+    try_build_reconciliation_key,
 )
 
 ALHAMRANI_DOCTYPE = "Alhamrani Transaction"
@@ -239,12 +239,12 @@ class AlhamraniAdapter:
         if not tx_time and fallback_dt:
             tx_time = fallback_dt.strftime("%H:%M:%S")
 
-        key = None
-        key_error = None
-        try:
-            key = build_reconciliation_key(terminal_id, rrn, auth_code, transaction_type)
-        except Exception:
-            key_error = _("Incomplete reconciliation key")
+        key, key_error = try_build_reconciliation_key(
+            terminal_id,
+            rrn,
+            auth_code,
+            transaction_type,
+        )
 
         return frappe._dict(
             name=row.name,

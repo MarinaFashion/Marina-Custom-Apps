@@ -39,23 +39,30 @@ def normalize_transaction_type(value) -> str:
     return TRANSACTION_TYPE_ALIASES.get(normalized, normalized)
 
 
-def build_reconciliation_key(terminal_id, rrn, auth_code, transaction_type) -> str:
+def try_build_reconciliation_key(terminal_id, rrn, auth_code, transaction_type):
     parts = (
         clean_text(terminal_id),
         clean_text(rrn),
         clean_text(auth_code),
         normalize_transaction_type(transaction_type),
     )
+    labels = ("Terminal ID", "RRN", "Auth Code", "Transaction Type")
 
-    if any(not part for part in parts):
-        frappe.throw(
-            _("Terminal ID, RRN, Auth Code and Transaction Type are required to build the reconciliation key.")
-        )
+    missing = [label for label, part in zip(labels, parts) if not part]
+    if missing:
+        return None, _("Incomplete reconciliation key: missing {0}.").format(", ".join(missing))
 
     if any(KEY_SEPARATOR in part for part in parts):
-        frappe.throw(_("Reconciliation key fields cannot contain the character {0}.").format(KEY_SEPARATOR))
+        return None, _("Reconciliation key fields cannot contain the character {0}.").format(KEY_SEPARATOR)
 
-    return KEY_SEPARATOR.join(parts)
+    return KEY_SEPARATOR.join(parts), None
+
+
+def build_reconciliation_key(terminal_id, rrn, auth_code, transaction_type) -> str:
+    key, error = try_build_reconciliation_key(terminal_id, rrn, auth_code, transaction_type)
+    if error:
+        frappe.throw(error)
+    return key
 
 
 class BankPOSTransaction(Document):
