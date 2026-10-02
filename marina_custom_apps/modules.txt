@@ -8,3 +8,4 @@ Sales Forecasting
 Marina Calendar
 SOP Management
 Permission Manager
+POS Reconciliation
