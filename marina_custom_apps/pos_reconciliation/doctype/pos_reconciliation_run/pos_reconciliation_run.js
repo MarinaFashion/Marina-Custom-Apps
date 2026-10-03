@@ -170,6 +170,8 @@ function pos_recon_setup_review(frm) {
                 terminal_id: "",
                 card_type: "",
                 finance_review_status: "",
+                accounting_status: "",
+                ledger_posting_status: "",
                 before_integration: "All",
                 options: { settlement_numbers: [], pos_profiles: [], terminal_ids: [], card_types: [] },
             },
@@ -244,6 +246,8 @@ function pos_recon_load_results(frm) {
             terminal_id: state.terminal_id,
             card_type: state.card_type,
             finance_review_status: state.finance_review_status,
+            accounting_status: state.accounting_status,
+            ledger_posting_status: state.ledger_posting_status,
             before_integration: state.before_integration,
         },
     }).then((r) => {
@@ -347,7 +351,7 @@ function pos_recon_render_results(frm, $wrapper, data) {
             data-status="${pos_recon_escape(value)}">${label} <span class="badge">${count}</span></button>
     `).join("");
 
-    const review_filters = pos_recon_result_filters(state, state.options || {}, is_bank_only, data.settlement_summary);
+    const review_filters = pos_recon_result_filters(state, state.options || {}, is_bank_only, data.filtered_summary || data.settlement_summary || {});
     const checkbox_head = is_bank_only ? `<th style="width:32px"><input type="checkbox" class="pos-recon-select-page"></th>` : "";
 
     const body = rows.length
@@ -384,6 +388,7 @@ function pos_recon_render_results(frm, $wrapper, data) {
                     <td class="text-right">${pos_recon_money(row.amount_difference)}</td>
                     <td>${pos_recon_escape(row.pan_validation_method || "—")}</td>
                     <td>${pos_recon_finance_pill(row.finance_review_status)}</td>
+                    <td>${pos_recon_accounting_pill(row.accounting_status)}</td>
                     <td>${pos_recon_escape(details || "—")}</td>
                     <td>${pos_recon_resolution_pill(row.resolution_status)}</td>
                 </tr>
@@ -445,6 +450,10 @@ function pos_recon_render_results(frm, $wrapper, data) {
 
     $wrapper.find(".pos-recon-status-filter").on("click", function () {
         state.status = $(this).attr("data-status") || "All";
+        if (state.status !== "Bank Pending") {
+            state.finance_review_status = "";
+            state.before_integration = "All";
+        }
         state.start = 0;
         pos_recon_load_results(frm);
     });
@@ -464,22 +473,28 @@ function pos_recon_render_results(frm, $wrapper, data) {
 
 
 function pos_recon_result_filters(state, options, is_bank_only, summary) {
-    const summary_html = is_bank_only && summary ? `
+    summary = summary || {};
+    const summary_html = `
+        <div class="pos-recon-summary-title">
+            <b>${__("Filtered Summary")}</b>
+            <span class="text-muted small">${__("Totals follow the selected reconciliation status and all active filters.")}</span>
+        </div>
         <div class="pos-recon-settlement-summary">
             <div><b>${__("Transactions")}</b><span>${cint(summary.transaction_count || 0)}</span></div>
-            <div><b>${__("Gross")}</b><span>${pos_recon_money(summary.gross_amount)}</span></div>
+            <div><b>${__("Bank Gross")}</b><span>${pos_recon_money(summary.gross_amount)}</span></div>
+            <div><b>${__("Marina Amount")}</b><span>${pos_recon_money(summary.marina_amount)}</span></div>
             <div><b>${__("Commission")}</b><span>${pos_recon_money(summary.commission)}</span></div>
             <div><b>${__("VAT")}</b><span>${pos_recon_money(summary.vat)}</span></div>
             <div><b>${__("Expected Net")}</b><span>${pos_recon_money(summary.expected_net)}</span></div>
+            <div><b>${__("Accounting Eligible")}</b><span>${cint(summary.accounting_eligible_count || 0)}</span></div>
+            <div><b>${__("Pending Accounting")}</b><span>${cint(summary.pending_accounting_count || 0)}</span></div>
+            <div><b>${__("Draft Created")}</b><span>${cint(summary.draft_created_count || 0)}</span></div>
+            <div><b>${__("Posted to Ledger")}</b><span>${cint(summary.posted_to_ledger_count || 0)}</span></div>
+            <div><b>${__("No Charges")}</b><span>${cint(summary.no_charges_count || 0)}</span></div>
             <div><b>${__("Approved")}</b><span>${cint(summary.approved_count || 0)}</span></div>
             <div><b>${__("Needs Investigation")}</b><span>${cint(summary.investigation_count || 0)}</span></div>
             <div><b>${__("Pending Review")}</b><span>${cint(summary.pending_review_count || 0)}</span></div>
-        </div>
-        ${(cint(summary.settlement_date_count || 0) > 1 || cint(summary.terminal_count || 0) > 1) ? `
-            <div class="alert alert-warning pos-recon-settlement-warning">
-                ${__("This Settlement Number spans {0} settlement dates and {1} terminals in the current filters. Narrow the filters to one settlement group before bulk approval.", [summary.settlement_date_count || 0, summary.terminal_count || 0])}
-            </div>` : ""}
-    ` : (is_bank_only ? `<div class="text-muted small pos-recon-summary-hint">${__("Choose a Settlement Number to show settlement totals and enable controlled Finance audit.")}</div>` : "");
+        </div>`;
 
     const finance_fields = is_bank_only ? `
         <div><label>${__("Finance Review")}</label><select class="form-control input-xs pos-recon-filter-finance">
@@ -494,16 +509,42 @@ function pos_recon_result_filters(state, options, is_bank_only, summary) {
             <option value="0" ${String(state.before_integration) === "0" ? "selected" : ""}>${__("No")}</option>
         </select></div>` : "";
 
-    const multiple_groups = summary && (cint(summary.settlement_date_count || 0) > 1 || cint(summary.terminal_count || 0) > 1);
+    const ledger_fields = `
+        <div><label>${__("Ledger Posting Status")}</label><select class="form-control input-xs pos-recon-filter-ledger">
+            <option value="">${__("All")}</option>
+            ${pos_recon_option("Posted to Ledger", state.ledger_posting_status)}
+            ${pos_recon_option("Unposted to Ledger", state.ledger_posting_status)}
+            ${pos_recon_option("No Posting Required", state.ledger_posting_status)}
+            ${pos_recon_option("Not Eligible", state.ledger_posting_status)}
+        </select></div>
+        <div><label>${__("Accounting Status")}</label><select class="form-control input-xs pos-recon-filter-accounting">
+            <option value="">${__("All")}</option>
+            ${pos_recon_option("Not Eligible", state.accounting_status)}
+            ${pos_recon_option("Pending Accounting", state.accounting_status)}
+            ${pos_recon_option("Draft Created", state.accounting_status)}
+            ${pos_recon_option("Draft - Review Required", state.accounting_status)}
+            ${pos_recon_option("Posted", state.accounting_status)}
+            ${pos_recon_option("Posted - Review Required", state.accounting_status)}
+            ${pos_recon_option("No Charges", state.accounting_status)}
+        </select></div>`;
+
+    const multiple_groups = cint(summary.settlement_date_count || 0) > 1 || cint(summary.terminal_count || 0) > 1;
     const filtered_disabled = !is_bank_only || multiple_groups || !state.settlement_number ? "disabled" : "";
+    const settlement_warning = is_bank_only && state.settlement_number && multiple_groups ? `
+        <div class="alert alert-warning pos-recon-settlement-warning">
+            ${__("This Settlement Number spans {0} settlement dates and {1} terminals in the current filters. Narrow the filters to one settlement group before bulk approval.", [summary.settlement_date_count || 0, summary.terminal_count || 0])}
+        </div>` : "";
+    const finance_hint = is_bank_only && !state.settlement_number
+        ? `<div class="text-muted small pos-recon-summary-hint">${__("Choose a Settlement Number to enable controlled Finance review actions. The filtered totals remain available without a Settlement Number.")}</div>`
+        : "";
     const finance_actions = is_bank_only ? `
         <div class="pos-recon-finance-actions">
-            <button class="btn btn-xs btn-primary pos-recon-approve-selected">${__("Checked & Approved – Selected")}</button>
-            <button class="btn btn-xs btn-default pos-recon-investigate-selected">${__("Needs Investigation – Selected")}</button>
+            <button class="btn btn-xs btn-primary pos-recon-approve-selected">${__("Checked & Approved â€“ Selected")}</button>
+            <button class="btn btn-xs btn-default pos-recon-investigate-selected">${__("Needs Investigation â€“ Selected")}</button>
             <button class="btn btn-xs btn-default pos-recon-reset-selected">${__("Reset Selected")}</button>
             <span class="pos-recon-action-spacer"></span>
-            <button class="btn btn-xs btn-primary pos-recon-approve-filtered" ${filtered_disabled}>${__("Checked & Approved – All Filtered")}</button>
-            <button class="btn btn-xs btn-default pos-recon-investigate-filtered" ${filtered_disabled}>${__("Needs Investigation – All Filtered")}</button>
+            <button class="btn btn-xs btn-primary pos-recon-approve-filtered" ${filtered_disabled}>${__("Checked & Approved â€“ All Filtered")}</button>
+            <button class="btn btn-xs btn-default pos-recon-investigate-filtered" ${filtered_disabled}>${__("Needs Investigation â€“ All Filtered")}</button>
         </div>` : "";
 
     return `
@@ -515,14 +556,16 @@ function pos_recon_result_filters(state, options, is_bank_only, summary) {
                 <div><label>${__("POS Profile")}</label><select class="form-control input-xs pos-recon-filter-profile">${pos_recon_select_options(options.pos_profiles || [], state.pos_profile, __("All"))}</select></div>
                 <div><label>${__("Terminal ID")}</label><select class="form-control input-xs pos-recon-filter-terminal">${pos_recon_select_options(options.terminal_ids || [], state.terminal_id, __("All"))}</select></div>
                 <div><label>${__("Card Type")}</label><select class="form-control input-xs pos-recon-filter-card">${pos_recon_select_options(options.card_types || [], state.card_type, __("All"))}</select></div>
+                ${ledger_fields}
                 ${finance_fields}
                 <div class="pos-recon-filter-actions"><button class="btn btn-xs btn-primary pos-recon-apply-bank-filters">${__("Apply Filters")}</button><button class="btn btn-xs btn-default pos-recon-clear-bank-filters">${__("Clear")}</button></div>
             </div>
             ${summary_html}
+            ${settlement_warning}
+            ${finance_hint}
             ${finance_actions}
         </div>`;
 }
-
 
 function pos_recon_select_options(values, current, all_label) {
     const items = [`<option value="">${pos_recon_escape(all_label || __("All"))}</option>`];
@@ -548,9 +591,14 @@ function pos_recon_bind_result_filters(frm, $wrapper, data, is_bank_only) {
         state.pos_profile = $wrapper.find(".pos-recon-filter-profile").val() || "";
         state.terminal_id = $wrapper.find(".pos-recon-filter-terminal").val() || "";
         state.card_type = $wrapper.find(".pos-recon-filter-card").val() || "";
+        state.ledger_posting_status = $wrapper.find(".pos-recon-filter-ledger").val() || "";
+        state.accounting_status = $wrapper.find(".pos-recon-filter-accounting").val() || "";
         if (is_bank_only) {
             state.finance_review_status = $wrapper.find(".pos-recon-filter-finance").val() || "";
             state.before_integration = $wrapper.find(".pos-recon-filter-before").val() || "All";
+        } else {
+            state.finance_review_status = "";
+            state.before_integration = "All";
         }
         state.start = 0;
         pos_recon_load_results(frm);
@@ -565,6 +613,8 @@ function pos_recon_bind_result_filters(frm, $wrapper, data, is_bank_only) {
         state.terminal_id = "";
         state.card_type = "";
         state.finance_review_status = "";
+        state.accounting_status = "";
+        state.ledger_posting_status = "";
         state.before_integration = "All";
         state.start = 0;
         pos_recon_load_results(frm);
@@ -585,7 +635,6 @@ function pos_recon_bind_result_filters(frm, $wrapper, data, is_bank_only) {
     $wrapper.find(".pos-recon-approve-filtered").on("click", () => pos_recon_review_filtered(frm, data, "Checked & Approved"));
     $wrapper.find(".pos-recon-investigate-filtered").on("click", () => pos_recon_review_filtered(frm, data, "Needs Investigation"));
 }
-
 
 function pos_recon_update_selected_summary($wrapper) {
     const selected = $wrapper.find(".pos-recon-row-check:checked");
@@ -664,7 +713,7 @@ function pos_recon_reset_selected(frm, $wrapper) {
 function pos_recon_review_filtered(frm, data, decision) {
     if (!pos_recon_require_settlement_filter(frm)) return;
     const state = frm.__pos_recon_review.results;
-    const summary = data.settlement_summary || {};
+    const summary = data.filtered_summary || data.settlement_summary || {};
     const count = cint(summary.transaction_count || data.total || 0);
     if (!count) {
         frappe.msgprint(__("No Bank Only transactions match the current filters."));
@@ -685,6 +734,8 @@ function pos_recon_review_filtered(frm, data, decision) {
                 terminal_id: state.terminal_id,
                 card_type: state.card_type,
                 finance_review_status: state.finance_review_status,
+                accounting_status: state.accounting_status,
+                ledger_posting_status: state.ledger_posting_status,
                 before_integration: state.before_integration,
                 search: state.search,
                 decision: decision,
@@ -695,7 +746,6 @@ function pos_recon_review_filtered(frm, data, decision) {
         }).then(() => frm.reload_doc());
     });
 }
-
 
 function pos_recon_prompt_review(decision, count, detail, callback) {
     const approved = decision === "Checked & Approved";
@@ -853,7 +903,8 @@ function pos_recon_styles() {
         .pos-recon-selected-summary { display:grid; grid-template-columns:repeat(5,minmax(120px,1fr)); gap:8px; margin:10px 0; }
         .pos-recon-selected-summary div { background:var(--subtle-fg); border-radius:var(--border-radius-sm); padding:8px; display:flex; flex-direction:column; gap:2px; }
         .pos-recon-selected-summary b { font-size:11px; color:var(--text-muted); }
-        .pos-recon-settlement-summary { display:grid; grid-template-columns:repeat(4,minmax(120px,1fr)); gap:8px; margin-top:10px; }
+        .pos-recon-summary-title { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-top:12px; }
+        .pos-recon-settlement-summary { display:grid; grid-template-columns:repeat(4,minmax(120px,1fr)); gap:8px; margin-top:6px; }
         .pos-recon-settlement-summary div { background:var(--subtle-fg); border-radius:var(--border-radius-sm); padding:8px; display:flex; flex-direction:column; gap:2px; }
         .pos-recon-settlement-summary b { font-size:11px; color:var(--text-muted); }
         .pos-recon-settlement-warning { margin:8px 0 0; padding:8px; }

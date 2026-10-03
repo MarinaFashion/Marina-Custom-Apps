@@ -64,6 +64,8 @@ def get_results_review_page(
     terminal_id=None,
     card_type=None,
     finance_review_status=None,
+    accounting_status=None,
+    ledger_posting_status=None,
     before_integration=None,
 ):
     return get_results_page(
@@ -80,6 +82,8 @@ def get_results_review_page(
         terminal_id=terminal_id,
         card_type=card_type,
         finance_review_status=finance_review_status,
+        accounting_status=accounting_status,
+        ledger_posting_status=ledger_posting_status,
         before_integration=before_integration,
     )
 
@@ -112,6 +116,8 @@ def finance_review_filtered(
     terminal_id=None,
     card_type=None,
     finance_review_status=None,
+    accounting_status=None,
+    ledger_posting_status=None,
     before_integration=None,
     search=None,
 ):
@@ -127,6 +133,8 @@ def finance_review_filtered(
         terminal_id=terminal_id,
         card_type=card_type,
         finance_review_status=finance_review_status,
+        accounting_status=accounting_status,
+        ledger_posting_status=ledger_posting_status,
         before_integration=before_integration,
         search=search,
     )

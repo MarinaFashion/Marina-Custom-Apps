@@ -24,6 +24,45 @@ RESULT_STATUS_FILTERS = {
     "Pending": {"resolution_status": "Pending"},
 }
 
+LEDGER_POSTING_STATUS_FILTERS = {
+    "Posted to Ledger": ["Posted", "Posted - Review Required"],
+    "Unposted to Ledger": ["Pending Accounting", "Draft Created", "Draft - Review Required"],
+    "No Posting Required": ["No Charges"],
+    "Not Eligible": ["Not Eligible"],
+}
+
+ACCOUNTING_ELIGIBLE_STATUSES = {
+    "Pending Accounting",
+    "Draft Created",
+    "Draft - Review Required",
+    "Posted",
+    "Posted - Review Required",
+    "No Charges",
+}
+
+
+def apply_accounting_filters(filters, accounting_status=None, ledger_posting_status=None):
+    accounting_status = cstr(accounting_status).strip()
+    ledger_posting_status = cstr(ledger_posting_status).strip()
+
+    allowed_statuses = None
+    if ledger_posting_status:
+        allowed_statuses = LEDGER_POSTING_STATUS_FILTERS.get(ledger_posting_status)
+        if not allowed_statuses:
+            frappe.throw(_("Invalid Ledger Posting Status."))
+
+    if accounting_status and allowed_statuses is not None:
+        if accounting_status not in allowed_statuses:
+            filters["accounting_status"] = "__NO_MATCH__"
+        else:
+            filters["accounting_status"] = accounting_status
+    elif accounting_status:
+        filters["accounting_status"] = accounting_status
+    elif allowed_statuses is not None:
+        filters["accounting_status"] = ["in", allowed_statuses]
+
+    return filters
+
 
 def get_source_page(run_name, source, start=0, page_length=DEFAULT_PAGE_LENGTH, search=None):
     run = _get_run(run_name)
@@ -68,6 +107,8 @@ def get_results_page(
     terminal_id=None,
     card_type=None,
     finance_review_status=None,
+    accounting_status=None,
+    ledger_posting_status=None,
     before_integration=None,
 ):
     run = _get_run(run_name)
@@ -101,6 +142,12 @@ def get_results_page(
         if value:
             filters[fieldname] = value
 
+    apply_accounting_filters(
+        filters,
+        accounting_status=accounting_status,
+        ledger_posting_status=ledger_posting_status,
+    )
+
     if before_integration not in (None, "", "All"):
         filters["before_integration"] = cint(before_integration)
 
@@ -126,9 +173,7 @@ def get_results_page(
     )
     total = _count_records(filters, or_filters)
 
-    settlement_summary = None
-    if status in {"Bank Pending", "Bank Only"} and cstr(settlement_number).strip():
-        settlement_summary = _settlement_summary(filters, or_filters)
+    filtered_summary = _filtered_summary(filters, or_filters)
 
     return {
         "status": status,
@@ -136,7 +181,9 @@ def get_results_page(
         "total": total,
         "start": start,
         "page_length": page_length,
-        "settlement_summary": settlement_summary,
+        "filtered_summary": filtered_summary,
+        # Backward-compatible alias used by Finance review actions.
+        "settlement_summary": filtered_summary,
     }
 
 
@@ -203,47 +250,94 @@ def _count_records(filters, or_filters=None):
     return cint(rows[0].total) if rows else 0
 
 
-def _settlement_summary(filters, or_filters=None):
-    refs = frappe.get_all(
+def _group_counts(fieldname, filters, or_filters=None):
+    rows = frappe.get_all(
+        RECONCILIATION_RECORD,
+        filters=filters,
+        or_filters=or_filters,
+        fields=[fieldname, "count(name) as total"],
+        group_by=fieldname,
+        limit_page_length=0,
+    )
+    return {
+        cstr(row.get(fieldname)).strip(): cint(row.total)
+        for row in rows
+        if cstr(row.get(fieldname)).strip()
+    }
+
+
+def _distinct_count(fieldname, filters, or_filters=None):
+    rows = frappe.get_all(
+        RECONCILIATION_RECORD,
+        filters=filters,
+        or_filters=or_filters,
+        fields=[fieldname],
+        group_by=fieldname,
+        limit_page_length=0,
+    )
+    return sum(1 for row in rows if cstr(row.get(fieldname)).strip())
+
+
+def _filtered_summary(filters, or_filters=None):
+    totals = frappe.get_all(
         RECONCILIATION_RECORD,
         filters=filters,
         or_filters=or_filters,
         fields=[
-            "bank_amount", "bank_commission_amount", "bank_commission_vat_amount",
-            "bank_settlement_amount", "finance_review_status", "settlement_number",
-            "settlement_date", "terminal_id", "pos_profile",
+            "count(name) as transaction_count",
+            "sum(bank_amount) as gross_amount",
+            "sum(alhamrani_amount) as marina_amount",
+            "sum(bank_commission_amount) as commission",
+            "sum(bank_commission_vat_amount) as vat",
+            "sum(bank_settlement_amount) as bank_settlement_amount",
         ],
-        limit_page_length=0,
+        limit_page_length=1,
+    )
+    total = totals[0] if totals else frappe._dict()
+
+    transaction_count = cint(total.get("transaction_count"))
+    gross = flt(total.get("gross_amount"), 2)
+    marina_amount = flt(total.get("marina_amount"), 2)
+    commission = flt(total.get("commission"), 2)
+    vat = flt(total.get("vat"), 2)
+    bank_settlement = flt(total.get("bank_settlement_amount"), 2)
+
+    finance = _group_counts("finance_review_status", filters, or_filters)
+    accounting = _group_counts("accounting_status", filters, or_filters)
+
+    accounting_eligible = sum(
+        accounting.get(status, 0)
+        for status in ACCOUNTING_ELIGIBLE_STATUSES
+    )
+    draft_created = (
+        accounting.get("Draft Created", 0)
+        + accounting.get("Draft - Review Required", 0)
+    )
+    posted_to_ledger = (
+        accounting.get("Posted", 0)
+        + accounting.get("Posted - Review Required", 0)
     )
 
-    gross = sum(flt(row.bank_amount, 2) for row in refs)
-    commission = sum(flt(row.bank_commission_amount, 2) for row in refs)
-    vat = sum(flt(row.bank_commission_vat_amount, 2) for row in refs)
-    bank_settlement = sum(flt(row.bank_settlement_amount, 2) for row in refs)
-
-    statuses = {"Checked & Approved": 0, "Needs Investigation": 0, "Pending Review": 0}
-    for row in refs:
-        review_status = cstr(row.finance_review_status).strip() or "Pending Review"
-        if review_status in statuses:
-            statuses[review_status] += 1
-
-    settlement_dates = {cstr(row.settlement_date) for row in refs if row.settlement_date}
-    terminals = {cstr(row.terminal_id) for row in refs if row.terminal_id}
-    profiles = {cstr(row.pos_profile) for row in refs if row.pos_profile}
-
     return {
-        "transaction_count": len(refs),
-        "gross_amount": flt(gross, 2),
-        "commission": flt(commission, 2),
-        "vat": flt(vat, 2),
+        "transaction_count": transaction_count,
+        "gross_amount": gross,
+        "marina_amount": marina_amount,
+        "commission": commission,
+        "vat": vat,
         "expected_net": flt(gross - commission - vat, 2),
-        "bank_settlement_amount": flt(bank_settlement, 2),
-        "approved_count": statuses["Checked & Approved"],
-        "investigation_count": statuses["Needs Investigation"],
-        "pending_review_count": statuses["Pending Review"],
-        "settlement_date_count": len(settlement_dates),
-        "terminal_count": len(terminals),
-        "pos_profile_count": len(profiles),
+        "bank_settlement_amount": bank_settlement,
+        "approved_count": finance.get("Checked & Approved", 0),
+        "investigation_count": finance.get("Needs Investigation", 0),
+        "pending_review_count": finance.get("Pending Review", 0),
+        "accounting_eligible_count": accounting_eligible,
+        "pending_accounting_count": accounting.get("Pending Accounting", 0),
+        "draft_created_count": draft_created,
+        "posted_to_ledger_count": posted_to_ledger,
+        "no_charges_count": accounting.get("No Charges", 0),
+        "not_eligible_count": accounting.get("Not Eligible", 0),
+        "settlement_date_count": _distinct_count("settlement_date", filters, or_filters),
+        "terminal_count": _distinct_count("terminal_id", filters, or_filters),
+        "pos_profile_count": _distinct_count("pos_profile", filters, or_filters),
     }
 
 
@@ -271,6 +365,7 @@ def _result_search_filters(search):
         "terminal_id": _like(search), "pos_profile": _like(search), "card_type": _like(search),
         "settlement_number": _like(search), "match_status": _like(search),
         "resolution_status": _like(search), "finance_review_status": _like(search),
+        "accounting_status": _like(search), "journal_entry": _like(search),
         "finance_review_note": _like(search), "discrepancy_fields": _like(search),
     }
 

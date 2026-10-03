@@ -17,6 +17,7 @@ from marina_custom_apps.pos_reconciliation.reconciliation_engine import (
     FINANCE_PENDING,
     refresh_run_summary,
 )
+from marina_custom_apps.pos_reconciliation.review_service import apply_accounting_filters
 
 VALID_DECISIONS = {FINANCE_APPROVED, FINANCE_INVESTIGATE}
 SETTINGS_DOCTYPE = "POS Reconciliation Settings"
@@ -245,6 +246,8 @@ def _filtered_bank_only_rows(
     terminal_id=None,
     card_type=None,
     finance_review_status=None,
+    accounting_status=None,
+    ledger_posting_status=None,
     before_integration=None,
     search=None,
 ):
@@ -283,6 +286,12 @@ def _filtered_bank_only_rows(
         value = cstr(value).strip()
         if value:
             filters[fieldname] = value
+
+    apply_accounting_filters(
+        filters,
+        accounting_status=accounting_status,
+        ledger_posting_status=ledger_posting_status,
+    )
 
     if before_integration not in (None, "", "All"):
         filters["before_integration"] = cint(before_integration)
@@ -339,6 +348,8 @@ def review_filtered_bank_only(
     terminal_id=None,
     card_type=None,
     finance_review_status=None,
+    accounting_status=None,
+    ledger_posting_status=None,
     before_integration=None,
     search=None,
 ):
@@ -354,6 +365,8 @@ def review_filtered_bank_only(
         terminal_id=terminal_id,
         card_type=card_type,
         finance_review_status=finance_review_status,
+        accounting_status=accounting_status,
+        ledger_posting_status=ledger_posting_status,
         before_integration=before_integration,
         search=search,
     )
