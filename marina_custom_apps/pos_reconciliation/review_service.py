@@ -301,6 +301,8 @@ def _filtered_summary(filters, or_filters=None):
     commission = flt(total.get("commission"), 2)
     vat = flt(total.get("vat"), 2)
     bank_settlement = flt(total.get("bank_settlement_amount"), 2)
+    commission_pct = flt((commission / gross) * 100, 2) if gross else 0
+    vat_pct = flt((vat / commission) * 100, 2) if commission else 0
 
     finance = _group_counts("finance_review_status", filters, or_filters)
     accounting = _group_counts("accounting_status", filters, or_filters)
@@ -323,7 +325,9 @@ def _filtered_summary(filters, or_filters=None):
         "gross_amount": gross,
         "marina_amount": marina_amount,
         "commission": commission,
+        "commission_pct": commission_pct,
         "vat": vat,
+        "vat_pct": vat_pct,
         "expected_net": flt(gross - commission - vat, 2),
         "bank_settlement_amount": bank_settlement,
         "approved_count": finance.get("Checked & Approved", 0),

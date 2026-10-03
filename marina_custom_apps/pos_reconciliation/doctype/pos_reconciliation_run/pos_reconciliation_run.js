@@ -484,7 +484,9 @@ function pos_recon_result_filters(state, options, is_bank_only, summary) {
             <div><b>${__("Bank Gross")}</b><span>${pos_recon_money(summary.gross_amount)}</span></div>
             <div><b>${__("Marina Amount")}</b><span>${pos_recon_money(summary.marina_amount)}</span></div>
             <div><b>${__("Commission")}</b><span>${pos_recon_money(summary.commission)}</span></div>
+            <div><b>${__("Commission %")}</b><span>${Number(summary.commission_pct || 0).toFixed(2)}%</span></div>
             <div><b>${__("VAT")}</b><span>${pos_recon_money(summary.vat)}</span></div>
+            <div><b>${__("VAT %")}</b><span>${Number(summary.vat_pct || 0).toFixed(2)}%</span></div>
             <div><b>${__("Expected Net")}</b><span>${pos_recon_money(summary.expected_net)}</span></div>
             <div><b>${__("Accounting Eligible")}</b><span>${cint(summary.accounting_eligible_count || 0)}</span></div>
             <div><b>${__("Pending Accounting")}</b><span>${cint(summary.pending_accounting_count || 0)}</span></div>
