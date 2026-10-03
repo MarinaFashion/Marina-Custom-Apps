@@ -112,7 +112,8 @@ def get_results_page(
         "finance_review_status", "finance_reviewed_by", "finance_reviewed_on", "finance_review_note",
         "pan_validation_method", "discrepancy_fields", "bank_amount", "alhamrani_amount",
         "amount_difference", "bank_commission_amount", "bank_commission_vat_amount",
-        "bank_settlement_amount", "manual_clearance_reason",
+        "bank_settlement_amount", "manual_clearance_reason", "accounting_status",
+        "accounting_posting", "journal_entry",
     ]
     rows = frappe.get_all(
         RECONCILIATION_RECORD,

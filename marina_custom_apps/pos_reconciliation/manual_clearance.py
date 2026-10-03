@@ -99,6 +99,9 @@ def mark_bank_transactions(bank_transactions, reason=None):
     for run_name in affected_runs:
         refresh_run_summary(run_name)
 
+    from marina_custom_apps.pos_reconciliation.accounting_service import sync_accounting_status_for_bank_transactions
+
+    sync_accounting_status_for_bank_transactions(bank_transactions)
     return {"updated": updated, "affected_runs": len(affected_runs)}
 
 
@@ -157,6 +160,9 @@ def reopen_bank_transactions(bank_transactions):
     for run_name in affected_runs:
         refresh_run_summary(run_name)
 
+    from marina_custom_apps.pos_reconciliation.accounting_service import sync_accounting_status_for_bank_transactions
+
+    sync_accounting_status_for_bank_transactions(bank_transactions)
     return {"updated": updated, "affected_runs": len(affected_runs)}
 
 

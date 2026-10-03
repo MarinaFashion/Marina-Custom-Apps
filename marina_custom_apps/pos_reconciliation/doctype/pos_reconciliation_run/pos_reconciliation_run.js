@@ -111,6 +111,35 @@ frappe.ui.form.on("POS Reconciliation Run", {
         }, __("View"));
 
         if (frm.doc.status === "Completed") {
+            frm.add_custom_button(__("Pending Accounting"), () => {
+                frappe.set_route("List", "POS Reconciliation Record", {
+                    run: frm.doc.name,
+                    accounting_status: "Pending Accounting",
+                });
+            }, __("Accounting"));
+
+            frm.add_custom_button(__("Posted"), () => {
+                frappe.set_route("List", "POS Reconciliation Record", {
+                    run: frm.doc.name,
+                    accounting_status: "Posted",
+                });
+            }, __("Accounting"));
+
+            frm.add_custom_button(__("Review Required"), () => {
+                frappe.set_route("List", "POS Reconciliation Record", {
+                    run: frm.doc.name,
+                    accounting_status: "Posted - Review Required",
+                });
+            }, __("Accounting"));
+
+            frm.add_custom_button(__("Accounting Postings"), () => {
+                frappe.set_route("List", "POS Accounting Posting", { source_run: frm.doc.name });
+            }, __("Accounting"));
+
+            frm.add_custom_button(__("Create Journal Entries"), () => {
+                pos_recon_open_accounting_dialog(frm);
+            }, __("Accounting"));
+
             pos_recon_setup_review(frm);
         }
     },
@@ -353,7 +382,7 @@ function pos_recon_render_results(frm, $wrapper, data) {
                 </tr>
             `;
         }).join("")
-        : `<tr><td colspan="${is_bank_only ? 15 : 14}" class="text-muted text-center">${__("No reconciliation records found")}</td></tr>`;
+        : `<tr><td colspan="${is_bank_only ? 16 : 15}" class="text-muted text-center">${__("No reconciliation records found")}</td></tr>`;
 
     const selected_summary = is_bank_only ? `
         <div class="pos-recon-selected-summary" style="display:none">
@@ -392,7 +421,7 @@ function pos_recon_render_results(frm, $wrapper, data) {
                         <th>${__("Date")}</th><th>${__("POS Profile")}</th><th>${__("Terminal ID")}</th><th>${__("Settlement No.")}</th>
                         <th>${__("Status")}</th><th class="text-right">${__("Bank Amount")}</th>
                         <th class="text-right">${__("Alhamrani Amount")}</th><th class="text-right">${__("Difference")}</th>
-                        <th>${__("PAN Validation")}</th><th>${__("Finance Review")}</th>
+                        <th>${__("PAN Validation")}</th><th>${__("Finance Review")}</th><th>${__("Accounting")}</th>
                         <th>${__("Discrepancy / Note")}</th><th>${__("Resolution")}</th>
                     </tr></thead>
                     <tbody>${body}</tbody>
@@ -776,6 +805,19 @@ function pos_recon_finance_pill(status) {
 }
 
 
+function pos_recon_accounting_pill(status) {
+    const value = status || "Not Eligible";
+    const color = {
+        "Posted": "green",
+        "Pending Accounting": "orange",
+        "No Charges": "blue",
+        "Posted - Review Required": "red",
+        "Not Eligible": "gray",
+    }[value] || "gray";
+    return `<span class="indicator-pill ${color}">${pos_recon_escape(value)}</span>`;
+}
+
+
 function pos_recon_escape(value) {
     return $("<div>").text(value === null || value === undefined ? "" : String(value)).html();
 }
@@ -811,4 +853,123 @@ function pos_recon_styles() {
         .pos-recon-action-spacer { flex:1; }
         @media (max-width:1100px) { .pos-recon-bank-filter-grid { grid-template-columns:repeat(2,minmax(140px,1fr)); } .pos-recon-settlement-summary { grid-template-columns:repeat(2,minmax(120px,1fr)); } }
     </style>`;
+}
+
+function pos_recon_open_accounting_dialog(frm) {
+    frappe.call({
+        method: "marina_custom_apps.pos_reconciliation.doctype.pos_reconciliation_run.pos_reconciliation_run.get_accounting_options",
+        args: { run_name: frm.doc.name },
+        freeze: true,
+        freeze_message: __("Checking accounting eligibility..."),
+    }).then((r) => {
+        const options = r.message || {};
+        if (!cint(options.enabled)) {
+            frappe.msgprint({
+                title: __("POS Accounting Posting Disabled"),
+                indicator: "orange",
+                message: __("Enable POS Accounting Posting and configure the accounts in POS Reconciliation Settings first."),
+            });
+            return;
+        }
+        if (!cint(options.pending_count || 0)) {
+            frappe.msgprint(__("There are no confirmed transactions pending accounting in this reconciliation run."));
+            return;
+        }
+
+        const settlement_options = [""].concat(options.settlement_numbers || []).join("\n");
+        const consolidate_text = cint(options.consolidate_pos_profiles)
+            ? __("Multiple POS Profiles in the same settlement/date will be consolidated into one Journal Entry. Commission debit lines remain split by POS Profile Cost Center.")
+            : __("A separate Journal Entry will be created for each POS Profile.");
+
+        frappe.prompt(
+            [
+                {
+                    fieldname: "settlement_number",
+                    fieldtype: "Select",
+                    label: __("Settlement Number"),
+                    options: settlement_options,
+                    reqd: 1,
+                },
+                {
+                    fieldname: "settlement_date",
+                    fieldtype: "Date",
+                    label: __("Settlement Date"),
+                    description: __("Required only when the same Settlement Number exists on more than one settlement date."),
+                },
+                {
+                    fieldname: "pos_profile",
+                    fieldtype: "Link",
+                    options: "POS Profile",
+                    label: __("POS Profile"),
+                    description: __("Optional. Leave blank to include all eligible POS Profiles."),
+                },
+                {
+                    fieldname: "posting_note",
+                    fieldtype: "HTML",
+                    options: `<div class="text-muted small">${consolidate_text}<br>${__("Posting Date will be the bank Settlement Date. Only Matching or Manually Cleared transactions are eligible.")}</div>`,
+                },
+            ],
+            (values) => {
+                frappe.call({
+                    method: "marina_custom_apps.pos_reconciliation.doctype.pos_reconciliation_run.pos_reconciliation_run.get_accounting_preview_for_run",
+                    args: {
+                        run_name: frm.doc.name,
+                        settlement_number: values.settlement_number,
+                        settlement_date: values.settlement_date || null,
+                        pos_profile: values.pos_profile || null,
+                    },
+                    freeze: true,
+                    freeze_message: __("Preparing accounting preview..."),
+                }).then((preview_response) => {
+                    const preview = preview_response.message || {};
+                    const message = __(
+                        "Create {0} Journal Entry/Entries for {1} confirmed transactions?<br><br>POS Profiles: {2}<br>Bank Commission: {3}<br>VAT: {4}<br>Total Bank Credit: {5}",
+                        [
+                            preview.journal_entry_count || 0,
+                            preview.transaction_count || 0,
+                            preview.pos_profile_count || 0,
+                            pos_recon_money(preview.commission),
+                            pos_recon_money(preview.vat),
+                            pos_recon_money(preview.total),
+                        ]
+                    );
+                    frappe.confirm(message, () => {
+                        frappe.call({
+                            method: "marina_custom_apps.pos_reconciliation.doctype.pos_reconciliation_run.pos_reconciliation_run.create_accounting_entries",
+                            args: {
+                                run_name: frm.doc.name,
+                                settlement_number: values.settlement_number,
+                                settlement_date: values.settlement_date || null,
+                                pos_profile: values.pos_profile || null,
+                            },
+                            freeze: true,
+                            freeze_message: __("Creating and submitting Journal Entries..."),
+                        }).then((post_response) => {
+                            const result = post_response.message || {};
+                            const rows = (result.postings || []).map((row) =>
+                                `${pos_recon_escape(row.posting)} â†’ ${pos_recon_escape(row.journal_entry)}`
+                            ).join("<br>");
+                            frappe.msgprint({
+                                title: __("POS Accounting Posted"),
+                                indicator: "green",
+                                message: __(
+                                    "Posted {0} transactions in {1} Journal Entry/Entries.<br>Commission: {2}<br>VAT: {3}<br><br>{4}",
+                                    [
+                                        result.transaction_count || 0,
+                                        result.posting_count || 0,
+                                        pos_recon_money(result.commission),
+                                        pos_recon_money(result.vat),
+                                        rows,
+                                    ]
+                                ),
+                            });
+                            frm.reload_doc();
+                        });
+                    });
+                });
+            },
+            __("Create POS Accounting Entries"),
+            __("Preview")
+        );
+    });
 }

@@ -160,6 +160,9 @@ def _mark_needs_investigation(bank_transactions, note=None):
     for run_name in affected_runs:
         refresh_run_summary(run_name)
 
+    from marina_custom_apps.pos_reconciliation.accounting_service import sync_accounting_status_for_bank_transactions
+
+    sync_accounting_status_for_bank_transactions(bank_transactions)
     return {"updated": updated, "affected_runs": len(affected_runs)}
 
 
@@ -216,6 +219,9 @@ def _reset_review(bank_transactions):
     for run_name in affected_runs:
         refresh_run_summary(run_name)
 
+    from marina_custom_apps.pos_reconciliation.accounting_service import sync_accounting_status_for_bank_transactions
+
+    sync_accounting_status_for_bank_transactions(bank_transactions)
     return {"updated": updated, "affected_runs": len(affected_runs)}
 
 

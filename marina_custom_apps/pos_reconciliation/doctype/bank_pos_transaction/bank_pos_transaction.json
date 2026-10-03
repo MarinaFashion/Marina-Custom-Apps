@@ -1,298 +1,354 @@
 {
-  "allow_import": 1,
-  "autoname": "field:bank_mid",
-  "doctype": "DocType",
-  "engine": "InnoDB",
-  "field_order": [
-    "identity_section",
-    "bank_mid",
-    "site_id",
-    "terminal_id",
-    "identity_column_break",
-    "rrn",
-    "auth_code",
-    "transaction_type",
-    "reconciliation_key",
-    "transaction_section",
-    "transaction_date",
-    "transaction_time",
-    "transaction_amount",
-    "pos_profile",
-    "transaction_column_break",
-    "transaction_status",
-    "card_type",
-    "masked_card_number",
-    "rejection_reason",
-    "cashback_amount",
-    "balance_section",
-    "balance_status",
-    "balance_date",
-    "balance_time",
-    "fee_column_break",
-    "fee_rate",
-    "fee_amount",
-    "vat_amount",
-    "settlement_section",
-    "settled",
-    "settlement_date",
-    "settlement_amount",
-    "settlement_column_break",
-    "settlement_number",
-    "pos_reconciliation_number"
-  ],
-  "fields": [
-    {
-      "fieldname": "identity_section",
-      "fieldtype": "Section Break",
-      "label": "Transaction Identity"
-    },
-    {
-      "fieldname": "bank_mid",
-      "fieldtype": "Data",
-      "in_standard_filter": 1,
-      "label": "Bank MID",
-      "reqd": 1,
-      "set_only_once": 1
-    },
-    {
-      "fieldname": "site_id",
-      "fieldtype": "Data",
-      "label": "Site ID / Merchant ID",
-      "set_only_once": 1
-    },
-    {
-      "fieldname": "terminal_id",
-      "fieldtype": "Data",
-      "in_list_view": 1,
-      "in_standard_filter": 1,
-      "label": "Terminal ID",
-      "reqd": 1,
-      "search_index": 1,
-      "set_only_once": 1
-    },
-    {
-      "fieldname": "identity_column_break",
-      "fieldtype": "Column Break"
-    },
-    {
-      "fieldname": "rrn",
-      "fieldtype": "Data",
-      "in_list_view": 1,
-      "in_standard_filter": 1,
-      "label": "RRN / Reference Number",
-      "reqd": 1,
-      "set_only_once": 1
-    },
-    {
-      "fieldname": "auth_code",
-      "fieldtype": "Data",
-      "in_standard_filter": 1,
-      "label": "Auth Code",
-      "reqd": 1,
-      "set_only_once": 1
-    },
-    {
-      "fieldname": "transaction_type",
-      "fieldtype": "Data",
-      "in_standard_filter": 1,
-      "label": "Transaction Type",
-      "reqd": 1,
-      "set_only_once": 1
-    },
-    {
-      "fieldname": "reconciliation_key",
-      "fieldtype": "Data",
-      "in_standard_filter": 1,
-      "label": "Reconciliation Key",
-      "read_only": 1,
-      "search_index": 1,
-      "unique": 1
-    },
-    {
-      "fieldname": "transaction_section",
-      "fieldtype": "Section Break",
-      "label": "Transaction Details"
-    },
-    {
-      "fieldname": "transaction_date",
-      "fieldtype": "Date",
-      "in_list_view": 1,
-      "in_standard_filter": 1,
-      "label": "Transaction Date",
-      "reqd": 1,
-      "search_index": 1,
-      "set_only_once": 1
-    },
-    {
-      "fieldname": "transaction_time",
-      "fieldtype": "Time",
-      "label": "Transaction Time",
-      "reqd": 1,
-      "set_only_once": 1
-    },
-    {
-      "fieldname": "transaction_amount",
-      "fieldtype": "Currency",
-      "in_list_view": 1,
-      "label": "Transaction Amount",
-      "reqd": 1,
-      "set_only_once": 1
-    },
-    {
-      "fieldname": "pos_profile",
-      "fieldtype": "Link",
-      "options": "POS Profile",
-      "label": "Location / POS Profile",
-      "read_only": 1,
-      "in_standard_filter": 1,
-      "search_index": 1
-    },
-    {
-      "fieldname": "transaction_column_break",
-      "fieldtype": "Column Break"
-    },
-    {
-      "fieldname": "transaction_status",
-      "fieldtype": "Data",
-      "in_standard_filter": 1,
-      "label": "Transaction Status"
-    },
-    {
-      "fieldname": "card_type",
-      "fieldtype": "Data",
-      "in_standard_filter": 1,
-      "label": "Card Type",
-      "set_only_once": 1,
-      "search_index": 1
-    },
-    {
-      "fieldname": "masked_card_number",
-      "fieldtype": "Data",
-      "label": "Masked Card Number",
-      "set_only_once": 1
-    },
-    {
-      "fieldname": "rejection_reason",
-      "fieldtype": "Small Text",
-      "label": "Rejection Reason"
-    },
-    {
-      "fieldname": "cashback_amount",
-      "fieldtype": "Currency",
-      "label": "Cashback Amount"
-    },
-    {
-      "fieldname": "balance_section",
-      "fieldtype": "Section Break",
-      "label": "Balance and Fees"
-    },
-    {
-      "default": "0",
-      "fieldname": "balance_status",
-      "fieldtype": "Check",
-      "label": "Balanced"
-    },
-    {
-      "fieldname": "balance_date",
-      "fieldtype": "Date",
-      "label": "Balance Date"
-    },
-    {
-      "fieldname": "balance_time",
-      "fieldtype": "Time",
-      "label": "Balance Time"
-    },
-    {
-      "fieldname": "fee_column_break",
-      "fieldtype": "Column Break"
-    },
-    {
-      "fieldname": "fee_rate",
-      "fieldtype": "Percent",
-      "label": "Fee Rate"
-    },
-    {
-      "fieldname": "fee_amount",
-      "fieldtype": "Currency",
-      "label": "Fee Amount"
-    },
-    {
-      "fieldname": "vat_amount",
-      "fieldtype": "Currency",
-      "label": "VAT on Fee"
-    },
-    {
-      "fieldname": "settlement_section",
-      "fieldtype": "Section Break",
-      "label": "Settlement"
-    },
-    {
-      "default": "0",
-      "fieldname": "settled",
-      "fieldtype": "Check",
-      "in_list_view": 1,
-      "in_standard_filter": 1,
-      "label": "Settled"
-    },
-    {
-      "fieldname": "settlement_date",
-      "fieldtype": "Date",
-      "in_standard_filter": 1,
-      "label": "Settlement Date",
-      "search_index": 1
-    },
-    {
-      "fieldname": "settlement_amount",
-      "fieldtype": "Currency",
-      "label": "Settlement Amount"
-    },
-    {
-      "fieldname": "settlement_column_break",
-      "fieldtype": "Column Break"
-    },
-    {
-      "fieldname": "settlement_number",
-      "fieldtype": "Data",
-      "in_standard_filter": 1,
-      "label": "Settlement Number"
-    },
-    {
-      "fieldname": "pos_reconciliation_number",
-      "fieldtype": "Data",
-      "in_standard_filter": 1,
-      "label": "POS Reconciliation Number"
-    }
-  ],
-  "name": "Bank POS Transaction",
-  "module": "POS Reconciliation",
-  "permissions": [
-    {
-      "create": 1,
-      "delete": 0,
-      "email": 0,
-      "export": 1,
-      "print": 1,
-      "read": 1,
-      "report": 1,
-      "role": "Accounts Manager",
-      "share": 1,
-      "write": 1
-    },
-    {
-      "create": 1,
-      "delete": 1,
-      "email": 1,
-      "export": 1,
-      "print": 1,
-      "read": 1,
-      "report": 1,
-      "role": "System Manager",
-      "share": 1,
-      "write": 1
-    }
-  ],
-  "search_fields": "terminal_id,rrn,auth_code,reconciliation_key",
-  "sort_field": "transaction_date",
-  "sort_order": "DESC",
-  "track_changes": 1
+    "allow_import":  1,
+    "autoname":  "field:bank_mid",
+    "doctype":  "DocType",
+    "engine":  "InnoDB",
+    "field_order":  [
+                        "identity_section",
+                        "bank_mid",
+                        "site_id",
+                        "terminal_id",
+                        "identity_column_break",
+                        "rrn",
+                        "auth_code",
+                        "transaction_type",
+                        "reconciliation_key",
+                        "transaction_section",
+                        "transaction_date",
+                        "transaction_time",
+                        "transaction_amount",
+                        "pos_profile",
+                        "transaction_column_break",
+                        "transaction_status",
+                        "card_type",
+                        "masked_card_number",
+                        "rejection_reason",
+                        "cashback_amount",
+                        "balance_section",
+                        "balance_status",
+                        "balance_date",
+                        "balance_time",
+                        "fee_column_break",
+                        "fee_rate",
+                        "fee_amount",
+                        "vat_amount",
+                        "settlement_section",
+                        "settled",
+                        "settlement_date",
+                        "settlement_amount",
+                        "settlement_column_break",
+                        "settlement_number",
+                        "pos_reconciliation_number",
+                        "accounting_section",
+                        "accounting_status",
+                        "accounting_posting",
+                        "accounting_column_break",
+                        "journal_entry",
+                        "accounting_posted_by",
+                        "accounting_posted_on"
+                    ],
+    "fields":  [
+                   {
+                       "fieldname":  "identity_section",
+                       "fieldtype":  "Section Break",
+                       "label":  "Transaction Identity"
+                   },
+                   {
+                       "fieldname":  "bank_mid",
+                       "fieldtype":  "Data",
+                       "in_standard_filter":  1,
+                       "label":  "Bank MID",
+                       "reqd":  1,
+                       "set_only_once":  1
+                   },
+                   {
+                       "fieldname":  "site_id",
+                       "fieldtype":  "Data",
+                       "label":  "Site ID / Merchant ID",
+                       "set_only_once":  1
+                   },
+                   {
+                       "fieldname":  "terminal_id",
+                       "fieldtype":  "Data",
+                       "in_list_view":  1,
+                       "in_standard_filter":  1,
+                       "label":  "Terminal ID",
+                       "reqd":  1,
+                       "search_index":  1,
+                       "set_only_once":  1
+                   },
+                   {
+                       "fieldname":  "identity_column_break",
+                       "fieldtype":  "Column Break"
+                   },
+                   {
+                       "fieldname":  "rrn",
+                       "fieldtype":  "Data",
+                       "in_list_view":  1,
+                       "in_standard_filter":  1,
+                       "label":  "RRN / Reference Number",
+                       "reqd":  1,
+                       "set_only_once":  1
+                   },
+                   {
+                       "fieldname":  "auth_code",
+                       "fieldtype":  "Data",
+                       "in_standard_filter":  1,
+                       "label":  "Auth Code",
+                       "reqd":  1,
+                       "set_only_once":  1
+                   },
+                   {
+                       "fieldname":  "transaction_type",
+                       "fieldtype":  "Data",
+                       "in_standard_filter":  1,
+                       "label":  "Transaction Type",
+                       "reqd":  1,
+                       "set_only_once":  1
+                   },
+                   {
+                       "fieldname":  "reconciliation_key",
+                       "fieldtype":  "Data",
+                       "in_standard_filter":  1,
+                       "label":  "Reconciliation Key",
+                       "read_only":  1,
+                       "search_index":  1,
+                       "unique":  1
+                   },
+                   {
+                       "fieldname":  "transaction_section",
+                       "fieldtype":  "Section Break",
+                       "label":  "Transaction Details"
+                   },
+                   {
+                       "fieldname":  "transaction_date",
+                       "fieldtype":  "Date",
+                       "in_list_view":  1,
+                       "in_standard_filter":  1,
+                       "label":  "Transaction Date",
+                       "reqd":  1,
+                       "search_index":  1,
+                       "set_only_once":  1
+                   },
+                   {
+                       "fieldname":  "transaction_time",
+                       "fieldtype":  "Time",
+                       "label":  "Transaction Time",
+                       "reqd":  1,
+                       "set_only_once":  1
+                   },
+                   {
+                       "fieldname":  "transaction_amount",
+                       "fieldtype":  "Currency",
+                       "in_list_view":  1,
+                       "label":  "Transaction Amount",
+                       "reqd":  1,
+                       "set_only_once":  1
+                   },
+                   {
+                       "fieldname":  "pos_profile",
+                       "fieldtype":  "Link",
+                       "options":  "POS Profile",
+                       "label":  "Location / POS Profile",
+                       "read_only":  1,
+                       "in_standard_filter":  1,
+                       "search_index":  1
+                   },
+                   {
+                       "fieldname":  "transaction_column_break",
+                       "fieldtype":  "Column Break"
+                   },
+                   {
+                       "fieldname":  "transaction_status",
+                       "fieldtype":  "Data",
+                       "in_standard_filter":  1,
+                       "label":  "Transaction Status"
+                   },
+                   {
+                       "fieldname":  "card_type",
+                       "fieldtype":  "Data",
+                       "in_standard_filter":  1,
+                       "label":  "Card Type",
+                       "set_only_once":  1,
+                       "search_index":  1
+                   },
+                   {
+                       "fieldname":  "masked_card_number",
+                       "fieldtype":  "Data",
+                       "label":  "Masked Card Number",
+                       "set_only_once":  1
+                   },
+                   {
+                       "fieldname":  "rejection_reason",
+                       "fieldtype":  "Small Text",
+                       "label":  "Rejection Reason"
+                   },
+                   {
+                       "fieldname":  "cashback_amount",
+                       "fieldtype":  "Currency",
+                       "label":  "Cashback Amount"
+                   },
+                   {
+                       "fieldname":  "balance_section",
+                       "fieldtype":  "Section Break",
+                       "label":  "Balance and Fees"
+                   },
+                   {
+                       "default":  "0",
+                       "fieldname":  "balance_status",
+                       "fieldtype":  "Check",
+                       "label":  "Balanced"
+                   },
+                   {
+                       "fieldname":  "balance_date",
+                       "fieldtype":  "Date",
+                       "label":  "Balance Date"
+                   },
+                   {
+                       "fieldname":  "balance_time",
+                       "fieldtype":  "Time",
+                       "label":  "Balance Time"
+                   },
+                   {
+                       "fieldname":  "fee_column_break",
+                       "fieldtype":  "Column Break"
+                   },
+                   {
+                       "fieldname":  "fee_rate",
+                       "fieldtype":  "Percent",
+                       "label":  "Fee Rate"
+                   },
+                   {
+                       "fieldname":  "fee_amount",
+                       "fieldtype":  "Currency",
+                       "label":  "Fee Amount"
+                   },
+                   {
+                       "fieldname":  "vat_amount",
+                       "fieldtype":  "Currency",
+                       "label":  "VAT on Fee"
+                   },
+                   {
+                       "fieldname":  "settlement_section",
+                       "fieldtype":  "Section Break",
+                       "label":  "Settlement"
+                   },
+                   {
+                       "default":  "0",
+                       "fieldname":  "settled",
+                       "fieldtype":  "Check",
+                       "in_list_view":  1,
+                       "in_standard_filter":  1,
+                       "label":  "Settled"
+                   },
+                   {
+                       "fieldname":  "settlement_date",
+                       "fieldtype":  "Date",
+                       "in_standard_filter":  1,
+                       "label":  "Settlement Date",
+                       "search_index":  1
+                   },
+                   {
+                       "fieldname":  "settlement_amount",
+                       "fieldtype":  "Currency",
+                       "label":  "Settlement Amount"
+                   },
+                   {
+                       "fieldname":  "settlement_column_break",
+                       "fieldtype":  "Column Break"
+                   },
+                   {
+                       "fieldname":  "settlement_number",
+                       "fieldtype":  "Data",
+                       "in_standard_filter":  1,
+                       "label":  "Settlement Number"
+                   },
+                   {
+                       "fieldname":  "pos_reconciliation_number",
+                       "fieldtype":  "Data",
+                       "in_standard_filter":  1,
+                       "label":  "POS Reconciliation Number"
+                   },
+                   {
+                       "fieldname":  "accounting_section",
+                       "fieldtype":  "Section Break",
+                       "label":  "Accounting Posting"
+                   },
+                   {
+                       "default":  "Not Eligible",
+                       "fieldname":  "accounting_status",
+                       "fieldtype":  "Select",
+                       "in_list_view":  1,
+                       "in_standard_filter":  1,
+                       "label":  "Accounting Status",
+                       "options":  "Not Eligible\nPending Accounting\nPosted\nNo Charges\nPosted - Review Required",
+                       "read_only":  1,
+                       "search_index":  1
+                   },
+                   {
+                       "fieldname":  "accounting_posting",
+                       "fieldtype":  "Link",
+                       "in_standard_filter":  1,
+                       "label":  "POS Accounting Posting",
+                       "options":  "POS Accounting Posting",
+                       "read_only":  1
+                   },
+                   {
+                       "fieldname":  "accounting_column_break",
+                       "fieldtype":  "Column Break"
+                   },
+                   {
+                       "fieldname":  "journal_entry",
+                       "fieldtype":  "Link",
+                       "in_standard_filter":  1,
+                       "label":  "Journal Entry",
+                       "options":  "Journal Entry",
+                       "read_only":  1
+                   },
+                   {
+                       "fieldname":  "accounting_posted_by",
+                       "fieldtype":  "Link",
+                       "label":  "Accounting Posted By",
+                       "options":  "User",
+                       "read_only":  1
+                   },
+                   {
+                       "fieldname":  "accounting_posted_on",
+                       "fieldtype":  "Datetime",
+                       "label":  "Accounting Posted On",
+                       "read_only":  1
+                   }
+               ],
+    "name":  "Bank POS Transaction",
+    "module":  "POS Reconciliation",
+    "permissions":  [
+                        {
+                            "create":  1,
+                            "delete":  0,
+                            "email":  0,
+                            "export":  1,
+                            "print":  1,
+                            "read":  1,
+                            "report":  1,
+                            "role":  "Accounts Manager",
+                            "share":  1,
+                            "write":  1
+                        },
+                        {
+                            "create":  1,
+                            "delete":  1,
+                            "email":  1,
+                            "export":  1,
+                            "print":  1,
+                            "read":  1,
+                            "report":  1,
+                            "role":  "System Manager",
+                            "share":  1,
+                            "write":  1
+                        }
+                    ],
+    "search_fields":  "terminal_id,rrn,auth_code,reconciliation_key,accounting_status,journal_entry",
+    "sort_field":  "transaction_date",
+    "sort_order":  "DESC",
+    "track_changes":  1
 }

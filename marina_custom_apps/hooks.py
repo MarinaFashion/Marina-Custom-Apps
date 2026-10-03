@@ -4,7 +4,7 @@ app_publisher = "Marina Trading Company"
 app_description = "Marina Trading Company custom Frappe/ERPNext modules"
 app_email = "it@marinafashion.com.sa"
 app_license = "MIT"
-app_version = "0.52.1"
+app_version = "0.52.2"
 
 required_apps = ["erpnext"]
 
@@ -14,6 +14,9 @@ after_install = "marina_custom_apps.sales_forecasting.install.app_after_install"
 after_migrate = "marina_custom_apps.sales_forecasting.install.app_after_migrate"
 
 doc_events = {
+    "Journal Entry": {
+        "on_cancel": "marina_custom_apps.pos_reconciliation.accounting_service.on_journal_entry_cancel",
+    },
     "Stock Reconciliation": {
         "on_submit": "marina_custom_apps.cycle_count.stock_reconciliation_events.on_submit",
         "on_cancel": "marina_custom_apps.cycle_count.stock_reconciliation_events.on_cancel",
