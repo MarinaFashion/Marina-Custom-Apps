@@ -281,7 +281,7 @@
                        "in_list_view":  1,
                        "in_standard_filter":  1,
                        "label":  "Accounting Status",
-                       "options":  "Not Eligible\nPending Accounting\nPosted\nNo Charges\nPosted - Review Required",
+                       "options":  "Not Eligible\nPending Accounting\nDraft Created\nPosted\nNo Charges\nDraft - Review Required\nPosted - Review Required",
                        "read_only":  1,
                        "search_index":  1
                    },

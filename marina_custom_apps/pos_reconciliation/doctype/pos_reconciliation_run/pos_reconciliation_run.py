@@ -139,24 +139,22 @@ def get_accounting_options(run_name):
 
 
 @frappe.whitelist()
-def get_accounting_preview_for_run(run_name, settlement_number, settlement_date=None, pos_profile=None):
+def get_accounting_preview_for_run(run_name, posting_date, pos_profile=None):
     from marina_custom_apps.pos_reconciliation.accounting_service import get_accounting_preview
 
     return get_accounting_preview(
         run_name,
-        settlement_number,
-        settlement_date=settlement_date,
+        posting_date,
         pos_profile=pos_profile,
     )
 
 
 @frappe.whitelist()
-def create_accounting_entries(run_name, settlement_number, settlement_date=None, pos_profile=None):
+def create_accounting_entries(run_name, posting_date, pos_profile=None):
     from marina_custom_apps.pos_reconciliation.accounting_service import create_accounting_postings
 
     return create_accounting_postings(
         run_name,
-        settlement_number,
-        settlement_date=settlement_date,
+        posting_date,
         pos_profile=pos_profile,
     )

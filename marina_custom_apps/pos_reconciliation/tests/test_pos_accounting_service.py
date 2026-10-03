@@ -2,6 +2,8 @@ from types import SimpleNamespace
 from unittest import TestCase
 
 from marina_custom_apps.pos_reconciliation.accounting_service import (
+    ACCOUNTING_DRAFT,
+    ACCOUNTING_DRAFT_REVIEW_REQUIRED,
     ACCOUNTING_NOT_ELIGIBLE,
     ACCOUNTING_NO_CHARGES,
     ACCOUNTING_PENDING,
@@ -24,11 +26,25 @@ class TestPOSAccountingService(TestCase):
         self.assertEqual(derive_accounting_status(False, 10, 1.5), ACCOUNTING_NOT_ELIGIBLE)
         self.assertEqual(derive_accounting_status(True, 10, 1.5), ACCOUNTING_PENDING)
         self.assertEqual(derive_accounting_status(True, 0, 0), ACCOUNTING_NO_CHARGES)
-        self.assertEqual(derive_accounting_status(True, 10, 1.5, 1), ACCOUNTING_POSTED)
-        self.assertEqual(derive_accounting_status(False, 10, 1.5, 1), ACCOUNTING_REVIEW_REQUIRED)
+        self.assertEqual(
+            derive_accounting_status(True, 10, 1.5, 0, has_journal_entry=True),
+            ACCOUNTING_DRAFT,
+        )
+        self.assertEqual(
+            derive_accounting_status(False, 10, 1.5, 0, has_journal_entry=True),
+            ACCOUNTING_DRAFT_REVIEW_REQUIRED,
+        )
+        self.assertEqual(
+            derive_accounting_status(True, 10, 1.5, 1, has_journal_entry=True),
+            ACCOUNTING_POSTED,
+        )
+        self.assertEqual(
+            derive_accounting_status(False, 10, 1.5, 1, has_journal_entry=True),
+            ACCOUNTING_REVIEW_REQUIRED,
+        )
 
-    def test_grouping_respects_profile_consolidation(self):
-        a = SimpleNamespace(settlement_number="162", settlement_date="2026-09-30", pos_profile="Store A")
-        b = SimpleNamespace(settlement_number="162", settlement_date="2026-09-30", pos_profile="Store B")
+    def test_grouping_no_longer_depends_on_settlement(self):
+        a = SimpleNamespace(pos_profile="Store A")
+        b = SimpleNamespace(pos_profile="Store B")
         self.assertEqual(accounting_group_key(a, True), accounting_group_key(b, True))
         self.assertNotEqual(accounting_group_key(a, False), accounting_group_key(b, False))

@@ -15,17 +15,24 @@ RUN_DOCTYPE = "POS Reconciliation Run"
 
 ACCOUNTING_NOT_ELIGIBLE = "Not Eligible"
 ACCOUNTING_PENDING = "Pending Accounting"
+ACCOUNTING_DRAFT = "Draft Created"
 ACCOUNTING_POSTED = "Posted"
 ACCOUNTING_NO_CHARGES = "No Charges"
+ACCOUNTING_DRAFT_REVIEW_REQUIRED = "Draft - Review Required"
 ACCOUNTING_REVIEW_REQUIRED = "Posted - Review Required"
 
 ACCOUNTING_STATUSES = (
     ACCOUNTING_NOT_ELIGIBLE,
     ACCOUNTING_PENDING,
+    ACCOUNTING_DRAFT,
     ACCOUNTING_POSTED,
     ACCOUNTING_NO_CHARGES,
+    ACCOUNTING_DRAFT_REVIEW_REQUIRED,
     ACCOUNTING_REVIEW_REQUIRED,
 )
+
+JOURNAL_ENTRY_MODE_DRAFT = "Draft"
+JOURNAL_ENTRY_MODE_SUBMIT = "Submit"
 
 
 def is_reconciliation_confirmed(match_status, resolution_status):
@@ -33,10 +40,20 @@ def is_reconciliation_confirmed(match_status, resolution_status):
     return cstr(match_status).strip() == "Matching" or cstr(resolution_status).strip() == "Manually Cleared"
 
 
-def derive_accounting_status(confirmed, commission, vat, journal_entry_docstatus=None):
-    """Pure status rule used by UI backfill and posting controls."""
-    if cint(journal_entry_docstatus) == 1:
+
+def derive_accounting_status(
+    confirmed,
+    commission,
+    vat,
+    journal_entry_docstatus=None,
+    has_journal_entry=False,
+):
+    """Return the independent accounting state for a bank POS transaction."""
+    if has_journal_entry and cint(journal_entry_docstatus) == 1:
         return ACCOUNTING_POSTED if confirmed else ACCOUNTING_REVIEW_REQUIRED
+    if has_journal_entry and cint(journal_entry_docstatus) == 0:
+        return ACCOUNTING_DRAFT if confirmed else ACCOUNTING_DRAFT_REVIEW_REQUIRED
+
     if not confirmed:
         return ACCOUNTING_NOT_ELIGIBLE
     if abs(flt(commission, 2)) <= 0.005 and abs(flt(vat, 2)) <= 0.005:
@@ -44,14 +61,12 @@ def derive_accounting_status(confirmed, commission, vat, journal_entry_docstatus
     return ACCOUNTING_PENDING
 
 
+
 def accounting_group_key(row, consolidate_profiles):
-    base = (
-        cstr(row.settlement_number).strip(),
-        cstr(row.settlement_date).strip(),
-    )
+    """Group pending transactions by POS Profile only when consolidation is disabled."""
     if consolidate_profiles:
-        return base
-    return (*base, cstr(row.pos_profile).strip())
+        return ("ALL",)
+    return (cstr(row.pos_profile).strip(),)
 
 
 def _check_permission(ptype="read"):
@@ -81,6 +96,7 @@ def get_accounting_settings(require_enabled=False):
     return settings
 
 
+
 def validate_accounting_settings(settings):
     required = {
         "company": _("Company"),
@@ -91,6 +107,10 @@ def validate_accounting_settings(settings):
     missing = [label for fieldname, label in required.items() if not cstr(settings.get(fieldname)).strip()]
     if missing:
         frappe.throw(_("Complete POS Reconciliation Settings before accounting posting: {0}").format(", ".join(missing)))
+
+    creation_mode = cstr(settings.get("journal_entry_creation_mode") or JOURNAL_ENTRY_MODE_DRAFT).strip()
+    if creation_mode not in {JOURNAL_ENTRY_MODE_DRAFT, JOURNAL_ENTRY_MODE_SUBMIT}:
+        frappe.throw(_("Journal Entry Creation Mode must be Draft or Submit."))
 
     company_currency = frappe.db.get_value("Company", settings.company, "default_currency")
     if not company_currency:
@@ -135,7 +155,7 @@ def _validate_account(account, company, company_currency, label, required_root_t
     account_currency = row.account_currency or company_currency
     if account_currency != company_currency:
         frappe.throw(
-            _("{0} {1} uses currency {2}. POS accounting v0.52.2 requires company-currency accounts ({3}).").format(
+            _("{0} {1} uses currency {2}. POS accounting requires company-currency accounts ({3}).").format(
                 label, account, account_currency, company_currency
             )
         )
@@ -175,9 +195,16 @@ def _latest_records_for_banks(bank_names):
     return result
 
 
+
 def sync_accounting_status_for_bank_transactions(bank_transactions):
     """Synchronize the bank-level accounting sign and mirror it to reconciliation records."""
-    bank_transactions = list(dict.fromkeys(cstr(value).strip() for value in bank_transactions or [] if cstr(value).strip()))
+    bank_transactions = list(
+        dict.fromkeys(
+            cstr(value).strip()
+            for value in bank_transactions or []
+            if cstr(value).strip()
+        )
+    )
     if not bank_transactions:
         return {"updated": 0}
 
@@ -214,15 +241,50 @@ def sync_accounting_status_for_bank_transactions(bank_transactions):
 
         for bank in bank_rows:
             latest = latest_map.get(bank.name)
-            confirmed = bool(latest and is_reconciliation_confirmed(latest.match_status, latest.resolution_status))
+            confirmed = bool(
+                latest
+                and is_reconciliation_confirmed(
+                    latest.match_status,
+                    latest.resolution_status,
+                )
+            )
+            has_journal_entry = bool(
+                bank.journal_entry and bank.journal_entry in journal_status
+            )
             status = derive_accounting_status(
                 confirmed,
                 bank.fee_amount,
                 bank.vat_amount,
                 journal_status.get(bank.journal_entry),
+                has_journal_entry=has_journal_entry,
             )
+
+            # A stale link to a deleted draft should not keep the transaction reserved.
+            if bank.journal_entry and not has_journal_entry:
+                bank.accounting_posting = None
+                bank.journal_entry = None
+                bank.accounting_posted_by = None
+                bank.accounting_posted_on = None
+                frappe.db.set_value(
+                    BANK_DOCTYPE,
+                    bank.name,
+                    {
+                        "accounting_posting": None,
+                        "journal_entry": None,
+                        "accounting_posted_by": None,
+                        "accounting_posted_on": None,
+                    },
+                    update_modified=False,
+                )
+
             if bank.accounting_status != status:
-                frappe.db.set_value(BANK_DOCTYPE, bank.name, "accounting_status", status, update_modified=False)
+                frappe.db.set_value(
+                    BANK_DOCTYPE,
+                    bank.name,
+                    "accounting_status",
+                    status,
+                    update_modified=False,
+                )
                 updated += 1
 
             frappe.db.sql(
@@ -296,7 +358,9 @@ def sync_all_accounting_statuses():
     return {"banks": len(banks), "updated": total}
 
 
-def _pending_rows_for_run(run_name, settlement_number=None, settlement_date=None, pos_profile=None):
+
+def _pending_rows_for_run(run_name, pos_profile=None):
+    """Return the latest confirmed, unposted bank transactions in a completed run."""
     _check_run(run_name)
     sync_run_accounting_status(run_name)
 
@@ -328,7 +392,8 @@ def _pending_rows_for_run(run_name, settlement_number=None, settlement_date=None
     current_rows = [
         row
         for row in rows
-        if latest_map.get(row.bank_transaction) and latest_map[row.bank_transaction].name == row.name
+        if latest_map.get(row.bank_transaction)
+        and latest_map[row.bank_transaction].name == row.name
     ]
     if not current_rows:
         return []
@@ -355,8 +420,12 @@ def _pending_rows_for_run(run_name, settlement_number=None, settlement_date=None
 
     output = []
     for record in current_rows:
-        if not is_reconciliation_confirmed(record.match_status, record.resolution_status):
+        if not is_reconciliation_confirmed(
+            record.match_status,
+            record.resolution_status,
+        ):
             continue
+
         bank = bank_map.get(record.bank_transaction)
         if not bank or bank.accounting_status != ACCOUNTING_PENDING:
             continue
@@ -374,10 +443,6 @@ def _pending_rows_for_run(run_name, settlement_number=None, settlement_date=None
             commission_amount=flt(bank.fee_amount, 2),
             vat_amount=flt(bank.vat_amount, 2),
         )
-        if settlement_number and row.settlement_number != cstr(settlement_number).strip():
-            continue
-        if settlement_date and row.settlement_date != getdate(settlement_date):
-            continue
         if pos_profile and row.pos_profile != pos_profile:
             continue
         output.append(row)
@@ -428,48 +493,58 @@ def _attach_cost_centers(rows, company):
     return rows
 
 
+
 def get_accounting_filter_options(run_name):
     _check_permission("read")
     settings = get_accounting_settings(require_enabled=False)
     rows = _pending_rows_for_run(run_name)
     return {
         "enabled": cint(settings.enable_accounting_posting),
-        "consolidate_pos_profiles": cint(settings.consolidate_pos_profiles_in_one_journal_entry),
+        "consolidate_pos_profiles": cint(
+            settings.consolidate_pos_profiles_in_one_journal_entry
+        ),
+        "consolidate_bank_entries": cint(settings.consolidate_bank_entries),
+        "journal_entry_creation_mode": cstr(
+            settings.journal_entry_creation_mode or JOURNAL_ENTRY_MODE_DRAFT
+        ),
         "pending_count": len(rows),
-        "settlement_numbers": sorted({row.settlement_number for row in rows if row.settlement_number}),
-        "settlement_dates": sorted({cstr(row.settlement_date) for row in rows if row.settlement_date}),
-        "pos_profiles": sorted({row.pos_profile for row in rows if row.pos_profile}),
+        "pos_profile_count": len({row.pos_profile for row in rows if row.pos_profile}),
+        "commission": flt(sum(row.commission_amount for row in rows), 2),
+        "vat": flt(sum(row.vat_amount for row in rows), 2),
+        "total": flt(
+            sum(row.commission_amount + row.vat_amount for row in rows),
+            2,
+        ),
+        "transaction_from_date": min(
+            (row.transaction_date for row in rows if row.transaction_date),
+            default=None,
+        ),
+        "transaction_to_date": max(
+            (row.transaction_date for row in rows if row.transaction_date),
+            default=None,
+        ),
     }
 
 
-def _prepare_groups(run_name, settlement_number, settlement_date=None, pos_profile=None):
+
+def _prepare_groups(run_name, pos_profile=None):
     settings = get_accounting_settings(require_enabled=True)
     rows = _pending_rows_for_run(
         run_name,
-        settlement_number=settlement_number,
-        settlement_date=settlement_date,
         pos_profile=pos_profile,
     )
     if not rows:
-        frappe.throw(_("No confirmed transactions are pending accounting for the selected filters."))
-
-    if not cstr(settlement_number).strip():
-        frappe.throw(_("Settlement Number is required for accounting posting."))
-
-    dates = {row.settlement_date for row in rows if row.settlement_date}
-    if any(not row.settlement_date for row in rows):
-        frappe.throw(_("Settlement Date is required on every transaction before accounting posting."))
-    if len(dates) > 1 and not settlement_date:
         frappe.throw(
-            _("Settlement Number {0} has multiple settlement dates ({1}). Select Settlement Date before posting.").format(
-                settlement_number,
-                ", ".join(sorted(cstr(value) for value in dates)),
-            )
+            _("No confirmed transactions are pending accounting for the selected reconciliation run.")
         )
 
     for row in rows:
         if row.commission_amount < 0 or row.vat_amount < 0:
-            frappe.throw(_("Negative commission/VAT is not supported in v0.52.2. Bank transaction: {0}").format(row.bank_transaction))
+            frappe.throw(
+                _("Negative commission/VAT is not supported. Bank transaction: {0}").format(
+                    row.bank_transaction
+                )
+            )
 
     _attach_cost_centers(rows, settings.company)
     consolidate = cint(settings.consolidate_pos_profiles_in_one_journal_entry)
@@ -479,38 +554,84 @@ def _prepare_groups(run_name, settlement_number, settlement_date=None, pos_profi
     return settings, groups
 
 
-def get_accounting_preview(run_name, settlement_number, settlement_date=None, pos_profile=None):
+
+def get_accounting_preview(run_name, posting_date, pos_profile=None):
     _check_permission("read")
-    settings, groups = _prepare_groups(run_name, settlement_number, settlement_date, pos_profile)
+    if not posting_date:
+        frappe.throw(_("Posting Date is required."))
+    posting_date = getdate(posting_date)
+
+    settings, groups = _prepare_groups(run_name, pos_profile)
     rows = [row for group in groups.values() for row in group]
     return {
+        "posting_date": posting_date,
         "transaction_count": len(rows),
         "pos_profile_count": len({row.pos_profile for row in rows}),
         "journal_entry_count": len(groups),
         "commission": flt(sum(row.commission_amount for row in rows), 2),
         "vat": flt(sum(row.vat_amount for row in rows), 2),
-        "total": flt(sum(row.commission_amount + row.vat_amount for row in rows), 2),
-        "consolidate_pos_profiles": cint(settings.consolidate_pos_profiles_in_one_journal_entry),
+        "total": flt(
+            sum(row.commission_amount + row.vat_amount for row in rows),
+            2,
+        ),
+        "consolidate_pos_profiles": cint(
+            settings.consolidate_pos_profiles_in_one_journal_entry
+        ),
+        "consolidate_bank_entries": cint(settings.consolidate_bank_entries),
+        "journal_entry_creation_mode": cstr(
+            settings.journal_entry_creation_mode or JOURNAL_ENTRY_MODE_DRAFT
+        ),
     }
 
 
-def create_accounting_postings(run_name, settlement_number, settlement_date=None, pos_profile=None):
+
+def create_accounting_postings(run_name, posting_date, pos_profile=None):
     _check_permission("create")
     run = _check_run(run_name)
-    settings, groups = _prepare_groups(run_name, settlement_number, settlement_date, pos_profile)
+    if not posting_date:
+        frappe.throw(_("Posting Date is required."))
+    posting_date = getdate(posting_date)
+
+    settings, groups = _prepare_groups(run_name, pos_profile)
+    creation_mode = cstr(
+        settings.journal_entry_creation_mode or JOURNAL_ENTRY_MODE_DRAFT
+    ).strip()
 
     created = []
     for _key, rows in groups.items():
         posting = frappe.new_doc(POSTING_DOCTYPE)
         posting.company = settings.company
         posting.source_run = run.name
-        posting.settlement_number = rows[0].settlement_number
-        posting.settlement_date = rows[0].settlement_date
-        posting.posting_date = rows[0].settlement_date
-        posting.consolidate_pos_profiles = cint(settings.consolidate_pos_profiles_in_one_journal_entry)
+        posting.posting_date = posting_date
+        posting.consolidate_pos_profiles = cint(
+            settings.consolidate_pos_profiles_in_one_journal_entry
+        )
+        posting.consolidate_bank_entries = cint(settings.consolidate_bank_entries)
+        posting.journal_entry_creation_mode = creation_mode
         posting.bank_account = settings.default_offset_account
         posting.commission_expense_account = settings.commission_expense_account
         posting.vat_input_account = settings.vat_input_account
+
+        settlement_numbers = {
+            cstr(row.settlement_number).strip()
+            for row in rows
+            if cstr(row.settlement_number).strip()
+        }
+        settlement_dates = {
+            getdate(row.settlement_date)
+            for row in rows
+            if row.settlement_date
+        }
+        posting.settlement_number = (
+            next(iter(settlement_numbers))
+            if len(settlement_numbers) == 1
+            else None
+        )
+        posting.settlement_date = (
+            next(iter(settlement_dates))
+            if len(settlement_dates) == 1
+            else None
+        )
 
         for row in rows:
             posting.append(
@@ -519,6 +640,8 @@ def create_accounting_postings(run_name, settlement_number, settlement_date=None
                     "reconciliation_record": row.name,
                     "bank_transaction": row.bank_transaction,
                     "transaction_date": row.transaction_date,
+                    "settlement_number": row.settlement_number,
+                    "settlement_date": row.settlement_date,
                     "pos_profile": row.pos_profile,
                     "cost_center": row.cost_center,
                     "terminal_id": row.terminal_id,
@@ -530,10 +653,16 @@ def create_accounting_postings(run_name, settlement_number, settlement_date=None
 
         posting.insert()
         posting.submit()
+        journal_docstatus = (
+            frappe.db.get_value("Journal Entry", posting.journal_entry, "docstatus")
+            if posting.journal_entry
+            else None
+        )
         created.append(
             {
                 "posting": posting.name,
                 "journal_entry": posting.journal_entry,
+                "journal_entry_docstatus": cint(journal_docstatus),
                 "transaction_count": posting.transaction_count,
                 "commission": flt(posting.total_commission, 2),
                 "vat": flt(posting.total_vat, 2),
@@ -546,12 +675,14 @@ def create_accounting_postings(run_name, settlement_number, settlement_date=None
         "transaction_count": sum(row["transaction_count"] for row in created),
         "commission": flt(sum(row["commission"] for row in created), 2),
         "vat": flt(sum(row["vat"] for row in created), 2),
+        "journal_entry_creation_mode": creation_mode,
     }
 
 
+
 def validate_posting_document(doc):
-    if not doc.company or not doc.settlement_number or not doc.settlement_date or not doc.posting_date:
-        frappe.throw(_("Company, Settlement Number, Settlement Date and Posting Date are required."))
+    if not doc.company or not doc.posting_date:
+        frappe.throw(_("Company and Posting Date are required."))
     if not doc.items:
         frappe.throw(_("POS Accounting Posting requires at least one transaction."))
 
@@ -560,6 +691,8 @@ def validate_posting_document(doc):
         commission_expense_account=doc.commission_expense_account,
         vat_input_account=doc.vat_input_account,
         default_offset_account=doc.bank_account,
+        journal_entry_creation_mode=doc.journal_entry_creation_mode
+        or JOURNAL_ENTRY_MODE_DRAFT,
     )
     validate_accounting_settings(settings)
 
@@ -567,20 +700,43 @@ def validate_posting_document(doc):
     profiles = set()
     total_commission = 0.0
     total_vat = 0.0
+    settlement_numbers = set()
+    settlement_dates = set()
+
     for item in doc.items:
         if not item.reconciliation_record or not item.bank_transaction:
-            frappe.throw(_("Every posting item requires Reconciliation Record and Bank POS Transaction."))
+            frappe.throw(
+                _("Every posting item requires Reconciliation Record and Bank POS Transaction.")
+            )
         if item.bank_transaction in seen:
-            frappe.throw(_("Bank transaction {0} appears more than once in the posting.").format(item.bank_transaction))
+            frappe.throw(
+                _("Bank transaction {0} appears more than once in the posting.").format(
+                    item.bank_transaction
+                )
+            )
         seen.add(item.bank_transaction)
         if item.pos_profile:
             profiles.add(item.pos_profile)
+        if cstr(item.settlement_number).strip():
+            settlement_numbers.add(cstr(item.settlement_number).strip())
+        if item.settlement_date:
+            settlement_dates.add(getdate(item.settlement_date))
         total_commission += flt(item.commission_amount, 2)
         total_vat += flt(item.vat_amount, 2)
 
     if not cint(doc.consolidate_pos_profiles) and len(profiles) > 1:
         frappe.throw(_("This posting is configured for one POS Profile only."))
 
+    doc.settlement_number = (
+        next(iter(settlement_numbers))
+        if len(settlement_numbers) == 1
+        else None
+    )
+    doc.settlement_date = (
+        next(iter(settlement_dates))
+        if len(settlement_dates) == 1
+        else None
+    )
     doc.total_commission = flt(total_commission, 2)
     doc.total_vat = flt(total_vat, 2)
     doc.total_credit = flt(total_commission + total_vat, 2)
@@ -588,6 +744,7 @@ def validate_posting_document(doc):
     doc.pos_profile_count = len(profiles)
     if doc.docstatus == 0:
         doc.posting_status = "Draft"
+
 
 
 def validate_posting_before_submit(doc):
@@ -603,11 +760,147 @@ def validate_posting_before_submit(doc):
     }
     for fieldname, value in expected.items():
         if cstr(doc.get(fieldname)).strip() != cstr(value).strip():
-            frappe.throw(_("POS Reconciliation Settings changed after this posting was prepared. Recreate the posting before submit."))
-    if cint(doc.consolidate_pos_profiles) != cint(current_settings.consolidate_pos_profiles_in_one_journal_entry):
-        frappe.throw(_("POS Profile consolidation setting changed. Recreate the posting before submit."))
+            frappe.throw(
+                _(
+                    "POS Reconciliation Settings changed after this posting was prepared. "
+                    "Recreate the posting before submit."
+                )
+            )
 
-    bank_names = [item.bank_transaction for item in doc.items]
+    if cint(doc.consolidate_pos_profiles) != cint(
+        current_settings.consolidate_pos_profiles_in_one_journal_entry
+    ):
+        frappe.throw(
+            _("POS Profile consolidation setting changed. Recreate the posting before submit.")
+        )
+    if cint(doc.consolidate_bank_entries) != cint(
+        current_settings.consolidate_bank_entries
+    ):
+        frappe.throw(
+            _("Bank entry consolidation setting changed. Recreate the posting before submit.")
+        )
+    if cstr(doc.journal_entry_creation_mode).strip() != cstr(
+        current_settings.journal_entry_creation_mode
+        or JOURNAL_ENTRY_MODE_DRAFT
+    ).strip():
+        frappe.throw(
+            _("Journal Entry Creation Mode changed. Recreate the posting before submit.")
+        )
+
+    _validate_posting_sources(
+        doc,
+        allowed_accounting_statuses={ACCOUNTING_PENDING},
+        require_linked_posting=False,
+    )
+
+
+
+def _transaction_reference_text(names, limit=20):
+    names = [cstr(name).strip() for name in names if cstr(name).strip()]
+    if len(names) <= limit:
+        return ", ".join(names)
+    shown = ", ".join(names[:limit])
+    return _("{0} (+{1} more)").format(shown, len(names) - limit)
+
+
+def _profile_summaries(posting_doc):
+    summaries = {}
+    for item in posting_doc.items:
+        key = (
+            cstr(item.pos_profile).strip(),
+            cstr(item.cost_center).strip(),
+        )
+        if key not in summaries:
+            summaries[key] = frappe._dict(
+                pos_profile=key[0],
+                cost_center=key[1],
+                commission=0.0,
+                vat=0.0,
+                transaction_names=[],
+                transaction_dates=[],
+            )
+        summary = summaries[key]
+        summary.commission += flt(item.commission_amount, 2)
+        summary.vat += flt(item.vat_amount, 2)
+        summary.transaction_names.append(item.bank_transaction)
+        if item.transaction_date:
+            summary.transaction_dates.append(getdate(item.transaction_date))
+    return [summaries[key] for key in sorted(summaries)]
+
+
+def _journal_entry_description(posting_doc, summaries):
+    all_transactions = [
+        item.bank_transaction
+        for item in posting_doc.items
+        if item.bank_transaction
+    ]
+    transaction_dates = [
+        getdate(item.transaction_date)
+        for item in posting_doc.items
+        if item.transaction_date
+    ]
+    settlement_numbers = sorted(
+        {
+            cstr(item.settlement_number).strip()
+            for item in posting_doc.items
+            if cstr(item.settlement_number).strip()
+        }
+    )
+    profiles = [summary.pos_profile for summary in summaries if summary.pos_profile]
+
+    date_range = "—"
+    if transaction_dates:
+        date_range = "{0} to {1}".format(
+            min(transaction_dates),
+            max(transaction_dates),
+        )
+
+    settlement_text = (
+        ", ".join(settlement_numbers[:10])
+        if settlement_numbers
+        else "—"
+    )
+    if len(settlement_numbers) > 10:
+        settlement_text += _(" (+{0} more)").format(len(settlement_numbers) - 10)
+
+    return _(
+        "POS bank commission and VAT posting | Posting: {0} | Reconciliation Run: {1} | "
+        "Posting Date: {2} | Transactions: {3} | Transaction Date Range: {4} | "
+        "POS Profiles: {5} | Settlements: {6} | Bank POS Transactions: {7}"
+    ).format(
+        posting_doc.name,
+        posting_doc.source_run,
+        posting_doc.posting_date,
+        len(all_transactions),
+        date_range,
+        ", ".join(profiles) or "—",
+        settlement_text,
+        _transaction_reference_text(all_transactions),
+    )
+
+
+def _profile_line_remark(summary, label):
+    return _(
+        "{0} | POS Profile: {1} | Cost Center: {2} | Transactions: {3} | "
+        "Bank POS Transactions: {4}"
+    ).format(
+        label,
+        summary.pos_profile or "—",
+        summary.cost_center or "—",
+        len(summary.transaction_names),
+        _transaction_reference_text(summary.transaction_names, limit=12),
+    )
+
+
+def _validate_posting_sources(
+    posting_doc,
+    allowed_accounting_statuses,
+    require_linked_posting,
+):
+    bank_names = [item.bank_transaction for item in posting_doc.items]
+    if not bank_names:
+        frappe.throw(_("POS Accounting Posting has no Bank POS Transactions."))
+
     placeholders = ", ".join(["%s"] * len(bank_names))
     frappe.db.sql(
         f"SELECT name FROM `tab{BANK_DOCTYPE}` WHERE name IN ({placeholders}) FOR UPDATE",
@@ -636,113 +929,286 @@ def validate_posting_before_submit(doc):
         )
     }
 
-    for item in doc.items:
+    for item in posting_doc.items:
         record = frappe.db.get_value(
             RECORD_DOCTYPE,
             item.reconciliation_record,
-            ["name", "bank_transaction", "match_status", "resolution_status", "pos_profile"],
+            [
+                "name",
+                "bank_transaction",
+                "match_status",
+                "resolution_status",
+                "pos_profile",
+            ],
             as_dict=True,
         )
         bank = bank_map.get(item.bank_transaction)
-        if not record or record.bank_transaction != item.bank_transaction or not bank:
-            frappe.throw(_("Posting item {0} no longer matches its reconciliation source.").format(item.idx))
+        if (
+            not record
+            or record.bank_transaction != item.bank_transaction
+            or not bank
+        ):
+            frappe.throw(
+                _("Posting item {0} no longer matches its reconciliation source.").format(
+                    item.idx
+                )
+            )
+
         latest = latest_map.get(item.bank_transaction)
         if not latest or latest.name != item.reconciliation_record:
             frappe.throw(
-                _("Reconciliation record {0} is not the latest reconciliation result for bank transaction {1}.").format(
-                    item.reconciliation_record, item.bank_transaction
+                _(
+                    "Reconciliation record {0} is not the latest reconciliation result "
+                    "for bank transaction {1}."
+                ).format(
+                    item.reconciliation_record,
+                    item.bank_transaction,
                 )
             )
-        if not is_reconciliation_confirmed(record.match_status, record.resolution_status):
-            frappe.throw(_("Bank transaction {0} is no longer confirmed by reconciliation.").format(item.bank_transaction))
-        if bank.accounting_status != ACCOUNTING_PENDING:
+
+        if not is_reconciliation_confirmed(
+            record.match_status,
+            record.resolution_status,
+        ):
             frappe.throw(
-                _("Bank transaction {0} is not Pending Accounting (current status: {1}).").format(
-                    item.bank_transaction, bank.accounting_status
+                _("Bank transaction {0} is no longer confirmed by reconciliation.").format(
+                    item.bank_transaction
                 )
             )
-        if cstr(bank.settlement_number).strip() != cstr(doc.settlement_number).strip() or getdate(bank.settlement_date) != getdate(doc.settlement_date):
-            frappe.throw(_("Settlement details changed for bank transaction {0}. Refresh before posting.").format(item.bank_transaction))
-        if abs(flt(bank.fee_amount, 2) - flt(item.commission_amount, 2)) > 0.005 or abs(flt(bank.vat_amount, 2) - flt(item.vat_amount, 2)) > 0.005:
-            frappe.throw(_("Commission/VAT changed for bank transaction {0}. Refresh before posting.").format(item.bank_transaction))
+
+        if bank.accounting_status not in allowed_accounting_statuses:
+            frappe.throw(
+                _("Bank transaction {0} has accounting status {1}, expected one of: {2}.").format(
+                    item.bank_transaction,
+                    bank.accounting_status,
+                    ", ".join(sorted(allowed_accounting_statuses)),
+                )
+            )
+
+        if require_linked_posting:
+            if bank.accounting_posting != posting_doc.name:
+                frappe.throw(
+                    _("Bank transaction {0} is linked to another accounting posting.").format(
+                        item.bank_transaction
+                    )
+                )
+            if bank.journal_entry != posting_doc.journal_entry:
+                frappe.throw(
+                    _("Bank transaction {0} is linked to another Journal Entry.").format(
+                        item.bank_transaction
+                    )
+                )
+        elif bank.accounting_posting or bank.journal_entry:
+            frappe.throw(
+                _("Bank transaction {0} is already reserved by an accounting posting.").format(
+                    item.bank_transaction
+                )
+            )
+
+        if (
+            abs(flt(bank.fee_amount, 2) - flt(item.commission_amount, 2)) > 0.005
+            or abs(flt(bank.vat_amount, 2) - flt(item.vat_amount, 2)) > 0.005
+        ):
+            frappe.throw(
+                _("Commission/VAT changed for bank transaction {0}. Refresh before posting.").format(
+                    item.bank_transaction
+                )
+            )
+
+        if cstr(bank.settlement_number).strip() != cstr(
+            item.settlement_number
+        ).strip():
+            frappe.throw(
+                _("Settlement Number changed for bank transaction {0}. Refresh before posting.").format(
+                    item.bank_transaction
+                )
+            )
+        bank_settlement_date = (
+            getdate(bank.settlement_date) if bank.settlement_date else None
+        )
+        item_settlement_date = (
+            getdate(item.settlement_date) if item.settlement_date else None
+        )
+        if bank_settlement_date != item_settlement_date:
+            frappe.throw(
+                _("Settlement Date changed for bank transaction {0}. Refresh before posting.").format(
+                    item.bank_transaction
+                )
+            )
 
         profile = bank.pos_profile or record.pos_profile
-        cost_center = frappe.db.get_value("POS Profile", profile, "cost_center") if profile else None
+        cost_center = (
+            frappe.db.get_value("POS Profile", profile, "cost_center")
+            if profile
+            else None
+        )
         if not cost_center or cost_center != item.cost_center:
-            frappe.throw(_("POS Profile cost center changed for {0}. Refresh before posting.").format(profile or item.bank_transaction))
+            frappe.throw(
+                _("POS Profile cost center changed for {0}. Refresh before posting.").format(
+                    profile or item.bank_transaction
+                )
+            )
 
 
-def create_and_submit_journal_entry(posting_doc):
-    validate_posting_before_submit(posting_doc)
-
-    commission_by_cost_center = defaultdict(float)
+def _mark_posting_journal_draft(posting_doc, journal_entry):
+    bank_names = []
     for item in posting_doc.items:
-        commission_by_cost_center[item.cost_center] += flt(item.commission_amount, 2)
+        bank_names.append(item.bank_transaction)
+        frappe.db.set_value(
+            BANK_DOCTYPE,
+            item.bank_transaction,
+            {
+                "accounting_status": ACCOUNTING_DRAFT,
+                "accounting_posting": posting_doc.name,
+                "journal_entry": journal_entry.name,
+                "accounting_posted_by": None,
+                "accounting_posted_on": None,
+            },
+            update_modified=False,
+        )
+    sync_accounting_status_for_bank_transactions(bank_names)
+
+
+def create_journal_entry(posting_doc):
+    validate_posting_before_submit(posting_doc)
+    summaries = _profile_summaries(posting_doc)
 
     je = frappe.new_doc("Journal Entry")
     je.voucher_type = "Bank Entry"
     je.company = posting_doc.company
     je.posting_date = posting_doc.posting_date
-    je.cheque_no = posting_doc.settlement_number
-    je.cheque_date = posting_doc.settlement_date
-    je.user_remark = _("POS bank commission and VAT - Settlement {0} - {1}").format(
-        posting_doc.settlement_number,
-        posting_doc.settlement_date,
-    )
+    je.cheque_no = posting_doc.name
+    je.cheque_date = posting_doc.posting_date
+    je.user_remark = _journal_entry_description(posting_doc, summaries)
 
-    for cost_center, amount in sorted(commission_by_cost_center.items()):
-        amount = flt(amount, 2)
-        if amount:
+    for summary in summaries:
+        commission = flt(summary.commission, 2)
+        vat = flt(summary.vat, 2)
+
+        if commission:
             je.append(
                 "accounts",
                 {
                     "account": posting_doc.commission_expense_account,
-                    "debit_in_account_currency": amount,
+                    "debit_in_account_currency": commission,
                     "exchange_rate": 1,
-                    "cost_center": cost_center,
-                    "user_remark": _("POS bank commission"),
+                    "cost_center": summary.cost_center,
+                    "user_remark": _profile_line_remark(
+                        summary,
+                        _("POS bank commission"),
+                    ),
                 },
             )
 
-    if flt(posting_doc.total_vat, 2):
-        je.append(
-            "accounts",
-            {
-                "account": posting_doc.vat_input_account,
-                "debit_in_account_currency": flt(posting_doc.total_vat, 2),
-                "exchange_rate": 1,
-                "user_remark": _("VAT on POS bank commission"),
-            },
-        )
+        if vat:
+            je.append(
+                "accounts",
+                {
+                    "account": posting_doc.vat_input_account,
+                    "debit_in_account_currency": vat,
+                    "exchange_rate": 1,
+                    "cost_center": summary.cost_center,
+                    "user_remark": _profile_line_remark(
+                        summary,
+                        _("VAT on POS bank commission"),
+                    ),
+                },
+            )
 
-    if flt(posting_doc.total_commission, 2):
-        je.append(
-            "accounts",
-            {
-                "account": posting_doc.bank_account,
-                "credit_in_account_currency": flt(posting_doc.total_commission, 2),
-                "exchange_rate": 1,
-                "user_remark": _("Bank charge - POS commission"),
-            },
-        )
-
-    if flt(posting_doc.total_vat, 2):
-        je.append(
-            "accounts",
-            {
-                "account": posting_doc.bank_account,
-                "credit_in_account_currency": flt(posting_doc.total_vat, 2),
-                "exchange_rate": 1,
-                "user_remark": _("Bank charge - VAT on POS commission"),
-            },
-        )
+    if cint(posting_doc.consolidate_bank_entries):
+        if flt(posting_doc.total_commission, 2):
+            je.append(
+                "accounts",
+                {
+                    "account": posting_doc.bank_account,
+                    "credit_in_account_currency": flt(
+                        posting_doc.total_commission,
+                        2,
+                    ),
+                    "exchange_rate": 1,
+                    "user_remark": _(
+                        "Bank charge - POS commission | {0} transactions / {1} POS Profiles"
+                    ).format(
+                        posting_doc.transaction_count,
+                        posting_doc.pos_profile_count,
+                    ),
+                },
+            )
+        if flt(posting_doc.total_vat, 2):
+            je.append(
+                "accounts",
+                {
+                    "account": posting_doc.bank_account,
+                    "credit_in_account_currency": flt(
+                        posting_doc.total_vat,
+                        2,
+                    ),
+                    "exchange_rate": 1,
+                    "user_remark": _(
+                        "Bank charge - VAT on POS commission | {0} transactions / {1} POS Profiles"
+                    ).format(
+                        posting_doc.transaction_count,
+                        posting_doc.pos_profile_count,
+                    ),
+                },
+            )
+    else:
+        for summary in summaries:
+            commission = flt(summary.commission, 2)
+            vat = flt(summary.vat, 2)
+            if commission:
+                je.append(
+                    "accounts",
+                    {
+                        "account": posting_doc.bank_account,
+                        "credit_in_account_currency": commission,
+                        "exchange_rate": 1,
+                        "user_remark": _(
+                            "Bank charge - POS commission | POS Profile: {0} | Cost Center: {1}"
+                        ).format(
+                            summary.pos_profile or "—",
+                            summary.cost_center or "—",
+                        ),
+                    },
+                )
+            if vat:
+                je.append(
+                    "accounts",
+                    {
+                        "account": posting_doc.bank_account,
+                        "credit_in_account_currency": vat,
+                        "exchange_rate": 1,
+                        "user_remark": _(
+                            "Bank charge - VAT on POS commission | POS Profile: {0} | Cost Center: {1}"
+                        ).format(
+                            summary.pos_profile or "—",
+                            summary.cost_center or "—",
+                        ),
+                    },
+                )
 
     if not je.accounts:
         frappe.throw(_("No commission or VAT amount is available for Journal Entry."))
 
     je.insert()
-    je.submit()
+    frappe.db.set_value(
+        POSTING_DOCTYPE,
+        posting_doc.name,
+        "journal_entry",
+        je.name,
+        update_modified=False,
+    )
+    posting_doc.journal_entry = je.name
+    _mark_posting_journal_draft(posting_doc, je)
+
+    if (
+        cstr(posting_doc.journal_entry_creation_mode).strip()
+        == JOURNAL_ENTRY_MODE_SUBMIT
+    ):
+        je.submit()
+
     return je
+
 
 
 def mark_posting_posted(posting_doc, journal_entry):
@@ -763,6 +1229,17 @@ def mark_posting_posted(posting_doc, journal_entry):
             },
             update_modified=False,
         )
+
+    frappe.db.set_value(
+        POSTING_DOCTYPE,
+        posting_doc.name,
+        {
+            "posting_status": "Posted",
+            "posted_by": user,
+            "posted_on": now,
+        },
+        update_modified=False,
+    )
     sync_accounting_status_for_bank_transactions(bank_names)
     return now
 
@@ -792,9 +1269,62 @@ def release_posting(posting_name, journal_entry=None):
     sync_accounting_status_for_bank_transactions(bank_names)
 
 
-def on_journal_entry_cancel(doc, method=None):
-    posting_name = frappe.db.get_value(POSTING_DOCTYPE, {"journal_entry": doc.name}, "name")
+
+def _get_posting_for_journal(journal_entry_name):
+    posting_name = frappe.db.get_value(
+        POSTING_DOCTYPE,
+        {"journal_entry": journal_entry_name},
+        "name",
+    )
     if not posting_name:
+        return None
+    return frappe.get_doc(POSTING_DOCTYPE, posting_name)
+
+
+def validate_generated_journal_entry_before_submit(doc, method=None):
+    posting = _get_posting_for_journal(doc.name)
+    if not posting:
         return
-    frappe.db.set_value(POSTING_DOCTYPE, posting_name, "posting_status", "Journal Entry Cancelled", update_modified=False)
-    release_posting(posting_name, doc.name)
+    _validate_posting_sources(
+        posting,
+        allowed_accounting_statuses={
+            ACCOUNTING_DRAFT,
+            ACCOUNTING_DRAFT_REVIEW_REQUIRED,
+        },
+        require_linked_posting=True,
+    )
+
+
+def on_journal_entry_submit(doc, method=None):
+    posting = _get_posting_for_journal(doc.name)
+    if not posting:
+        return
+    mark_posting_posted(posting, doc)
+
+
+def on_journal_entry_cancel(doc, method=None):
+    posting = _get_posting_for_journal(doc.name)
+    if not posting:
+        return
+    frappe.db.set_value(
+        POSTING_DOCTYPE,
+        posting.name,
+        "posting_status",
+        "Journal Entry Cancelled",
+        update_modified=False,
+    )
+    release_posting(posting.name, doc.name)
+
+
+def on_journal_entry_trash(doc, method=None):
+    posting = _get_posting_for_journal(doc.name)
+    if not posting:
+        return
+    frappe.db.set_value(
+        POSTING_DOCTYPE,
+        posting.name,
+        "posting_status",
+        "Journal Entry Deleted",
+        update_modified=False,
+    )
+    release_posting(posting.name, doc.name)

@@ -1,30 +1,104 @@
 {
-  "doctype": "DocType",
-  "editable_grid": 1,
-  "engine": "InnoDB",
-  "istable": 1,
-  "module": "POS Reconciliation",
-  "name": "POS Accounting Posting Item",
-  "field_order": [
-    "reconciliation_record",
-    "bank_transaction",
-    "transaction_date",
-    "pos_profile",
-    "cost_center",
-    "terminal_id",
-    "card_type",
-    "commission_amount",
-    "vat_amount"
-  ],
-  "fields": [
-    {"fieldname": "reconciliation_record", "fieldtype": "Link", "in_list_view": 1, "label": "Reconciliation Record", "options": "POS Reconciliation Record", "read_only": 1, "reqd": 1},
-    {"fieldname": "bank_transaction", "fieldtype": "Link", "in_list_view": 1, "label": "Bank POS Transaction", "options": "Bank POS Transaction", "read_only": 1, "reqd": 1},
-    {"fieldname": "transaction_date", "fieldtype": "Date", "in_list_view": 1, "label": "Transaction Date", "read_only": 1},
-    {"fieldname": "pos_profile", "fieldtype": "Link", "in_list_view": 1, "label": "POS Profile", "options": "POS Profile", "read_only": 1, "reqd": 1},
-    {"fieldname": "cost_center", "fieldtype": "Link", "in_list_view": 1, "label": "Cost Center", "options": "Cost Center", "read_only": 1, "reqd": 1},
-    {"fieldname": "terminal_id", "fieldtype": "Data", "label": "Terminal ID", "read_only": 1},
-    {"fieldname": "card_type", "fieldtype": "Data", "label": "Card Type", "read_only": 1},
-    {"fieldname": "commission_amount", "fieldtype": "Currency", "in_list_view": 1, "label": "Commission", "read_only": 1},
-    {"fieldname": "vat_amount", "fieldtype": "Currency", "in_list_view": 1, "label": "VAT", "read_only": 1}
-  ]
+    "doctype":  "DocType",
+    "editable_grid":  1,
+    "engine":  "InnoDB",
+    "istable":  1,
+    "module":  "POS Reconciliation",
+    "name":  "POS Accounting Posting Item",
+    "field_order":  [
+                        "reconciliation_record",
+                        "bank_transaction",
+                        "transaction_date",
+                        "settlement_number",
+                        "settlement_date",
+                        "pos_profile",
+                        "cost_center",
+                        "terminal_id",
+                        "card_type",
+                        "commission_amount",
+                        "vat_amount"
+                    ],
+    "fields":  [
+                   {
+                       "fieldname":  "reconciliation_record",
+                       "fieldtype":  "Link",
+                       "in_list_view":  1,
+                       "label":  "Reconciliation Record",
+                       "options":  "POS Reconciliation Record",
+                       "read_only":  1,
+                       "reqd":  1
+                   },
+                   {
+                       "fieldname":  "bank_transaction",
+                       "fieldtype":  "Link",
+                       "in_list_view":  1,
+                       "label":  "Bank POS Transaction",
+                       "options":  "Bank POS Transaction",
+                       "read_only":  1,
+                       "reqd":  1
+                   },
+                   {
+                       "fieldname":  "transaction_date",
+                       "fieldtype":  "Date",
+                       "in_list_view":  1,
+                       "label":  "Transaction Date",
+                       "read_only":  1
+                   },
+                   {
+                       "fieldname":  "pos_profile",
+                       "fieldtype":  "Link",
+                       "in_list_view":  1,
+                       "label":  "POS Profile",
+                       "options":  "POS Profile",
+                       "read_only":  1,
+                       "reqd":  1
+                   },
+                   {
+                       "fieldname":  "cost_center",
+                       "fieldtype":  "Link",
+                       "in_list_view":  1,
+                       "label":  "Cost Center",
+                       "options":  "Cost Center",
+                       "read_only":  1,
+                       "reqd":  1
+                   },
+                   {
+                       "fieldname":  "terminal_id",
+                       "fieldtype":  "Data",
+                       "label":  "Terminal ID",
+                       "read_only":  1
+                   },
+                   {
+                       "fieldname":  "card_type",
+                       "fieldtype":  "Data",
+                       "label":  "Card Type",
+                       "read_only":  1
+                   },
+                   {
+                       "fieldname":  "commission_amount",
+                       "fieldtype":  "Currency",
+                       "in_list_view":  1,
+                       "label":  "Commission",
+                       "read_only":  1
+                   },
+                   {
+                       "fieldname":  "vat_amount",
+                       "fieldtype":  "Currency",
+                       "in_list_view":  1,
+                       "label":  "VAT",
+                       "read_only":  1
+                   },
+                   {
+                       "fieldname":  "settlement_number",
+                       "fieldtype":  "Data",
+                       "label":  "Settlement Number",
+                       "read_only":  1
+                   },
+                   {
+                       "fieldname":  "settlement_date",
+                       "fieldtype":  "Date",
+                       "label":  "Settlement Date",
+                       "read_only":  1
+                   }
+               ]
 }

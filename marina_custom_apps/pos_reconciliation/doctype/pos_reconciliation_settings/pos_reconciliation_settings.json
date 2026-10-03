@@ -14,6 +14,8 @@
                         "posting_control_section",
                         "enable_accounting_posting",
                         "consolidate_pos_profiles_in_one_journal_entry",
+                        "consolidate_bank_entries",
+                        "journal_entry_creation_mode",
                         "auto_create_accounting_entries",
                         "allow_posting_before_finance_audit",
                         "finance_review_section",
@@ -60,7 +62,7 @@
                    },
                    {
                        "default":  "Manual",
-                       "description":  "Stored now for the next accounting-posting phase. v0.52.1 does not create GL entries.",
+                       "description":  "Reserved for a future automatic-posting phase. v0.52.3 uses manual posting from a completed Reconciliation Run.",
                        "fieldname":  "posting_frequency",
                        "fieldtype":  "Select",
                        "label":  "Posting Frequency",
@@ -74,7 +76,7 @@
                    },
                    {
                        "default":  "0",
-                       "description":  "Reserved for the later accounting-posting release. No Journal Entries are created by v0.52.1.",
+                       "description":  "Reserved for a future automatic-posting phase. v0.52.3 does not automatically create Journal Entries.",
                        "fieldname":  "auto_create_accounting_entries",
                        "fieldtype":  "Check",
                        "label":  "Auto Create Accounting Entries",
@@ -85,7 +87,8 @@
                        "fieldname":  "allow_posting_before_finance_audit",
                        "fieldtype":  "Check",
                        "label":  "Allow Posting Before Finance Audit",
-                       "hidden":  1
+                       "hidden":  1,
+                       "description":  "Legacy reserved field. Accounting posting always requires Matching or Manually Cleared reconciliation status."
                    },
                    {
                        "fieldname":  "finance_review_section",
@@ -107,10 +110,26 @@
                    },
                    {
                        "default":  "1",
-                       "description":  "When enabled, confirmed transactions from multiple POS Profiles in the same settlement/date can be posted in one Journal Entry. Commission remains split by POS Profile Cost Center.",
+                       "description":  "When enabled, all eligible POS Profiles in the reconciliation run can be included in one Journal Entry. Commission and VAT debit lines remain split by POS Profile Cost Center.",
                        "fieldname":  "consolidate_pos_profiles_in_one_journal_entry",
                        "fieldtype":  "Check",
                        "label":  "Consolidate Multiple POS Profiles in One Journal Entry"
+                   },
+                   {
+                       "default":  "1",
+                       "description":  "When enabled, the Bank credit side is consolidated into two lines only: total Commission and total VAT. When disabled, separate Bank Commission and Bank VAT credit lines are created for each POS Profile.",
+                       "fieldname":  "consolidate_bank_entries",
+                       "fieldtype":  "Check",
+                       "label":  "Consolidate Bank Entries"
+                   },
+                   {
+                       "default":  "Draft",
+                       "description":  "Choose whether generated Journal Entries are saved as Draft for Finance review or submitted automatically.",
+                       "fieldname":  "journal_entry_creation_mode",
+                       "fieldtype":  "Select",
+                       "label":  "Journal Entry Creation Mode",
+                       "options":  "Draft\nSubmit",
+                       "reqd":  1
                    }
                ],
     "permissions":  [

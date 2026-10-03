@@ -118,6 +118,13 @@ frappe.ui.form.on("POS Reconciliation Run", {
                 });
             }, __("Accounting"));
 
+            frm.add_custom_button(__("Draft Created"), () => {
+                frappe.set_route("List", "POS Reconciliation Record", {
+                    run: frm.doc.name,
+                    accounting_status: "Draft Created",
+                });
+            }, __("Accounting"));
+
             frm.add_custom_button(__("Posted"), () => {
                 frappe.set_route("List", "POS Reconciliation Record", {
                     run: frm.doc.name,
@@ -809,8 +816,10 @@ function pos_recon_accounting_pill(status) {
     const value = status || "Not Eligible";
     const color = {
         "Posted": "green",
+        "Draft Created": "blue",
         "Pending Accounting": "orange",
         "No Charges": "blue",
+        "Draft - Review Required": "red",
         "Posted - Review Required": "red",
         "Not Eligible": "gray",
     }[value] || "gray";
@@ -876,37 +885,35 @@ function pos_recon_open_accounting_dialog(frm) {
             return;
         }
 
-        const settlement_options = [""].concat(options.settlement_numbers || []).join("\n");
-        const consolidate_text = cint(options.consolidate_pos_profiles)
-            ? __("Multiple POS Profiles in the same settlement/date will be consolidated into one Journal Entry. Commission debit lines remain split by POS Profile Cost Center.")
-            : __("A separate Journal Entry will be created for each POS Profile.");
+        const profile_mode = cint(options.consolidate_pos_profiles)
+            ? __("Eligible POS Profiles will be included in one Journal Entry; Commission and VAT debit lines remain split by POS Profile Cost Center.")
+            : __("A separate Journal Entry will be created for each eligible POS Profile.");
+        const bank_mode = cint(options.consolidate_bank_entries)
+            ? __("Bank credits will be consolidated into two lines only: total Commission and total VAT.")
+            : __("Bank Commission and Bank VAT credit lines will be separated by POS Profile.");
+        const creation_mode = options.journal_entry_creation_mode || "Draft";
 
         frappe.prompt(
             [
                 {
-                    fieldname: "settlement_number",
-                    fieldtype: "Select",
-                    label: __("Settlement Number"),
-                    options: settlement_options,
+                    fieldname: "posting_date",
+                    fieldtype: "Date",
+                    label: __("Posting Date"),
+                    default: frappe.datetime.get_today(),
                     reqd: 1,
                 },
                 {
-                    fieldname: "settlement_date",
-                    fieldtype: "Date",
-                    label: __("Settlement Date"),
-                    description: __("Required only when the same Settlement Number exists on more than one settlement date."),
-                },
-                {
-                    fieldname: "pos_profile",
-                    fieldtype: "Link",
-                    options: "POS Profile",
-                    label: __("POS Profile"),
-                    description: __("Optional. Leave blank to include all eligible POS Profiles."),
-                },
-                {
-                    fieldname: "posting_note",
+                    fieldname: "posting_summary",
                     fieldtype: "HTML",
-                    options: `<div class="text-muted small">${consolidate_text}<br>${__("Posting Date will be the bank Settlement Date. Only Matching or Manually Cleared transactions are eligible.")}</div>`,
+                    options: `<div class="pos-recon-accounting-preview">
+                        <div><b>${__("Eligible Transactions")}</b>: ${cint(options.pending_count || 0)}</div>
+                        <div><b>${__("POS Profiles")}</b>: ${cint(options.pos_profile_count || 0)}</div>
+                        <div><b>${__("Commission")}</b>: ${pos_recon_money(options.commission)}</div>
+                        <div><b>${__("VAT")}</b>: ${pos_recon_money(options.vat)}</div>
+                        <div><b>${__("Total Bank Credit")}</b>: ${pos_recon_money(options.total)}</div>
+                        <hr style="margin:10px 0;">
+                        <div class="text-muted small">${profile_mode}<br>${bank_mode}<br>${__("Journal Entry mode")}: <b>${pos_recon_escape(creation_mode)}</b></div>
+                    </div>`,
                 },
             ],
             (values) => {
@@ -914,46 +921,51 @@ function pos_recon_open_accounting_dialog(frm) {
                     method: "marina_custom_apps.pos_reconciliation.doctype.pos_reconciliation_run.pos_reconciliation_run.get_accounting_preview_for_run",
                     args: {
                         run_name: frm.doc.name,
-                        settlement_number: values.settlement_number,
-                        settlement_date: values.settlement_date || null,
-                        pos_profile: values.pos_profile || null,
+                        posting_date: values.posting_date,
                     },
                     freeze: true,
                     freeze_message: __("Preparing accounting preview..."),
                 }).then((preview_response) => {
                     const preview = preview_response.message || {};
+                    const mode_text = preview.journal_entry_creation_mode === "Submit"
+                        ? __("The generated Journal Entry/Entries will be submitted automatically.")
+                        : __("The generated Journal Entry/Entries will be saved as Draft for Finance review.");
                     const message = __(
-                        "Create {0} Journal Entry/Entries for {1} confirmed transactions?<br><br>POS Profiles: {2}<br>Bank Commission: {3}<br>VAT: {4}<br>Total Bank Credit: {5}",
+                        "Create {0} Journal Entry/Entries for {1} confirmed transactions using Posting Date {2}?<br><br>POS Profiles: {3}<br>Bank Commission: {4}<br>VAT: {5}<br>Total Bank Credit: {6}<br><br>{7}",
                         [
                             preview.journal_entry_count || 0,
                             preview.transaction_count || 0,
+                            preview.posting_date || values.posting_date,
                             preview.pos_profile_count || 0,
                             pos_recon_money(preview.commission),
                             pos_recon_money(preview.vat),
                             pos_recon_money(preview.total),
+                            mode_text,
                         ]
                     );
                     frappe.confirm(message, () => {
+                        const auto_submit = preview.journal_entry_creation_mode === "Submit";
                         frappe.call({
                             method: "marina_custom_apps.pos_reconciliation.doctype.pos_reconciliation_run.pos_reconciliation_run.create_accounting_entries",
                             args: {
                                 run_name: frm.doc.name,
-                                settlement_number: values.settlement_number,
-                                settlement_date: values.settlement_date || null,
-                                pos_profile: values.pos_profile || null,
+                                posting_date: values.posting_date,
                             },
                             freeze: true,
-                            freeze_message: __("Creating and submitting Journal Entries..."),
+                            freeze_message: auto_submit
+                                ? __("Creating and submitting Journal Entries...")
+                                : __("Creating Journal Entry drafts..."),
                         }).then((post_response) => {
                             const result = post_response.message || {};
-                            const rows = (result.postings || []).map((row) =>
-                                `${pos_recon_escape(row.posting)} â†’ ${pos_recon_escape(row.journal_entry)}`
-                            ).join("<br>");
+                            const rows = (result.postings || []).map((row) => {
+                                const state = cint(row.journal_entry_docstatus) === 1 ? __("Submitted") : __("Draft");
+                                return `${pos_recon_escape(row.posting)} â†’ ${pos_recon_escape(row.journal_entry)} (${state})`;
+                            }).join("<br>");
                             frappe.msgprint({
-                                title: __("POS Accounting Posted"),
-                                indicator: "green",
+                                title: auto_submit ? __("POS Accounting Posted") : __("POS Accounting Drafts Created"),
+                                indicator: auto_submit ? "green" : "blue",
                                 message: __(
-                                    "Posted {0} transactions in {1} Journal Entry/Entries.<br>Commission: {2}<br>VAT: {3}<br><br>{4}",
+                                    "Processed {0} transactions in {1} Journal Entry/Entries.<br>Commission: {2}<br>VAT: {3}<br><br>{4}",
                                     [
                                         result.transaction_count || 0,
                                         result.posting_count || 0,

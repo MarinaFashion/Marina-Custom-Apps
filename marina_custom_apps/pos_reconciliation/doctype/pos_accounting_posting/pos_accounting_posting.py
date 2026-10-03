@@ -2,50 +2,64 @@ from __future__ import annotations
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import now_datetime
+from frappe.utils import cint, now_datetime
 
 
 class POSAccountingPosting(Document):
     def validate(self):
-        from marina_custom_apps.pos_reconciliation.accounting_service import validate_posting_document
+        from marina_custom_apps.pos_reconciliation.accounting_service import (
+            validate_posting_document,
+        )
 
         validate_posting_document(self)
 
     def before_submit(self):
-        from marina_custom_apps.pos_reconciliation.accounting_service import validate_posting_before_submit
+        from marina_custom_apps.pos_reconciliation.accounting_service import (
+            validate_posting_before_submit,
+        )
 
         validate_posting_before_submit(self)
 
     def on_submit(self):
         from marina_custom_apps.pos_reconciliation.accounting_service import (
-            create_and_submit_journal_entry,
-            mark_posting_posted,
+            JOURNAL_ENTRY_MODE_SUBMIT,
+            create_journal_entry,
         )
 
-        journal_entry = create_and_submit_journal_entry(self)
-        posted_on = mark_posting_posted(self, journal_entry)
+        journal_entry = create_journal_entry(self)
+        creation_mode = self.journal_entry_creation_mode or "Draft"
+
+        posting_status = "Posted" if cint(journal_entry.docstatus) == 1 else "Journal Entry Draft"
         frappe.db.set_value(
             self.doctype,
             self.name,
             {
                 "journal_entry": journal_entry.name,
-                "posting_status": "Posted",
-                "posted_by": frappe.session.user,
-                "posted_on": posted_on,
+                "posting_status": posting_status,
             },
             update_modified=False,
         )
         self.journal_entry = journal_entry.name
-        self.posting_status = "Posted"
-        self.posted_by = frappe.session.user
-        self.posted_on = posted_on
+        self.posting_status = posting_status
+
+        # Journal Entry on_submit performs the authoritative Posted transition.
+        if creation_mode == JOURNAL_ENTRY_MODE_SUBMIT and cint(journal_entry.docstatus) != 1:
+            frappe.throw("Journal Entry was configured for automatic submission but remains in Draft.")
 
     def before_cancel(self):
         if not self.journal_entry or not frappe.db.exists("Journal Entry", self.journal_entry):
             return
+
         journal_entry = frappe.get_doc("Journal Entry", self.journal_entry)
         if journal_entry.docstatus == 1:
             journal_entry.cancel()
+        elif journal_entry.docstatus == 0:
+            frappe.delete_doc(
+                "Journal Entry",
+                journal_entry.name,
+                ignore_permissions=True,
+                force=True,
+            )
 
     def on_cancel(self):
         from marina_custom_apps.pos_reconciliation.accounting_service import release_posting
