@@ -81,7 +81,7 @@ def get_results_review_page(
 
 
 @frappe.whitelist()
-def get_review_filter_options(run_name, status="Bank Only"):
+def get_review_filter_options(run_name, status="Bank Pending"):
     return get_result_filter_options(run_name, status=status)
 
 

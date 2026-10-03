@@ -34,16 +34,17 @@ frappe.ui.form.on("POS Reconciliation Run", {
                             freeze_message: __("Reconciling POS transactions..."),
                         }).then((r) => {
                             const result = r.message || {};
+                            const bank_pending = Math.max(cint(result.bank_only_count || 0) - cint(result.manually_cleared_count || 0), 0);
                             frm.reload_doc();
                             frappe.msgprint({
                                 title: __("Reconciliation Completed"),
                                 indicator: result.pending_count ? "orange" : "green",
                                 message: __(
-                                    "Matching: {0}<br>Discrepancies: {1}<br>Bank Only: {2}<br>Alhamrani Only: {3}<br>Manually Cleared: {4}<br>Pending: {5}",
+                                    "Matching: {0}<br>Discrepancies: {1}<br>Bank Pending: {2}<br>Marina Pending: {3}<br>Manually Cleared: {4}<br>All Pending: {5}",
                                     [
                                         result.matching_count || 0,
                                         result.discrepancy_count || 0,
-                                        result.bank_only_count || 0,
+                                        bank_pending,
                                         result.alhamrani_only_count || 0,
                                         result.manually_cleared_count || 0,
                                         result.pending_count || 0,
@@ -61,7 +62,7 @@ frappe.ui.form.on("POS Reconciliation Run", {
             frappe.set_route("List", "POS Reconciliation Record", { run: frm.doc.name });
         }, __("View"));
 
-        frm.add_custom_button(__("Pending Exceptions"), () => {
+        frm.add_custom_button(__("All Pending"), () => {
             frappe.set_route("List", "POS Reconciliation Record", {
                 run: frm.doc.name,
                 resolution_status: "Pending",
@@ -82,7 +83,7 @@ frappe.ui.form.on("POS Reconciliation Run", {
             });
         }, __("View"));
 
-        frm.add_custom_button(__("Pending Bank Only"), () => {
+        frm.add_custom_button(__("Bank Pending"), () => {
             frappe.set_route("List", "POS Reconciliation Record", {
                 run: frm.doc.name,
                 match_status: "Bank Only",
@@ -90,7 +91,7 @@ frappe.ui.form.on("POS Reconciliation Run", {
             });
         }, __("View"));
 
-        frm.add_custom_button(__("Pending Alhamrani Only"), () => {
+        frm.add_custom_button(__("Marina Pending"), () => {
             frappe.set_route("List", "POS Reconciliation Record", {
                 run: frm.doc.name,
                 match_status: "Alhamrani Only",
@@ -98,11 +99,10 @@ frappe.ui.form.on("POS Reconciliation Run", {
             });
         }, __("View"));
 
-        frm.add_custom_button(__("Finance Approved Bank Only"), () => {
+        frm.add_custom_button(__("Manually Cleared"), () => {
             frappe.set_route("List", "POS Reconciliation Record", {
                 run: frm.doc.name,
-                match_status: "Bank Only",
-                finance_review_status: "Checked & Approved",
+                resolution_status: "Manually Cleared",
             });
         }, __("View"));
 
@@ -292,16 +292,18 @@ function pos_recon_render_results(frm, $wrapper, data) {
     const total = cint(data.total || 0);
     const start = cint(data.start || 0);
     const page_length = cint(data.page_length || POS_RECON_PAGE_LENGTH);
-    const is_bank_only = state.status === "Bank Only";
+    const is_bank_only = state.status === "Bank Pending";
+    const bank_pending_count = Math.max(cint(frm.doc.bank_only_count || 0) - cint(frm.doc.manually_cleared_count || 0), 0);
+    const marina_pending_count = cint(frm.doc.alhamrani_only_count || 0);
 
     const statuses = [
         ["All", __("All"), pos_recon_total_results(frm)],
         ["Matching", __("Matching"), cint(frm.doc.matching_count || 0)],
         ["Discrepancy", __("Discrepancies"), cint(frm.doc.discrepancy_count || 0)],
-        ["Bank Only", __("Bank Only"), cint(frm.doc.bank_only_count || 0)],
-        ["Alhamrani Only", __("Alhamrani Only"), cint(frm.doc.alhamrani_only_count || 0)],
-        ["Pending", __("Pending"), cint(frm.doc.pending_count || 0)],
+        ["Bank Pending", __("Bank Pending"), bank_pending_count],
+        ["Marina Pending", __("Marina Pending"), marina_pending_count],
         ["Manually Cleared", __("Manually Cleared"), cint(frm.doc.manually_cleared_count || 0)],
+        ["All Pending", __("All Pending"), cint(frm.doc.pending_count || 0)],
     ];
 
     const filter_buttons = statuses.map(([value, label, count]) => `

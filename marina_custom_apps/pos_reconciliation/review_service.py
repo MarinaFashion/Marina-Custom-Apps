@@ -13,10 +13,15 @@ MAX_PAGE_LENGTH = 100
 RESULT_STATUS_FILTERS = {
     "Matching": {"match_status": "Matching"},
     "Discrepancy": {"match_status": "Discrepancy"},
+    "Bank Pending": {"match_status": "Bank Only", "resolution_status": "Pending"},
+    "Marina Pending": {"match_status": "Alhamrani Only", "resolution_status": "Pending"},
+    "Manually Cleared": {"resolution_status": "Manually Cleared"},
+    "All Pending": {"resolution_status": "Pending"},
+    # Backward-compatible internal aliases. These are no longer shown as the
+    # primary Finance review pills but existing links/API calls remain valid.
     "Bank Only": {"match_status": "Bank Only"},
     "Alhamrani Only": {"match_status": "Alhamrani Only"},
     "Pending": {"resolution_status": "Pending"},
-    "Manually Cleared": {"resolution_status": "Manually Cleared"},
 }
 
 
@@ -121,7 +126,7 @@ def get_results_page(
     total = _count_records(filters, or_filters)
 
     settlement_summary = None
-    if status == "Bank Only" and cstr(settlement_number).strip():
+    if status in {"Bank Pending", "Bank Only"} and cstr(settlement_number).strip():
         settlement_summary = _settlement_summary(filters, or_filters)
 
     return {
@@ -134,9 +139,9 @@ def get_results_page(
     }
 
 
-def get_result_filter_options(run_name, status="Bank Only"):
+def get_result_filter_options(run_name, status="Bank Pending"):
     run = _get_run(run_name)
-    status = cstr(status).strip() or "Bank Only"
+    status = cstr(status).strip() or "Bank Pending"
     extra = RESULT_STATUS_FILTERS.get(status, {})
 
     where = ["run = %(run)s"]

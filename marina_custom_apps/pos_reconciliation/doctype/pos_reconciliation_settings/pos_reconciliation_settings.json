@@ -15,12 +15,11 @@
     "auto_create_accounting_entries",
     "allow_posting_before_finance_audit",
     "finance_review_section",
-    "allow_bulk_finance_review",
-    "profile_mapping_section",
-    "profile_mappings"
+    "allow_bulk_finance_review"
   ],
   "fields": [
     {
+      "description": "Future commission and VAT postings will take the Cost Center directly from POS Profile > Cost Center. No separate POS Profile mapping is maintained here.",
       "fieldname": "accounting_section",
       "fieldtype": "Section Break",
       "label": "Accounting Foundation"
@@ -33,14 +32,14 @@
       "reqd": 1
     },
     {
-      "description": "Expense account to be used for POS/bank commission posting in a later accounting release.",
+      "description": "Expense account to be used for POS/bank commission posting in a later accounting release. Cost Center will come from the POS Profile.",
       "fieldname": "commission_expense_account",
       "fieldtype": "Link",
       "label": "Commission Expense Account",
       "options": "Account"
     },
     {
-      "description": "Input VAT account to be used for VAT on bank commission in a later accounting release.",
+      "description": "Input VAT account to be used for VAT on bank commission in a later accounting release. Cost Center will come from the POS Profile.",
       "fieldname": "vat_input_account",
       "fieldtype": "Link",
       "label": "VAT Input Account",
@@ -51,7 +50,7 @@
       "fieldtype": "Column Break"
     },
     {
-      "description": "Default bank/settlement offset account. A POS Profile mapping may override this later.",
+      "description": "Default bank/settlement offset account for the future accounting-posting phase.",
       "fieldname": "default_offset_account",
       "fieldtype": "Link",
       "label": "Default Offset / Bank Account",
@@ -59,7 +58,7 @@
     },
     {
       "default": "Manual",
-      "description": "Stored now for the next accounting-posting phase. v0.52.0 does not create GL entries.",
+      "description": "Stored now for the next accounting-posting phase. v0.52.1 does not create GL entries.",
       "fieldname": "posting_frequency",
       "fieldtype": "Select",
       "label": "Posting Frequency",
@@ -72,7 +71,7 @@
     },
     {
       "default": "0",
-      "description": "Reserved for the later accounting-posting release. No Journal Entries are created by v0.52.0.",
+      "description": "Reserved for the later accounting-posting release. No Journal Entries are created by v0.52.1.",
       "fieldname": "auto_create_accounting_entries",
       "fieldtype": "Check",
       "label": "Auto Create Accounting Entries"
@@ -93,18 +92,6 @@
       "fieldname": "allow_bulk_finance_review",
       "fieldtype": "Check",
       "label": "Allow Bulk Finance Review"
-    },
-    {
-      "fieldname": "profile_mapping_section",
-      "fieldtype": "Section Break",
-      "label": "POS Profile Accounting Mapping"
-    },
-    {
-      "description": "Map each POS Profile to its accounting Cost Center. Offset Account can override the default account above.",
-      "fieldname": "profile_mappings",
-      "fieldtype": "Table",
-      "label": "POS Profile Accounting Mapping",
-      "options": "POS Reconciliation Profile Mapping"
     }
   ],
   "permissions": [
