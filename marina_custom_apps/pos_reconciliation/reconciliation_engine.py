@@ -33,6 +33,11 @@ CARD_TYPE_ALIASES = {
     "AMERICAN EXPRESS": "AMERICAN EXPRESS",
 }
 
+FINANCE_NOT_REQUIRED = "Not Required"
+FINANCE_PENDING = "Pending Review"
+FINANCE_APPROVED = "Checked & Approved"
+FINANCE_INVESTIGATE = "Needs Investigation"
+
 RECORD_UPDATE_FIELDS = (
     "transaction_date",
     "pos_profile",
@@ -46,6 +51,12 @@ RECORD_UPDATE_FIELDS = (
     "before_integration",
     "discrepancy_fields",
     "alhamrani_duplicate_count",
+    "settlement_number",
+    "settlement_date",
+    "pos_reconciliation_number",
+    "bank_commission_amount",
+    "bank_commission_vat_amount",
+    "bank_settlement_amount",
     "bank_amount",
     "alhamrani_amount",
     "amount_difference",
@@ -53,10 +64,16 @@ RECORD_UPDATE_FIELDS = (
     "alhamrani_card_type",
     "bank_masked_pan",
     "alhamrani_masked_pan",
+    "alhamrani_emv_last4",
+    "pan_validation_method",
     "bank_transaction_date",
     "alhamrani_transaction_date",
     "bank_transaction_time",
     "alhamrani_transaction_time",
+    "finance_review_status",
+    "finance_reviewed_by",
+    "finance_reviewed_on",
+    "finance_review_note",
     "manual_clearance_reason",
     "manual_cleared_by",
     "manual_cleared_on",
@@ -81,6 +98,30 @@ def normalize_time(value):
     return text
 
 
+def _pan_last4(value):
+    digits = "".join(ch for ch in cstr(value) if ch.isdigit())
+    return digits[-4:] if len(digits) >= 4 else ""
+
+
+def get_pan_validation_method(bank, alhamrani):
+    """Validate PAN directly first, then fall back to ECR_EMVData last 4."""
+    bank_pan = normalize_masked_pan(getattr(bank, "masked_card_number", None))
+    alh_pan = normalize_masked_pan(getattr(alhamrani, "masked_pan", None))
+
+    if bank_pan and alh_pan and bank_pan == alh_pan:
+        return "Direct PAN"
+
+    bank_last4 = _pan_last4(getattr(bank, "masked_card_number", None))
+    emv_last4 = cstr(getattr(alhamrani, "emv_last4", None)).strip()
+    if bank_last4 and emv_last4 and bank_last4 == emv_last4:
+        return "EMV Last 4"
+
+    if bank_pan and (alh_pan or emv_last4):
+        return "Mismatch"
+
+    return "Not Available"
+
+
 def compare_transactions(bank, alhamrani):
     discrepancies = []
 
@@ -94,9 +135,7 @@ def compare_transactions(bank, alhamrani):
     if bank_card and alh_card and bank_card != alh_card:
         discrepancies.append("Card Type")
 
-    bank_pan = normalize_masked_pan(bank.masked_card_number)
-    alh_pan = normalize_masked_pan(alhamrani.masked_pan)
-    if bank_pan and alh_pan and bank_pan != alh_pan:
+    if get_pan_validation_method(bank, alhamrani) == "Mismatch":
         discrepancies.append("Masked PAN")
 
     bank_date = getdate(bank.transaction_date) if bank.transaction_date else None
@@ -125,15 +164,25 @@ def _record_key(run_name, bank_transaction=None, alhamrani_transaction=None):
     return f"{run_name}|ALHAMRANI|{alhamrani_transaction}"
 
 
-def _active_manual_clearances():
+def _bank_review_states():
     return {
         row.bank_transaction: row
         for row in frappe.get_all(
             "POS Bank Manual Clearance",
-            filters={"active": 1},
-            fields=["bank_transaction", "reason", "cleared_by", "cleared_on"],
+            fields=[
+                "bank_transaction",
+                "active",
+                "reason",
+                "cleared_by",
+                "cleared_on",
+                "finance_review_status",
+                "finance_review_note",
+                "finance_reviewed_by",
+                "finance_reviewed_on",
+            ],
             limit_page_length=0,
         )
+        if row.bank_transaction
     }
 
 
@@ -178,6 +227,12 @@ def _bank_rows(run):
             "transaction_date",
             "transaction_time",
             "transaction_amount",
+            "settlement_number",
+            "settlement_date",
+            "pos_reconciliation_number",
+            "fee_amount",
+            "vat_amount",
+            "settlement_amount",
         ],
         order_by="transaction_date asc, transaction_time asc, name asc",
         limit_page_length=0,
@@ -224,15 +279,14 @@ def _base_result(run, bank=None, alhamrani=None):
         alhamrani_transaction=alhamrani.name if alhamrani else None,
     )
 
-    # Currency fields in Frappe/MariaDB are NOT NULL numeric columns.
-    # For one-sided reconciliation records, persist the missing side as 0.00
-    # rather than Python None so bulk_insert remains valid.
     bank_amount = flt(bank.transaction_amount, 2) if bank else 0.0
     alhamrani_amount = (
         flt(alhamrani.amount, 2)
         if alhamrani and alhamrani.amount is not None
         else 0.0
     )
+
+    pan_method = get_pan_validation_method(bank, alhamrani) if bank and alhamrani else "Not Available"
 
     return {
         "name": _record_name(record_key),
@@ -245,6 +299,12 @@ def _base_result(run, bank=None, alhamrani=None):
         "bank_transaction": bank.name if bank else None,
         "alhamrani_doctype": ALHAMRANI_DOCTYPE,
         "alhamrani_transaction": alhamrani.name if alhamrani else None,
+        "settlement_number": cstr(bank.settlement_number).strip() if bank else None,
+        "settlement_date": bank.settlement_date if bank else None,
+        "pos_reconciliation_number": cstr(bank.pos_reconciliation_number).strip() if bank else None,
+        "bank_commission_amount": flt(bank.fee_amount, 2) if bank else 0.0,
+        "bank_commission_vat_amount": flt(bank.vat_amount, 2) if bank else 0.0,
+        "bank_settlement_amount": flt(bank.settlement_amount, 2) if bank else 0.0,
         "bank_amount": bank_amount,
         "alhamrani_amount": alhamrani_amount,
         "amount_difference": bank_amount - alhamrani_amount,
@@ -252,16 +312,45 @@ def _base_result(run, bank=None, alhamrani=None):
         "alhamrani_card_type": normalize_card_type(alhamrani.card_type) if alhamrani else None,
         "bank_masked_pan": bank.masked_card_number if bank else None,
         "alhamrani_masked_pan": alhamrani.masked_pan if alhamrani else None,
+        "alhamrani_emv_last4": cstr(getattr(alhamrani, "emv_last4", None)).strip() if alhamrani else None,
+        "pan_validation_method": pan_method,
         "bank_transaction_date": bank.transaction_date if bank else None,
         "alhamrani_transaction_date": alhamrani.transaction_date if alhamrani else None,
         "bank_transaction_time": normalize_time(bank.transaction_time) if bank else None,
         "alhamrani_transaction_time": normalize_time(alhamrani.transaction_time) if alhamrani else None,
+        "finance_review_status": FINANCE_NOT_REQUIRED,
+        "finance_reviewed_by": None,
+        "finance_reviewed_on": None,
+        "finance_review_note": None,
         "alhamrani_duplicate_count": 0,
     }
 
 
+def _apply_bank_review(result, bank, reviews):
+    review = reviews.get(bank.name)
+    result["finance_review_status"] = FINANCE_PENDING
+
+    if not review:
+        return
+
+    review_status = cstr(review.finance_review_status).strip()
+    if review_status in {FINANCE_APPROVED, FINANCE_INVESTIGATE}:
+        result["finance_review_status"] = review_status
+        result["finance_reviewed_by"] = review.finance_reviewed_by
+        result["finance_reviewed_on"] = review.finance_reviewed_on
+        result["finance_review_note"] = review.finance_review_note
+
+    if review.active:
+        result.update(
+            resolution_status="Manually Cleared",
+            manual_clearance_reason=review.reason,
+            manual_cleared_by=review.cleared_by,
+            manual_cleared_on=review.cleared_on,
+        )
+
+
 def _build_results(run, bank_rows, alhamrani_rows):
-    clearances = _active_manual_clearances()
+    reviews = _bank_review_states()
     integration_dates = _integration_dates()
     alh_by_key = defaultdict(list)
     for row in alhamrani_rows:
@@ -282,14 +371,7 @@ def _build_results(run, bank_rows, alhamrani_rows):
                 before_integration=_is_before_integration(bank, integration_dates),
                 discrepancy_fields="",
             )
-            clearance = clearances.get(bank.name)
-            if clearance:
-                result.update(
-                    resolution_status="Manually Cleared",
-                    manual_clearance_reason=clearance.reason,
-                    manual_cleared_by=clearance.cleared_by,
-                    manual_cleared_on=clearance.cleared_on,
-                )
+            _apply_bank_review(result, bank, reviews)
             results.append(result)
             continue
 

@@ -1,0 +1,127 @@
+{
+  "doctype": "DocType",
+  "issingle": 1,
+  "module": "POS Reconciliation",
+  "name": "POS Reconciliation Settings",
+  "field_order": [
+    "accounting_section",
+    "company",
+    "commission_expense_account",
+    "vat_input_account",
+    "accounting_column_break",
+    "default_offset_account",
+    "posting_frequency",
+    "posting_control_section",
+    "auto_create_accounting_entries",
+    "allow_posting_before_finance_audit",
+    "finance_review_section",
+    "allow_bulk_finance_review",
+    "profile_mapping_section",
+    "profile_mappings"
+  ],
+  "fields": [
+    {
+      "fieldname": "accounting_section",
+      "fieldtype": "Section Break",
+      "label": "Accounting Foundation"
+    },
+    {
+      "fieldname": "company",
+      "fieldtype": "Link",
+      "label": "Company",
+      "options": "Company",
+      "reqd": 1
+    },
+    {
+      "description": "Expense account to be used for POS/bank commission posting in a later accounting release.",
+      "fieldname": "commission_expense_account",
+      "fieldtype": "Link",
+      "label": "Commission Expense Account",
+      "options": "Account"
+    },
+    {
+      "description": "Input VAT account to be used for VAT on bank commission in a later accounting release.",
+      "fieldname": "vat_input_account",
+      "fieldtype": "Link",
+      "label": "VAT Input Account",
+      "options": "Account"
+    },
+    {
+      "fieldname": "accounting_column_break",
+      "fieldtype": "Column Break"
+    },
+    {
+      "description": "Default bank/settlement offset account. A POS Profile mapping may override this later.",
+      "fieldname": "default_offset_account",
+      "fieldtype": "Link",
+      "label": "Default Offset / Bank Account",
+      "options": "Account"
+    },
+    {
+      "default": "Manual",
+      "description": "Stored now for the next accounting-posting phase. v0.52.0 does not create GL entries.",
+      "fieldname": "posting_frequency",
+      "fieldtype": "Select",
+      "label": "Posting Frequency",
+      "options": "Manual\nPer Settlement\nDaily"
+    },
+    {
+      "fieldname": "posting_control_section",
+      "fieldtype": "Section Break",
+      "label": "Posting Controls"
+    },
+    {
+      "default": "0",
+      "description": "Reserved for the later accounting-posting release. No Journal Entries are created by v0.52.0.",
+      "fieldname": "auto_create_accounting_entries",
+      "fieldtype": "Check",
+      "label": "Auto Create Accounting Entries"
+    },
+    {
+      "default": "0",
+      "fieldname": "allow_posting_before_finance_audit",
+      "fieldtype": "Check",
+      "label": "Allow Posting Before Finance Audit"
+    },
+    {
+      "fieldname": "finance_review_section",
+      "fieldtype": "Section Break",
+      "label": "Finance Review Controls"
+    },
+    {
+      "default": "1",
+      "fieldname": "allow_bulk_finance_review",
+      "fieldtype": "Check",
+      "label": "Allow Bulk Finance Review"
+    },
+    {
+      "fieldname": "profile_mapping_section",
+      "fieldtype": "Section Break",
+      "label": "POS Profile Accounting Mapping"
+    },
+    {
+      "description": "Map each POS Profile to its accounting Cost Center. Offset Account can override the default account above.",
+      "fieldname": "profile_mappings",
+      "fieldtype": "Table",
+      "label": "POS Profile Accounting Mapping",
+      "options": "POS Reconciliation Profile Mapping"
+    }
+  ],
+  "permissions": [
+    {
+      "create": 1,
+      "delete": 0,
+      "read": 1,
+      "write": 1,
+      "role": "Accounts Manager"
+    },
+    {
+      "create": 1,
+      "delete": 1,
+      "read": 1,
+      "write": 1,
+      "role": "System Manager"
+    }
+  ],
+  "track_changes": 1
+}

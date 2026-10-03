@@ -1,0 +1,13 @@
+{
+  "doctype": "DocType",
+  "istable": 1,
+  "module": "POS Reconciliation",
+  "name": "POS Reconciliation Profile Mapping",
+  "field_order": ["pos_profile","cost_center","offset_account","disabled"],
+  "fields": [
+    {"fieldname":"pos_profile","fieldtype":"Link","in_list_view":1,"label":"POS Profile","options":"POS Profile","reqd":1},
+    {"fieldname":"cost_center","fieldtype":"Link","in_list_view":1,"label":"Cost Center","options":"Cost Center","reqd":1},
+    {"description":"Optional override for the default bank/settlement offset account.","fieldname":"offset_account","fieldtype":"Link","in_list_view":1,"label":"Offset / Bank Account","options":"Account"},
+    {"default":"0","fieldname":"disabled","fieldtype":"Check","in_list_view":1,"label":"Disabled"}
+  ]
+}

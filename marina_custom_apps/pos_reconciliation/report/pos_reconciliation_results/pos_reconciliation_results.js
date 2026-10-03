@@ -8,6 +8,16 @@ frappe.query_reports["POS Reconciliation Results"] = {
             reqd: 1,
         },
         {
+            fieldname: "from_date",
+            label: __("From Date"),
+            fieldtype: "Date",
+        },
+        {
+            fieldname: "to_date",
+            label: __("To Date"),
+            fieldtype: "Date",
+        },
+        {
             fieldname: "match_status",
             label: __("Match Status"),
             fieldtype: "Select",
@@ -18,6 +28,27 @@ frappe.query_reports["POS Reconciliation Results"] = {
             label: __("Resolution Status"),
             fieldtype: "Select",
             options: "\nAuto Cleared\nPending\nManually Cleared",
+        },
+        {
+            fieldname: "finance_review_status",
+            label: __("Finance Review"),
+            fieldtype: "Select",
+            options: "\nNot Required\nPending Review\nChecked & Approved\nNeeds Investigation",
+        },
+        {
+            fieldname: "settlement_number",
+            label: __("Settlement Number"),
+            fieldtype: "Data",
+        },
+        {
+            fieldname: "settlement_date",
+            label: __("Settlement Date"),
+            fieldtype: "Date",
+        },
+        {
+            fieldname: "terminal_id",
+            label: __("Terminal ID"),
+            fieldtype: "Data",
         },
         {
             fieldname: "pos_profile",

@@ -6,7 +6,11 @@ import frappe
 from frappe import _
 from frappe.utils import now_datetime
 
-from marina_custom_apps.pos_reconciliation.reconciliation_engine import refresh_run_summary
+from marina_custom_apps.pos_reconciliation.reconciliation_engine import (
+    FINANCE_APPROVED,
+    FINANCE_PENDING,
+    refresh_run_summary,
+)
 
 
 def _as_list(value):
@@ -37,14 +41,16 @@ def _clearance_doc(bank_transaction):
 
 
 def mark_bank_transactions(bank_transactions, reason=None):
+    """Backward-compatible manual clearance; now also records Finance approval."""
     _check_permission()
     bank_transactions = list(dict.fromkeys(_as_list(bank_transactions)))
     if not bank_transactions:
         return {"updated": 0}
 
-    reason = (reason or _("Pre-integration transaction")).strip()
+    reason = (reason or _("Finance checked and approved")).strip()
     now = now_datetime()
     affected_runs = set()
+    updated = 0
 
     for bank_name in bank_transactions:
         if not frappe.db.exists("Bank POS Transaction", bank_name):
@@ -54,12 +60,17 @@ def mark_bank_transactions(bank_transactions, reason=None):
         doc.bank_transaction = bank_name
         doc.active = 1
         doc.reason = reason
+        doc.finance_review_status = FINANCE_APPROVED
+        doc.finance_review_note = reason
+        doc.finance_reviewed_by = frappe.session.user
+        doc.finance_reviewed_on = now
         doc.cleared_by = frappe.session.user
         doc.cleared_on = now
         doc.reopened_by = None
         doc.reopened_on = None
         doc.flags.ignore_permissions = True
         doc.save()
+        updated += 1
 
         records = frappe.get_all(
             "POS Reconciliation Record",
@@ -73,6 +84,10 @@ def mark_bank_transactions(bank_transactions, reason=None):
                 row.name,
                 {
                     "resolution_status": "Manually Cleared",
+                    "finance_review_status": FINANCE_APPROVED,
+                    "finance_reviewed_by": frappe.session.user,
+                    "finance_reviewed_on": now,
+                    "finance_review_note": reason,
                     "manual_clearance_reason": reason,
                     "manual_cleared_by": frappe.session.user,
                     "manual_cleared_on": now,
@@ -84,7 +99,7 @@ def mark_bank_transactions(bank_transactions, reason=None):
     for run_name in affected_runs:
         refresh_run_summary(run_name)
 
-    return {"updated": len(bank_transactions), "affected_runs": len(affected_runs)}
+    return {"updated": updated, "affected_runs": len(affected_runs)}
 
 
 def reopen_bank_transactions(bank_transactions):
@@ -105,6 +120,10 @@ def reopen_bank_transactions(bank_transactions):
 
         doc = frappe.get_doc("POS Bank Manual Clearance", name)
         doc.active = 0
+        doc.finance_review_status = FINANCE_PENDING
+        doc.finance_review_note = None
+        doc.finance_reviewed_by = None
+        doc.finance_reviewed_on = None
         doc.reopened_by = frappe.session.user
         doc.reopened_on = now
         doc.flags.ignore_permissions = True
@@ -123,6 +142,10 @@ def reopen_bank_transactions(bank_transactions):
                 row.name,
                 {
                     "resolution_status": "Pending",
+                    "finance_review_status": FINANCE_PENDING,
+                    "finance_reviewed_by": None,
+                    "finance_reviewed_on": None,
+                    "finance_review_note": None,
                     "manual_clearance_reason": None,
                     "manual_cleared_by": None,
                     "manual_cleared_on": None,
@@ -137,8 +160,39 @@ def reopen_bank_transactions(bank_transactions):
     return {"updated": updated, "affected_runs": len(affected_runs)}
 
 
+def _validate_single_settlement(bank_transactions):
+    bank_transactions = list(dict.fromkeys(_as_list(bank_transactions)))
+    rows = frappe.get_all(
+        "Bank POS Transaction",
+        filters={"name": ["in", bank_transactions]},
+        fields=["name", "settlement_number", "settlement_date", "terminal_id"],
+        limit_page_length=0,
+    )
+    settlements = {str(row.settlement_number or "").strip() for row in rows}
+    if "" in settlements or len(settlements) != 1:
+        frappe.throw(_("Finance clearance requires one non-empty Settlement Number."))
+
+    groups = {
+        (
+            str(row.settlement_number or "").strip(),
+            str(row.settlement_date or "").strip(),
+            str(row.terminal_id or "").strip(),
+        )
+        for row in rows
+    }
+    if len(groups) != 1:
+        frappe.throw(
+            _(
+                "This Settlement Number spans multiple settlement groups. "
+                "Select one Settlement Date and Terminal ID group at a time."
+            )
+        )
+    return bank_transactions
+
+
 @frappe.whitelist()
 def mark_selected_bank_transactions(bank_transactions, reason=None):
+    bank_transactions = _validate_single_settlement(bank_transactions)
     return mark_bank_transactions(bank_transactions, reason)
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import date, datetime
 
 import frappe
@@ -49,6 +50,7 @@ JSON_KEY_CANDIDATES = {
     "masked_pan": ("maskedpan", "masked_pan", "maskedcardnumber", "pan"),
     "transaction_date": ("transactiondate", "transaction_date", "txndate", "txn_date"),
     "transaction_time": ("transactiontime", "transaction_time", "txntime", "txn_time"),
+    "ecr_emv_data": ("ecr_emvdata", "ecr_emv_data"),
 }
 
 
@@ -91,12 +93,7 @@ def _json_value(payloads, candidates):
 
 
 def _parse_date(value, anchor_datetime=None):
-    """Parse Alhamrani transaction dates.
-
-    The terminal protocol sends transaction_date as MMDD (for example 0930).
-    The year is not transmitted, so use Responded At / Sent At as an anchor and
-    choose the closest valid year. This also handles Dec/Jan year boundaries.
-    """
+    """Parse Alhamrani transaction dates, including terminal MMDD values."""
     if not value:
         return None
     if isinstance(value, datetime):
@@ -164,6 +161,15 @@ def _parse_time(value):
     return text or None
 
 
+def _extract_emv_last4(value):
+    """Return the final four numeric digits from receiptData.ECR_EMVData."""
+    text = cstr(value).strip()
+    if not text:
+        return ""
+    match = re.search(r"(\d{4})\s*$", text)
+    return match.group(1) if match else ""
+
+
 class AlhamraniAdapter:
     def __init__(self):
         if not frappe.db.exists("DocType", ALHAMRANI_DOCTYPE):
@@ -215,8 +221,6 @@ class AlhamraniAdapter:
             if fieldname and fieldname not in fields:
                 fields.append(fieldname)
 
-        # Fetch all available amount representations so a blank primary Amount
-        # can safely fall back to terminal minor-unit values.
         for fieldname in ("amount", "amount_echoed", "amount_sent"):
             if self.meta.has_field(fieldname) and fieldname not in fields:
                 fields.append(fieldname)
@@ -227,8 +231,6 @@ class AlhamraniAdapter:
         return self.fields.get("responded_at") or self.fields.get("sent_at") or "creation"
 
     def get_rows(self, from_date, to_date):
-        # One-day buffer protects terminal-response timestamps around midnight;
-        # final filtering is done using the normalized terminal transaction date.
         start = f"{add_days(getdate(from_date), -1)} 00:00:00"
         end = f"{add_days(getdate(to_date), 1)} 23:59:59"
         dt_field = self.preferred_datetime_field()
@@ -269,13 +271,11 @@ class AlhamraniAdapter:
         return None
 
     def _normalized_amount(self, row, payloads):
-        # The explicit Amount field is already in SAR major units.
         if self.meta.has_field("amount"):
             value = row.get("amount")
             if value not in (None, ""):
                 return flt(value, 2)
 
-        # Amount Echoed / Amount Sent and JSON amount are terminal minor units.
         for fieldname in ("amount_echoed", "amount_sent"):
             if self.meta.has_field(fieldname):
                 value = row.get(fieldname)
@@ -332,6 +332,10 @@ class AlhamraniAdapter:
             fallback_dt.strftime("%H:%M:%S") if fallback_dt else None
         )
 
+        emv_last4 = _extract_emv_last4(
+            _json_value(payloads, JSON_KEY_CANDIDATES["ecr_emv_data"])
+        )
+
         key, key_error = try_build_reconciliation_key(
             terminal_id,
             rrn,
@@ -348,6 +352,7 @@ class AlhamraniAdapter:
             amount=self._normalized_amount(row, payloads),
             card_type=cstr(self._value(row, "card_type")).strip(),
             masked_pan=cstr(self._value(row, "masked_pan")).strip(),
+            emv_last4=emv_last4,
             transaction_date=tx_date,
             transaction_time=tx_time,
             comparison_transaction_date=response_tx_date,
