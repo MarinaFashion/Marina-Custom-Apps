@@ -6,6 +6,10 @@ from frappe.model.document import Document
 from frappe.utils import getdate
 
 from marina_custom_apps.pos_reconciliation.reconciliation_engine import execute_run
+from marina_custom_apps.pos_reconciliation.review_service import (
+    get_results_page,
+    get_source_page,
+)
 
 
 class POSReconciliationRun(Document):
@@ -22,3 +26,31 @@ class POSReconciliationRun(Document):
 @frappe.whitelist()
 def run_reconciliation(run_name):
     return execute_run(run_name)
+
+
+@frappe.whitelist()
+def get_source_review_page(run_name, source, start=0, page_length=25, search=None):
+    return get_source_page(
+        run_name,
+        source,
+        start=start,
+        page_length=page_length,
+        search=search,
+    )
+
+
+@frappe.whitelist()
+def get_results_review_page(
+    run_name,
+    status="All",
+    start=0,
+    page_length=25,
+    search=None,
+):
+    return get_results_page(
+        run_name,
+        status=status,
+        start=start,
+        page_length=page_length,
+        search=search,
+    )

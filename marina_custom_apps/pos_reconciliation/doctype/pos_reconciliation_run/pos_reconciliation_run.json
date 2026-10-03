@@ -23,7 +23,13 @@
     "result_counts_column_break",
     "alhamrani_only_count",
     "manually_cleared_count",
-    "pending_count"
+    "pending_count",
+    "source_review_section",
+    "bank_source_review",
+    "source_review_column_break",
+    "alhamrani_source_review",
+    "results_review_section",
+    "results_review_html"
   ],
   "fields": [
     {"default": "POS-REC-.YYYY.-.#####", "fieldname": "naming_series", "fieldtype": "Select", "label": "Series", "options": "POS-REC-.YYYY.-.#####", "reqd": 1},
@@ -46,7 +52,13 @@
     {"fieldname": "result_counts_column_break", "fieldtype": "Column Break"},
     {"fieldname": "alhamrani_only_count", "fieldtype": "Int", "label": "Alhamrani Only", "read_only": 1},
     {"fieldname": "manually_cleared_count", "fieldtype": "Int", "label": "Manually Cleared", "read_only": 1},
-    {"fieldname": "pending_count", "fieldtype": "Int", "label": "Pending Exceptions", "read_only": 1}
+    {"fieldname": "pending_count", "fieldtype": "Int", "label": "Pending Exceptions", "read_only": 1},
+    {"depends_on": "eval:doc.status == 'Completed'", "fieldname": "source_review_section", "fieldtype": "Section Break", "label": "Source Transactions"},
+    {"fieldname": "bank_source_review", "fieldtype": "HTML", "label": "Bank POS Transactions"},
+    {"fieldname": "source_review_column_break", "fieldtype": "Column Break"},
+    {"fieldname": "alhamrani_source_review", "fieldtype": "HTML", "label": "Alhamrani Transactions"},
+    {"depends_on": "eval:doc.status == 'Completed'", "fieldname": "results_review_section", "fieldtype": "Section Break", "label": "Reconciliation Results Review"},
+    {"fieldname": "results_review_html", "fieldtype": "HTML", "label": "Reconciliation Results Review"}
   ],
   "name": "POS Reconciliation Run",
   "module": "POS Reconciliation",

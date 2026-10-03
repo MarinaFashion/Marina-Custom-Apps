@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import date, datetime
 
 import frappe
 from frappe import _
@@ -20,7 +20,7 @@ FIELD_CANDIDATES = {
     "rrn": ("rrn", "reference_number"),
     "auth_code": ("auth_code", "authorization_code"),
     "transaction_type": ("message_id", "transaction_type", "txn_type"),
-    "amount": ("amount_echoed", "amount", "amount_sent"),
+    "amount": ("amount", "amount_echoed", "amount_sent"),
     "card_type": ("card_type",),
     "masked_pan": ("masked_pan", "masked_card_number"),
     "pos_profile": ("pos_profile",),
@@ -35,9 +35,18 @@ JSON_KEY_CANDIDATES = {
     "terminal_id": ("tid", "terminalid", "terminal_id"),
     "rrn": ("rrn", "retrievalreferencenumber", "reference_number"),
     "auth_code": ("authcode", "auth_code", "authorizationcode"),
-    "transaction_type": ("transactiontype", "transaction_type", "txntype", "messageid", "message_id"),
+    "transaction_type": (
+        "transactiontype",
+        "transaction_type",
+        "txntype",
+        "messageid",
+        "message_id",
+        "msgid",
+        "msg_id",
+    ),
+    "amount": ("amount",),
     "card_type": ("cardtype", "card_type"),
-    "masked_pan": ("maskedpan", "masked_pan", "maskedcardnumber"),
+    "masked_pan": ("maskedpan", "masked_pan", "maskedcardnumber", "pan"),
     "transaction_date": ("transactiondate", "transaction_date", "txndate", "txn_date"),
     "transaction_time": ("transactiontime", "transaction_time", "txntime", "txn_time"),
 }
@@ -81,17 +90,48 @@ def _json_value(payloads, candidates):
     return None
 
 
-def _parse_date(value):
+def _parse_date(value, anchor_datetime=None):
+    """Parse Alhamrani transaction dates.
+
+    The terminal protocol sends transaction_date as MMDD (for example 0930).
+    The year is not transmitted, so use Responded At / Sent At as an anchor and
+    choose the closest valid year. This also handles Dec/Jan year boundaries.
+    """
     if not value:
         return None
-    if isinstance(value, (datetime,)):
-        return getdate(value)
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+
     text = cstr(value).strip()
+
+    if len(text) == 4 and text.isdigit():
+        if not anchor_datetime:
+            return None
+        anchor = get_datetime(anchor_datetime)
+        if not anchor:
+            return None
+
+        month = int(text[:2])
+        day = int(text[2:])
+        candidates = []
+        for year in (anchor.year - 1, anchor.year, anchor.year + 1):
+            try:
+                candidates.append(date(year, month, day))
+            except ValueError:
+                continue
+
+        if not candidates:
+            return None
+        return min(candidates, key=lambda candidate: abs((candidate - anchor.date()).days))
+
     for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%Y%m%d", "%d-%m-%Y", "%m/%d/%Y"):
         try:
             return datetime.strptime(text[:10], fmt).date()
         except ValueError:
             pass
+
     try:
         return getdate(text)
     except Exception:
@@ -99,6 +139,7 @@ def _parse_date(value):
 
 
 def _parse_time(value):
+    """Parse terminal HHMMSS as well as normal Frappe time values."""
     if not value:
         return None
     if hasattr(value, "strftime") and not isinstance(value, str):
@@ -106,7 +147,15 @@ def _parse_time(value):
             return value.strftime("%H:%M:%S")
         except Exception:
             pass
+
     text = cstr(value).strip().split(".", 1)[0]
+
+    if len(text) == 6 and text.isdigit():
+        try:
+            return datetime.strptime(text, "%H%M%S").strftime("%H:%M:%S")
+        except ValueError:
+            return None
+
     for fmt in ("%H:%M:%S", "%H:%M"):
         try:
             return datetime.strptime(text, fmt).strftime("%H:%M:%S")
@@ -133,6 +182,12 @@ class AlhamraniAdapter:
                 return fieldname
         return None
 
+    def _has_amount_source(self):
+        return any(
+            self.meta.has_field(fieldname)
+            for fieldname in ("amount", "amount_echoed", "amount_sent")
+        ) or bool(self.fields.get("request_json") or self.fields.get("response_json"))
+
     def _validate_required_fields(self):
         missing = []
         for logical in ("terminal_id", "rrn", "auth_code"):
@@ -142,7 +197,7 @@ class AlhamraniAdapter:
             self.fields.get("request_json") or self.fields.get("response_json")
         ):
             missing.append("transaction_type")
-        if not self.fields.get("amount"):
+        if not self._has_amount_source():
             missing.append("amount")
         if not self.fields.get("status") and not self.fields.get("response_code"):
             missing.append("status/response_code")
@@ -159,6 +214,13 @@ class AlhamraniAdapter:
         for fieldname in self.fields.values():
             if fieldname and fieldname not in fields:
                 fields.append(fieldname)
+
+        # Fetch all available amount representations so a blank primary Amount
+        # can safely fall back to terminal minor-unit values.
+        for fieldname in ("amount", "amount_echoed", "amount_sent"):
+            if self.meta.has_field(fieldname) and fieldname not in fields:
+                fields.append(fieldname)
+
         return fields
 
     def preferred_datetime_field(self):
@@ -166,7 +228,7 @@ class AlhamraniAdapter:
 
     def get_rows(self, from_date, to_date):
         # One-day buffer protects terminal-response timestamps around midnight;
-        # final filtering is done using the normalized transaction date.
+        # final filtering is done using the normalized terminal transaction date.
         start = f"{add_days(getdate(from_date), -1)} 00:00:00"
         end = f"{add_days(getdate(to_date), 1)} 23:59:59"
         dt_field = self.preferred_datetime_field()
@@ -176,6 +238,17 @@ class AlhamraniAdapter:
             filters=filters,
             fields=self.query_fields(),
             order_by=f"{dt_field} asc",
+            limit_page_length=0,
+        )
+
+    def get_rows_by_names(self, names):
+        names = [name for name in names if name]
+        if not names:
+            return []
+        return frappe.get_all(
+            ALHAMRANI_DOCTYPE,
+            filters={"name": ["in", names]},
+            fields=self.query_fields(),
             limit_page_length=0,
         )
 
@@ -195,12 +268,32 @@ class AlhamraniAdapter:
             return _json_value(payloads, candidates)
         return None
 
+    def _normalized_amount(self, row, payloads):
+        # The explicit Amount field is already in SAR major units.
+        if self.meta.has_field("amount"):
+            value = row.get("amount")
+            if value not in (None, ""):
+                return flt(value, 2)
+
+        # Amount Echoed / Amount Sent and JSON amount are terminal minor units.
+        for fieldname in ("amount_echoed", "amount_sent"):
+            if self.meta.has_field(fieldname):
+                value = row.get(fieldname)
+                if value not in (None, ""):
+                    return flt(flt(value) / 100.0, 2)
+
+        json_amount = _json_value(payloads, JSON_KEY_CANDIDATES["amount"])
+        if json_amount not in (None, ""):
+            return flt(flt(json_amount) / 100.0, 2)
+
+        return None
+
     def is_approved(self, row):
         status = cstr(self._value(row, "status")).strip().upper()
         response_code = cstr(self._value(row, "response_code")).strip().upper()
         if status:
             return status in {"APPROVED", "SUCCESS", "COMPLETED"}
-        return response_code in {"00", "000"}
+        return response_code in {"0", "00", "000"}
 
     def normalized_row(self, row):
         payloads = [
@@ -218,13 +311,6 @@ class AlhamraniAdapter:
             if json_transaction_type:
                 transaction_type = normalize_transaction_type(json_transaction_type)
 
-        amount_raw = self._value(row, "amount")
-
-        response_tx_date = _parse_date(_json_value(payloads, JSON_KEY_CANDIDATES["transaction_date"]))
-        response_tx_time = _parse_time(_json_value(payloads, JSON_KEY_CANDIDATES["transaction_time"]))
-        tx_date = response_tx_date
-        tx_time = response_tx_time
-
         fallback_dt = None
         for logical in ("responded_at", "sent_at"):
             fieldname = self.fields.get(logical)
@@ -234,10 +320,17 @@ class AlhamraniAdapter:
         if fallback_dt is None and row.get("creation"):
             fallback_dt = get_datetime(row.creation)
 
-        if not tx_date and fallback_dt:
-            tx_date = fallback_dt.date()
-        if not tx_time and fallback_dt:
-            tx_time = fallback_dt.strftime("%H:%M:%S")
+        response_tx_date = _parse_date(
+            _json_value(payloads, JSON_KEY_CANDIDATES["transaction_date"]),
+            fallback_dt,
+        )
+        response_tx_time = _parse_time(
+            _json_value(payloads, JSON_KEY_CANDIDATES["transaction_time"])
+        )
+        tx_date = response_tx_date or (fallback_dt.date() if fallback_dt else None)
+        tx_time = response_tx_time or (
+            fallback_dt.strftime("%H:%M:%S") if fallback_dt else None
+        )
 
         key, key_error = try_build_reconciliation_key(
             terminal_id,
@@ -252,7 +345,7 @@ class AlhamraniAdapter:
             rrn=rrn,
             auth_code=auth_code,
             transaction_type=transaction_type,
-            amount=flt(amount_raw, 2) if amount_raw not in (None, "") else None,
+            amount=self._normalized_amount(row, payloads),
             card_type=cstr(self._value(row, "card_type")).strip(),
             masked_pan=cstr(self._value(row, "masked_pan")).strip(),
             transaction_date=tx_date,
