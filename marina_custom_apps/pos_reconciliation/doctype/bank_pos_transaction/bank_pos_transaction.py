@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -37,6 +39,21 @@ def clean_text(value) -> str:
 def normalize_transaction_type(value) -> str:
     normalized = clean_text(value).upper().replace(" ", "_")
     return TRANSACTION_TYPE_ALIASES.get(normalized, normalized)
+
+
+def normalize_bank_date(value):
+    """Accept compact bank YYYYMMDD values while preserving ERP Date fields."""
+    if value in (None, ""):
+        return None
+    if hasattr(value, "strftime") and not isinstance(value, str):
+        return value
+    text = clean_text(value)
+    if len(text) == 8 and text.isdigit():
+        try:
+            return datetime.strptime(text, "%Y%m%d").date()
+        except ValueError:
+            return value
+    return value
 
 
 def try_build_reconciliation_key(terminal_id, rrn, auth_code, transaction_type):
@@ -88,6 +105,9 @@ class BankPOSTransaction(Document):
         self.masked_card_number = clean_text(self.masked_card_number)
         self.transaction_status = clean_text(self.transaction_status)
         self.rejection_reason = clean_text(self.rejection_reason)
+        self.transaction_date = normalize_bank_date(self.transaction_date)
+        self.balance_date = normalize_bank_date(self.balance_date)
+        self.settlement_date = normalize_bank_date(self.settlement_date)
         self.settlement_number = clean_text(self.settlement_number)
         self.pos_reconciliation_number = clean_text(self.pos_reconciliation_number)
 

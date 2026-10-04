@@ -4,7 +4,7 @@ import frappe
 from frappe import _
 from frappe.utils import cstr, flt
 
-from marina_custom_apps.pos_reconciliation.reconciliation_engine import normalize_card_type
+from marina_custom_apps.pos_reconciliation.card_type_mapping import get_card_type_mapper
 
 STATUS_CARD_DEFINITIONS = [
     ("POS Reconciliation - Total Records", "Total Records", "get_total_records_card", "POS Reconciliation Run"),
@@ -25,14 +25,6 @@ FINANCIAL_CARD_DEFINITIONS = [
 ]
 
 ALL_CARD_NAMES = [row[0] for row in STATUS_CARD_DEFINITIONS] + [row[0] for row in FINANCIAL_CARD_DEFINITIONS]
-
-CARD_RAW_VALUES = {
-    "MADA": ("SPAN", "MADA", "P1"),
-    "VISA": ("VISA", "VC"),
-    "MASTERCARD": ("MASTER_CARD", "MASTER CARD", "MASTERCARD", "MC"),
-    "GCC CARD": ("GCCCARD", "GCC_CARD", "GCC CARD"),
-    "AMERICAN EXPRESS": ("AMEX", "AMERICAN_EXPRESS", "AMERICAN EXPRESS"),
-}
 
 
 def number_card_documents():
@@ -135,9 +127,8 @@ def _financial_route(run, card_label=None):
     return ["query-report", "POS Card Type Summary by Store"], options
 
 
-def _raw_values_for(normalized_card_type):
-    normalized = normalize_card_type(normalized_card_type)
-    return CARD_RAW_VALUES.get(normalized, (normalized,)) if normalized else ()
+def _raw_values_for(normalized_card_type, card_mapper):
+    return card_mapper.bank_source_values(normalized_card_type)
 
 
 def _financial_summary(run, requested_card_type=None):
@@ -145,8 +136,9 @@ def _financial_summary(run, requested_card_type=None):
     if not run:
         return frappe._dict(amount=0.0, commission=0.0, vat=0.0)
 
-    run_card_type = normalize_card_type(run.card_type) if run.card_type else None
-    requested = normalize_card_type(requested_card_type) if requested_card_type else None
+    card_mapper = get_card_type_mapper()
+    run_card_type = card_mapper.resolve(run.card_type) if run.card_type else None
+    requested = card_mapper.resolve(requested_card_type) if requested_card_type else None
     if run_card_type and requested and run_card_type != requested:
         return frappe._dict(amount=0.0, commission=0.0, vat=0.0)
 
@@ -162,7 +154,7 @@ def _financial_summary(run, requested_card_type=None):
         params["pos_profile"] = run.pos_profile
 
     if effective_card_type:
-        raw_values = tuple(value.upper() for value in _raw_values_for(effective_card_type))
+        raw_values = tuple(value.upper() for value in _raw_values_for(effective_card_type, card_mapper))
         conditions.append("upper(coalesce(card_type, '')) in %(card_types)s")
         params["card_types"] = raw_values
 

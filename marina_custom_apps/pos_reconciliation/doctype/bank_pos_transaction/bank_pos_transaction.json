@@ -57,14 +57,14 @@
                        "fieldname":  "bank_mid",
                        "fieldtype":  "Data",
                        "in_standard_filter":  1,
-                       "label":  "Bank MID",
+                       "label":  "Mid",
                        "reqd":  1,
                        "set_only_once":  1
                    },
                    {
                        "fieldname":  "site_id",
                        "fieldtype":  "Data",
-                       "label":  "Site ID / Merchant ID",
+                       "label":  "Retailer",
                        "set_only_once":  1
                    },
                    {
@@ -72,7 +72,7 @@
                        "fieldtype":  "Data",
                        "in_list_view":  1,
                        "in_standard_filter":  1,
-                       "label":  "Terminal ID",
+                       "label":  "Terminal",
                        "reqd":  1,
                        "search_index":  1,
                        "set_only_once":  1
@@ -86,7 +86,7 @@
                        "fieldtype":  "Data",
                        "in_list_view":  1,
                        "in_standard_filter":  1,
-                       "label":  "RRN / Reference Number",
+                       "label":  "Sequence Number",
                        "reqd":  1,
                        "set_only_once":  1
                    },
@@ -94,7 +94,7 @@
                        "fieldname":  "auth_code",
                        "fieldtype":  "Data",
                        "in_standard_filter":  1,
-                       "label":  "Auth Code",
+                       "label":  "Authorization number",
                        "reqd":  1,
                        "set_only_once":  1
                    },
@@ -162,7 +162,7 @@
                        "fieldname":  "transaction_status",
                        "fieldtype":  "Data",
                        "in_standard_filter":  1,
-                       "label":  "Transaction Status"
+                       "label":  "transaction Status"
                    },
                    {
                        "fieldname":  "card_type",
@@ -175,13 +175,13 @@
                    {
                        "fieldname":  "masked_card_number",
                        "fieldtype":  "Data",
-                       "label":  "Masked Card Number",
+                       "label":  "Card Number",
                        "set_only_once":  1
                    },
                    {
                        "fieldname":  "rejection_reason",
                        "fieldtype":  "Small Text",
-                       "label":  "Rejection Reason"
+                       "label":  "Rejection Reasons"
                    },
                    {
                        "fieldname":  "cashback_amount",
@@ -197,17 +197,17 @@
                        "default":  "0",
                        "fieldname":  "balance_status",
                        "fieldtype":  "Check",
-                       "label":  "Balanced"
+                       "label":  "Reconciled"
                    },
                    {
                        "fieldname":  "balance_date",
                        "fieldtype":  "Date",
-                       "label":  "Balance Date"
+                       "label":  "Reconciled Date"
                    },
                    {
                        "fieldname":  "balance_time",
                        "fieldtype":  "Time",
-                       "label":  "Balance Time"
+                       "label":  "Reconciled Time"
                    },
                    {
                        "fieldname":  "fee_column_break",
@@ -216,7 +216,7 @@
                    {
                        "fieldname":  "fee_rate",
                        "fieldtype":  "Percent",
-                       "label":  "Fee Rate"
+                       "label":  "Fees Percentage"
                    },
                    {
                        "fieldname":  "fee_amount",
@@ -226,7 +226,7 @@
                    {
                        "fieldname":  "vat_amount",
                        "fieldtype":  "Currency",
-                       "label":  "VAT on Fee"
+                       "label":  "VAT"
                    },
                    {
                        "fieldname":  "settlement_section",
@@ -245,7 +245,7 @@
                        "fieldname":  "settlement_date",
                        "fieldtype":  "Date",
                        "in_standard_filter":  1,
-                       "label":  "Settlement Date",
+                       "label":  "Settled Date",
                        "search_index":  1
                    },
                    {
@@ -261,7 +261,7 @@
                        "fieldname":  "settlement_number",
                        "fieldtype":  "Data",
                        "in_standard_filter":  1,
-                       "label":  "Settlement Number"
+                       "label":  "reconciliation Number"
                    },
                    {
                        "fieldname":  "pos_reconciliation_number",

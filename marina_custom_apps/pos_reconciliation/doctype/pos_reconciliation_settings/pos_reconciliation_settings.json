@@ -19,7 +19,9 @@
                         "auto_create_accounting_entries",
                         "allow_posting_before_finance_audit",
                         "finance_review_section",
-                        "allow_bulk_finance_review"
+                        "allow_bulk_finance_review",
+                        "card_type_mapping_section",
+                        "card_type_mappings"
                     ],
     "fields":  [
                    {
@@ -100,6 +102,18 @@
                        "fieldname":  "allow_bulk_finance_review",
                        "fieldtype":  "Check",
                        "label":  "Allow Bulk Finance Review"
+                   },
+                   {
+                       "description":  "Map Bank and Alhamrani aliases to one unified card type. Future aliases can be added here without code changes.",
+                       "fieldname":  "card_type_mapping_section",
+                       "fieldtype":  "Section Break",
+                       "label":  "Card Type Mapping"
+                   },
+                   {
+                       "fieldname":  "card_type_mappings",
+                       "fieldtype":  "Table",
+                       "label":  "Card Type Mappings",
+                       "options":  "POS Card Type Mapping"
                    },
                    {
                        "default":  "0",

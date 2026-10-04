@@ -11,27 +11,14 @@ from marina_custom_apps.pos_reconciliation.alhamrani_adapter import (
     ALHAMRANI_DOCTYPE,
     AlhamraniAdapter,
 )
+from marina_custom_apps.pos_reconciliation.card_type_mapping import (
+    CardTypeMapper,
+    get_card_type_mapper,
+    normalize_card_type_token,
+)
 from marina_custom_apps.pos_reconciliation.location_service import resolve_pos_profile
 
 AMOUNT_TOLERANCE = 0.01
-
-CARD_TYPE_ALIASES = {
-    "SPAN": "MADA",
-    "MADA": "MADA",
-    "P1": "MADA",
-    "VISA": "VISA",
-    "VC": "VISA",
-    "MASTER_CARD": "MASTERCARD",
-    "MASTER CARD": "MASTERCARD",
-    "MASTERCARD": "MASTERCARD",
-    "MC": "MASTERCARD",
-    "GCCCARD": "GCC CARD",
-    "GCC_CARD": "GCC CARD",
-    "GCC CARD": "GCC CARD",
-    "AMEX": "AMERICAN EXPRESS",
-    "AMERICAN_EXPRESS": "AMERICAN EXPRESS",
-    "AMERICAN EXPRESS": "AMERICAN EXPRESS",
-}
 
 FINANCE_NOT_REQUIRED = "Not Required"
 FINANCE_PENDING = "Pending Review"
@@ -82,8 +69,8 @@ RECORD_UPDATE_FIELDS = (
 
 
 def normalize_card_type(value):
-    text = cstr(value).strip().upper().replace("-", "_")
-    return CARD_TYPE_ALIASES.get(text, text.replace("_", " "))
+    """Generic formatting only; business aliases are configured in Settings."""
+    return normalize_card_type_token(value)
 
 
 def normalize_masked_pan(value):
@@ -122,7 +109,8 @@ def get_pan_validation_method(bank, alhamrani):
     return "Not Available"
 
 
-def compare_transactions(bank, alhamrani):
+def compare_transactions(bank, alhamrani, card_mapper=None):
+    card_mapper = card_mapper or CardTypeMapper()
     discrepancies = []
 
     bank_amount = flt(bank.transaction_amount, 2)
@@ -130,8 +118,8 @@ def compare_transactions(bank, alhamrani):
     if alh_amount is None or abs(bank_amount - flt(alh_amount, 2)) > AMOUNT_TOLERANCE:
         discrepancies.append("Amount")
 
-    bank_card = normalize_card_type(bank.card_type)
-    alh_card = normalize_card_type(alhamrani.card_type)
+    bank_card = card_mapper.bank(bank.card_type)
+    alh_card = card_mapper.alhamrani(alhamrani.card_type)
     if bank_card and alh_card and bank_card != alh_card:
         discrepancies.append("Card Type")
 
@@ -206,7 +194,7 @@ def _is_before_integration(bank, integration_dates):
     return int(getdate(bank.transaction_date) < integration_date)
 
 
-def _bank_rows(run):
+def _bank_rows(run, card_mapper):
     filters = {
         "transaction_date": ["between", [run.from_date, run.to_date]],
         "transaction_status": ["in", ["Approved", "APPROVED", "approved"]],
@@ -239,15 +227,15 @@ def _bank_rows(run):
     )
 
     if run.card_type:
-        wanted = normalize_card_type(run.card_type)
-        rows = [row for row in rows if normalize_card_type(row.card_type) == wanted]
+        wanted = card_mapper.resolve(run.card_type)
+        rows = [row for row in rows if card_mapper.bank(row.card_type) == wanted]
     return rows
 
 
-def _alhamrani_rows(run):
+def _alhamrani_rows(run, card_mapper):
     adapter = AlhamraniAdapter()
     normalized = []
-    wanted_card = normalize_card_type(run.card_type) if run.card_type else None
+    wanted_card = card_mapper.resolve(run.card_type) if run.card_type else None
 
     for raw in adapter.get_rows(run.from_date, run.to_date):
         if not adapter.is_approved(raw):
@@ -261,18 +249,19 @@ def _alhamrani_rows(run):
         row.pos_profile = resolve_pos_profile(row.terminal_id, row.transaction_date) or row.source_pos_profile or None
         if run.pos_profile and row.pos_profile != run.pos_profile:
             continue
-        if wanted_card and normalize_card_type(row.card_type) != wanted_card:
+        if wanted_card and card_mapper.alhamrani(row.card_type) != wanted_card:
             continue
         normalized.append(row)
 
     return normalized
 
 
-def _base_result(run, bank=None, alhamrani=None):
+def _base_result(run, bank=None, alhamrani=None, card_mapper=None):
     transaction_date = bank.transaction_date if bank else alhamrani.transaction_date
     terminal_id = bank.terminal_id if bank else alhamrani.terminal_id
     pos_profile = bank.pos_profile if bank else alhamrani.pos_profile
-    card_type = bank.card_type if bank else alhamrani.card_type
+    card_mapper = card_mapper or get_card_type_mapper()
+    card_type = card_mapper.bank(bank.card_type) if bank else card_mapper.alhamrani(alhamrani.card_type)
     record_key = _record_key(
         run.name,
         bank_transaction=bank.name if bank else None,
@@ -295,7 +284,7 @@ def _base_result(run, bank=None, alhamrani=None):
         "transaction_date": transaction_date,
         "pos_profile": pos_profile,
         "terminal_id": terminal_id,
-        "card_type": normalize_card_type(card_type),
+        "card_type": card_type,
         "bank_transaction": bank.name if bank else None,
         "alhamrani_doctype": ALHAMRANI_DOCTYPE,
         "alhamrani_transaction": alhamrani.name if alhamrani else None,
@@ -308,8 +297,8 @@ def _base_result(run, bank=None, alhamrani=None):
         "bank_amount": bank_amount,
         "alhamrani_amount": alhamrani_amount,
         "amount_difference": bank_amount - alhamrani_amount,
-        "bank_card_type": normalize_card_type(bank.card_type) if bank else None,
-        "alhamrani_card_type": normalize_card_type(alhamrani.card_type) if alhamrani else None,
+        "bank_card_type": card_mapper.bank(bank.card_type) if bank else None,
+        "alhamrani_card_type": card_mapper.alhamrani(alhamrani.card_type) if alhamrani else None,
         "bank_masked_pan": bank.masked_card_number if bank else None,
         "alhamrani_masked_pan": alhamrani.masked_pan if alhamrani else None,
         "alhamrani_emv_last4": cstr(getattr(alhamrani, "emv_last4", None)).strip() if alhamrani else None,
@@ -349,7 +338,7 @@ def _apply_bank_review(result, bank, reviews):
         )
 
 
-def _build_results(run, bank_rows, alhamrani_rows):
+def _build_results(run, bank_rows, alhamrani_rows, card_mapper):
     reviews = _bank_review_states()
     integration_dates = _integration_dates()
     alh_by_key = defaultdict(list)
@@ -364,7 +353,7 @@ def _build_results(run, bank_rows, alhamrani_rows):
     for bank in bank_rows:
         candidates = alh_by_key.get(bank.reconciliation_key) or []
         if not candidates:
-            result = _base_result(run, bank=bank)
+            result = _base_result(run, bank=bank, card_mapper=card_mapper)
             result.update(
                 match_status="Bank Only",
                 resolution_status="Pending",
@@ -378,7 +367,7 @@ def _build_results(run, bank_rows, alhamrani_rows):
         if len(candidates) > 1:
             first = candidates[0]
             consumed_alh.update(row.name for row in candidates)
-            result = _base_result(run, bank=bank, alhamrani=first)
+            result = _base_result(run, bank=bank, alhamrani=first, card_mapper=card_mapper)
             result.update(
                 match_status="Discrepancy",
                 resolution_status="Pending",
@@ -391,8 +380,8 @@ def _build_results(run, bank_rows, alhamrani_rows):
 
         alh = candidates[0]
         consumed_alh.add(alh.name)
-        discrepancies = compare_transactions(bank, alh)
-        result = _base_result(run, bank=bank, alhamrani=alh)
+        discrepancies = compare_transactions(bank, alh, card_mapper=card_mapper)
+        result = _base_result(run, bank=bank, alhamrani=alh, card_mapper=card_mapper)
         result.update(
             match_status="Discrepancy" if discrepancies else "Matching",
             resolution_status="Pending" if discrepancies else "Auto Cleared",
@@ -404,7 +393,7 @@ def _build_results(run, bank_rows, alhamrani_rows):
     for alh in alhamrani_rows:
         if alh.name in consumed_alh:
             continue
-        result = _base_result(run, alhamrani=alh)
+        result = _base_result(run, alhamrani=alh, card_mapper=card_mapper)
         result.update(
             match_status="Alhamrani Only",
             resolution_status="Pending",
@@ -534,9 +523,10 @@ def execute_run(run_name):
 
     frappe.db.set_value("POS Reconciliation Run", run.name, "status", "Running", update_modified=True)
 
-    bank_rows = _bank_rows(run)
-    alhamrani_rows = _alhamrani_rows(run)
-    results = _build_results(run, bank_rows, alhamrani_rows)
+    card_mapper = get_card_type_mapper()
+    bank_rows = _bank_rows(run, card_mapper)
+    alhamrani_rows = _alhamrani_rows(run, card_mapper)
+    results = _build_results(run, bank_rows, alhamrani_rows, card_mapper)
     _persist_results(run, results)
 
     summary = summarize_results(results)

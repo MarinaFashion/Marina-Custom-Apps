@@ -1,0 +1,13 @@
+{
+  "doctype": "DocType",
+  "editable_grid": 1,
+  "istable": 1,
+  "module": "POS Reconciliation",
+  "name": "POS Card Type Mapping",
+  "field_order": ["bank_card_type", "alhamrani_card_type", "unified_card_type"],
+  "fields": [
+    {"fieldname":"bank_card_type","fieldtype":"Data","in_list_view":1,"label":"Bank Card Type"},
+    {"fieldname":"alhamrani_card_type","fieldtype":"Data","in_list_view":1,"label":"Alhamrani Card Type"},
+    {"fieldname":"unified_card_type","fieldtype":"Data","in_list_view":1,"label":"Unified Card Type","reqd":1}
+  ]
+}
