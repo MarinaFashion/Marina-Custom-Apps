@@ -1,0 +1,43 @@
+{
+  "doctype": "DocType",
+  "issingle": 1,
+  "engine": "InnoDB",
+  "field_order": [
+    "tool_section","tool_enabled","import_file","status","last_processed_on","last_processed_by",
+    "summary_section","total_rows","new_records","update_records","summary_column_break",
+    "unchanged_records","conflict_records","error_records",
+    "import_result_section","inserted_records","updated_records","skipped_records","date_conversions",
+    "errors_section","errors","notes_section","notes"
+  ],
+  "fields": [
+    {"fieldname":"tool_section","fieldtype":"Section Break","label":"Bank POS Import"},
+    {"default":"1","fieldname":"tool_enabled","fieldtype":"Check","label":"Tool Enabled","read_only":1},
+    {"fieldname":"import_file","fieldtype":"Attach","label":"Bank Excel File","reqd":1},
+    {"default":"Ready","fieldname":"status","fieldtype":"Select","label":"Status","options":"Ready\nValidated\nImporting\nCompleted\nCompleted with Errors\nFailed","read_only":1},
+    {"fieldname":"last_processed_on","fieldtype":"Datetime","label":"Last Processed On","read_only":1},
+    {"fieldname":"last_processed_by","fieldtype":"Link","label":"Last Processed By","options":"User","read_only":1},
+    {"fieldname":"summary_section","fieldtype":"Section Break","label":"Validation Summary"},
+    {"fieldname":"total_rows","fieldtype":"Int","label":"Total Rows","read_only":1},
+    {"fieldname":"new_records","fieldtype":"Int","label":"New Records","read_only":1},
+    {"fieldname":"update_records","fieldtype":"Int","label":"Records to Update","read_only":1},
+    {"fieldname":"summary_column_break","fieldtype":"Column Break"},
+    {"fieldname":"unchanged_records","fieldtype":"Int","label":"Unchanged","read_only":1},
+    {"fieldname":"conflict_records","fieldtype":"Int","label":"Conflicts","read_only":1},
+    {"fieldname":"error_records","fieldtype":"Int","label":"Errors","read_only":1},
+    {"fieldname":"import_result_section","fieldtype":"Section Break","label":"Last Import Result"},
+    {"fieldname":"inserted_records","fieldtype":"Int","label":"Inserted","read_only":1},
+    {"fieldname":"updated_records","fieldtype":"Int","label":"Updated","read_only":1},
+    {"fieldname":"skipped_records","fieldtype":"Int","label":"Skipped","read_only":1},
+    {"fieldname":"date_conversions","fieldtype":"Int","label":"Compact Dates Converted","read_only":1},
+    {"fieldname":"errors_section","fieldtype":"Section Break","label":"Errors / Conflicts","collapsible":1},
+    {"fieldname":"errors","fieldtype":"Table","label":"Errors / Conflicts","options":"POS Bank Import Error","read_only":1},
+    {"fieldname":"notes_section","fieldtype":"Section Break","label":"How This Tool Works","collapsible":1},
+    {"fieldname":"notes","fieldtype":"HTML","label":"Notes","options":"<div class=\"text-muted\"><b>Add + Update only.</b> Existing records are matched by Terminal + Sequence Number (RRN) + Authorization Number + Transaction Type. Immutable source identity is never overwritten. Blank update cells do not erase existing bank data. Standard ERPNext Data Import remains unchanged and available.</div>"}
+  ],
+  "name":"POS Bank Import",
+  "module":"POS Reconciliation",
+  "permissions":[
+    {"role":"Accounts Manager","read":1,"write":1},
+    {"role":"System Manager","read":1,"write":1}
+  ]
+}

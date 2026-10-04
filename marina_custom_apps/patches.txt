@@ -11,3 +11,4 @@ marina_custom_apps.patches.v0_52_2.backfill_pos_accounting_status
 marina_custom_apps.patches.v0_52_3.upgrade_pos_accounting_workflow
 marina_custom_apps.patches.v0_52_6.seed_pos_card_type_mappings
 marina_custom_apps.patches.v0_52_9.migrate_reconciliation_lifecycle
+marina_custom_apps.patches.v0_52_10.enable_pos_bank_import_tool
