@@ -64,7 +64,7 @@ def _latest_completed_run():
     _check_read_permission("POS Reconciliation Run")
     rows = frappe.get_all(
         "POS Reconciliation Run",
-        filters={"status": "Completed"},
+        filters={"status": ["in", ["Open", "Closed"]]},
         fields=[
             "name",
             "from_date",

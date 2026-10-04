@@ -82,8 +82,8 @@ def _check_run(run_name):
         frappe.throw(_("Reconciliation Run is required."))
     run = frappe.get_doc(RUN_DOCTYPE, run_name)
     run.check_permission("read")
-    if run.status != "Completed":
-        frappe.throw(_("Accounting entries can be created only from a completed reconciliation run."))
+    if run.status != "Open":
+        frappe.throw(_("Accounting actions are available only while the reconciliation run is Open."))
     return run
 
 

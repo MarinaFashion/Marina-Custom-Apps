@@ -78,6 +78,24 @@ def _review_record_rows(record_names, require_pending=False):
     return rows
 
 
+
+def _ensure_runs_open(rows):
+    run_names = {cstr(getattr(row, "run", None)).strip() for row in rows}
+    for run_name in run_names:
+        if not run_name:
+            continue
+        if frappe.db.get_value("POS Reconciliation Run", run_name, "status") == "Closed":
+            frappe.throw(
+                _("Closed reconciliation runs must be reopened before Finance review can be changed.")
+            )
+
+
+def _ensure_run_open(run_name):
+    if frappe.db.get_value("POS Reconciliation Run", run_name, "status") == "Closed":
+        frappe.throw(
+            _("Closed reconciliation runs must be reopened before Finance review can be changed.")
+        )
+
 def _validate_one_settlement_group(rows):
     if not rows:
         return
@@ -325,6 +343,7 @@ def _filtered_bank_only_rows(
 def review_selected_records(record_names, decision, note=None):
     _ensure_bulk_review_allowed()
     rows = _review_record_rows(record_names, require_pending=True)
+    _ensure_runs_open(rows)
     return review_bank_transactions([row.bank_transaction for row in rows], decision, note)
 
 
@@ -332,6 +351,7 @@ def review_selected_records(record_names, decision, note=None):
 def reset_selected_records(record_names):
     _ensure_bulk_review_allowed()
     rows = _review_record_rows(record_names, require_pending=False)
+    _ensure_runs_open(rows)
     return _reset_review([row.bank_transaction for row in rows])
 
 
@@ -355,6 +375,7 @@ def review_filtered_bank_only(
 ):
     _check_permission()
     _ensure_bulk_review_allowed()
+    _ensure_run_open(run_name)
     rows = _filtered_bank_only_rows(
         run_name,
         settlement_number,

@@ -29,6 +29,25 @@ def _check_permission():
         frappe.throw(_("You are not permitted to manage POS manual clearances."), frappe.PermissionError)
 
 
+
+def _ensure_bank_transactions_open(bank_transactions):
+    bank_transactions = list(dict.fromkeys(_as_list(bank_transactions)))
+    if not bank_transactions:
+        return
+
+    rows = frappe.get_all(
+        "POS Reconciliation Record",
+        filters={"bank_transaction": ["in", bank_transactions]},
+        fields=["run"],
+        group_by="run",
+        limit_page_length=0,
+    )
+    for row in rows:
+        if row.run and frappe.db.get_value("POS Reconciliation Run", row.run, "status") == "Closed":
+            frappe.throw(
+                _("Closed reconciliation runs must be reopened before manual clearance can be changed.")
+            )
+
 def _clearance_doc(bank_transaction):
     name = frappe.db.get_value(
         "POS Bank Manual Clearance",
@@ -44,6 +63,7 @@ def mark_bank_transactions(bank_transactions, reason=None):
     """Backward-compatible manual clearance; now also records Finance approval."""
     _check_permission()
     bank_transactions = list(dict.fromkeys(_as_list(bank_transactions)))
+    _ensure_bank_transactions_open(bank_transactions)
     if not bank_transactions:
         return {"updated": 0}
 
@@ -108,6 +128,7 @@ def mark_bank_transactions(bank_transactions, reason=None):
 def reopen_bank_transactions(bank_transactions):
     _check_permission()
     bank_transactions = list(dict.fromkeys(_as_list(bank_transactions)))
+    _ensure_bank_transactions_open(bank_transactions)
     now = now_datetime()
     affected_runs = set()
     updated = 0

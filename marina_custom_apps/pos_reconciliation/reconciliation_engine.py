@@ -520,8 +520,8 @@ def execute_run(run_name):
     run = frappe.get_doc("POS Reconciliation Run", run_name)
     run.check_permission("write")
     run.validate_date_range()
-
-    frappe.db.set_value("POS Reconciliation Run", run.name, "status", "Running", update_modified=True)
+    if run.status == "Closed":
+        frappe.throw(_("Closed reconciliation runs must be reopened before re-running."))
 
     card_mapper = get_card_type_mapper()
     bank_rows = _bank_rows(run, card_mapper)
@@ -533,7 +533,6 @@ def execute_run(run_name):
     summary.update(
         bank_transaction_count=len(bank_rows),
         alhamrani_transaction_count=len(alhamrani_rows),
-        status="Completed",
         last_reconciled_on=now_datetime(),
     )
     frappe.db.set_value("POS Reconciliation Run", run.name, summary, update_modified=True)

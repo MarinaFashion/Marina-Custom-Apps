@@ -187,42 +187,96 @@ def get_results_page(
     }
 
 
-def get_result_filter_options(run_name, status="Bank Pending"):
-    run = _get_run(run_name)
-    status = cstr(status).strip() or "Bank Pending"
-    extra = RESULT_STATUS_FILTERS.get(status, {})
+def _facet_filters(
+    run,status="All",from_date=None,to_date=None,settlement_number=None,settlement_date=None,
+    pos_profile=None,terminal_id=None,card_type=None,finance_review_status=None,
+    accounting_status=None,ledger_posting_status=None,before_integration=None,exclude=None,
+):
+    exclude=set(exclude or [])
+    filters={"run":run.name}
+    if "status" not in exclude:
+        filters.update(RESULT_STATUS_FILTERS.get(cstr(status).strip() or "All",{}))
+    start=getdate(from_date) if from_date else None
+    end=getdate(to_date) if to_date else None
+    if start and end and start>end:
+        frappe.throw(_("From Date cannot be after To Date."))
+    if "transaction_date" not in exclude:
+        if start and end: filters["transaction_date"]=["between",[start,end]]
+        elif start: filters["transaction_date"]=[">=",start]
+        elif end: filters["transaction_date"]=["<=",end]
+    for fieldname,value in {
+        "settlement_number":settlement_number,"settlement_date":settlement_date,"pos_profile":pos_profile,
+        "terminal_id":terminal_id,"card_type":card_type,"finance_review_status":finance_review_status,
+    }.items():
+        if fieldname in exclude: continue
+        value=cstr(value).strip()
+        if value: filters[fieldname]=value
+    apply_accounting_filters(
+        filters,
+        accounting_status=None if "accounting_status" in exclude else accounting_status,
+        ledger_posting_status=None if "ledger_posting_status" in exclude else ledger_posting_status,
+    )
+    if "before_integration" not in exclude and before_integration not in (None,"","All"):
+        filters["before_integration"]=cint(before_integration)
+    return filters
 
-    where = ["run = %(run)s"]
-    params = {"run": run.name}
-    for fieldname, value in extra.items():
-        where.append(f"`{fieldname}` = %({fieldname})s")
-        params[fieldname] = value
-    where_sql = " AND ".join(where)
 
-    def distinct(fieldname):
-        return [
-            row[0]
-            for row in frappe.db.sql(
-                f"""
-                SELECT DISTINCT `{fieldname}`
-                FROM `tabPOS Reconciliation Record`
-                WHERE {where_sql}
-                  AND `{fieldname}` IS NOT NULL
-                  AND `{fieldname}` != ''
-                ORDER BY `{fieldname}`
-                """,
-                params,
-                as_list=True,
-            )
-        ]
+def _facet_values(fieldname,filters):
+    rows=frappe.get_all(
+        RECONCILIATION_RECORD,filters=filters,fields=[fieldname],group_by=fieldname,
+        order_by=fieldname,limit_page_length=0,
+    )
+    return [row.get(fieldname) for row in rows if row.get(fieldname) not in (None,"")]
 
+
+def _facet_status_counts(filters):
+    rows=frappe.get_all(
+        RECONCILIATION_RECORD,filters=filters,
+        fields=["match_status","resolution_status","count(name) as total"],
+        group_by="match_status, resolution_status",limit_page_length=0,
+    )
+    out={"All":0,"Matching":0,"Discrepancy":0,"Bank Pending":0,"Marina Pending":0,"Manually Cleared":0,"All Pending":0}
+    for row in rows:
+        n=cint(row.total); m=cstr(row.match_status).strip(); r=cstr(row.resolution_status).strip()
+        out["All"]+=n
+        if m=="Matching": out["Matching"]+=n
+        if m=="Discrepancy": out["Discrepancy"]+=n
+        if m=="Bank Only" and r=="Pending": out["Bank Pending"]+=n
+        if m=="Alhamrani Only" and r=="Pending": out["Marina Pending"]+=n
+        if r=="Manually Cleared": out["Manually Cleared"]+=n
+        if r=="Pending": out["All Pending"]+=n
+    return out
+
+
+def get_result_filter_options(
+    run_name,status="All",from_date=None,to_date=None,settlement_number=None,settlement_date=None,
+    pos_profile=None,terminal_id=None,card_type=None,finance_review_status=None,
+    accounting_status=None,ledger_posting_status=None,before_integration=None,
+):
+    run=_get_run(run_name)
+    values=dict(
+        status=status,from_date=from_date,to_date=to_date,settlement_number=settlement_number,
+        settlement_date=settlement_date,pos_profile=pos_profile,terminal_id=terminal_id,card_type=card_type,
+        finance_review_status=finance_review_status,accounting_status=accounting_status,
+        ledger_posting_status=ledger_posting_status,before_integration=before_integration,
+    )
+    def f(*excluded): return _facet_filters(run,exclude=set(excluded),**values)
+
+    accounting=_facet_values("accounting_status",f("accounting_status"))
+    ledger_source=set(_facet_values("accounting_status",f("ledger_posting_status")))
+    ledgers=[label for label,statuses in LEDGER_POSTING_STATUS_FILTERS.items() if ledger_source.intersection(statuses)]
+    before=[str(cint(v)) for v in _facet_values("before_integration",f("before_integration"))]
     return {
-        "settlement_numbers": distinct("settlement_number"),
-        "pos_profiles": distinct("pos_profile"),
-        "terminal_ids": distinct("terminal_id"),
-        "card_types": distinct("card_type"),
+        "settlement_numbers":_facet_values("settlement_number",f("settlement_number")),
+        "pos_profiles":_facet_values("pos_profile",f("pos_profile")),
+        "terminal_ids":_facet_values("terminal_id",f("terminal_id")),
+        "card_types":_facet_values("card_type",f("card_type")),
+        "finance_review_statuses":_facet_values("finance_review_status",f("finance_review_status")),
+        "accounting_statuses":accounting,
+        "ledger_posting_statuses":ledgers,
+        "before_integration_values":before,
+        "status_counts":_facet_status_counts(f("status")),
     }
-
 
 def _get_run(run_name):
     if not run_name:
