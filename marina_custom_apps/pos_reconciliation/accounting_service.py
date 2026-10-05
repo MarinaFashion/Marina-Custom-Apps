@@ -1081,111 +1081,74 @@ def create_journal_entry(posting_doc):
     je.cheque_date = posting_doc.posting_date
     je.user_remark = _journal_entry_description(posting_doc, summaries)
 
+    # Commission expense stays allocated by POS Profile / Store cost center.
     for summary in summaries:
         commission = flt(summary.commission, 2)
-        vat = flt(summary.vat, 2)
+        if not commission:
+            continue
 
-        if commission:
-            je.append(
-                "accounts",
-                {
-                    "account": posting_doc.commission_expense_account,
-                    "debit_in_account_currency": commission,
-                    "exchange_rate": 1,
-                    "cost_center": summary.cost_center,
-                    "user_remark": _profile_line_remark(
-                        summary,
-                        _("POS bank commission"),
-                    ),
-                },
-            )
+        je.append(
+            "accounts",
+            {
+                "account": posting_doc.commission_expense_account,
+                "debit_in_account_currency": commission,
+                "exchange_rate": 1,
+                "cost_center": summary.cost_center,
+                "user_remark": _profile_line_remark(
+                    summary,
+                    _("POS bank commission"),
+                ),
+            },
+        )
 
-        if vat:
-            je.append(
-                "accounts",
-                {
-                    "account": posting_doc.vat_input_account,
-                    "debit_in_account_currency": vat,
-                    "exchange_rate": 1,
-                    "cost_center": summary.cost_center,
-                    "user_remark": _profile_line_remark(
-                        summary,
-                        _("VAT on POS bank commission"),
-                    ),
-                },
-            )
+    total_commission = flt(sum(flt(summary.commission, 2) for summary in summaries), 2)
+    total_vat = flt(sum(flt(summary.vat, 2) for summary in summaries), 2)
+    total_bank_credit = flt(total_commission + total_vat, 2)
 
-    if cint(posting_doc.consolidate_bank_entries):
-        if flt(posting_doc.total_commission, 2):
-            je.append(
-                "accounts",
-                {
-                    "account": posting_doc.bank_account,
-                    "credit_in_account_currency": flt(
-                        posting_doc.total_commission,
-                        2,
-                    ),
-                    "exchange_rate": 1,
-                    "user_remark": _(
-                        "Bank charge - POS commission | {0} transactions / {1} POS Profiles"
-                    ).format(
-                        posting_doc.transaction_count,
-                        posting_doc.pos_profile_count,
-                    ),
-                },
+    # VAT is intentionally one consolidated line with NO cost center.
+    # The remark keeps the POS Profile-level VAT breakdown for audit review.
+    if total_vat:
+        vat_breakdown = [
+            _("{0}: {1}").format(
+                summary.pos_profile or "—",
+                frappe.format_value(flt(summary.vat, 2), {"fieldtype": "Currency"}),
             )
-        if flt(posting_doc.total_vat, 2):
-            je.append(
-                "accounts",
-                {
-                    "account": posting_doc.bank_account,
-                    "credit_in_account_currency": flt(
-                        posting_doc.total_vat,
-                        2,
-                    ),
-                    "exchange_rate": 1,
-                    "user_remark": _(
-                        "Bank charge - VAT on POS commission | {0} transactions / {1} POS Profiles"
-                    ).format(
-                        posting_doc.transaction_count,
-                        posting_doc.pos_profile_count,
-                    ),
-                },
-            )
-    else:
-        for summary in summaries:
-            commission = flt(summary.commission, 2)
-            vat = flt(summary.vat, 2)
-            if commission:
-                je.append(
-                    "accounts",
-                    {
-                        "account": posting_doc.bank_account,
-                        "credit_in_account_currency": commission,
-                        "exchange_rate": 1,
-                        "user_remark": _(
-                            "Bank charge - POS commission | POS Profile: {0} | Cost Center: {1}"
-                        ).format(
-                            summary.pos_profile or "—",
-                            summary.cost_center or "—",
-                        ),
-                    },
-                )
-            if vat:
-                je.append(
-                    "accounts",
-                    {
-                        "account": posting_doc.bank_account,
-                        "credit_in_account_currency": vat,
-                        "exchange_rate": 1,
-                        "user_remark": _(
-                            "Bank charge - VAT on POS commission | POS Profile: {0} | Cost Center: {1}"
-                        ).format(
-                            summary.pos_profile or "—",
-                            summary.cost_center or "—",
-                        ),
-                    },
-                )
+            for summary in summaries
+            if flt(summary.vat, 2)
+        ]
+        je.append(
+            "accounts",
+            {
+                "account": posting_doc.vat_input_account,
+                "debit_in_account_currency": total_vat,
+                "exchange_rate": 1,
+                "user_remark": _(
+                    "VAT on POS bank commission | By POS Profile: {0} | Total VAT: {1}"
+                ).format(
+                    " | ".join(vat_breakdown) or "—",
+                    frappe.format_value(total_vat, {"fieldtype": "Currency"}),
+                ),
+            },
+        )
+
+    # Bank credit is intentionally one consolidated line with NO cost center,
+    # covering both commission and VAT.
+    if total_bank_credit:
+        je.append(
+            "accounts",
+            {
+                "account": posting_doc.bank_account,
+                "credit_in_account_currency": total_bank_credit,
+                "exchange_rate": 1,
+                "user_remark": _(
+                    "POS bank charges | Commission: {0} | VAT: {1} | Total: {2}"
+                ).format(
+                    frappe.format_value(total_commission, {"fieldtype": "Currency"}),
+                    frappe.format_value(total_vat, {"fieldtype": "Currency"}),
+                    frappe.format_value(total_bank_credit, {"fieldtype": "Currency"}),
+                ),
+            },
+        )
 
     if not je.accounts:
         frappe.throw(_("No commission or VAT amount is available for Journal Entry."))
@@ -1208,9 +1171,6 @@ def create_journal_entry(posting_doc):
         je.submit()
 
     return je
-
-
-
 def mark_posting_posted(posting_doc, journal_entry):
     now = now_datetime()
     user = frappe.session.user
