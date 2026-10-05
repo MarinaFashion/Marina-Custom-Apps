@@ -1105,6 +1105,10 @@ def create_journal_entry(posting_doc):
     total_vat = flt(sum(flt(summary.vat, 2) for summary in summaries), 2)
     total_bank_credit = flt(total_commission + total_vat, 2)
 
+    # VAT and Bank rows must remain without Cost Center. Journal Entry Account
+    # has a Company-based default, so clear those saved rows after insert too.
+    blank_cost_center_rows = []
+
     # VAT is intentionally one consolidated line with NO cost center.
     # The remark keeps the POS Profile-level VAT breakdown for audit review.
     if total_vat:
@@ -1116,13 +1120,13 @@ def create_journal_entry(posting_doc):
             for summary in summaries
             if flt(summary.vat, 2)
         ]
-        je.append(
+        vat_row = je.append(
             "accounts",
             {
                 "account": posting_doc.vat_input_account,
                 "debit_in_account_currency": total_vat,
                 "exchange_rate": 1,
-                "cost_center": None,
+                "cost_center": "",
                 "user_remark": _(
                     "VAT on POS bank commission | By POS Profile: {0} | Total VAT: {1}"
                 ).format(
@@ -1131,17 +1135,19 @@ def create_journal_entry(posting_doc):
                 ),
             },
         )
+        vat_row.cost_center = ""
+        blank_cost_center_rows.append(vat_row)
 
     # Bank credit is intentionally one consolidated line with NO cost center,
     # covering both commission and VAT.
     if total_bank_credit:
-        je.append(
+        bank_row = je.append(
             "accounts",
             {
                 "account": posting_doc.bank_account,
                 "credit_in_account_currency": total_bank_credit,
                 "exchange_rate": 1,
-                "cost_center": None,
+                "cost_center": "",
                 "user_remark": _(
                     "POS bank charges | Commission: {0} | VAT: {1} | Total: {2}"
                 ).format(
@@ -1151,11 +1157,19 @@ def create_journal_entry(posting_doc):
                 ),
             },
         )
+        bank_row.cost_center = ""
+        blank_cost_center_rows.append(bank_row)
 
     if not je.accounts:
         frappe.throw(_("No commission or VAT amount is available for Journal Entry."))
 
     je.insert()
+    for account_row in blank_cost_center_rows:
+        account_row.cost_center = None
+        frappe.db.set_value(
+            "Journal Entry Account", account_row.name, "cost_center", None, update_modified=False
+        )
+
     frappe.db.set_value(
         POSTING_DOCTYPE,
         posting_doc.name,
@@ -1243,26 +1257,38 @@ def _get_posting_for_journal(journal_entry_name):
     return frappe.get_doc(POSTING_DOCTYPE, posting_name)
 
 
+def _generated_posting_reference(doc):
+    posting_name = frappe.db.get_value(POSTING_DOCTYPE, {"journal_entry": doc.name}, "name")
+    if posting_name:
+        return cstr(posting_name).strip()
+    cheque_no = cstr(doc.cheque_no).strip()
+    remark = cstr(doc.user_remark).strip()
+    marker = "POS bank commission and VAT posting | Posting: {0}".format(cheque_no)
+    if cheque_no and remark.startswith(marker):
+        return cheque_no
+    return None
+
+
 def validate_generated_journal_entry_before_submit(doc, method=None):
-    posting = _get_posting_for_journal(doc.name)
-    if not posting:
+    posting_name = _generated_posting_reference(doc)
+    if not posting_name:
         return
-    _validate_posting_sources(
-        posting,
-        allowed_accounting_statuses={
-            ACCOUNTING_DRAFT,
-            ACCOUNTING_DRAFT_REVIEW_REQUIRED,
-        },
-        require_linked_posting=True,
-    )
+    if not frappe.db.exists(POSTING_DOCTYPE, posting_name):
+        frappe.throw(_("Journal Entry {0} cannot be submitted because its source POS Accounting Posting {1} was deleted.").format(doc.name, posting_name))
+    posting = frappe.get_doc(POSTING_DOCTYPE, posting_name)
+    if cint(posting.docstatus) != 1:
+        frappe.throw(_("Journal Entry {0} cannot be submitted because POS Accounting Posting {1} is not Submitted.").format(doc.name, posting.name))
+    if posting.journal_entry and posting.journal_entry != doc.name:
+        frappe.throw(_("POS Accounting Posting {0} is linked to another Journal Entry {1}.").format(posting.name, posting.journal_entry))
+    _validate_posting_sources(posting, allowed_accounting_statuses={ACCOUNTING_DRAFT, ACCOUNTING_DRAFT_REVIEW_REQUIRED}, require_linked_posting=True)
 
 
 def validate_generated_journal_entry_before_cancel(doc, method=None):
     """Generated Journal Entries must be cancelled through their parent Posting."""
-    posting = _get_posting_for_journal(doc.name)
-    if not posting:
+    posting_name = _generated_posting_reference(doc)
+    if not posting_name or not frappe.db.exists(POSTING_DOCTYPE, posting_name):
         return
-
+    posting = frappe.get_doc(POSTING_DOCTYPE, posting_name)
     if cint(posting.docstatus) == 1:
         frappe.throw(
             _(

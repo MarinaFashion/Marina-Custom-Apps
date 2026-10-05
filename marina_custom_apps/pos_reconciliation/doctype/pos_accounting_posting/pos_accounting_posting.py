@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import cint, now_datetime
+from frappe.utils import cint, cstr, now_datetime
 
 
 class POSAccountingPosting(Document):
@@ -74,14 +74,11 @@ class POSAccountingPosting(Document):
                     force=True,
                 )
         except Exception:
-            frappe.db.set_value(
-                self.doctype,
-                self.name,
-                "journal_entry",
-                journal_entry_name,
-                update_modified=False,
-            )
+            frappe.db.set_value(self.doctype, self.name, "journal_entry", journal_entry_name, update_modified=False)
             raise
+
+        if frappe.db.exists("Journal Entry", journal_entry_name):
+            frappe.db.set_value(self.doctype, self.name, "journal_entry", journal_entry_name, update_modified=False)
 
     def on_cancel(self):
         from marina_custom_apps.pos_reconciliation.accounting_service import release_posting
@@ -97,3 +94,23 @@ class POSAccountingPosting(Document):
             update_modified=False,
         )
         release_posting(self.name, self.journal_entry)
+
+    def on_trash(self):
+        journal_entry_name = self.journal_entry
+        if not journal_entry_name:
+            candidates = frappe.get_all("Journal Entry", filters={"company": self.company, "cheque_no": self.name, "voucher_type": "Bank Entry"}, fields=["name", "user_remark"], limit_page_length=0)
+            marker = "POS bank commission and VAT posting | Posting: {0}".format(self.name)
+            generated = [row.name for row in candidates if cstr(row.user_remark).strip().startswith(marker)]
+            if len(generated) > 1:
+                frappe.throw("More than one generated Journal Entry was found for this POS Accounting Posting.")
+            if generated:
+                journal_entry_name = generated[0]
+        if not journal_entry_name or not frappe.db.exists("Journal Entry", journal_entry_name):
+            return
+        if frappe.db.exists(self.doctype, self.name):
+            frappe.db.set_value(self.doctype, self.name, "journal_entry", None, update_modified=False)
+        journal_entry = frappe.get_doc("Journal Entry", journal_entry_name)
+        if cint(journal_entry.docstatus) == 1:
+            journal_entry.cancel()
+        if frappe.db.exists("Journal Entry", journal_entry_name):
+            frappe.delete_doc("Journal Entry", journal_entry_name, ignore_permissions=True, force=True)
