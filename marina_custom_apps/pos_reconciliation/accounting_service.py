@@ -1288,6 +1288,12 @@ def validate_generated_journal_entry_before_cancel(doc, method=None):
     posting_name = _generated_posting_reference(doc)
     if not posting_name or not frappe.db.exists(POSTING_DOCTYPE, posting_name):
         return
+
+    # Allow only the internal cascade initiated by this exact source Posting.
+    cascade_parent = cstr(doc.flags.get("pos_accounting_posting_cancel")).strip()
+    if cascade_parent and cascade_parent == posting_name:
+        return
+
     posting = frappe.get_doc(POSTING_DOCTYPE, posting_name)
     if cint(posting.docstatus) == 1:
         frappe.throw(

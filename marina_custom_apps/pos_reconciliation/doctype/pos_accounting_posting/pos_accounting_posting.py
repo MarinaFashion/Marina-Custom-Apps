@@ -65,6 +65,8 @@ class POSAccountingPosting(Document):
 
         try:
             if journal_entry.docstatus == 1:
+                # Internal parent -> child cancellation context.
+                journal_entry.flags.pos_accounting_posting_cancel = self.name
                 journal_entry.cancel()
             elif journal_entry.docstatus == 0:
                 frappe.delete_doc(
