@@ -50,16 +50,38 @@ class POSAccountingPosting(Document):
         if not self.journal_entry or not frappe.db.exists("Journal Entry", self.journal_entry):
             return
 
-        journal_entry = frappe.get_doc("Journal Entry", self.journal_entry)
-        if journal_entry.docstatus == 1:
-            journal_entry.cancel()
-        elif journal_entry.docstatus == 0:
-            frappe.delete_doc(
-                "Journal Entry",
-                journal_entry.name,
-                ignore_permissions=True,
-                force=True,
+        journal_entry_name = self.journal_entry
+        journal_entry = frappe.get_doc("Journal Entry", journal_entry_name)
+
+        # POS Accounting Posting is the authoritative parent. Temporarily
+        # remove its Link so Frappe permits cancellation of the generated JE.
+        frappe.db.set_value(
+            self.doctype,
+            self.name,
+            "journal_entry",
+            None,
+            update_modified=False,
+        )
+
+        try:
+            if journal_entry.docstatus == 1:
+                journal_entry.cancel()
+            elif journal_entry.docstatus == 0:
+                frappe.delete_doc(
+                    "Journal Entry",
+                    journal_entry.name,
+                    ignore_permissions=True,
+                    force=True,
+                )
+        except Exception:
+            frappe.db.set_value(
+                self.doctype,
+                self.name,
+                "journal_entry",
+                journal_entry_name,
+                update_modified=False,
             )
+            raise
 
     def on_cancel(self):
         from marina_custom_apps.pos_reconciliation.accounting_service import release_posting
