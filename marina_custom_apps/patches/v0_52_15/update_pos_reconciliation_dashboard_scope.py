@@ -52,7 +52,7 @@ def _ensure_dashboard_chart():
         "use_report_chart": 1,
         "type": "Bar",
         "is_public": 1,
-        "is_standard": 1,
+        "is_standard": 0,
         "module": "POS Reconciliation",
         "filters_json": "{}",
         "dynamic_filters_json": "{}",
