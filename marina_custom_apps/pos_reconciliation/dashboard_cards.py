@@ -1,27 +1,36 @@
 from __future__ import annotations
 
+from collections import defaultdict
+
 import frappe
 from frappe import _
 from frappe.utils import cstr, flt
+from frappe.utils.caching import redis_cache
 
 from marina_custom_apps.pos_reconciliation.card_type_mapping import get_card_type_mapper
 
+RECONCILIATION_RECORD = "POS Reconciliation Record"
+BANK_TRANSACTION = "Bank POS Transaction"
+
 STATUS_CARD_DEFINITIONS = [
-    ("POS Reconciliation - Total Records", "Total Records", "get_total_records_card", "POS Reconciliation Run"),
-    ("POS Reconciliation - Cleared Records", "Cleared Records", "get_cleared_records_card", "POS Reconciliation Run"),
-    ("POS Reconciliation - Pending Exceptions", "Pending Exceptions", "get_pending_exceptions_card", "POS Reconciliation Run"),
-    ("POS Reconciliation - Manually Cleared", "Manually Cleared", "get_manual_cleared_card", "POS Reconciliation Run"),
-    ("POS Reconciliation - Match Percent", "Match %", "get_match_percent_card", "POS Reconciliation Run"),
+    ("POS Reconciliation - Total Records", "Total Records", "get_total_records_card", RECONCILIATION_RECORD),
+    ("POS Reconciliation - Cleared Records", "Cleared Records", "get_cleared_records_card", RECONCILIATION_RECORD),
+    ("POS Reconciliation - Pending Exceptions", "Pending Exceptions", "get_pending_exceptions_card", RECONCILIATION_RECORD),
+    ("POS Reconciliation - Manually Cleared", "Manually Cleared", "get_manual_cleared_card", RECONCILIATION_RECORD),
+    ("POS Reconciliation - Match Percent", "Match %", "get_match_percent_card", RECONCILIATION_RECORD),
 ]
 
 FINANCIAL_CARD_DEFINITIONS = [
-    ("POS Reconciliation - Total Bank Amount", "Total Bank Amount", "get_total_amount_card", "Bank POS Transaction", "SAR"),
-    ("POS Reconciliation - Mada Amount", "Mada Amount", "get_mada_amount_card", "Bank POS Transaction", "SAR"),
-    ("POS Reconciliation - Visa Amount", "Visa Amount", "get_visa_amount_card", "Bank POS Transaction", "SAR"),
-    ("POS Reconciliation - Mastercard Amount", "Mastercard Amount", "get_mastercard_amount_card", "Bank POS Transaction", "SAR"),
-    ("POS Reconciliation - Commission", "Commission", "get_total_commission_card", "Bank POS Transaction", "SAR"),
-    ("POS Reconciliation - Commission Percent", "Commission %", "get_commission_percent_card", "Bank POS Transaction", None),
-    ("POS Reconciliation - Commission VAT", "VAT on Commission", "get_commission_vat_card", "Bank POS Transaction", "SAR"),
+    ("POS Reconciliation - Total Bank Amount", "Total Bank Amount", "get_total_amount_card", BANK_TRANSACTION, "SAR"),
+    ("POS Reconciliation - Commission", "Commission", "get_total_commission_card", BANK_TRANSACTION, "SAR"),
+    ("POS Reconciliation - Commission Percent", "Commission %", "get_commission_percent_card", BANK_TRANSACTION, None),
+    ("POS Reconciliation - Commission VAT", "VAT on Commission", "get_commission_vat_card", BANK_TRANSACTION, "SAR"),
+]
+
+LEGACY_CARD_TYPE_CARDS = [
+    "POS Reconciliation - Mada Amount",
+    "POS Reconciliation - Visa Amount",
+    "POS Reconciliation - Mastercard Amount",
 ]
 
 ALL_CARD_NAMES = [row[0] for row in STATUS_CARD_DEFINITIONS] + [row[0] for row in FINANCIAL_CARD_DEFINITIONS]
@@ -50,7 +59,7 @@ def _number_card_doc(name, label, method_name, document_type, currency=None):
         "filters_json": "[]",
         "dynamic_filters_json": "[]",
         "show_percentage_stats": 0,
-        "show_full_number": 1 if document_type == "POS Reconciliation Run" else 0,
+        "show_full_number": 1 if document_type == RECONCILIATION_RECORD else 0,
         "currency": currency or "",
     }
 
@@ -58,31 +67,6 @@ def _number_card_doc(name, label, method_name, document_type, currency=None):
 def _check_read_permission(doctype):
     if not frappe.has_permission(doctype, "read"):
         frappe.throw(_("Not permitted to read {0}.").format(doctype), frappe.PermissionError)
-
-
-def _latest_completed_run():
-    _check_read_permission("POS Reconciliation Run")
-    rows = frappe.get_all(
-        "POS Reconciliation Run",
-        filters={"status": ["in", ["Open", "Closed"]]},
-        fields=[
-            "name",
-            "from_date",
-            "to_date",
-            "pos_profile",
-            "card_type",
-            "matching_count",
-            "discrepancy_count",
-            "bank_only_count",
-            "alhamrani_only_count",
-            "manually_cleared_count",
-            "pending_count",
-            "last_reconciled_on",
-        ],
-        order_by="last_reconciled_on desc, modified desc",
-        limit_page_length=1,
-    )
-    return frappe._dict(rows[0]) if rows else None
 
 
 def _result(value, fieldtype, route=None, route_options=None):
@@ -94,70 +78,110 @@ def _result(value, fieldtype, route=None, route_options=None):
     return result
 
 
-def _results_route(run, **filters):
-    if not run:
-        return ["List", "POS Reconciliation Run"], None
-    options = {"run": run.name}
-    options.update({key: value for key, value in filters.items() if value not in (None, "")})
-    return ["query-report", "POS Reconciliation Results"], options
+def _record_route(**filters):
+    options = {key: value for key, value in filters.items() if value not in (None, "")}
+    return ["List", RECONCILIATION_RECORD], options or None
 
 
-def _run_total(run):
-    if not run:
-        return 0
-    return sum(
-        int(run.get(fieldname) or 0)
-        for fieldname in ("matching_count", "discrepancy_count", "bank_only_count", "alhamrani_only_count")
+def _bank_route():
+    return ["List", BANK_TRANSACTION], {"transaction_status": "Approved"}
+
+
+def _current_reconciliation_cte():
+    """SQL CTE for one current row per Bank/Alhamrani source transaction.
+
+    Reconciliation Records are run-specific, so rerunning overlapping periods can create
+    multiple historical rows for the same source transaction. The dashboard must count
+    all source transactions once, not all historical run snapshots.
+    """
+    return """
+        with ranked_bank as (
+            select
+                r.*,
+                row_number() over (
+                    partition by r.bank_transaction
+                    order by
+                        coalesce(r.last_reconciled_on, r.modified) desc,
+                        r.modified desc,
+                        r.name desc
+                ) as source_rank
+            from `tabPOS Reconciliation Record` r
+            where coalesce(r.bank_transaction, '') <> ''
+        ),
+        ranked_alhamrani_only as (
+            select
+                r.*,
+                row_number() over (
+                    partition by r.alhamrani_transaction
+                    order by
+                        coalesce(r.last_reconciled_on, r.modified) desc,
+                        r.modified desc,
+                        r.name desc
+                ) as source_rank
+            from `tabPOS Reconciliation Record` r
+            where coalesce(r.bank_transaction, '') = ''
+              and coalesce(r.alhamrani_transaction, '') <> ''
+              and not exists (
+                  select 1
+                  from `tabPOS Reconciliation Record` matched
+                  where matched.alhamrani_transaction = r.alhamrani_transaction
+                    and coalesce(matched.bank_transaction, '') <> ''
+              )
+        ),
+        current_records as (
+            select * from ranked_bank where source_rank = 1
+            union all
+            select * from ranked_alhamrani_only where source_rank = 1
+        )
+    """
+
+
+def _reconciliation_status_summary():
+    _check_read_permission(RECONCILIATION_RECORD)
+    return _cached_reconciliation_status_summary()
+
+
+@redis_cache(ttl=30)
+def _cached_reconciliation_status_summary():
+    rows = frappe.db.sql(
+        f"""
+        {_current_reconciliation_cte()}
+        select
+            count(*) as total_records,
+            sum(case when resolution_status in ('Auto Cleared', 'Manually Cleared') then 1 else 0 end) as cleared_records,
+            sum(case when resolution_status = 'Pending' then 1 else 0 end) as pending_records,
+            sum(case when resolution_status = 'Manually Cleared' then 1 else 0 end) as manually_cleared_records,
+            sum(case when match_status = 'Matching' then 1 else 0 end) as matching_records
+        from current_records
+        """,
+        as_dict=True,
+    )
+    row = frappe._dict(rows[0] if rows else {})
+    return frappe._dict(
+        total_records=int(row.total_records or 0),
+        cleared_records=int(row.cleared_records or 0),
+        pending_records=int(row.pending_records or 0),
+        manually_cleared_records=int(row.manually_cleared_records or 0),
+        matching_records=int(row.matching_records or 0),
     )
 
 
-def _financial_route(run, card_label=None):
-    if not run:
-        return ["List", "POS Reconciliation Run"], None
-    options = {
-        "from_date": run.from_date,
-        "to_date": run.to_date,
-    }
-    if run.pos_profile:
-        options["pos_profile"] = run.pos_profile
-    if card_label:
-        options["card_type"] = card_label
-    elif run.card_type:
-        options["card_type"] = run.card_type
-    return ["query-report", "POS Card Type Summary by Store"], options
+def _all_bank_summary(requested_card_type=None):
+    """Aggregate all Approved Bank POS Transactions, independent of reconciliation runs."""
+    _check_read_permission(BANK_TRANSACTION)
+    return _cached_all_bank_summary(requested_card_type)
 
 
-def _raw_values_for(normalized_card_type, card_mapper):
-    return card_mapper.bank_source_values(normalized_card_type)
-
-
-def _financial_summary(run, requested_card_type=None):
-    _check_read_permission("Bank POS Transaction")
-    if not run:
-        return frappe._dict(amount=0.0, commission=0.0, vat=0.0)
-
-    card_mapper = get_card_type_mapper()
-    run_card_type = card_mapper.resolve(run.card_type) if run.card_type else None
-    requested = card_mapper.resolve(requested_card_type) if requested_card_type else None
-    if run_card_type and requested and run_card_type != requested:
-        return frappe._dict(amount=0.0, commission=0.0, vat=0.0)
-
-    effective_card_type = requested or run_card_type
-    conditions = [
-        "transaction_date between %(from_date)s and %(to_date)s",
-        "upper(coalesce(transaction_status, '')) = 'APPROVED'",
-    ]
-    params = {"from_date": run.from_date, "to_date": run.to_date}
-
-    if run.pos_profile:
-        conditions.append("pos_profile = %(pos_profile)s")
-        params["pos_profile"] = run.pos_profile
-
-    if effective_card_type:
-        raw_values = tuple(value.upper() for value in _raw_values_for(effective_card_type, card_mapper))
+@redis_cache(ttl=30)
+def _cached_all_bank_summary(requested_card_type=None):
+    mapper = get_card_type_mapper()
+    requested = mapper.resolve(requested_card_type) if requested_card_type else None
+    conditions = ["upper(coalesce(transaction_status, '')) = 'APPROVED'"]
+    params = {}
+    if requested:
+        raw_values = tuple(value.upper() for value in mapper.bank_source_values(requested))
         conditions.append("upper(coalesce(card_type, '')) in %(card_types)s")
         params["card_types"] = raw_values
-
     row = frappe.db.sql(
         f"""
         select
@@ -177,119 +201,147 @@ def _financial_summary(run, requested_card_type=None):
     )
 
 
+def get_reconciliation_card_type_summary():
+    """Group all unique reconciliation transactions by unified card type."""
+    _check_read_permission(RECONCILIATION_RECORD)
+    return _cached_reconciliation_card_type_summary()
+
+
+@redis_cache(ttl=30)
+def _cached_reconciliation_card_type_summary():
+    """Bank-linked rows use Bank amount; true Alhamrani-only rows use Alhamrani amount."""
+    raw_rows = frappe.db.sql(
+        f"""
+        {_current_reconciliation_cte()}
+        select
+            coalesce(nullif(card_type, ''), 'UNKNOWN') as card_type,
+            count(*) as transaction_count,
+            coalesce(sum(
+                case
+                    when coalesce(bank_transaction, '') <> '' then coalesce(bank_amount, 0)
+                    else coalesce(alhamrani_amount, 0)
+                end
+            ), 0) as amount
+        from current_records
+        group by coalesce(nullif(card_type, ''), 'UNKNOWN')
+        order by amount desc, card_type asc
+        """,
+        as_dict=True,
+    )
+
+    mapper = get_card_type_mapper()
+    grouped = defaultdict(lambda: {"transaction_count": 0, "amount": 0.0})
+    for row in raw_rows:
+        normalized = mapper.resolve(row.card_type) if row.card_type != "UNKNOWN" else "UNKNOWN"
+        normalized = normalized or "UNKNOWN"
+        grouped[normalized]["transaction_count"] += int(row.transaction_count or 0)
+        grouped[normalized]["amount"] += flt(row.amount, 2)
+
+    return [
+        frappe._dict(card_type=card_type, transaction_count=values["transaction_count"], amount=flt(values["amount"], 2))
+        for card_type, values in sorted(grouped.items(), key=lambda item: (-flt(item[1]["amount"]), item[0]))
+    ]
+
+
+def display_card_type(value):
+    token = cstr(value).strip().upper()
+    labels = {
+        "MADA": "Mada",
+        "SPAN": "Mada",
+        "VISA": "Visa",
+        "MASTERCARD": "Mastercard",
+        "MASTER CARD": "Mastercard",
+        "MASTER_CARD": "Mastercard",
+        "GCCCARD": "GCC Card",
+        "GCC CARD": "GCC Card",
+        "AMEX": "American Express",
+        "UNKNOWN": _("Unknown"),
+    }
+    return labels.get(token, cstr(value).strip() or _("Unknown"))
+
+
 @frappe.whitelist()
 def get_total_records_card(filters=None):
-    run = _latest_completed_run()
-    route, options = _results_route(run)
-    return _result(_run_total(run), "Int", route, options)
+    summary = _reconciliation_status_summary()
+    route, options = _record_route()
+    return _result(summary.total_records, "Int", route, options)
 
 
 @frappe.whitelist()
 def get_cleared_records_card(filters=None):
-    run = _latest_completed_run()
-    value = int(run.matching_count or 0) + int(run.manually_cleared_count or 0) if run else 0
-    if run:
-        return _result(value, "Int", ["Form", "POS Reconciliation Run", run.name])
-    return _result(value, "Int", ["List", "POS Reconciliation Run"])
+    summary = _reconciliation_status_summary()
+    route, options = _record_route(resolution_status=["in", ["Auto Cleared", "Manually Cleared"]])
+    return _result(summary.cleared_records, "Int", route, options)
 
 
 @frappe.whitelist()
 def get_pending_exceptions_card(filters=None):
-    run = _latest_completed_run()
-    route, options = _results_route(run, resolution_status="Pending")
-    return _result(int(run.pending_count or 0) if run else 0, "Int", route, options)
+    summary = _reconciliation_status_summary()
+    route, options = _record_route(resolution_status="Pending")
+    return _result(summary.pending_records, "Int", route, options)
 
 
 @frappe.whitelist()
 def get_manual_cleared_card(filters=None):
-    run = _latest_completed_run()
-    route, options = _results_route(run, resolution_status="Manually Cleared")
-    return _result(int(run.manually_cleared_count or 0) if run else 0, "Int", route, options)
+    summary = _reconciliation_status_summary()
+    route, options = _record_route(resolution_status="Manually Cleared")
+    return _result(summary.manually_cleared_records, "Int", route, options)
 
 
 @frappe.whitelist()
 def get_match_percent_card(filters=None):
-    run = _latest_completed_run()
-    total = _run_total(run)
-    value = (flt(run.matching_count) / total * 100) if run and total else 0.0
-    route, options = _results_route(run, match_status="Matching")
+    summary = _reconciliation_status_summary()
+    value = summary.matching_records / summary.total_records * 100 if summary.total_records else 0.0
+    route, options = _record_route(match_status="Matching")
     return _result(flt(value, 2), "Percent", route, options)
 
 
 @frappe.whitelist()
 def get_total_amount_card(filters=None):
-    run = _latest_completed_run()
-    summary = _financial_summary(run)
-    route, options = _financial_route(run)
+    summary = _all_bank_summary()
+    route, options = _bank_route()
     return _result(summary.amount, "Currency", route, options)
-
-
-def _card_amount(card_type, label):
-    run = _latest_completed_run()
-    summary = _financial_summary(run, card_type)
-    route, options = _financial_route(run, label)
-    return _result(summary.amount, "Currency", route, options)
-
-
-@frappe.whitelist()
-def get_mada_amount_card(filters=None):
-    return _card_amount("MADA", "Mada")
-
-
-@frappe.whitelist()
-def get_visa_amount_card(filters=None):
-    return _card_amount("VISA", "Visa")
-
-
-@frappe.whitelist()
-def get_mastercard_amount_card(filters=None):
-    return _card_amount("MASTERCARD", "Mastercard")
 
 
 @frappe.whitelist()
 def get_total_commission_card(filters=None):
-    run = _latest_completed_run()
-    summary = _financial_summary(run)
-    if run:
-        route = ["query-report", "POS Commission by Store and Device"]
-        options = {"from_date": run.from_date, "to_date": run.to_date}
-        if run.pos_profile:
-            options["pos_profile"] = run.pos_profile
-        if run.card_type:
-            options["card_type"] = run.card_type
-    else:
-        route, options = ["List", "POS Reconciliation Run"], None
+    summary = _all_bank_summary()
+    route, options = _bank_route()
     return _result(summary.commission, "Currency", route, options)
 
 
 @frappe.whitelist()
 def get_commission_percent_card(filters=None):
-    run = _latest_completed_run()
-    summary = _financial_summary(run)
-    value = (summary.commission / summary.amount * 100) if summary.amount else 0.0
-    if run:
-        route = ["query-report", "POS Commission by Store and Device"]
-        options = {"from_date": run.from_date, "to_date": run.to_date}
-        if run.pos_profile:
-            options["pos_profile"] = run.pos_profile
-        if run.card_type:
-            options["card_type"] = run.card_type
-    else:
-        route, options = ["List", "POS Reconciliation Run"], None
+    summary = _all_bank_summary()
+    value = summary.commission / summary.amount * 100 if summary.amount else 0.0
+    route, options = _bank_route()
     return _result(flt(value, 4), "Percent", route, options)
 
 
 @frappe.whitelist()
 def get_commission_vat_card(filters=None):
-    run = _latest_completed_run()
-    summary = _financial_summary(run)
-    if run:
-        route = ["query-report", "POS Commission by Store and Device"]
-        options = {"from_date": run.from_date, "to_date": run.to_date}
-        if run.pos_profile:
-            options["pos_profile"] = run.pos_profile
-        if run.card_type:
-            options["card_type"] = run.card_type
-    else:
-        route, options = ["List", "POS Reconciliation Run"], None
+    summary = _all_bank_summary()
+    route, options = _bank_route()
     return _result(summary.vat, "Currency", route, options)
+
+
+# Compatibility methods for the three old card-type Number Card documents.
+def _card_amount(card_type):
+    summary = _all_bank_summary(card_type)
+    route, options = _bank_route()
+    return _result(summary.amount, "Currency", route, options)
+
+
+@frappe.whitelist()
+def get_mada_amount_card(filters=None):
+    return _card_amount("MADA")
+
+
+@frappe.whitelist()
+def get_visa_amount_card(filters=None):
+    return _card_amount("VISA")
+
+
+@frappe.whitelist()
+def get_mastercard_amount_card(filters=None):
+    return _card_amount("MASTERCARD")
