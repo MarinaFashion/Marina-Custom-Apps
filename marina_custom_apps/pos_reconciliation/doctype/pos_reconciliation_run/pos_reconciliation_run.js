@@ -458,6 +458,7 @@ function pos_recon_result_filters(state, options, is_bank_only, summary, can_rev
         <div class="pos-recon-settlement-summary pos-recon-summary-financial">
           <div><b>${__("Bank Gross")}</b><span>${pos_recon_money(summary.gross_amount)}</span></div>
           <div><b>${__("Marina Amount")}</b><span>${pos_recon_money(summary.marina_amount)}</span></div>
+          <div><b>${__("Commission + VAT")}</b><span>${pos_recon_money(Number(summary.commission||0) + Number(summary.vat||0))}</span></div>
           <div><b>${__("Expected Net")}</b><span>${pos_recon_money(summary.expected_net)}</span></div>
           <div><b>${__("Commission")}</b><span>${pos_recon_money(summary.commission)}</span></div>
           <div><b>${__("Commission %")}</b><span>${Number(summary.commission_pct||0).toFixed(2)}%</span></div>
