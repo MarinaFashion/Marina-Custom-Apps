@@ -33,7 +33,7 @@
       "fieldname": "component",
       "fieldtype": "Select",
       "label": "Component",
-      "options": "Gross\\nCommission\\nVAT",
+      "options": "Gross\nCommission\nVAT",
       "reqd": 1,
       "in_list_view": 1
     },
@@ -41,7 +41,7 @@
       "fieldname": "direction",
       "fieldtype": "Select",
       "label": "Direction",
-      "options": "Deposit\\nWithdrawal",
+      "options": "Deposit\nWithdrawal",
       "in_list_view": 1
     },
     {
@@ -64,7 +64,7 @@
       "fieldname": "match_status",
       "fieldtype": "Select",
       "label": "Match Status",
-      "options": "Parsed\\nMatched\\nDifference",
+      "options": "Parsed\nMatched\nDifference",
       "read_only": 1,
       "in_list_view": 1
     }
