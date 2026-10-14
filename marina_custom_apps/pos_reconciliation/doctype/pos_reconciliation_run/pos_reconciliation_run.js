@@ -109,12 +109,13 @@ function pos_recon_setup_review(frm) {
                 terminal_id: "",
                 card_type: "",
                 finance_review_status: "",
+                bank_statement_status: "",
                 accounting_status: "",
                 ledger_posting_status: "",
                 before_integration: "All",
                 status_counts: {},
                 options: { settlement_numbers: [], pos_profiles: [], terminal_ids: [], card_types: [],
-                    finance_review_statuses: [], accounting_statuses: [], ledger_posting_statuses: [], before_integration_values: [] },
+                    finance_review_statuses: [], bank_statement_statuses: [], accounting_statuses: [], ledger_posting_statuses: [], before_integration_values: [] },
             },
         };
     }
@@ -129,7 +130,7 @@ function pos_recon_filter_args(frm, values) {
         run_name:frm.doc.name,status:v.status||"All",from_date:v.from_date||"",to_date:v.to_date||"",
         settlement_number:v.settlement_number||"",settlement_date:v.settlement_date||"",pos_profile:v.pos_profile||"",
         terminal_id:v.terminal_id||"",card_type:v.card_type||"",finance_review_status:v.finance_review_status||"",
-        accounting_status:v.accounting_status||"",ledger_posting_status:v.ledger_posting_status||"",
+        bank_statement_status:v.bank_statement_status||"",accounting_status:v.accounting_status||"",ledger_posting_status:v.ledger_posting_status||"",
         before_integration:v.before_integration===undefined?"All":v.before_integration
     };
 }
@@ -142,7 +143,7 @@ function pos_recon_reconcile_state(state,o) {
     let changed=false;
     [["settlement_number","settlement_numbers"],["pos_profile","pos_profiles"],["terminal_id","terminal_ids"],
      ["card_type","card_types"],["finance_review_status","finance_review_statuses"],
-     ["accounting_status","accounting_statuses"],["ledger_posting_status","ledger_posting_statuses"]]
+     ["bank_statement_status","bank_statement_statuses"],["accounting_status","accounting_statuses"],["ledger_posting_status","ledger_posting_statuses"]]
     .forEach(([f,k]) => {
         if(!pos_recon_available(o[k],state[f])){
             state[f]="";
@@ -228,6 +229,7 @@ function pos_recon_load_results(frm) {
             terminal_id: state.terminal_id,
             card_type: state.card_type,
             finance_review_status: state.finance_review_status,
+            bank_statement_status: state.bank_statement_status,
             accounting_status: state.accounting_status,
             ledger_posting_status: state.ledger_posting_status,
             before_integration: state.before_integration,
@@ -365,6 +367,7 @@ function pos_recon_render_results(frm, $wrapper, data) {
                     <td class="text-right">${pos_recon_money(row.alhamrani_amount)}</td>
                     <td class="text-right">${pos_recon_money(row.amount_difference)}</td>
                     <td>${pos_recon_escape(row.pan_validation_method || "—")}</td>
+                    <td>${pos_recon_bank_statement_cell(row)}</td>
                     <td>${pos_recon_finance_pill(row.finance_review_status)}</td>
                     <td>${pos_recon_accounting_pill(row.accounting_status)}</td>
                     <td>${pos_recon_escape(details || "—")}</td>
@@ -372,7 +375,7 @@ function pos_recon_render_results(frm, $wrapper, data) {
                 </tr>
             `;
         }).join("")
-        : `<tr><td colspan="${can_review ? 16 : 15}" class="text-muted text-center">${__("No reconciliation records found")}</td></tr>`;
+        : `<tr><td colspan="${can_review ? 17 : 16}" class="text-muted text-center">${__("No reconciliation records found")}</td></tr>`;
 
     const selected_summary = can_review ? `
         <div class="pos-recon-selected-summary" style="display:none">
@@ -411,7 +414,7 @@ function pos_recon_render_results(frm, $wrapper, data) {
                         <th>${__("Date")}</th><th>${__("POS Profile")}</th><th>${__("Terminal ID")}</th><th>${__("Settlement No.")}</th>
                         <th>${__("Status")}</th><th class="text-right">${__("Bank Amount")}</th>
                         <th class="text-right">${__("Alhamrani Amount")}</th><th class="text-right">${__("Difference")}</th>
-                        <th>${__("PAN Validation")}</th><th>${__("Finance Review")}</th><th>${__("Accounting")}</th>
+                        <th>${__("PAN Validation")}</th><th>${__("Bank Statement")}</th><th>${__("Finance Review")}</th><th>${__("Accounting")}</th>
                         <th>${__("Discrepancy / Note")}</th><th>${__("Resolution")}</th>
                     </tr></thead>
                     <tbody>${body}</tbody>
@@ -466,6 +469,14 @@ function pos_recon_result_filters(state, options, is_bank_only, summary, can_rev
           <div><b>${__("VAT")}</b><span>${pos_recon_money(summary.vat)}</span></div>
           <div><b>${__("VAT %")}</b><span>${Number(summary.vat_pct||0).toFixed(2)}%</span></div>
         </div>
+        <div class="pos-recon-summary-group-label">${__("Bank Statement Confirmation")}</div>
+        <div class="pos-recon-settlement-summary">
+          <div><b>${__("Fully Reconciled")}</b><span>${cint(summary.bank_statement_fully_reconciled_count||0)}</span></div>
+          <div><b>${__("Statement Found")}</b><span>${cint(summary.bank_statement_found_count||0)}</span></div>
+          <div><b>${__("Exceptions")}</b><span>${cint(summary.bank_statement_exception_count||0)}</span></div>
+          <div><b>${__("Not Found")}</b><span>${cint(summary.bank_statement_not_found_count||0)}</span></div>
+          <div><b>${__("Not Checked")}</b><span>${cint(summary.bank_statement_not_checked_count||0)}</span></div>
+        </div>
         <div class="pos-recon-summary-group-label">${__("Finance & Accounting Status")}</div>
         <div class="pos-recon-settlement-summary">
           <div><b>${__("Accounting Eligible")}</b><span>${cint(summary.accounting_eligible_count||0)}</span></div>
@@ -488,6 +499,7 @@ function pos_recon_result_filters(state, options, is_bank_only, summary, can_rev
       </select></div>`:"";
 
     const ledger_fields=`
+      <div><label>${__("Bank Statement Status")}</label><select class="form-control input-xs pos-recon-filter-bank-statement">${pos_recon_select_options(options.bank_statement_statuses||[],state.bank_statement_status,__("All"))}</select></div>
       <div><label>${__("Ledger Posting Status")}</label><select class="form-control input-xs pos-recon-filter-ledger">${pos_recon_select_options(options.ledger_posting_statuses||[],state.ledger_posting_status,__("All"))}</select></div>
       <div><label>${__("Accounting Status")}</label><select class="form-control input-xs pos-recon-filter-accounting">${pos_recon_select_options(options.accounting_statuses||[],state.accounting_status,__("All"))}</select></div>`;
 
@@ -581,6 +593,7 @@ function pos_recon_read_controls($w,is_bank,state){
       to_date:$w.find(".pos-recon-filter-to-date").val()||"",settlement_number:pos_recon_searchable_value($w,".pos-recon-filter-settlement"),
       settlement_date:state.settlement_date||"",pos_profile:pos_recon_searchable_value($w,".pos-recon-filter-profile"),
       terminal_id:pos_recon_searchable_value($w,".pos-recon-filter-terminal"),card_type:$w.find(".pos-recon-filter-card").val()||"",
+      bank_statement_status:$w.find(".pos-recon-filter-bank-statement").val()||"",
       ledger_posting_status:$w.find(".pos-recon-filter-ledger").val()||"",accounting_status:$w.find(".pos-recon-filter-accounting").val()||"",
       finance_review_status:is_bank?($w.find(".pos-recon-filter-finance").val()||""):"",
       before_integration:is_bank?($w.find(".pos-recon-filter-before").val()||"All"):"All"};
@@ -591,6 +604,7 @@ function pos_recon_update_cascade($w,o,d,is_bank){
     pos_recon_update_searchable($w,".pos-recon-filter-profile",o.pos_profiles,d.pos_profile);
     pos_recon_update_searchable($w,".pos-recon-filter-terminal",o.terminal_ids,d.terminal_id);
     pos_recon_update_select($w,".pos-recon-filter-card",o.card_types,d.card_type);
+    pos_recon_update_select($w,".pos-recon-filter-bank-statement",o.bank_statement_statuses,d.bank_statement_status);
     pos_recon_update_select($w,".pos-recon-filter-ledger",o.ledger_posting_statuses,d.ledger_posting_status);
     pos_recon_update_select($w,".pos-recon-filter-accounting",o.accounting_statuses,d.accounting_status);
     if(is_bank){
@@ -624,7 +638,7 @@ function pos_recon_bind_result_filters(frm,$wrapper,data,is_bank_only,can_review
     $wrapper.find(".pos-recon-clear-bank-filters").on("click",()=>{
         Object.assign(state,{from_date:frm.doc.from_date||"",to_date:frm.doc.to_date||"",settlement_number:"",
           settlement_date:"",pos_profile:"",terminal_id:"",card_type:"",finance_review_status:"",
-          accounting_status:"",ledger_posting_status:"",before_integration:"All",start:0});
+          bank_statement_status:"",accounting_status:"",ledger_posting_status:"",before_integration:"All",start:0});
         pos_recon_load_filter_options(frm).then(()=>pos_recon_load_results(frm));
     });
     if(!can_review)return;
@@ -736,6 +750,7 @@ function pos_recon_review_filtered(frm, data, decision) {
                 terminal_id: state.terminal_id,
                 card_type: state.card_type,
                 finance_review_status: state.finance_review_status,
+                bank_statement_status: state.bank_statement_status,
                 accounting_status: state.accounting_status,
                 ledger_posting_status: state.ledger_posting_status,
                 before_integration: state.before_integration,
@@ -852,6 +867,37 @@ function pos_recon_resolution_pill(status) {
 }
 
 
+function pos_recon_bank_statement_cell(row) {
+    const status = row.bank_statement_status || "Not Checked";
+    const color = {
+        "Fully Reconciled": "green",
+        "Statement Found": "blue",
+        "Exception": "orange",
+        "Not Found": "red",
+        "Not Checked": "gray",
+    }[status] || "gray";
+
+    const refs = String(row.bank_statement_references || "")
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean);
+    const ref_links = refs.slice(0, 3).map((name) => pos_recon_doc_link("Bank Transaction", name));
+    if (refs.length > 3) ref_links.push(__("+{0} more", [refs.length - 3]));
+
+    const context = [];
+    if (row.bank_statement_settlement) {
+        context.push(pos_recon_doc_link("POS Bank Settlement", row.bank_statement_settlement));
+    } else if (row.bank_statement_reconciliation) {
+        context.push(pos_recon_doc_link("POS Bank Statement Reconciliation", row.bank_statement_reconciliation));
+    }
+    if (ref_links.length) context.push(ref_links.join(", "));
+
+    return `<div class="pos-recon-bank-statement-cell">
+        <span class="indicator-pill ${color}">${pos_recon_escape(status)}</span>
+        ${context.length ? `<div class="small" style="margin-top:3px;">${context.join("<br>")}</div>` : ""}
+    </div>`;
+}
+
 function pos_recon_finance_pill(status) {
     const value = status || "";
     const color = {
@@ -893,7 +939,8 @@ function pos_recon_styles() {
         .pos-recon-toolbar .pos-recon-search { max-width:360px; }
         .pos-recon-table-wrap { overflow-x:auto; border-radius:var(--border-radius-sm); }
         .pos-recon-table { margin-bottom:0; min-width:920px; }
-        .pos-recon-results-table { min-width:1550px; }
+        .pos-recon-results-table { min-width:1750px; }
+        .pos-recon-bank-statement-cell { min-width:165px; white-space:normal; }
         .pos-recon-table th,.pos-recon-table td { white-space:nowrap; vertical-align:middle !important; font-size:12px; }
         .pos-recon-result-filters { display:flex; flex-wrap:wrap; gap:6px; margin:12px 0 4px; }
         .pos-recon-result-filters .badge { margin-left:4px; }
