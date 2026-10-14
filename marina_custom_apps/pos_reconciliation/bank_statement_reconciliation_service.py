@@ -192,15 +192,11 @@ def _source_groups(
     )
 
     groups = defaultdict(list)
+    record_keys = defaultdict(list)
     missing_settlement = 0
     for bank in bank_rows:
         record = latest_map.get(bank.name)
         if not record:
-            continue
-        if not is_reconciliation_confirmed(
-            record.match_status,
-            record.resolution_status,
-        ):
             continue
 
         settlement_number = normalize_settlement_number(bank.settlement_number)
@@ -208,16 +204,32 @@ def _source_groups(
         card_type = normalize_statement_card_type(record.card_type or bank.card_type)
         reconciliation_date = getdate(bank.balance_date) if bank.balance_date else None
 
-        if (
-            not settlement_number
-            or not terminal_id
-            or not card_type
-            or not reconciliation_date
+        valid_identity = bool(
+            settlement_number
+            and terminal_id
+            and card_type
+            and reconciliation_date
+        )
+        ref = terminal_bank_reference(terminal_id, terminal_ref_length) if terminal_id else ""
+        tuple_key = (
+            settlement_number,
+            ref,
+            reconciliation_date,
+            card_type,
+        )
+        if valid_identity:
+            record_keys[tuple_key].append(record.name)
+
+        if not is_reconciliation_confirmed(
+            record.match_status,
+            record.resolution_status,
         ):
+            continue
+
+        if not valid_identity:
             missing_settlement += 1
             continue
 
-        ref = terminal_bank_reference(terminal_id, terminal_ref_length)
         key = "|".join(
             [
                 bank_account,
@@ -244,7 +256,7 @@ def _source_groups(
                 vat_amount=flt(bank.vat_amount, 2),
             )
         )
-    return groups, missing_settlement
+    return groups, missing_settlement, record_keys
 
 
 
@@ -446,6 +458,62 @@ def _finalize_settlement(doc, tolerance):
     doc.save(ignore_permissions=True)
 
 
+
+def _update_record_bank_statement_confirmation(
+    reconciliation_run,
+    record_keys,
+    statement_evidence,
+    settlements,
+    checked_on,
+):
+    updates = defaultdict(list)
+
+    for key, record_names in record_keys.items():
+        settlement = settlements.get(key)
+        references = sorted(set(statement_evidence.get(key) or []))
+        has_statement = bool(references)
+
+        if settlement and settlement.status == "Fully Reconciled":
+            status = "Fully Reconciled"
+        elif settlement and has_statement:
+            status = "Exception"
+        elif has_statement:
+            status = "Statement Found"
+        else:
+            status = "Not Found"
+
+        update_key = (
+            status,
+            settlement.name if settlement else None,
+            ", ".join(references),
+        )
+        updates[update_key].extend(record_names)
+
+    for (status, settlement_name, references), record_names in updates.items():
+        for chunk in _chunks(list(dict.fromkeys(record_names))):
+            placeholders = ", ".join(["%s"] * len(chunk))
+            frappe.db.sql(
+                f"""
+                UPDATE `tabPOS Reconciliation Record`
+                SET
+                    bank_statement_status = %s,
+                    bank_statement_reconciliation = %s,
+                    bank_statement_settlement = %s,
+                    bank_statement_references = %s,
+                    bank_statement_checked_on = %s
+                WHERE name IN ({placeholders})
+                """,
+                (
+                    status,
+                    reconciliation_run,
+                    settlement_name,
+                    references or None,
+                    checked_on,
+                    *chunk,
+                ),
+            )
+
+
 def execute_statement_reconciliation(run_doc):
     run_doc.check_permission("write")
     from_date = getdate(run_doc.from_date)
@@ -465,7 +533,7 @@ def execute_statement_reconciliation(run_doc):
             )
         )
 
-    groups, source_exception_count = _source_groups(
+    groups, source_exception_count, record_keys = _source_groups(
         run_doc.bank_account,
         from_date,
         to_date,
@@ -494,6 +562,7 @@ def execute_statement_reconciliation(run_doc):
     parsed_count = 0
     matched_line_count = 0
     unmatched_pos_count = 0
+    statement_evidence = defaultdict(list)
 
     for row in statement_rows:
         parsed = parse_pos_statement_text(_statement_text(row), mappings=mappings)
@@ -507,6 +576,7 @@ def execute_statement_reconciliation(run_doc):
             getdate(parsed.reconciliation_date),
             parsed.card_type,
         )
+        statement_evidence[key].append(row.name)
         settlement = settlements.get(key)
         if not settlement:
             unmatched_pos_count += 1
@@ -537,6 +607,15 @@ def execute_statement_reconciliation(run_doc):
     for settlement in settlements.values():
         _finalize_settlement(settlement, tolerance)
 
+    checked_on = now_datetime()
+    _update_record_bank_statement_confirmation(
+        run_doc.name,
+        record_keys,
+        statement_evidence,
+        settlements,
+        checked_on,
+    )
+
     fully_reconciled = sum(
         1 for doc in settlements.values() if doc.status == "Fully Reconciled"
     )
@@ -558,7 +637,7 @@ def execute_statement_reconciliation(run_doc):
         "statement_deposit_total": statement_deposit_total,
         "statement_withdrawal_total": statement_withdrawal_total,
         "status": "Completed",
-        "last_run_on": now_datetime(),
+        "last_run_on": checked_on,
     }
 
     frappe.db.set_value(
