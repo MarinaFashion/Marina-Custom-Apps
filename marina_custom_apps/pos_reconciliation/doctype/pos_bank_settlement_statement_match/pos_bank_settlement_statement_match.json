@@ -1,0 +1,72 @@
+{
+  "doctype": "DocType",
+  "istable": 1,
+  "editable_grid": 1,
+  "module": "POS Reconciliation",
+  "name": "POS Bank Settlement Statement Match",
+  "field_order": [
+    "bank_transaction",
+    "transaction_date",
+    "component",
+    "direction",
+    "statement_amount",
+    "reference_number",
+    "description",
+    "match_status"
+  ],
+  "fields": [
+    {
+      "fieldname": "bank_transaction",
+      "fieldtype": "Link",
+      "label": "Bank Transaction",
+      "options": "Bank Transaction",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "transaction_date",
+      "fieldtype": "Date",
+      "label": "Date",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "component",
+      "fieldtype": "Select",
+      "label": "Component",
+      "options": "Gross\\nCommission\\nVAT",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "direction",
+      "fieldtype": "Select",
+      "label": "Direction",
+      "options": "Deposit\\nWithdrawal",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "statement_amount",
+      "fieldtype": "Currency",
+      "label": "Statement Amount",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "reference_number",
+      "fieldtype": "Data",
+      "label": "Reference Number"
+    },
+    {
+      "fieldname": "description",
+      "fieldtype": "Small Text",
+      "label": "Description"
+    },
+    {
+      "fieldname": "match_status",
+      "fieldtype": "Select",
+      "label": "Match Status",
+      "options": "Parsed\\nMatched\\nDifference",
+      "read_only": 1,
+      "in_list_view": 1
+    }
+  ]
+}
