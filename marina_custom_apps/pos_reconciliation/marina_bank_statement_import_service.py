@@ -253,11 +253,23 @@ def _analyze(import_doc):
             )
         )
 
-    new_rows = [row for row in parsed if row["source_key"] not in existing]
+    unique_rows = []
+    seen_keys = set()
+    duplicate_in_file = 0
+    for row in parsed:
+        key = row["source_key"]
+        if key in seen_keys:
+            duplicate_in_file += 1
+            continue
+        seen_keys.add(key)
+        unique_rows.append(row)
+
+    new_rows = [row for row in unique_rows if row["source_key"] not in existing]
+    duplicate_existing = len(unique_rows) - len(new_rows)
     summary = {
         "total_rows": len(parsed) + len(errors),
         "new_records": len(new_rows),
-        "duplicate_records": len(parsed) - len(new_rows),
+        "duplicate_records": duplicate_in_file + duplicate_existing,
         "error_records": len(errors),
         "pos_statement_lines": sum(1 for row in parsed if row["is_pos_statement_line"]),
         "other_statement_lines": sum(1 for row in parsed if not row["is_pos_statement_line"]),
