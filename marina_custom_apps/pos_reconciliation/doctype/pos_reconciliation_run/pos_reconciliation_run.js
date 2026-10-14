@@ -901,6 +901,8 @@ function pos_recon_styles() {
         .pos-recon-bank-review { border:1px solid var(--border-color); border-radius:var(--border-radius-sm); padding:10px; margin:10px 0; }
         .pos-recon-bank-filter-grid { display:grid; grid-template-columns:repeat(4,minmax(145px,1fr)); gap:8px; align-items:end; }
         .pos-recon-bank-filter-grid label { font-size:11px; color:var(--text-muted); margin-bottom:3px; display:block; }
+        .pos-recon-searchable-filter .frappe-control { margin-bottom:0; }
+        .pos-recon-searchable-filter .control-input-wrapper { margin:0; }
         .pos-recon-filter-actions { display:flex; gap:5px; }
         .pos-recon-selected-summary { display:grid; grid-template-columns:repeat(5,minmax(120px,1fr)); gap:8px; margin:10px 0; }
         .pos-recon-selected-summary div { background:var(--subtle-fg); border-radius:var(--border-radius-sm); padding:8px; display:flex; flex-direction:column; gap:2px; }
@@ -979,11 +981,10 @@ function pos_recon_open_accounting_dialog(frm) {
                     fieldname: "posting_summary",
                     fieldtype: "HTML",
                     options: `<div class="pos-recon-accounting-preview">
-                        <div><b>${__("Eligible Transactions")}</b>: ${cint(options.pending_count || 0)}</div>
-                        <div><b>${__("POS Profiles")}</b>: ${cint(options.pos_profile_count || 0)}</div>
-                        <div><b>${__("Commission")}</b>: ${pos_recon_money(options.commission)}</div>
-                        <div><b>${__("VAT")}</b>: ${pos_recon_money(options.vat)}</div>
-                        <div><b>${__("Total Bank Credit")}</b>: ${pos_recon_money(options.total)}</div>
+                        <div><b>${__("Eligible Transactions – Full Run")}</b>: ${cint(options.pending_count || 0)}</div>
+                        <div><b>${__("Available Transaction Dates")}</b>: ${pos_recon_escape(options.transaction_from_date || "—")} ${__("to")} ${pos_recon_escape(options.transaction_to_date || "—")}</div>
+                        <div><b>${__("POS Profiles – Full Run")}</b>: ${cint(options.pos_profile_count || 0)}</div>
+                        <div class="text-muted small" style="margin-top:6px;">${__("The Preview button recalculates eligible transactions and amounts using the selected Transaction From Date and Transaction To Date.")}</div>
                         <hr style="margin:10px 0;">
                         <div class="text-muted small">${profile_mode}<br>${bank_mode}<br>${__("Journal Entry mode")}: <b>${pos_recon_escape(creation_mode)}</b></div>
                     </div>`,
