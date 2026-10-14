@@ -47,3 +47,9 @@ These are configurable in **POS Reconciliation Settings** and should be verified
 ## Important limitation of this first branch
 
 This release provides POS settlement evidence matching. It intentionally does not yet automate matching non-POS bank statement lines to Payment Entries or Journal Entries; ERPNext's standard Bank Reconciliation remains the control for those lines.
+
+
+## Branch safety
+
+This implementation is intentionally kept on the experimental branch only. It is not merged to `main`.
+Test it on Demo first; production rollout should wait for statement-parser validation, settlement matching feedback, and performance checks on a realistic statement period.
