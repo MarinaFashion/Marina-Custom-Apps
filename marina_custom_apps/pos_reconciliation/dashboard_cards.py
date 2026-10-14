@@ -151,7 +151,7 @@ def _cached_reconciliation_status_summary():
             sum(case when resolution_status in ('Auto Cleared', 'Manually Cleared') then 1 else 0 end) as cleared_records,
             sum(case when resolution_status = 'Pending' then 1 else 0 end) as pending_records,
             sum(case when resolution_status = 'Manually Cleared' then 1 else 0 end) as manually_cleared_records,
-            sum(case when match_status = 'Matching' then 1 else 0 end) as matching_records
+            sum(case when match_status = 'Fully Matching' then 1 else 0 end) as matching_records
         from current_records
         """,
         as_dict=True,
@@ -292,7 +292,7 @@ def get_manual_cleared_card(filters=None):
 def get_match_percent_card(filters=None):
     summary = _reconciliation_status_summary()
     value = summary.matching_records / summary.total_records * 100 if summary.total_records else 0.0
-    route, options = _record_route(match_status="Matching")
+    route, options = _record_route(match_status="Fully Matching")
     return _result(flt(value, 2), "Percent", route, options)
 
 
