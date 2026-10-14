@@ -1,197 +1,197 @@
 {
-    "doctype":  "DocType",
-    "issingle":  1,
-    "module":  "POS Reconciliation",
-    "name":  "POS Reconciliation Settings",
-    "field_order":  [
-                        "accounting_section",
-                        "company",
-                        "commission_expense_account",
-                        "vat_input_account",
-                        "accounting_column_break",
-                        "default_offset_account",
-                        "posting_frequency",
-                        "posting_control_section",
-                        "enable_accounting_posting",
-                        "consolidate_pos_profiles_in_one_journal_entry",
-                        "consolidate_bank_entries",
-                        "journal_entry_creation_mode",
-                        "auto_create_accounting_entries",
-                        "allow_posting_before_finance_audit",
-                        "finance_review_section",
-                        "allow_bulk_finance_review",
-                        "card_type_mapping_section",
-                        "card_type_mappings",
-                        "bank_statement_section",
-                        "bank_statement_terminal_reference_length",
-                        "bank_statement_reconciliation_lookback_days",
-                        "bank_statement_code_mappings"
-                    ],
-    "fields":  [
-                   {
-                       "description":  "Accounting is independent from reconciliation. Only Matching or Manually Cleared bank transactions are eligible for posting. Cost Center comes from POS Profile \u003e Cost Center.",
-                       "fieldname":  "accounting_section",
-                       "fieldtype":  "Section Break",
-                       "label":  "Accounting Posting"
-                   },
-                   {
-                       "fieldname":  "company",
-                       "fieldtype":  "Link",
-                       "label":  "Company",
-                       "options":  "Company",
-                       "reqd":  1
-                   },
-                   {
-                       "description":  "Debit account for POS bank commission. The Journal Entry expense line uses the Cost Center from the transaction POS Profile.",
-                       "fieldname":  "commission_expense_account",
-                       "fieldtype":  "Link",
-                       "label":  "Commission Expense Account",
-                       "options":  "Account"
-                   },
-                   {
-                       "description":  "Debit account for VAT on POS bank commission.",
-                       "fieldname":  "vat_input_account",
-                       "fieldtype":  "Link",
-                       "label":  "VAT Input Account",
-                       "options":  "Account"
-                   },
-                   {
-                       "fieldname":  "accounting_column_break",
-                       "fieldtype":  "Column Break"
-                   },
-                   {
-                       "description":  "Credit GL account for commission and VAT charged by the bank. Commission and VAT are created as separate credit lines.",
-                       "fieldname":  "default_offset_account",
-                       "fieldtype":  "Link",
-                       "label":  "Bank Account",
-                       "options":  "Account"
-                   },
-                   {
-                       "default":  "Manual",
-                       "description":  "Reserved for a future automatic-posting phase. v0.52.3 uses manual posting from a completed Reconciliation Run.",
-                       "fieldname":  "posting_frequency",
-                       "fieldtype":  "Select",
-                       "label":  "Posting Frequency",
-                       "options":  "Manual\nPer Settlement\nDaily",
-                       "hidden":  1
-                   },
-                   {
-                       "fieldname":  "posting_control_section",
-                       "fieldtype":  "Section Break",
-                       "label":  "Posting Controls"
-                   },
-                   {
-                       "default":  "0",
-                       "description":  "Reserved for a future automatic-posting phase. v0.52.3 does not automatically create Journal Entries.",
-                       "fieldname":  "auto_create_accounting_entries",
-                       "fieldtype":  "Check",
-                       "label":  "Auto Create Accounting Entries",
-                       "hidden":  1
-                   },
-                   {
-                       "default":  "0",
-                       "fieldname":  "allow_posting_before_finance_audit",
-                       "fieldtype":  "Check",
-                       "label":  "Allow Posting Before Finance Audit",
-                       "hidden":  1,
-                       "description":  "Legacy reserved field. Accounting posting always requires Matching or Manually Cleared reconciliation status."
-                   },
-                   {
-                       "fieldname":  "finance_review_section",
-                       "fieldtype":  "Section Break",
-                       "label":  "Finance Review Controls"
-                   },
-                   {
-                       "default":  "1",
-                       "fieldname":  "allow_bulk_finance_review",
-                       "fieldtype":  "Check",
-                       "label":  "Allow Bulk Finance Review"
-                   },
-                   {
-                       "description":  "Map Bank and Alhamrani aliases to one unified card type. Future aliases can be added here without code changes.",
-                       "fieldname":  "card_type_mapping_section",
-                       "fieldtype":  "Section Break",
-                       "label":  "Card Type Mapping"
-                   },
-                   {
-                       "fieldname":  "card_type_mappings",
-                       "fieldtype":  "Table",
-                       "label":  "Card Type Mappings",
-                       "options":  "POS Card Type Mapping"
-                   },
-                   {
-                       "default":  "0",
-                       "description":  "Master switch for manual Journal Entry posting of confirmed POS bank commission and VAT.",
-                       "fieldname":  "enable_accounting_posting",
-                       "fieldtype":  "Check",
-                       "label":  "Enable POS Accounting Posting"
-                   },
-                   {
-                       "default":  "1",
-                       "description":  "When enabled, all eligible POS Profiles in the reconciliation run can be included in one Journal Entry. Commission and VAT debit lines remain split by POS Profile Cost Center.",
-                       "fieldname":  "consolidate_pos_profiles_in_one_journal_entry",
-                       "fieldtype":  "Check",
-                       "label":  "Consolidate Multiple POS Profiles in One Journal Entry"
-                   },
-                   {
-                       "default":  "1",
-                       "description":  "When enabled, the Bank credit side is consolidated into two lines only: total Commission and total VAT. When disabled, separate Bank Commission and Bank VAT credit lines are created for each POS Profile.",
-                       "fieldname":  "consolidate_bank_entries",
-                       "fieldtype":  "Check",
-                       "label":  "Consolidate Bank Entries"
-                   },
-                   {
-                       "default":  "Draft",
-                       "description":  "Choose whether generated Journal Entries are saved as Draft for Finance review or submitted automatically.",
-                       "fieldname":  "journal_entry_creation_mode",
-                       "fieldtype":  "Select",
-                       "label":  "Journal Entry Creation Mode",
-                       "options":  "Draft\nSubmit",
-                       "reqd":  1
-                   },
-                   {
-                       "description":  "Number of leading digits from POS Terminal ID used by the SNB statement REFERENCE value. Marina sample statements use 8.",
-                       "fieldname":  "bank_statement_section",
-                       "fieldtype":  "Section Break",
-                       "label":  "SNB Bank Statement Matching"
-                   },
-                   {
-                       "default":  "8",
-                       "description":  "Leading terminal digits used to compare POS terminal IDs with SNB statement REFERENCE values.",
-                       "fieldname":  "bank_statement_terminal_reference_length",
-                       "fieldtype":  "Int",
-                       "label":  "Bank Terminal Reference Length"
-                   },
-                   {
-                       "default":  "7",
-                       "description":  "Include POS reconciliations this many days before the statement From Date because SNB posting can occur after terminal reconciliation.",
-                       "fieldname":  "bank_statement_reconciliation_lookback_days",
-                       "fieldtype":  "Int",
-                       "label":  "POS Reconciliation Lookback Days"
-                   },
-                   {
-                       "description":  "Map SNB statement suffix codes to card type and statement component. Used only for POS settlement statement matching.",
-                       "fieldname":  "bank_statement_code_mappings",
-                       "fieldtype":  "Table",
-                       "label":  "Bank Statement Code Mappings",
-                       "options":  "POS Bank Statement Code Mapping"
-                   }
-               ],
-    "permissions":  [
-                        {
-                            "create":  1,
-                            "delete":  0,
-                            "read":  1,
-                            "write":  1,
-                            "role":  "Accounts Manager"
-                        },
-                        {
-                            "create":  1,
-                            "delete":  1,
-                            "read":  1,
-                            "write":  1,
-                            "role":  "System Manager"
-                        }
-                    ],
-    "track_changes":  1
+  "doctype": "DocType",
+  "issingle": 1,
+  "module": "POS Reconciliation",
+  "name": "POS Reconciliation Settings",
+  "field_order": [
+    "accounting_section",
+    "company",
+    "commission_expense_account",
+    "vat_input_account",
+    "accounting_column_break",
+    "default_offset_account",
+    "posting_frequency",
+    "posting_control_section",
+    "enable_accounting_posting",
+    "consolidate_pos_profiles_in_one_journal_entry",
+    "consolidate_bank_entries",
+    "journal_entry_creation_mode",
+    "auto_create_accounting_entries",
+    "allow_posting_before_finance_audit",
+    "finance_review_section",
+    "allow_bulk_finance_review",
+    "card_type_mapping_section",
+    "card_type_mappings",
+    "bank_statement_section",
+    "bank_statement_terminal_reference_length",
+    "bank_statement_reconciliation_lookback_days",
+    "bank_statement_code_mappings"
+  ],
+  "fields": [
+    {
+      "description": "Accounting is eligible only after the unified reconciliation is Auto Cleared or Manually Cleared. Cost Center comes from POS Profile > Cost Center.",
+      "fieldname": "accounting_section",
+      "fieldtype": "Section Break",
+      "label": "Accounting Posting"
+    },
+    {
+      "fieldname": "company",
+      "fieldtype": "Link",
+      "label": "Company",
+      "options": "Company",
+      "reqd": 1
+    },
+    {
+      "description": "Debit account for POS bank commission. The Journal Entry expense line uses the Cost Center from the transaction POS Profile.",
+      "fieldname": "commission_expense_account",
+      "fieldtype": "Link",
+      "label": "Commission Expense Account",
+      "options": "Account"
+    },
+    {
+      "description": "Debit account for VAT on POS bank commission.",
+      "fieldname": "vat_input_account",
+      "fieldtype": "Link",
+      "label": "VAT Input Account",
+      "options": "Account"
+    },
+    {
+      "fieldname": "accounting_column_break",
+      "fieldtype": "Column Break"
+    },
+    {
+      "description": "Credit GL account for commission and VAT charged by the bank. Commission and VAT are created as separate credit lines.",
+      "fieldname": "default_offset_account",
+      "fieldtype": "Link",
+      "label": "Bank Account",
+      "options": "Account"
+    },
+    {
+      "default": "Manual",
+      "description": "Reserved for a future automatic-posting phase. v0.52.3 uses manual posting from a completed Reconciliation Run.",
+      "fieldname": "posting_frequency",
+      "fieldtype": "Select",
+      "label": "Posting Frequency",
+      "options": "Manual\nPer Settlement\nDaily",
+      "hidden": 1
+    },
+    {
+      "fieldname": "posting_control_section",
+      "fieldtype": "Section Break",
+      "label": "Posting Controls"
+    },
+    {
+      "default": "0",
+      "description": "Reserved for a future automatic-posting phase. v0.52.3 does not automatically create Journal Entries.",
+      "fieldname": "auto_create_accounting_entries",
+      "fieldtype": "Check",
+      "label": "Auto Create Accounting Entries",
+      "hidden": 1
+    },
+    {
+      "default": "0",
+      "fieldname": "allow_posting_before_finance_audit",
+      "fieldtype": "Check",
+      "label": "Allow Posting Before Finance Audit",
+      "hidden": 1,
+      "description": "Legacy reserved field. Accounting posting requires Auto Cleared or Manually Cleared resolution."
+    },
+    {
+      "fieldname": "finance_review_section",
+      "fieldtype": "Section Break",
+      "label": "Finance Review Controls"
+    },
+    {
+      "default": "1",
+      "fieldname": "allow_bulk_finance_review",
+      "fieldtype": "Check",
+      "label": "Allow Bulk Finance Review"
+    },
+    {
+      "description": "Map Bank and Alhamrani aliases to one unified card type. Future aliases can be added here without code changes.",
+      "fieldname": "card_type_mapping_section",
+      "fieldtype": "Section Break",
+      "label": "Card Type Mapping"
+    },
+    {
+      "fieldname": "card_type_mappings",
+      "fieldtype": "Table",
+      "label": "Card Type Mappings",
+      "options": "POS Card Type Mapping"
+    },
+    {
+      "default": "0",
+      "description": "Master switch for manual Journal Entry posting of confirmed POS bank commission and VAT.",
+      "fieldname": "enable_accounting_posting",
+      "fieldtype": "Check",
+      "label": "Enable POS Accounting Posting"
+    },
+    {
+      "default": "1",
+      "description": "When enabled, all eligible POS Profiles in the reconciliation run can be included in one Journal Entry. Commission and VAT debit lines remain split by POS Profile Cost Center.",
+      "fieldname": "consolidate_pos_profiles_in_one_journal_entry",
+      "fieldtype": "Check",
+      "label": "Consolidate Multiple POS Profiles in One Journal Entry"
+    },
+    {
+      "default": "1",
+      "description": "When enabled, the Bank credit side is consolidated into two lines only: total Commission and total VAT. When disabled, separate Bank Commission and Bank VAT credit lines are created for each POS Profile.",
+      "fieldname": "consolidate_bank_entries",
+      "fieldtype": "Check",
+      "label": "Consolidate Bank Entries"
+    },
+    {
+      "default": "Draft",
+      "description": "Choose whether generated Journal Entries are saved as Draft for Finance review or submitted automatically.",
+      "fieldname": "journal_entry_creation_mode",
+      "fieldtype": "Select",
+      "label": "Journal Entry Creation Mode",
+      "options": "Draft\nSubmit",
+      "reqd": 1
+    },
+    {
+      "description": "Number of leading digits from POS Terminal ID used by the SNB statement REFERENCE value. Marina sample statements use 8.",
+      "fieldname": "bank_statement_section",
+      "fieldtype": "Section Break",
+      "label": "SNB Bank Statement Matching"
+    },
+    {
+      "default": "8",
+      "description": "Leading terminal digits used to compare POS terminal IDs with SNB statement REFERENCE values.",
+      "fieldname": "bank_statement_terminal_reference_length",
+      "fieldtype": "Int",
+      "label": "Bank Terminal Reference Length"
+    },
+    {
+      "default": "7",
+      "description": "Include POS reconciliations this many days before the statement From Date because SNB posting can occur after terminal reconciliation.",
+      "fieldname": "bank_statement_reconciliation_lookback_days",
+      "fieldtype": "Int",
+      "label": "POS Reconciliation Lookback Days"
+    },
+    {
+      "description": "Map SNB statement suffix codes to card type and statement component. Used only for POS settlement statement matching.",
+      "fieldname": "bank_statement_code_mappings",
+      "fieldtype": "Table",
+      "label": "Bank Statement Code Mappings",
+      "options": "POS Bank Statement Code Mapping"
+    }
+  ],
+  "permissions": [
+    {
+      "create": 1,
+      "delete": 0,
+      "read": 1,
+      "write": 1,
+      "role": "Accounts Manager"
+    },
+    {
+      "create": 1,
+      "delete": 1,
+      "read": 1,
+      "write": 1,
+      "role": "System Manager"
+    }
+  ],
+  "track_changes": 1
 }
