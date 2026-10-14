@@ -185,7 +185,7 @@ def _source_groups(
         limit_page_length=0,
     )
     if not bank_rows:
-        return {}, 0
+        return {}, 0, {}
 
     latest_map = _latest_reconciliation_rows_for_banks(
         [row.name for row in bank_rows]
