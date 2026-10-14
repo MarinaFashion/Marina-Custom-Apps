@@ -61,6 +61,7 @@ Central execution and validation layer for all controlled stock movements.
 
 - Controls **Send Stock**, **Receive Stock**, and **Transfer Between** transactions.
 - Applies role-based transfer permissions.
+- Shows `Warehouse.custom_warehouse_name_arabic` in Stock Entry warehouse selectors and supports English or Arabic search without relying on UI translations.
 - Validates Physical Warehouse ↔ Transit Warehouse routes.
 - Controls **Material Request → Stock Entry** execution.
 - Prevents users from changing the route defined by the Material Request.

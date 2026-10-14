@@ -23,6 +23,9 @@ from marina_custom_apps.stock_transfer_control.services.warehouse_policy import 
 
 
 
+ARABIC_WAREHOUSE_FIELD = "custom_warehouse_name_arabic"
+
+
 def _matches(text, txt):
     return not txt or txt.lower() in (text or "").lower()
 
@@ -31,6 +34,55 @@ def _slice(rows, start, page_len):
     start = int(start or 0)
     page_len = int(page_len or 20)
     return rows[start:start + page_len]
+
+
+def _warehouse_fields(*fieldnames):
+    fields = list(fieldnames)
+    if (
+        ARABIC_WAREHOUSE_FIELD not in fields
+        and frappe.get_meta("Warehouse").has_field(ARABIC_WAREHOUSE_FIELD)
+    ):
+        fields.append(ARABIC_WAREHOUSE_FIELD)
+    return fields
+
+
+def _matches_warehouse(row, txt):
+    return _matches(row.name, txt) or _matches(
+        row.get(ARABIC_WAREHOUSE_FIELD),
+        txt,
+    )
+
+
+def _warehouse_link_row(row):
+    return [
+        row.name,
+        row.get(ARABIC_WAREHOUSE_FIELD) or "",
+    ]
+
+
+def _warehouse_link_rows(rows, txt, start, page_len):
+    matches = [
+        _warehouse_link_row(row)
+        for row in rows
+        if _matches_warehouse(row, txt)
+    ]
+    return _slice(matches, start, page_len)
+
+
+def _get_allowed_warehouse_rows(user=None):
+    names = get_allowed_physical_warehouses(user)
+    if not names:
+        return []
+
+    rows = frappe.get_all(
+        "Warehouse",
+        filters={"name": ["in", names]},
+        fields=_warehouse_fields("name"),
+        order_by="name asc",
+        limit_page_length=0,
+    )
+    rows_by_name = {row.name: row for row in rows}
+    return [rows_by_name[name] for name in names if name in rows_by_name]
 
 
 @frappe.whitelist()
@@ -44,9 +96,8 @@ def search_source_warehouses(doctype, txt, searchfield, start, page_len, filters
         return []
 
     if role in {ROLE_SALES_SUPERVISOR, ROLE_WAREHOUSE_MANAGER}:
-        names = get_allowed_physical_warehouses()
-        names = [name for name in names if _matches(name, txt)]
-        return [[name] for name in _slice(names, start, page_len)]
+        rows = _get_allowed_warehouse_rows()
+        return _warehouse_link_rows(rows, txt, start, page_len)
 
     if role not in {ROLE_ADMINISTRATOR, ROLE_STOCK_MANAGER}:
         return []
@@ -54,19 +105,18 @@ def search_source_warehouses(doctype, txt, searchfield, start, page_len, filters
     rows = frappe.get_all(
         "Warehouse",
         filters={"disabled": 0, "is_group": 0},
-        fields=["name", "warehouse_type"],
+        fields=_warehouse_fields("name", "warehouse_type"),
         order_by="name asc",
         limit_page_length=0,
     )
 
-    names = []
+    valid = []
     for row in rows:
         if stock_entry_type == TYPE_SEND_STOCK and row.warehouse_type == "Transit":
             continue
-        if _matches(row.name, txt):
-            names.append(row.name)
+        valid.append(row)
 
-    return [[name] for name in _slice(names, start, page_len)]
+    return _warehouse_link_rows(valid, txt, start, page_len)
 
 
 @frappe.whitelist()
@@ -97,7 +147,7 @@ def search_target_warehouses(doctype, txt, searchfield, start, page_len, filters
                 "warehouse_type": "Transit",
                 "company": source.company,
             },
-            fields=["name"],
+            fields=_warehouse_fields("name"),
             order_by="name asc",
             limit_page_length=0,
         )
@@ -110,10 +160,9 @@ def search_target_warehouses(doctype, txt, searchfield, start, page_len, filters
                 validate_transit_warehouse(row.name)
             except Exception:
                 continue
-            if _matches(row.name, txt):
-                valid.append(row.name)
+            valid.append(row)
 
-        return [[name] for name in _slice(valid, start, page_len)]
+        return _warehouse_link_rows(valid, txt, start, page_len)
 
     if stock_entry_type == TYPE_TRANSFER_BETWEEN:
         source = frappe.db.get_value(
@@ -132,7 +181,7 @@ def search_target_warehouses(doctype, txt, searchfield, start, page_len, filters
                 "is_group": 0,
                 "company": source.company,
             },
-            fields=["name", "warehouse_type"],
+            fields=_warehouse_fields("name", "warehouse_type"),
             order_by="name asc",
             limit_page_length=0,
         )
@@ -154,10 +203,9 @@ def search_target_warehouses(doctype, txt, searchfield, start, page_len, filters
             else:
                 return []
 
-            if _matches(row.name, txt):
-                valid.append(row.name)
+            valid.append(row)
 
-        return [[name] for name in _slice(valid, start, page_len)]
+        return _warehouse_link_rows(valid, txt, start, page_len)
 
     return []
 
