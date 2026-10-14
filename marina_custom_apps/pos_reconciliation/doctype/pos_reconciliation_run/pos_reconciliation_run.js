@@ -433,6 +433,7 @@ function pos_recon_render_results(frm, $wrapper, data) {
         pos_recon_load_filter_options(frm).then(()=>pos_recon_load_results(frm));
     });
 
+    pos_recon_init_searchable_filters($wrapper, state.options || {}, state);
     pos_recon_bind_result_filters(frm,$wrapper,data,is_bank_only,can_review);
 
     pos_recon_bind_search($wrapper, (value) => {
@@ -505,14 +506,61 @@ function pos_recon_result_filters(state, options, is_bank_only, summary, can_rev
       <div class="pos-recon-bank-filter-grid">
         <div><label>${__("From Date")}</label><input type="date" class="form-control input-xs pos-recon-filter-from-date" value="${pos_recon_escape(state.from_date)}"></div>
         <div><label>${__("To Date")}</label><input type="date" class="form-control input-xs pos-recon-filter-to-date" value="${pos_recon_escape(state.to_date)}"></div>
-        <div><label>${__("Settlement Number")}</label><select class="form-control input-xs pos-recon-filter-settlement">${pos_recon_select_options(options.settlement_numbers||[],state.settlement_number,__("All"))}</select></div>
-        <div><label>${__("POS Profile")}</label><select class="form-control input-xs pos-recon-filter-profile">${pos_recon_select_options(options.pos_profiles||[],state.pos_profile,__("All"))}</select></div>
-        <div><label>${__("Terminal ID")}</label><select class="form-control input-xs pos-recon-filter-terminal">${pos_recon_select_options(options.terminal_ids||[],state.terminal_id,__("All"))}</select></div>
+        <div><label>${__("Settlement Number")}</label><div class="pos-recon-searchable-filter pos-recon-filter-settlement"></div></div>
+        <div><label>${__("POS Profile")}</label><div class="pos-recon-searchable-filter pos-recon-filter-profile"></div></div>
+        <div><label>${__("Terminal ID")}</label><div class="pos-recon-searchable-filter pos-recon-filter-terminal"></div></div>
         <div><label>${__("Card Type")}</label><select class="form-control input-xs pos-recon-filter-card">${pos_recon_select_options(options.card_types||[],state.card_type,__("All"))}</select></div>
         ${ledger_fields}${finance_fields}
         <div class="pos-recon-filter-actions"><button class="btn btn-xs btn-primary pos-recon-apply-bank-filters">${__("Apply Filters")}</button><button class="btn btn-xs btn-default pos-recon-clear-bank-filters">${__("Clear")}</button></div>
       </div>${summary_html}${actions}</div>`;
 }
+
+function pos_recon_autocomplete_options(values) {
+    return (values || []).map((value) => ({
+        label: String(value),
+        value: String(value),
+    }));
+}
+
+function pos_recon_make_searchable_filter($w, selector, values, current) {
+    const $host = $w.find(selector);
+    if (!$host.length) return null;
+
+    const normalized = (values || []).map(String);
+    const wanted = current && normalized.includes(String(current)) ? String(current) : "";
+
+    $host.empty();
+    const control = frappe.ui.form.make_control({
+        parent: $host,
+        df: {
+            fieldtype: "Autocomplete",
+            fieldname: selector.replace(/[^a-z0-9]+/gi, "_"),
+            placeholder: __("All"),
+            options: pos_recon_autocomplete_options(normalized),
+        },
+        render_input: true,
+    });
+    control.set_value(wanted);
+    control.$input.addClass("input-xs");
+    $host.data("pos-recon-control", control);
+    return control;
+}
+
+function pos_recon_init_searchable_filters($w, options, state) {
+    pos_recon_make_searchable_filter($w, ".pos-recon-filter-settlement", options.settlement_numbers, state.settlement_number);
+    pos_recon_make_searchable_filter($w, ".pos-recon-filter-profile", options.pos_profiles, state.pos_profile);
+    pos_recon_make_searchable_filter($w, ".pos-recon-filter-terminal", options.terminal_ids, state.terminal_id);
+}
+
+function pos_recon_searchable_value($w, selector) {
+    const control = $w.find(selector).data("pos-recon-control");
+    return control ? (control.get_value() || "") : "";
+}
+
+function pos_recon_update_searchable($w, selector, values, current) {
+    return pos_recon_make_searchable_filter($w, selector, values || [], current || "");
+}
+
 
 function pos_recon_select_options(values, current, all_label) {
     const items = [`<option value="">${pos_recon_escape(all_label || __("All"))}</option>`];
@@ -530,18 +578,18 @@ function pos_recon_option(value, current) {
 
 function pos_recon_read_controls($w,is_bank,state){
     return {status:state.status||"All",from_date:$w.find(".pos-recon-filter-from-date").val()||"",
-      to_date:$w.find(".pos-recon-filter-to-date").val()||"",settlement_number:$w.find(".pos-recon-filter-settlement").val()||"",
-      settlement_date:state.settlement_date||"",pos_profile:$w.find(".pos-recon-filter-profile").val()||"",
-      terminal_id:$w.find(".pos-recon-filter-terminal").val()||"",card_type:$w.find(".pos-recon-filter-card").val()||"",
+      to_date:$w.find(".pos-recon-filter-to-date").val()||"",settlement_number:pos_recon_searchable_value($w,".pos-recon-filter-settlement"),
+      settlement_date:state.settlement_date||"",pos_profile:pos_recon_searchable_value($w,".pos-recon-filter-profile"),
+      terminal_id:pos_recon_searchable_value($w,".pos-recon-filter-terminal"),card_type:$w.find(".pos-recon-filter-card").val()||"",
       ledger_posting_status:$w.find(".pos-recon-filter-ledger").val()||"",accounting_status:$w.find(".pos-recon-filter-accounting").val()||"",
       finance_review_status:is_bank?($w.find(".pos-recon-filter-finance").val()||""):"",
       before_integration:is_bank?($w.find(".pos-recon-filter-before").val()||"All"):"All"};
 }
 function pos_recon_update_select($w,selector,values,current){const $f=$w.find(selector);if($f.length)$f.html(pos_recon_select_options(values||[],current||"",__("All")));}
 function pos_recon_update_cascade($w,o,d,is_bank){
-    pos_recon_update_select($w,".pos-recon-filter-settlement",o.settlement_numbers,d.settlement_number);
-    pos_recon_update_select($w,".pos-recon-filter-profile",o.pos_profiles,d.pos_profile);
-    pos_recon_update_select($w,".pos-recon-filter-terminal",o.terminal_ids,d.terminal_id);
+    pos_recon_update_searchable($w,".pos-recon-filter-settlement",o.settlement_numbers,d.settlement_number);
+    pos_recon_update_searchable($w,".pos-recon-filter-profile",o.pos_profiles,d.pos_profile);
+    pos_recon_update_searchable($w,".pos-recon-filter-terminal",o.terminal_ids,d.terminal_id);
     pos_recon_update_select($w,".pos-recon-filter-card",o.card_types,d.card_type);
     pos_recon_update_select($w,".pos-recon-filter-ledger",o.ledger_posting_statuses,d.ledger_posting_status);
     pos_recon_update_select($w,".pos-recon-filter-accounting",o.accounting_statuses,d.accounting_status);
@@ -563,7 +611,7 @@ function pos_recon_update_cascade($w,o,d,is_bank){
 
 function pos_recon_bind_result_filters(frm,$wrapper,data,is_bank_only,can_review){
     const state=frm.__pos_recon_review.results;let timer=null;
-    $wrapper.find(".pos-recon-bank-filter-grid select,.pos-recon-bank-filter-grid input[type='date']").on("change",()=>{
+    $wrapper.off("change.posreconfilters").on("change.posreconfilters", ".pos-recon-bank-filter-grid select,.pos-recon-bank-filter-grid input[type='date'],.pos-recon-searchable-filter input",()=>{
         clearTimeout(timer);timer=setTimeout(()=>{
             const draft=pos_recon_read_controls($wrapper,is_bank_only,state);
             pos_recon_load_filter_options(frm,draft,false,false).then(o=>pos_recon_update_cascade($wrapper,o,draft,is_bank_only));
@@ -907,6 +955,20 @@ function pos_recon_open_accounting_dialog(frm) {
         frappe.prompt(
             [
                 {
+                    fieldname: "transaction_from_date",
+                    fieldtype: "Date",
+                    label: __("Transaction From Date"),
+                    default: options.transaction_from_date || frm.doc.from_date,
+                    reqd: 1,
+                },
+                {
+                    fieldname: "transaction_to_date",
+                    fieldtype: "Date",
+                    label: __("Transaction To Date"),
+                    default: options.transaction_to_date || frm.doc.to_date,
+                    reqd: 1,
+                },
+                {
                     fieldname: "posting_date",
                     fieldtype: "Date",
                     label: __("Posting Date"),
@@ -933,6 +995,8 @@ function pos_recon_open_accounting_dialog(frm) {
                     args: {
                         run_name: frm.doc.name,
                         posting_date: values.posting_date,
+                        from_date: values.transaction_from_date,
+                        to_date: values.transaction_to_date,
                     },
                     freeze: true,
                     freeze_message: __("Preparing accounting preview..."),
@@ -942,10 +1006,12 @@ function pos_recon_open_accounting_dialog(frm) {
                         ? __("The generated Journal Entry/Entries will be submitted automatically.")
                         : __("The generated Journal Entry/Entries will be saved as Draft for Finance review.");
                     const message = __(
-                        "Create {0} Journal Entry/Entries for {1} confirmed transactions using Posting Date {2}?<br><br>POS Profiles: {3}<br>Bank Commission: {4}<br>VAT: {5}<br>Total Bank Credit: {6}<br><br>{7}",
+                        "Create {0} Journal Entry/Entries for {1} confirmed transactions dated {2} to {3}, using Posting Date {4}?<br><br>POS Profiles: {5}<br>Bank Commission: {6}<br>VAT: {7}<br>Total Bank Credit: {8}<br><br>{9}",
                         [
                             preview.journal_entry_count || 0,
                             preview.transaction_count || 0,
+                            preview.transaction_from_date || values.transaction_from_date,
+                            preview.transaction_to_date || values.transaction_to_date,
                             preview.posting_date || values.posting_date,
                             preview.pos_profile_count || 0,
                             pos_recon_money(preview.commission),
@@ -961,6 +1027,8 @@ function pos_recon_open_accounting_dialog(frm) {
                             args: {
                                 run_name: frm.doc.name,
                                 posting_date: values.posting_date,
+                                from_date: values.transaction_from_date,
+                                to_date: values.transaction_to_date,
                             },
                             freeze: true,
                             freeze_message: auto_submit
