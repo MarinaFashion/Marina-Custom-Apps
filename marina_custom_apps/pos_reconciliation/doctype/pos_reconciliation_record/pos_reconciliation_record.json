@@ -230,7 +230,7 @@
       "in_list_view": 1,
       "in_standard_filter": 1,
       "label": "Match Status",
-      "options": "Matching\nDiscrepancy\nBank Only\nAlhamrani Only",
+      "options": "Fully Matching\nMatching Not Settled\nDiscrepancy\nBank Only\nAlhamrani Only",
       "read_only": 1
     },
     {
@@ -239,7 +239,7 @@
       "in_list_view": 1,
       "in_standard_filter": 1,
       "label": "Resolution Status",
-      "options": "Auto Cleared\nPending\nManually Cleared",
+      "options": "Auto Cleared\nOne Side Matching\nPending\nManually Cleared",
       "read_only": 1
     },
     {
@@ -312,8 +312,8 @@
     {
       "fieldname": "bank_statement_reconciliation",
       "fieldtype": "Link",
-      "label": "Bank Statement Reconciliation",
-      "options": "POS Bank Statement Reconciliation",
+      "label": "POS Reconciliation Run",
+      "options": "POS Reconciliation Run",
       "read_only": 1,
       "in_standard_filter": 1,
       "search_index": 1
@@ -334,7 +334,7 @@
     {
       "fieldname": "bank_statement_references",
       "fieldtype": "Small Text",
-      "label": "Bank Statement Transactions",
+      "label": "Statement Transactions",
       "read_only": 1
     },
     {
