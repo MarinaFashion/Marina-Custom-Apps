@@ -472,22 +472,29 @@ def _update_record_bank_statement_confirmation(
         settlement = settlements.get(key)
         references = sorted(set(statement_evidence.get(key) or []))
         has_statement = bool(references)
+        included_records = {
+            row.reconciliation_record
+            for row in (settlement.transactions if settlement else [])
+            if row.reconciliation_record
+        }
 
-        if settlement and settlement.status == "Fully Reconciled":
-            status = "Fully Reconciled"
-        elif settlement and has_statement:
-            status = "Exception"
-        elif has_statement:
-            status = "Statement Found"
-        else:
-            status = "Not Found"
+        for record_name in record_names:
+            included = record_name in included_records
+            if included and settlement.status == "Fully Reconciled":
+                status = "Fully Reconciled"
+            elif included and has_statement:
+                status = "Exception"
+            elif has_statement:
+                status = "Statement Found"
+            else:
+                status = "Not Found"
 
-        update_key = (
-            status,
-            settlement.name if settlement else None,
-            ", ".join(references),
-        )
-        updates[update_key].extend(record_names)
+            update_key = (
+                status,
+                settlement.name if included and settlement else None,
+                ", ".join(references),
+            )
+            updates[update_key].append(record_name)
 
     for (status, settlement_name, references), record_names in updates.items():
         for chunk in _chunks(list(dict.fromkeys(record_names))):
