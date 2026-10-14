@@ -69,12 +69,6 @@ def _review_record_rows(record_names, require_pending=False):
     if invalid:
         frappe.throw(_("Finance review actions are allowed only for Bank Only records."))
 
-    not_settled = [row.name for row in rows if row.bank_statement_status != "Fully Reconciled"]
-    if not_settled:
-        frappe.throw(
-            _("Bank Only transactions can be manually cleared only after their POS settlement is Fully Reconciled to the bank statement.")
-        )
-
     if require_pending:
         not_pending = [row.name for row in rows if row.resolution_status != "Pending"]
         if not_pending:
@@ -83,6 +77,14 @@ def _review_record_rows(record_names, require_pending=False):
     _validate_one_settlement_group(rows)
     return rows
 
+
+
+def _ensure_statement_confirmed(rows):
+    not_settled = [row.name for row in rows if row.bank_statement_status != "Fully Reconciled"]
+    if not_settled:
+        frappe.throw(
+            _("Bank Only transactions can be manually cleared only after their POS settlement is Fully Reconciled to the bank statement.")
+        )
 
 
 def _ensure_runs_open(rows):
@@ -272,6 +274,7 @@ def _filtered_bank_only_rows(
     finance_review_status=None,
     bank_statement_status=None,
     accounting_status=None,
+    require_statement_confirmed=False,
     ledger_posting_status=None,
     before_integration=None,
     search=None,
@@ -287,8 +290,9 @@ def _filtered_bank_only_rows(
         "run": run_name,
         "match_status": "Bank Only",
         "resolution_status": "Pending",
-        "bank_statement_status": "Fully Reconciled",
     }
+    if require_statement_confirmed:
+        filters["bank_statement_status"] = "Fully Reconciled"
     if settlement_number:
         filters["settlement_number"] = settlement_number
 
@@ -308,6 +312,7 @@ def _filtered_bank_only_rows(
         "terminal_id": terminal_id,
         "card_type": card_type,
         "finance_review_status": finance_review_status,
+        "bank_statement_status": None if require_statement_confirmed else bank_statement_status,
     }.items():
         value = cstr(value).strip()
         if value:
@@ -356,6 +361,8 @@ def review_selected_records(record_names, decision, note=None):
     _ensure_bulk_review_allowed()
     rows = _review_record_rows(record_names, require_pending=True)
     _ensure_runs_open(rows)
+    if cstr(decision).strip() == FINANCE_APPROVED:
+        _ensure_statement_confirmed(rows)
     return review_bank_transactions([row.bank_transaction for row in rows], decision, note)
 
 
@@ -401,6 +408,7 @@ def review_filtered_bank_only(
         finance_review_status=finance_review_status,
         bank_statement_status=bank_statement_status,
         accounting_status=accounting_status,
+        require_statement_confirmed=(cstr(decision).strip() == FINANCE_APPROVED),
         ledger_posting_status=ledger_posting_status,
         before_integration=before_integration,
         search=search,
