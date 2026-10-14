@@ -187,11 +187,18 @@ def _normalize_row(import_doc, row_number, raw, header_map):
     )
     parsed = parse_pos_statement_text(text)
 
+    gl_account = frappe.db.get_value("Bank Account", import_doc.bank_account, "account")
+    currency = (
+        frappe.db.get_value("Account", gl_account, "account_currency")
+        if gl_account
+        else None
+    ) or "SAR"
+
     values.update(
         source_row_no=row_number,
         statement_import=import_doc.name,
         bank_account=import_doc.bank_account,
-        currency=frappe.db.get_value("Bank Account", import_doc.bank_account, "account_currency") or "SAR",
+        currency=currency,
         is_pos_statement_line=1 if parsed else 0,
         statement_code=parsed.statement_code if parsed else None,
         component=parsed.component if parsed else None,
