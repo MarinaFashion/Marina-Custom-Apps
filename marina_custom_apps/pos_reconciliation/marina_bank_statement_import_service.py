@@ -150,6 +150,7 @@ def _source_key(bank_account, row):
             cstr(row.get("reference_number")).strip(),
             f'{flt(row.get("debit"), 2):.2f}',
             f'{flt(row.get("credit"), 2):.2f}',
+            f'{flt(row.get("balance"), 2):.2f}',
             cstr(row.get("transaction_description")).strip(),
             cstr(row.get("description")).strip(),
             cstr(row.get("description_extra")).strip(),
