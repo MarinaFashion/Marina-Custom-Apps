@@ -5,7 +5,7 @@ from collections import defaultdict
 
 import frappe
 from frappe import _
-from frappe.utils import cstr, flt, getdate, now_datetime
+from frappe.utils import add_days, cstr, flt, getdate, now_datetime
 
 from marina_custom_apps.pos_reconciliation.accounting_service import (
     is_reconciliation_confirmed,
@@ -39,6 +39,19 @@ def terminal_bank_reference(terminal_id, length):
         return cstr(terminal_id).strip()
     length = max(int(length or 8), 1)
     return digits[:length]
+
+
+def parse_statement_reconciliation_date(value):
+    value = cstr(value).strip()
+    if not re.fullmatch(r"\d{6}", value):
+        return None
+    year = 2000 + int(value[0:2])
+    month = int(value[2:4])
+    day = int(value[4:6])
+    try:
+        return getdate(f"{year:04d}-{month:02d}-{day:02d}")
+    except Exception:
+        return None
 
 
 def _mapping_rows():
@@ -75,10 +88,20 @@ def parse_pos_statement_text(text, mappings=None):
         return None
 
     code, card_type, component = chosen
+    code_date_match = re.search(rf"\b{re.escape(code)}(\d{{6}})\b", upper)
+    reconciliation_date = (
+        parse_statement_reconciliation_date(code_date_match.group(1))
+        if code_date_match
+        else None
+    )
+    if not reconciliation_date:
+        return None
+
     return frappe._dict(
         settlement_number=normalize_settlement_number(recon_match.group(1)),
         bank_terminal_reference=normalize_terminal_reference(reference_match.group(1)),
         statement_code=code,
+        reconciliation_date=reconciliation_date,
         card_type=card_type,
         component=component,
     )
@@ -90,114 +113,115 @@ def _chunks(values, size=500):
         yield values[start : start + size]
 
 
-def _latest_reconciliation_rows(from_date, to_date):
-    """Read only the latest reconciliation evidence for each Bank POS transaction.
-
-    A window query avoids loading duplicate historical/rerun records into Python.
-    transaction_date is indexed in the reconciliation record schema.
-    """
-    return frappe.db.sql(
-        f"""
-        WITH ranked AS (
-            SELECT
-                name,
-                bank_transaction,
-                transaction_date,
-                pos_profile,
-                terminal_id,
-                card_type,
-                match_status,
-                resolution_status,
-                last_reconciled_on,
-                modified,
-                ROW_NUMBER() OVER (
-                    PARTITION BY bank_transaction
-                    ORDER BY
-                        COALESCE(last_reconciled_on, modified) DESC,
-                        modified DESC,
-                        name DESC
-                ) AS row_rank
-            FROM `tab{RECORD_DOCTYPE}`
-            WHERE transaction_date BETWEEN %s AND %s
-              AND bank_transaction IS NOT NULL
-              AND bank_transaction != ''
-        )
-        SELECT
-            name,
-            bank_transaction,
-            transaction_date,
-            pos_profile,
-            terminal_id,
-            card_type,
-            match_status,
-            resolution_status,
-            last_reconciled_on,
-            modified
-        FROM ranked
-        WHERE row_rank = 1
-        """,
-        (from_date, to_date),
-        as_dict=True,
-    )
-
-
-def _source_groups(bank_account, from_date, to_date, terminal_ref_length):
-    latest_rows = _latest_reconciliation_rows(from_date, to_date)
-    confirmed = [
-        row
-        for row in latest_rows
-        if is_reconciliation_confirmed(row.match_status, row.resolution_status)
-    ]
-    if not confirmed:
-        return {}, 0
-
-    bank_names = [row.bank_transaction for row in confirmed if row.bank_transaction]
-    bank_map = {}
+def _latest_reconciliation_rows_for_banks(bank_names):
+    latest = {}
     for chunk in _chunks(bank_names):
-        for row in frappe.get_all(
-            BANK_POS_DOCTYPE,
-            filters={"name": ["in", chunk]},
+        rows = frappe.get_all(
+            RECORD_DOCTYPE,
+            filters={"bank_transaction": ["in", chunk]},
             fields=[
                 "name",
-                "transaction_status",
-                "transaction_amount",
-                "fee_amount",
-                "vat_amount",
-                "settlement_number",
-                "settlement_date",
+                "bank_transaction",
+                "transaction_date",
                 "pos_profile",
                 "terminal_id",
+                "card_type",
+                "match_status",
+                "resolution_status",
+                "last_reconciled_on",
+                "modified",
             ],
+            order_by=(
+                "bank_transaction asc, "
+                "last_reconciled_on desc, modified desc, name desc"
+            ),
             limit_page_length=0,
-        ):
-            bank_map[row.name] = row
+        )
+        for row in rows:
+            if row.bank_transaction and row.bank_transaction not in latest:
+                latest[row.bank_transaction] = row
+    return latest
+
+
+def _source_groups(
+    bank_account,
+    from_date,
+    to_date,
+    terminal_ref_length,
+    reconciliation_lookback_days,
+):
+    source_from_date = add_days(from_date, -abs(int(reconciliation_lookback_days or 0)))
+    bank_rows = frappe.get_all(
+        BANK_POS_DOCTYPE,
+        filters={
+            "balance_date": ["between", [source_from_date, to_date]],
+            "transaction_status": ["in", ["Approved", "APPROVED"]],
+        },
+        fields=[
+            "name",
+            "transaction_status",
+            "transaction_amount",
+            "fee_amount",
+            "vat_amount",
+            "settlement_number",
+            "settlement_date",
+            "pos_profile",
+            "terminal_id",
+            "balance_date",
+            "card_type",
+        ],
+        order_by="balance_date asc, name asc",
+        limit_page_length=0,
+    )
+    if not bank_rows:
+        return {}, 0
+
+    latest_map = _latest_reconciliation_rows_for_banks(
+        [row.name for row in bank_rows]
+    )
 
     groups = defaultdict(list)
     missing_settlement = 0
-    for record in confirmed:
-        bank = bank_map.get(record.bank_transaction)
-        if not bank:
+    for bank in bank_rows:
+        record = latest_map.get(bank.name)
+        if not record:
             continue
-        if cstr(bank.transaction_status).strip().upper() != "APPROVED":
+        if not is_reconciliation_confirmed(
+            record.match_status,
+            record.resolution_status,
+        ):
             continue
 
         settlement_number = normalize_settlement_number(bank.settlement_number)
         terminal_id = cstr(bank.terminal_id or record.terminal_id).strip()
-        card_type = cstr(record.card_type).strip().upper()
-        if not settlement_number:
-            missing_settlement += 1
-            continue
-        if not terminal_id or not card_type:
+        card_type = cstr(record.card_type or bank.card_type).strip().upper()
+        reconciliation_date = getdate(bank.balance_date) if bank.balance_date else None
+
+        if (
+            not settlement_number
+            or not terminal_id
+            or not card_type
+            or not reconciliation_date
+        ):
             missing_settlement += 1
             continue
 
         ref = terminal_bank_reference(terminal_id, terminal_ref_length)
-        key = "|".join([bank_account, settlement_number, ref, card_type])
+        key = "|".join(
+            [
+                bank_account,
+                settlement_number,
+                ref,
+                cstr(reconciliation_date),
+                card_type,
+            ]
+        )
         groups[key].append(
             frappe._dict(
                 reconciliation_record=record.name,
                 bank_pos_transaction=bank.name,
                 transaction_date=record.transaction_date,
+                reconciliation_date=reconciliation_date,
                 pos_profile=bank.pos_profile or record.pos_profile,
                 terminal_id=terminal_id,
                 bank_terminal_reference=ref,
@@ -210,6 +234,7 @@ def _source_groups(bank_account, from_date, to_date, terminal_ref_length):
             )
         )
     return groups, missing_settlement
+
 
 
 def _load_or_create_settlement(reconciliation_run, bank_account, key, rows):
@@ -228,6 +253,7 @@ def _load_or_create_settlement(reconciliation_run, bank_account, key, rows):
     doc.reconciliation_run = reconciliation_run
     doc.settlement_key = key
     doc.settlement_number = first.settlement_number
+    doc.reconciliation_date = first.reconciliation_date
     doc.settlement_date = max(settlement_dates) if settlement_dates else None
     doc.bank_account = bank_account
     doc.pos_profile = next(iter(profiles)) if len(profiles) == 1 else None
@@ -256,6 +282,7 @@ def _load_or_create_settlement(reconciliation_run, bank_account, key, rows):
                 "reconciliation_record": row.reconciliation_record,
                 "bank_pos_transaction": row.bank_pos_transaction,
                 "transaction_date": row.transaction_date,
+                "reconciliation_date": row.reconciliation_date,
                 "pos_profile": row.pos_profile,
                 "terminal_id": row.terminal_id,
                 "card_type": row.card_type,
@@ -416,6 +443,9 @@ def execute_statement_reconciliation(run_doc):
 
     settings = frappe.get_single(SETTINGS_DOCTYPE)
     terminal_ref_length = settings.get("bank_statement_terminal_reference_length") or 8
+    reconciliation_lookback_days = (
+        settings.get("bank_statement_reconciliation_lookback_days") or 7
+    )
     mappings = _mapping_rows()
     if not mappings:
         frappe.throw(
@@ -429,6 +459,7 @@ def execute_statement_reconciliation(run_doc):
         from_date,
         to_date,
         terminal_ref_length,
+        reconciliation_lookback_days,
     )
 
     settlements = {}
@@ -443,6 +474,7 @@ def execute_statement_reconciliation(run_doc):
             (
                 normalize_settlement_number(doc.settlement_number),
                 normalize_terminal_reference(doc.bank_terminal_reference),
+                getdate(doc.reconciliation_date) if doc.reconciliation_date else None,
                 cstr(doc.card_type).strip().upper(),
             )
         ] = doc
@@ -461,6 +493,7 @@ def execute_statement_reconciliation(run_doc):
         key = (
             parsed.settlement_number,
             parsed.bank_terminal_reference,
+            getdate(parsed.reconciliation_date),
             parsed.card_type,
         )
         settlement = settlements.get(key)
