@@ -246,6 +246,27 @@ def _load_or_create_settlement(reconciliation_run, bank_account, key, rows):
 
 
 def _statement_rows(bank_account, from_date, to_date):
+    fields = [
+        "name",
+        "date",
+        "description",
+        "reference_number",
+        "transaction_type",
+        "bank_party_name",
+        "deposit",
+        "withdrawal",
+        "status",
+    ]
+    meta = frappe.get_meta(STANDARD_BANK_DOCTYPE)
+    for fieldname in (
+        "custom_description_extra",
+        "description_extra",
+        "custom_remarks",
+        "remarks",
+    ):
+        if meta.has_field(fieldname):
+            fields.append(fieldname)
+
     return frappe.get_all(
         STANDARD_BANK_DOCTYPE,
         filters={
@@ -253,31 +274,26 @@ def _statement_rows(bank_account, from_date, to_date):
             "date": ["between", [from_date, to_date]],
             "docstatus": 1,
         },
-        fields=[
-            "name",
-            "date",
-            "description",
-            "reference_number",
-            "transaction_type",
-            "bank_party_name",
-            "deposit",
-            "withdrawal",
-            "status",
-        ],
+        fields=fields,
         order_by="date asc, name asc",
         limit_page_length=0,
     )
 
 
 def _statement_text(row):
+    values = [
+        row.get("description"),
+        row.get("custom_description_extra"),
+        row.get("description_extra"),
+        row.get("reference_number"),
+        row.get("transaction_type"),
+        row.get("bank_party_name"),
+        row.get("custom_remarks"),
+        row.get("remarks"),
+    ]
     return " ".join(
         cstr(value).strip()
-        for value in [
-            row.description,
-            row.reference_number,
-            row.transaction_type,
-            row.bank_party_name,
-        ]
+        for value in values
         if cstr(value).strip()
     )
 
