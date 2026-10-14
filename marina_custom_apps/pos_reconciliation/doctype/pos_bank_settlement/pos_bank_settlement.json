@@ -13,6 +13,7 @@
     "reconciliation_run",
     "settlement_key",
     "settlement_number",
+    "reconciliation_date",
     "settlement_date",
     "identity_column_break",
     "bank_account",
@@ -68,6 +69,14 @@
       "fieldname": "settlement_number",
       "fieldtype": "Data",
       "label": "Settlement Number",
+      "read_only": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "reconciliation_date",
+      "fieldtype": "Date",
+      "label": "Reconciliation Date",
       "read_only": 1,
       "in_list_view": 1,
       "in_standard_filter": 1
