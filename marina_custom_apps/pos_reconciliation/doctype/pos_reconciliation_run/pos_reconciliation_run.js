@@ -44,11 +44,19 @@ frappe.ui.form.on("POS Reconciliation Run", {
 
         frm.add_custom_button(__("All Records"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name}), __("View"));
         frm.add_custom_button(__("All Pending"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,resolution_status:"Pending"}), __("View"));
-        frm.add_custom_button(__("Matching"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Matching"}), __("View"));
+        frm.add_custom_button(__("Fully Matching"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Fully Matching"}), __("View"));
+        frm.add_custom_button(__("Matching Not Settled"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Matching Not Settled"}), __("View"));
         frm.add_custom_button(__("Discrepancies"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Discrepancy"}), __("View"));
         frm.add_custom_button(__("Bank Pending"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Bank Only",resolution_status:"Pending"}), __("View"));
         frm.add_custom_button(__("Marina Pending"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Alhamrani Only",resolution_status:"Pending"}), __("View"));
         frm.add_custom_button(__("Manually Cleared"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,resolution_status:"Manually Cleared"}), __("View"));
+        frm.add_custom_button(__("Bank Statement Imports"), () => frappe.set_route("List","Marina Bank Statement Import"), __("View"));
+        frm.add_custom_button(__("Unreconciled Statement Transactions"), () => {
+            const filters = {reconciliation_status:"Unreconciled"};
+            if (frm.doc.bank_account) filters.bank_account = frm.doc.bank_account;
+            frappe.set_route("List","Marina Bank Statement Transaction",filters);
+        }, __("View"));
+        frm.add_custom_button(__("Import Bank Statement"), () => frappe.new_doc("Marina Bank Statement Import", {bank_account:frm.doc.bank_account || ""}), __("Bank Statement"));
         frm.add_custom_button(__("Reconciliation Settings"), () => frappe.set_route("Form","POS Reconciliation Settings","POS Reconciliation Settings"), __("View"));
 
         if (has_results && ["Open","Closed"].includes(lifecycle)) {
@@ -320,9 +328,14 @@ function pos_recon_render_results(frm, $wrapper, data) {
     const can_review = is_bank_only && frm.doc.status === "Open";
     const counts = state.status_counts || {};
     const statuses = [
-        ["All",__("All"),cint(counts["All"]||0)],["Matching",__("Matching"),cint(counts["Matching"]||0)],
-        ["Discrepancy",__("Discrepancies"),cint(counts["Discrepancy"]||0)],["Bank Pending",__("Bank Pending"),cint(counts["Bank Pending"]||0)],
-        ["Marina Pending",__("Marina Pending"),cint(counts["Marina Pending"]||0)],["Manually Cleared",__("Manually Cleared"),cint(counts["Manually Cleared"]||0)],
+        ["All",__("All"),cint(counts["All"]||0)],
+        ["Fully Matching",__("Fully Matching"),cint(counts["Fully Matching"]||0)],
+        ["Matching Not Settled",__("Matching Not Settled"),cint(counts["Matching Not Settled"]||0)],
+        ["Discrepancy",__("Discrepancies"),cint(counts["Discrepancy"]||0)],
+        ["Bank Pending",__("Bank Pending"),cint(counts["Bank Pending"]||0)],
+        ["Marina Pending",__("Alhamrani Pending"),cint(counts["Marina Pending"]||0)],
+        ["Manually Cleared",__("Manually Cleared"),cint(counts["Manually Cleared"]||0)],
+        ["One Side Matching",__("One Side Matching"),cint(counts["One Side Matching"]||0)],
         ["All Pending",__("All Pending"),cint(counts["All Pending"]||0)],
     ];
 
@@ -855,14 +868,26 @@ function pos_recon_money(value) {
 
 function pos_recon_status_pill(status) {
     const value = status || "";
-    const color = { "Matching": "green", "Discrepancy": "orange", "Bank Only": "red", "Alhamrani Only": "red" }[value] || "gray";
+    const color = {
+        "Fully Matching": "green",
+        "Matching Not Settled": "blue",
+        "Matching": "blue",
+        "Discrepancy": "orange",
+        "Bank Only": "red",
+        "Alhamrani Only": "red",
+    }[value] || "gray";
     return `<span class="indicator-pill ${color}">${pos_recon_escape(value || "—")}</span>`;
 }
 
 
 function pos_recon_resolution_pill(status) {
     const value = status || "";
-    const color = { "Auto Cleared": "green", "Pending": "orange", "Manually Cleared": "blue" }[value] || "gray";
+    const color = {
+        "Auto Cleared": "green",
+        "One Side Matching": "blue",
+        "Pending": "orange",
+        "Manually Cleared": "blue",
+    }[value] || "gray";
     return `<span class="indicator-pill ${color}">${pos_recon_escape(value || "—")}</span>`;
 }
 
@@ -881,14 +906,14 @@ function pos_recon_bank_statement_cell(row) {
         .split(",")
         .map((value) => value.trim())
         .filter(Boolean);
-    const ref_links = refs.slice(0, 3).map((name) => pos_recon_doc_link("Bank Transaction", name));
+    const ref_links = refs.slice(0, 3).map((name) => pos_recon_doc_link("Marina Bank Statement Transaction", name));
     if (refs.length > 3) ref_links.push(__("+{0} more", [refs.length - 3]));
 
     const context = [];
     if (row.bank_statement_settlement) {
         context.push(pos_recon_doc_link("POS Bank Settlement", row.bank_statement_settlement));
     } else if (row.bank_statement_reconciliation) {
-        context.push(pos_recon_doc_link("POS Bank Statement Reconciliation", row.bank_statement_reconciliation));
+        context.push(pos_recon_doc_link("POS Reconciliation Run", row.bank_statement_reconciliation));
     }
     if (ref_links.length) context.push(ref_links.join(", "));
 
