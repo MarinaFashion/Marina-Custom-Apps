@@ -11,14 +11,16 @@ DEFAULT_PAGE_LENGTH = 25
 MAX_PAGE_LENGTH = 100
 
 RESULT_STATUS_FILTERS = {
-    "Matching": {"match_status": "Matching"},
+    "Fully Matching": {"match_status": "Fully Matching"},
+    "Matching Not Settled": {"match_status": "Matching Not Settled"},
     "Discrepancy": {"match_status": "Discrepancy"},
     "Bank Pending": {"match_status": "Bank Only", "resolution_status": "Pending"},
     "Marina Pending": {"match_status": "Alhamrani Only", "resolution_status": "Pending"},
     "Manually Cleared": {"resolution_status": "Manually Cleared"},
+    "One Side Matching": {"resolution_status": "One Side Matching"},
     "All Pending": {"resolution_status": "Pending"},
-    # Backward-compatible internal aliases. These are no longer shown as the
-    # primary Finance review pills but existing links/API calls remain valid.
+    # Backward-compatible aliases for records created before the unified statement model.
+    "Matching": {"match_status": ["in", ["Fully Matching", "Matching Not Settled", "Matching"]]},
     "Bank Only": {"match_status": "Bank Only"},
     "Alhamrani Only": {"match_status": "Alhamrani Only"},
     "Pending": {"resolution_status": "Pending"},
@@ -240,15 +242,17 @@ def _facet_status_counts(filters):
         fields=["match_status","resolution_status","count(name) as total"],
         group_by="match_status, resolution_status",limit_page_length=0,
     )
-    out={"All":0,"Matching":0,"Discrepancy":0,"Bank Pending":0,"Marina Pending":0,"Manually Cleared":0,"All Pending":0}
+    out={"All":0,"Fully Matching":0,"Matching Not Settled":0,"Discrepancy":0,"Bank Pending":0,"Marina Pending":0,"Manually Cleared":0,"One Side Matching":0,"All Pending":0}
     for row in rows:
         n=cint(row.total); m=cstr(row.match_status).strip(); r=cstr(row.resolution_status).strip()
         out["All"]+=n
-        if m=="Matching": out["Matching"]+=n
+        if m=="Fully Matching": out["Fully Matching"]+=n
+        if m in {"Matching Not Settled", "Matching"}: out["Matching Not Settled"]+=n
         if m=="Discrepancy": out["Discrepancy"]+=n
         if m=="Bank Only" and r=="Pending": out["Bank Pending"]+=n
         if m=="Alhamrani Only" and r=="Pending": out["Marina Pending"]+=n
         if r=="Manually Cleared": out["Manually Cleared"]+=n
+        if r=="One Side Matching": out["One Side Matching"]+=n
         if r=="Pending": out["All Pending"]+=n
     return out
 
