@@ -61,13 +61,19 @@ def _review_record_rows(record_names, require_pending=False):
         filters={"name": ["in", record_names]},
         fields=[
             "name", "bank_transaction", "match_status", "resolution_status",
-            "settlement_number", "settlement_date", "terminal_id", "run",
+            "bank_statement_status", "settlement_number", "settlement_date", "terminal_id", "run",
         ],
         limit_page_length=0,
     )
     invalid = [row.name for row in rows if row.match_status != "Bank Only" or not row.bank_transaction]
     if invalid:
         frappe.throw(_("Finance review actions are allowed only for Bank Only records."))
+
+    not_settled = [row.name for row in rows if row.bank_statement_status != "Fully Reconciled"]
+    if not_settled:
+        frappe.throw(
+            _("Bank Only transactions can be manually cleared only after their POS settlement is Fully Reconciled to the bank statement.")
+        )
 
     if require_pending:
         not_pending = [row.name for row in rows if row.resolution_status != "Pending"]
@@ -281,6 +287,7 @@ def _filtered_bank_only_rows(
         "run": run_name,
         "match_status": "Bank Only",
         "resolution_status": "Pending",
+        "bank_statement_status": "Fully Reconciled",
     }
     if settlement_number:
         filters["settlement_number"] = settlement_number
@@ -301,7 +308,6 @@ def _filtered_bank_only_rows(
         "terminal_id": terminal_id,
         "card_type": card_type,
         "finance_review_status": finance_review_status,
-        "bank_statement_status": bank_statement_status,
     }.items():
         value = cstr(value).strip()
         if value:
