@@ -33,6 +33,17 @@ def normalize_terminal_reference(value):
     return re.sub(r"\D", "", cstr(value))
 
 
+def normalize_statement_card_type(value):
+    value = cstr(value).strip().upper()
+    aliases = {
+        "GCC CARD": "GCCCARD",
+        "GCC_CARD": "GCCCARD",
+        "AMERICAN EXPRESS": "AMEX",
+        "AMERICAN_EXPRESS": "AMEX",
+    }
+    return aliases.get(value, value)
+
+
 def terminal_bank_reference(terminal_id, length):
     digits = normalize_terminal_reference(terminal_id)
     if not digits:
@@ -194,7 +205,7 @@ def _source_groups(
 
         settlement_number = normalize_settlement_number(bank.settlement_number)
         terminal_id = cstr(bank.terminal_id or record.terminal_id).strip()
-        card_type = cstr(record.card_type or bank.card_type).strip().upper()
+        card_type = normalize_statement_card_type(record.card_type or bank.card_type)
         reconciliation_date = getdate(bank.balance_date) if bank.balance_date else None
 
         if (
@@ -475,7 +486,7 @@ def execute_statement_reconciliation(run_doc):
                 normalize_settlement_number(doc.settlement_number),
                 normalize_terminal_reference(doc.bank_terminal_reference),
                 getdate(doc.reconciliation_date) if doc.reconciliation_date else None,
-                cstr(doc.card_type).strip().upper(),
+                normalize_statement_card_type(doc.card_type),
             )
         ] = doc
 
