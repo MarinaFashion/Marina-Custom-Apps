@@ -383,8 +383,8 @@ def _build_results(run, bank_rows, alhamrani_rows, card_mapper):
         discrepancies = compare_transactions(bank, alh, card_mapper=card_mapper)
         result = _base_result(run, bank=bank, alhamrani=alh, card_mapper=card_mapper)
         result.update(
-            match_status="Discrepancy" if discrepancies else "Matching",
-            resolution_status="Pending" if discrepancies else "Auto Cleared",
+            match_status="Discrepancy" if discrepancies else "Matching Not Settled",
+            resolution_status="Pending" if discrepancies else "One Side Matching",
             before_integration=0,
             discrepancy_fields=", ".join(discrepancies),
         )
@@ -483,6 +483,7 @@ def _persist_results(run, results):
 def summarize_results(results):
     summary = {
         "matching_count": 0,
+        "matching_not_settled_count": 0,
         "discrepancy_count": 0,
         "bank_only_count": 0,
         "alhamrani_only_count": 0,
@@ -490,13 +491,17 @@ def summarize_results(results):
         "pending_count": 0,
     }
     mapping = {
-        "Matching": "matching_count",
+        "Fully Matching": "matching_count",
+        "Matching Not Settled": "matching_not_settled_count",
+        "Matching": "matching_not_settled_count",
         "Discrepancy": "discrepancy_count",
         "Bank Only": "bank_only_count",
         "Alhamrani Only": "alhamrani_only_count",
     }
     for row in results:
-        summary[mapping[row["match_status"]]] += 1
+        bucket = mapping.get(row["match_status"])
+        if bucket:
+            summary[bucket] += 1
         if row["resolution_status"] == "Manually Cleared":
             summary["manually_cleared_count"] += 1
         if row["resolution_status"] == "Pending":
@@ -529,11 +534,19 @@ def execute_run(run_name):
     results = _build_results(run, bank_rows, alhamrani_rows, card_mapper)
     _persist_results(run, results)
 
-    summary = summarize_results(results)
+    statement_summary = {}
+    if run.get("bank_account"):
+        from marina_custom_apps.pos_reconciliation.unified_statement_reconciliation import (
+            reconcile_run_statement,
+        )
+        statement_summary = reconcile_run_statement(run)
+
+    summary = refresh_run_summary(run.name)
     summary.update(
         bank_transaction_count=len(bank_rows),
         alhamrani_transaction_count=len(alhamrani_rows),
         last_reconciled_on=now_datetime(),
+        **statement_summary,
     )
     frappe.db.set_value("POS Reconciliation Run", run.name, summary, update_modified=True)
     return {"run": run.name, **summary}
