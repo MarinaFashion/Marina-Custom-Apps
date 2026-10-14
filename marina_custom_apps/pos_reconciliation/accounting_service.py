@@ -359,9 +359,35 @@ def sync_all_accounting_statuses():
 
 
 
-def _pending_rows_for_run(run_name, pos_profile=None):
-    """Return the latest confirmed, unposted bank transactions in a completed run."""
-    _check_run(run_name)
+def _validate_accounting_transaction_dates(run, from_date, to_date):
+    if not from_date or not to_date:
+        frappe.throw(_("Transaction From Date and Transaction To Date are required."))
+
+    from_date = getdate(from_date)
+    to_date = getdate(to_date)
+    if from_date > to_date:
+        frappe.throw(_("Transaction From Date cannot be after Transaction To Date."))
+
+    run_from = getdate(run.from_date) if run.from_date else None
+    run_to = getdate(run.to_date) if run.to_date else None
+    if run_from and from_date < run_from:
+        frappe.throw(
+            _("Transaction From Date cannot be before the reconciliation run From Date ({0}).").format(
+                run_from
+            )
+        )
+    if run_to and to_date > run_to:
+        frappe.throw(
+            _("Transaction To Date cannot be after the reconciliation run To Date ({0}).").format(
+                run_to
+            )
+        )
+    return from_date, to_date
+
+
+def _pending_rows_for_run(run_name, pos_profile=None, from_date=None, to_date=None):
+    """Return the latest confirmed, unposted bank transactions in an open run."""
+    run = _check_run(run_name)
     sync_run_accounting_status(run_name)
 
     filters = {
@@ -369,6 +395,11 @@ def _pending_rows_for_run(run_name, pos_profile=None):
         "bank_transaction": ["is", "set"],
         "accounting_status": ACCOUNTING_PENDING,
     }
+    if from_date is not None or to_date is not None:
+        from_date, to_date = _validate_accounting_transaction_dates(
+            run, from_date, to_date
+        )
+        filters["transaction_date"] = ["between", [from_date, to_date]]
     rows = frappe.get_all(
         RECORD_DOCTYPE,
         filters=filters,
@@ -527,15 +558,17 @@ def get_accounting_filter_options(run_name):
 
 
 
-def _prepare_groups(run_name, pos_profile=None):
+def _prepare_groups(run_name, pos_profile=None, from_date=None, to_date=None):
     settings = get_accounting_settings(require_enabled=True)
     rows = _pending_rows_for_run(
         run_name,
         pos_profile=pos_profile,
+        from_date=from_date,
+        to_date=to_date,
     )
     if not rows:
         frappe.throw(
-            _("No confirmed transactions are pending accounting for the selected reconciliation run.")
+            _("No confirmed transactions are pending accounting for the selected transaction date range.")
         )
 
     for row in rows:
@@ -555,16 +588,29 @@ def _prepare_groups(run_name, pos_profile=None):
 
 
 
-def get_accounting_preview(run_name, posting_date, pos_profile=None):
+def get_accounting_preview(
+    run_name, posting_date, pos_profile=None, from_date=None, to_date=None
+):
     _check_permission("read")
     if not posting_date:
         frappe.throw(_("Posting Date is required."))
     posting_date = getdate(posting_date)
 
-    settings, groups = _prepare_groups(run_name, pos_profile)
+    run = _check_run(run_name)
+    from_date, to_date = _validate_accounting_transaction_dates(
+        run, from_date, to_date
+    )
+    settings, groups = _prepare_groups(
+        run_name,
+        pos_profile,
+        from_date=from_date,
+        to_date=to_date,
+    )
     rows = [row for group in groups.values() for row in group]
     return {
         "posting_date": posting_date,
+        "transaction_from_date": from_date,
+        "transaction_to_date": to_date,
         "transaction_count": len(rows),
         "pos_profile_count": len({row.pos_profile for row in rows}),
         "journal_entry_count": len(groups),
@@ -585,14 +631,24 @@ def get_accounting_preview(run_name, posting_date, pos_profile=None):
 
 
 
-def create_accounting_postings(run_name, posting_date, pos_profile=None):
+def create_accounting_postings(
+    run_name, posting_date, pos_profile=None, from_date=None, to_date=None
+):
     _check_permission("create")
     run = _check_run(run_name)
     if not posting_date:
         frappe.throw(_("Posting Date is required."))
     posting_date = getdate(posting_date)
+    from_date, to_date = _validate_accounting_transaction_dates(
+        run, from_date, to_date
+    )
 
-    settings, groups = _prepare_groups(run_name, pos_profile)
+    settings, groups = _prepare_groups(
+        run_name,
+        pos_profile,
+        from_date=from_date,
+        to_date=to_date,
+    )
     creation_mode = cstr(
         settings.journal_entry_creation_mode or JOURNAL_ENTRY_MODE_DRAFT
     ).strip()
@@ -672,6 +728,8 @@ def create_accounting_postings(run_name, posting_date, pos_profile=None):
     return {
         "posting_count": len(created),
         "postings": created,
+        "transaction_from_date": from_date,
+        "transaction_to_date": to_date,
         "transaction_count": sum(row["transaction_count"] for row in created),
         "commission": flt(sum(row["commission"] for row in created), 2),
         "vat": flt(sum(row["vat"] for row in created), 2),
