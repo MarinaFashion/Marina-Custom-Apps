@@ -107,6 +107,7 @@ def get_results_page(
     terminal_id=None,
     card_type=None,
     finance_review_status=None,
+    bank_statement_status=None,
     accounting_status=None,
     ledger_posting_status=None,
     before_integration=None,
@@ -136,6 +137,7 @@ def get_results_page(
         "terminal_id": terminal_id,
         "card_type": card_type,
         "finance_review_status": finance_review_status,
+        "bank_statement_status": bank_statement_status,
     }
     for fieldname, value in values.items():
         value = cstr(value).strip()
@@ -157,6 +159,8 @@ def get_results_page(
         "bank_transaction", "alhamrani_transaction", "match_status", "resolution_status",
         "before_integration", "settlement_number", "settlement_date", "pos_reconciliation_number",
         "finance_review_status", "finance_reviewed_by", "finance_reviewed_on", "finance_review_note",
+        "bank_statement_status", "bank_statement_reconciliation", "bank_statement_settlement",
+        "bank_statement_references", "bank_statement_checked_on",
         "pan_validation_method", "discrepancy_fields", "bank_amount", "alhamrani_amount",
         "amount_difference", "bank_commission_amount", "bank_commission_vat_amount",
         "bank_settlement_amount", "manual_clearance_reason", "accounting_status",
@@ -189,7 +193,7 @@ def get_results_page(
 
 def _facet_filters(
     run,status="All",from_date=None,to_date=None,settlement_number=None,settlement_date=None,
-    pos_profile=None,terminal_id=None,card_type=None,finance_review_status=None,
+    pos_profile=None,terminal_id=None,card_type=None,finance_review_status=None,bank_statement_status=None,
     accounting_status=None,ledger_posting_status=None,before_integration=None,exclude=None,
 ):
     exclude=set(exclude or [])
@@ -207,6 +211,7 @@ def _facet_filters(
     for fieldname,value in {
         "settlement_number":settlement_number,"settlement_date":settlement_date,"pos_profile":pos_profile,
         "terminal_id":terminal_id,"card_type":card_type,"finance_review_status":finance_review_status,
+        "bank_statement_status":bank_statement_status,
     }.items():
         if fieldname in exclude: continue
         value=cstr(value).strip()
@@ -250,14 +255,14 @@ def _facet_status_counts(filters):
 
 def get_result_filter_options(
     run_name,status="All",from_date=None,to_date=None,settlement_number=None,settlement_date=None,
-    pos_profile=None,terminal_id=None,card_type=None,finance_review_status=None,
+    pos_profile=None,terminal_id=None,card_type=None,finance_review_status=None,bank_statement_status=None,
     accounting_status=None,ledger_posting_status=None,before_integration=None,
 ):
     run=_get_run(run_name)
     values=dict(
         status=status,from_date=from_date,to_date=to_date,settlement_number=settlement_number,
         settlement_date=settlement_date,pos_profile=pos_profile,terminal_id=terminal_id,card_type=card_type,
-        finance_review_status=finance_review_status,accounting_status=accounting_status,
+        finance_review_status=finance_review_status,bank_statement_status=bank_statement_status,accounting_status=accounting_status,
         ledger_posting_status=ledger_posting_status,before_integration=before_integration,
     )
     def f(*excluded): return _facet_filters(run,exclude=set(excluded),**values)
@@ -272,6 +277,7 @@ def get_result_filter_options(
         "terminal_ids":_facet_values("terminal_id",f("terminal_id")),
         "card_types":_facet_values("card_type",f("card_type")),
         "finance_review_statuses":_facet_values("finance_review_status",f("finance_review_status")),
+        "bank_statement_statuses":_facet_values("bank_statement_status",f("bank_statement_status")),
         "accounting_statuses":accounting,
         "ledger_posting_statuses":ledgers,
         "before_integration_values":before,
@@ -359,6 +365,7 @@ def _filtered_summary(filters, or_filters=None):
     vat_pct = flt((vat / commission) * 100, 2) if commission else 0
 
     finance = _group_counts("finance_review_status", filters, or_filters)
+    bank_statement = _group_counts("bank_statement_status", filters, or_filters)
     accounting = _group_counts("accounting_status", filters, or_filters)
 
     accounting_eligible = sum(
@@ -387,6 +394,11 @@ def _filtered_summary(filters, or_filters=None):
         "approved_count": finance.get("Checked & Approved", 0),
         "investigation_count": finance.get("Needs Investigation", 0),
         "pending_review_count": finance.get("Pending Review", 0),
+        "bank_statement_fully_reconciled_count": bank_statement.get("Fully Reconciled", 0),
+        "bank_statement_found_count": bank_statement.get("Statement Found", 0),
+        "bank_statement_exception_count": bank_statement.get("Exception", 0),
+        "bank_statement_not_found_count": bank_statement.get("Not Found", 0),
+        "bank_statement_not_checked_count": bank_statement.get("Not Checked", 0) + bank_statement.get("", 0),
         "accounting_eligible_count": accounting_eligible,
         "pending_accounting_count": accounting.get("Pending Accounting", 0),
         "draft_created_count": draft_created,
@@ -423,6 +435,8 @@ def _result_search_filters(search):
         "terminal_id": _like(search), "pos_profile": _like(search), "card_type": _like(search),
         "settlement_number": _like(search), "match_status": _like(search),
         "resolution_status": _like(search), "finance_review_status": _like(search),
+        "bank_statement_status": _like(search), "bank_statement_reconciliation": _like(search),
+        "bank_statement_settlement": _like(search), "bank_statement_references": _like(search),
         "accounting_status": _like(search), "journal_entry": _like(search),
         "finance_review_note": _like(search), "discrepancy_fields": _like(search),
     }
