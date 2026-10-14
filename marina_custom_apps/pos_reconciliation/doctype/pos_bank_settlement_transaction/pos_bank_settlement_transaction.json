@@ -8,6 +8,7 @@
     "reconciliation_record",
     "bank_pos_transaction",
     "transaction_date",
+    "reconciliation_date",
     "pos_profile",
     "terminal_id",
     "card_type",
@@ -36,6 +37,12 @@
       "fieldname": "transaction_date",
       "fieldtype": "Date",
       "label": "Transaction Date",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "reconciliation_date",
+      "fieldtype": "Date",
+      "label": "Reconciliation Date",
       "in_list_view": 1
     },
     {
