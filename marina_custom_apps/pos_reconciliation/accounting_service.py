@@ -36,8 +36,8 @@ JOURNAL_ENTRY_MODE_SUBMIT = "Submit"
 
 
 def is_reconciliation_confirmed(match_status, resolution_status):
-    """Accounting is allowed only after reconciliation has confirmed the bank transaction."""
-    return cstr(match_status).strip() == "Matching" or cstr(resolution_status).strip() == "Manually Cleared"
+    """Accounting requires a completed three-source reconciliation or explicit Finance clearance."""
+    return cstr(resolution_status).strip() in {"Auto Cleared", "Manually Cleared"}
 
 
 
