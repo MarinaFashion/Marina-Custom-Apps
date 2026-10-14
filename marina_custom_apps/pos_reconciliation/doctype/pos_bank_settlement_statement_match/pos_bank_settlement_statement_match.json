@@ -18,8 +18,8 @@
     {
       "fieldname": "bank_transaction",
       "fieldtype": "Link",
-      "label": "Bank Transaction",
-      "options": "Bank Transaction",
+      "label": "Statement Transaction",
+      "options": "Marina Bank Statement Transaction",
       "reqd": 1,
       "in_list_view": 1
     },
