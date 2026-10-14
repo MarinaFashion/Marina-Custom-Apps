@@ -84,34 +84,61 @@ def parse_pos_statement_text(text, mappings=None):
     )
 
 
-def _latest_reconciliation_rows(from_date, to_date):
-    rows = frappe.get_all(
-        RECORD_DOCTYPE,
-        filters={
-            "transaction_date": ["between", [from_date, to_date]],
-            "bank_transaction": ["is", "set"],
-        },
-        fields=[
-            "name",
-            "bank_transaction",
-            "transaction_date",
-            "pos_profile",
-            "terminal_id",
-            "card_type",
-            "match_status",
-            "resolution_status",
-            "last_reconciled_on",
-            "modified",
-        ],
-        order_by="bank_transaction asc, last_reconciled_on desc, modified desc, name desc",
-        limit_page_length=0,
-    )
+def _chunks(values, size=500):
+    values = list(values or [])
+    for start in range(0, len(values), size):
+        yield values[start : start + size]
 
-    latest = {}
-    for row in rows:
-        if row.bank_transaction and row.bank_transaction not in latest:
-            latest[row.bank_transaction] = row
-    return list(latest.values())
+
+def _latest_reconciliation_rows(from_date, to_date):
+    """Read only the latest reconciliation evidence for each Bank POS transaction.
+
+    A window query avoids loading duplicate historical/rerun records into Python.
+    transaction_date is indexed in the reconciliation record schema.
+    """
+    return frappe.db.sql(
+        f"""
+        WITH ranked AS (
+            SELECT
+                name,
+                bank_transaction,
+                transaction_date,
+                pos_profile,
+                terminal_id,
+                card_type,
+                match_status,
+                resolution_status,
+                last_reconciled_on,
+                modified,
+                ROW_NUMBER() OVER (
+                    PARTITION BY bank_transaction
+                    ORDER BY
+                        COALESCE(last_reconciled_on, modified) DESC,
+                        modified DESC,
+                        name DESC
+                ) AS row_rank
+            FROM `tab{RECORD_DOCTYPE}`
+            WHERE transaction_date BETWEEN %s AND %s
+              AND bank_transaction IS NOT NULL
+              AND bank_transaction != ''
+        )
+        SELECT
+            name,
+            bank_transaction,
+            transaction_date,
+            pos_profile,
+            terminal_id,
+            card_type,
+            match_status,
+            resolution_status,
+            last_reconciled_on,
+            modified
+        FROM ranked
+        WHERE row_rank = 1
+        """,
+        (from_date, to_date),
+        as_dict=True,
+    )
 
 
 def _source_groups(bank_account, from_date, to_date, terminal_ref_length):
@@ -125,11 +152,11 @@ def _source_groups(bank_account, from_date, to_date, terminal_ref_length):
         return {}, 0
 
     bank_names = [row.bank_transaction for row in confirmed if row.bank_transaction]
-    bank_map = {
-        row.name: row
+    bank_map = {}
+    for chunk in _chunks(bank_names):
         for row in frappe.get_all(
             BANK_POS_DOCTYPE,
-            filters={"name": ["in", bank_names]},
+            filters={"name": ["in", chunk]},
             fields=[
                 "name",
                 "transaction_status",
@@ -142,8 +169,8 @@ def _source_groups(bank_account, from_date, to_date, terminal_ref_length):
                 "terminal_id",
             ],
             limit_page_length=0,
-        )
-    }
+        ):
+            bank_map[row.name] = row
 
     groups = defaultdict(list)
     missing_settlement = 0
