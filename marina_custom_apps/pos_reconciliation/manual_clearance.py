@@ -48,6 +48,25 @@ def _ensure_bank_transactions_open(bank_transactions):
                 _("Closed reconciliation runs must be reopened before manual clearance can be changed.")
             )
 
+def _ensure_statement_confirmed(bank_transactions):
+    bank_transactions = list(dict.fromkeys(_as_list(bank_transactions)))
+    for bank_name in bank_transactions:
+        confirmed = frappe.db.exists(
+            "POS Reconciliation Record",
+            {
+                "bank_transaction": bank_name,
+                "match_status": "Bank Only",
+                "bank_statement_status": "Fully Reconciled",
+            },
+        )
+        if not confirmed:
+            frappe.throw(
+                _(
+                    "Bank Only transaction {0} cannot be manually cleared until its POS settlement is Fully Reconciled to the bank statement."
+                ).format(bank_name)
+            )
+
+
 def _clearance_doc(bank_transaction):
     name = frappe.db.get_value(
         "POS Bank Manual Clearance",
@@ -66,6 +85,7 @@ def mark_bank_transactions(bank_transactions, reason=None):
     _ensure_bank_transactions_open(bank_transactions)
     if not bank_transactions:
         return {"updated": 0}
+    _ensure_statement_confirmed(bank_transactions)
 
     reason = (reason or _("Finance checked and approved")).strip()
     now = now_datetime()
