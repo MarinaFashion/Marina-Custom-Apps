@@ -52,8 +52,8 @@
     {
       "fieldname": "reconciliation_run",
       "fieldtype": "Link",
-      "label": "Bank Statement Reconciliation",
-      "options": "POS Bank Statement Reconciliation",
+      "label": "POS Reconciliation Run",
+      "options": "POS Reconciliation Run",
       "read_only": 1,
       "in_standard_filter": 1
     },
