@@ -24,6 +24,7 @@
                         "card_type_mappings",
                         "bank_statement_section",
                         "bank_statement_terminal_reference_length",
+                        "bank_statement_reconciliation_lookback_days",
                         "bank_statement_code_mappings"
                     ],
     "fields":  [
@@ -160,6 +161,13 @@
                        "fieldname":  "bank_statement_terminal_reference_length",
                        "fieldtype":  "Int",
                        "label":  "Bank Terminal Reference Length"
+                   },
+                   {
+                       "default":  "7",
+                       "description":  "Include POS reconciliations this many days before the statement From Date because SNB posting can occur after terminal reconciliation.",
+                       "fieldname":  "bank_statement_reconciliation_lookback_days",
+                       "fieldtype":  "Int",
+                       "label":  "POS Reconciliation Lookback Days"
                    },
                    {
                        "description":  "Map SNB statement suffix codes to card type and statement component. Used only for POS settlement statement matching.",
