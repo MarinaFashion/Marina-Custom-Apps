@@ -355,7 +355,9 @@ function pos_recon_render_results(frm, $wrapper, data) {
                 row.finance_review_note || "",
                 row.manual_clearance_reason || "",
             ].filter(Boolean).join(" · ");
-            const actionable = can_review && row.resolution_status === "Pending";
+            const actionable = can_review
+                && row.resolution_status === "Pending"
+                && row.bank_statement_status === "Fully Reconciled";
             const checkbox = can_review
                 ? (actionable
                     ? `<td><input type="checkbox" class="pos-recon-row-check"
@@ -517,7 +519,9 @@ function pos_recon_result_filters(state, options, is_bank_only, summary, can_rev
       <div><label>${__("Accounting Status")}</label><select class="form-control input-xs pos-recon-filter-accounting">${pos_recon_select_options(options.accounting_statuses||[],state.accounting_status,__("All"))}</select></div>`;
 
     const multiple=cint(summary.settlement_date_count||0)>1||cint(summary.terminal_count||0)>1;
-    const disabled=!can_review||multiple||!state.settlement_number?"disabled":"";
+    const all_statement_confirmed = cint(summary.transaction_count||0) > 0
+        && cint(summary.bank_statement_fully_reconciled_count||0) === cint(summary.transaction_count||0);
+    const disabled=!can_review||multiple||!state.settlement_number||!all_statement_confirmed?"disabled":"";
     const actions=can_review?`<div class="pos-recon-finance-actions">
       <button class="btn btn-xs btn-primary pos-recon-approve-selected">${__("Checked & Approved – Selected")}</button>
       <button class="btn btn-xs btn-default pos-recon-investigate-selected">${__("Needs Investigation – Selected")}</button>
@@ -707,7 +711,7 @@ function pos_recon_review_selected(frm, $wrapper, decision) {
     if (!pos_recon_require_settlement_filter(frm)) return;
     const records = pos_recon_selected_records($wrapper);
     if (!records.length) {
-        frappe.msgprint(__("Select at least one Bank Only transaction."));
+        frappe.msgprint(__("Select at least one Bank Only transaction whose bank statement status is Fully Reconciled."));
         return;
     }
     pos_recon_prompt_review(decision, records.length, null, (note) => {
