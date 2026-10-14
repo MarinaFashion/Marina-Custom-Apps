@@ -264,6 +264,7 @@ def _filtered_bank_only_rows(
     terminal_id=None,
     card_type=None,
     finance_review_status=None,
+    bank_statement_status=None,
     accounting_status=None,
     ledger_posting_status=None,
     before_integration=None,
@@ -300,6 +301,7 @@ def _filtered_bank_only_rows(
         "terminal_id": terminal_id,
         "card_type": card_type,
         "finance_review_status": finance_review_status,
+        "bank_statement_status": bank_statement_status,
     }.items():
         value = cstr(value).strip()
         if value:
@@ -368,6 +370,7 @@ def review_filtered_bank_only(
     terminal_id=None,
     card_type=None,
     finance_review_status=None,
+    bank_statement_status=None,
     accounting_status=None,
     ledger_posting_status=None,
     before_integration=None,
@@ -386,6 +389,7 @@ def review_filtered_bank_only(
         terminal_id=terminal_id,
         card_type=card_type,
         finance_review_status=finance_review_status,
+        bank_statement_status=bank_statement_status,
         accounting_status=accounting_status,
         ledger_posting_status=ledger_posting_status,
         before_integration=before_integration,
