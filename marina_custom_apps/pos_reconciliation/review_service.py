@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import frappe
 from frappe import _
 from frappe.utils import cint, cstr, flt, getdate
@@ -39,6 +40,54 @@ ACCOUNTING_ELIGIBLE_STATUSES = {
     "Posted - Review Required",
     "No Charges",
 }
+
+
+def multi_filter_values(value):
+    """Return a clean list for UI filters that may submit one or many values."""
+    if value in (None, ""):
+        return []
+    if isinstance(value, (list, tuple, set)):
+        raw = list(value)
+    elif isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return []
+        if text.startswith("["):
+            try:
+                parsed = json.loads(text)
+            except (TypeError, ValueError):
+                parsed = None
+            raw = parsed if isinstance(parsed, list) else [text]
+        else:
+            raw = [text]
+    else:
+        raw = [value]
+
+    output = []
+    seen = set()
+    for item in raw:
+        item = cstr(item).strip()
+        if item and item not in seen:
+            seen.add(item)
+            output.append(item)
+    return output
+
+
+def _apply_multi_filter(filters, fieldname, value):
+    values = multi_filter_values(value)
+    if not values:
+        return
+    filters[fieldname] = values[0] if len(values) == 1 else ["in", values]
+
+
+def _settlement_sort_key(value):
+    text = cstr(value).strip()
+    if text.isdigit():
+        return (0, int(text), text)
+    match = __import__("re").match(r"^\s*(\d+)", text)
+    if match:
+        return (0, int(match.group(1)), text.casefold())
+    return (1, text.casefold(), text)
 
 
 def apply_accounting_filters(filters, accounting_status=None, ledger_posting_status=None):
@@ -129,15 +178,18 @@ def get_results_page(
     elif to_date:
         filters["transaction_date"] = ["<=", to_date]
 
-    values = {
+    for fieldname, value in {
         "settlement_number": settlement_number,
-        "settlement_date": settlement_date,
         "pos_profile": pos_profile,
         "terminal_id": terminal_id,
+    }.items():
+        _apply_multi_filter(filters, fieldname, value)
+
+    for fieldname, value in {
+        "settlement_date": settlement_date,
         "card_type": card_type,
         "finance_review_status": finance_review_status,
-    }
-    for fieldname, value in values.items():
+    }.items():
         value = cstr(value).strip()
         if value:
             filters[fieldname] = value
@@ -205,12 +257,20 @@ def _facet_filters(
         elif start: filters["transaction_date"]=[">=",start]
         elif end: filters["transaction_date"]=["<=",end]
     for fieldname,value in {
-        "settlement_number":settlement_number,"settlement_date":settlement_date,"pos_profile":pos_profile,
-        "terminal_id":terminal_id,"card_type":card_type,"finance_review_status":finance_review_status,
+        "settlement_number":settlement_number,"pos_profile":pos_profile,"terminal_id":terminal_id,
     }.items():
-        if fieldname in exclude: continue
+        if fieldname in exclude:
+            continue
+        _apply_multi_filter(filters,fieldname,value)
+
+    for fieldname,value in {
+        "settlement_date":settlement_date,"card_type":card_type,"finance_review_status":finance_review_status,
+    }.items():
+        if fieldname in exclude:
+            continue
         value=cstr(value).strip()
-        if value: filters[fieldname]=value
+        if value:
+            filters[fieldname]=value
     apply_accounting_filters(
         filters,
         accounting_status=None if "accounting_status" in exclude else accounting_status,
@@ -226,7 +286,10 @@ def _facet_values(fieldname,filters):
         RECONCILIATION_RECORD,filters=filters,fields=[fieldname],group_by=fieldname,
         order_by=fieldname,limit_page_length=0,
     )
-    return [row.get(fieldname) for row in rows if row.get(fieldname) not in (None,"")]
+    values=[row.get(fieldname) for row in rows if row.get(fieldname) not in (None,"")]
+    if fieldname == "settlement_number":
+        values.sort(key=_settlement_sort_key)
+    return values
 
 
 def _facet_status_counts(filters):
