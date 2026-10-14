@@ -37,6 +37,7 @@ frappe.listview_settings["POS Reconciliation Record"] = {
         "resolution_status",
         "before_integration",
         "finance_review_status",
+        "bank_statement_status",
         "settlement_number",
     ],
 
@@ -50,8 +51,11 @@ frappe.listview_settings["POS Reconciliation Record"] = {
         if (doc.resolution_status === "Manually Cleared") {
             return [__("Manually Cleared"), "blue", "resolution_status,=,Manually Cleared"];
         }
-        if (doc.match_status === "Matching") {
-            return [__("Matching"), "green", "match_status,=,Matching"];
+        if (doc.match_status === "Fully Matching") {
+            return [__("Fully Matching"), "green", "match_status,=,Fully Matching"];
+        }
+        if (doc.match_status === "Matching Not Settled") {
+            return [__("Matching Not Settled"), "blue", "match_status,=,Matching Not Settled"];
         }
         if (doc.match_status === "Discrepancy") {
             return [__("Discrepancy"), "orange", "match_status,=,Discrepancy"];
