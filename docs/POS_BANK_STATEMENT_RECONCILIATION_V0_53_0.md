@@ -1,55 +1,152 @@
-# v0.53.0 Experimental — SNB Bank Statement Reconciliation
+# POS / SNB Bank Statement Reconciliation v0.53.0
 
-This branch adds the first testable implementation of the third reconciliation layer:
+## Final experimental architecture
 
-1. POS / ERP card transaction evidence
-2. Alhamrani reconciliation and commission/VAT posting
-3. SNB bank statement reconciliation
+v0.53.0 uses one operational reconciliation workflow: **POS Reconciliation Run**.
 
-## Scope in this experimental branch
+The run combines three evidence sources:
 
-- Uses standard ERPNext **Bank Transaction** as the SNB statement source.
-- Builds **POS Bank Settlement** groups from the latest confirmed POS reconciliation evidence.
-- Settlement identity: Bank Account + Settlement Number + bank terminal reference + unified Card Type.
-- Bank terminal reference defaults to the first 8 digits of the POS Terminal ID and is configurable.
-- Parses configured SNB description codes into Gross / Commission / VAT components.
-- Matches statement lines to settlement groups and compares Gross, Commission, VAT, and Net independently.
-- Leaves non-POS statement lines in standard ERPNext Bank Transaction for normal ERPNext Bank Reconciliation against Payment Entry / Journal Entry / other supported vouchers.
-- Does not create income, expense, or additional Journal Entries.
-- Does not automatically mark standard ERPNext Bank Transactions as reconciled.
+1. Marina / Bank POS Transaction
+2. Alhamrani Transaction
+3. Marina Bank Statement Transaction (custom statement ledger)
 
-## Seeded demo code mappings
+The earlier **POS Bank Statement Reconciliation** doctype is deprecated experimental scaffolding. It remains in the branch only for non-destructive compatibility with Demo data and is no longer the active workflow.
 
-The migration seeds the codes observed in Marina's provided SNB example:
+## Custom statement model
 
-| Code | Card Type | Component |
-|---|---|---|
+### Marina Bank Statement Import
+Imports the original SNB XLSX statement directly. It:
+- preserves the raw description/reference columns,
+- converts debit amounts to positive withdrawals,
+- prevents duplicate source rows with a deterministic source key,
+- parses POS settlement metadata from RECON NO / REFERENCE / statement codes,
+- creates Marina Bank Statement Transaction rows.
+
+### Marina Bank Statement Transaction
+This is the module-owned bank statement ledger. It is intentionally independent from ERPNext standard Bank Transaction allocation/status architecture.
+
+POS statement rows are parsed into:
+- Settlement Number
+- 8-digit Bank Terminal Reference
+- Reconciliation Date
+- Card Type
+- Component: Gross / Commission / VAT
+
+Reconciliation Status:
+- Unreconciled
+- Partially Reconciled
+- Reconciled
+- Excluded
+
+When a POS settlement is fully confirmed, the related custom statement Gross / Commission / VAT rows are marked **Reconciled**. Other statement rows remain **Unreconciled** for later Payment Entry / Journal Entry / transfer reconciliation.
+
+## Unified POS Reconciliation Record status
+
+### Match Status
+- Fully Matching
+- Matching Not Settled
+- Discrepancy
+- Bank Only
+- Alhamrani Only
+
+### Resolution Status
+- Auto Cleared
+- One Side Matching
+- Pending
+- Manually Cleared
+
+Rules:
+
+- POS = Alhamrani + statement settlement fully reconciled
+  - Match Status = Fully Matching
+  - Resolution = Auto Cleared
+
+- POS = Alhamrani + statement settlement not yet fully reconciled
+  - Match Status = Matching Not Settled
+  - Resolution = One Side Matching
+
+- POS exists, Alhamrani missing
+  - Match Status = Bank Only
+  - Resolution = Pending
+  - Finance may manually clear only after the POS settlement is Fully Reconciled to the bank statement.
+
+- Alhamrani exists, POS missing
+  - Match Status = Alhamrani Only
+  - Resolution = Pending
+
+- POS / Alhamrani comparison differs
+  - Match Status = Discrepancy
+  - Resolution = Pending
+
+## Settlement identity
+
+The validated SNB settlement identity is:
+
+**Bank Account + Settlement Number + 8-digit Terminal Reference + Reconciliation Date + Card Type**
+
+The YYMMDD suffix in the SNB POS statement code is the terminal reconciliation date.
+
+Validated statement code mappings:
+
+| Code | Card | Component |
+| --- | --- | --- |
 | SM | MADA | Gross |
 | FS | MADA | Commission |
 | VS | MADA | VAT |
 | VC | VISA | Gross |
 | FV | VISA | Commission |
 | VV | VISA | VAT |
+| MC | MASTERCARD | Gross |
+| FM | MASTERCARD | Commission |
+| VM | MASTERCARD | VAT |
+| GN | GCCCARD | Gross |
+| GF | GCCCARD | Commission |
+| GV | GCCCARD | VAT |
+| AX | AMEX | Gross |
+| AF | AMEX | Commission |
+| AV | AMEX | VAT |
 
-These are configurable in **POS Reconciliation Settings** and should be verified against more SNB statements before production use.
+## Settlement 263 validation sample
 
-## Demo workflow
+Terminal reference: 55621023  
+Reconciliation date: 2026-09-25
 
-1. Import or create the SNB statement as standard ERPNext **Bank Transaction** records.
-2. Open **POS Bank Statement Reconciliation**.
-3. Select the ERPNext Bank Account and statement date range.
-4. Save.
-5. Click **Build & Match**.
-6. Open **POS Bank Settlements** from the View menu.
-7. Review Fully Reconciled, Partial, Amount Difference, and ERP Settlement Only results.
-8. Use standard ERPNext Bank Reconciliation for statement lines classified as Other Bank Statement Lines.
+MADA:
+- 6 POS transactions
+- Gross 344.00
+- Commission 1.72
+- VAT 0.26
+- Net 342.02
 
-## Important limitation of this first branch
+VISA:
+- 4 POS transactions
+- Gross 188.00
+- Commission 2.53
+- VAT 0.38
+- Net 185.09
 
-This release provides POS settlement evidence matching. It intentionally does not yet automate matching non-POS bank statement lines to Payment Entries or Journal Entries; ERPNext's standard Bank Reconciliation remains the control for those lines.
+Both card groups were validated at 100% against the supplied SNB statement.
 
+## Accounting control
 
-## Branch safety
+Accounting eligibility is now based on the unified Resolution Status.
 
-This implementation is intentionally kept on the experimental branch only. It is not merged to `main`.
-Test it on Demo first; production rollout should wait for statement-parser validation, settlement matching feedback, and performance checks on a realistic statement period.
+Eligible:
+- Auto Cleared
+- Manually Cleared
+
+Not eligible:
+- One Side Matching
+- Pending
+
+This prevents commission/VAT accounting from being treated as confirmed before the three-source control is complete, unless Finance explicitly clears a supported Bank Only exception.
+
+## Internal audit layer
+
+POS Bank Settlement remains an internal evidence object. Users do not need to create it manually.
+
+It groups the underlying POS transactions and corresponding statement Gross / Commission / VAT rows and provides the auditable amount comparison behind the unified POS Reconciliation Record status.
+
+## Standard ERPNext Bank Transaction
+
+ERPNext standard Bank Transaction is no longer the statement source for this custom POS workflow. Existing standard Bank Transactions on Demo are not modified or consumed by the unified v0.53.0 process.
