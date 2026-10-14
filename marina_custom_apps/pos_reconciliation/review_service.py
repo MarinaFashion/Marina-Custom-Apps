@@ -398,7 +398,14 @@ def _filtered_summary(filters, or_filters=None):
         "bank_statement_found_count": bank_statement.get("Statement Found", 0),
         "bank_statement_exception_count": bank_statement.get("Exception", 0),
         "bank_statement_not_found_count": bank_statement.get("Not Found", 0),
-        "bank_statement_not_checked_count": bank_statement.get("Not Checked", 0) + bank_statement.get("", 0),
+        "bank_statement_not_checked_count": max(
+            transaction_count
+            - bank_statement.get("Fully Reconciled", 0)
+            - bank_statement.get("Statement Found", 0)
+            - bank_statement.get("Exception", 0)
+            - bank_statement.get("Not Found", 0),
+            0,
+        ),
         "accounting_eligible_count": accounting_eligible,
         "pending_accounting_count": accounting.get("Pending Accounting", 0),
         "draft_created_count": draft_created,
