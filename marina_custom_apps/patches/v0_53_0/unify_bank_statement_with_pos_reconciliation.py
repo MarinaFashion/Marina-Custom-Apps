@@ -33,6 +33,22 @@ def _migrate_record_statuses():
         """
     )
 
+    # Previous experimental runs referenced standard ERPNext Bank Transaction
+    # evidence and the separate POS Bank Statement Reconciliation doctype.
+    # Reset only that statement-evidence projection; a unified POS run will
+    # repopulate it from Marina Bank Statement Transaction.
+    frappe.db.sql(
+        """
+        UPDATE `tabPOS Reconciliation Record`
+        SET
+            bank_statement_status = 'Not Checked',
+            bank_statement_reconciliation = NULL,
+            bank_statement_settlement = NULL,
+            bank_statement_references = NULL,
+            bank_statement_checked_on = NULL
+        """
+    )
+
 
 def _clean_workspace():
     if not frappe.db.exists("Workspace", WORKSPACE):
