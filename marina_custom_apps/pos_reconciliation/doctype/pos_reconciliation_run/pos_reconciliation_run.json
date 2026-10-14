@@ -182,7 +182,7 @@
     {
       "fieldname": "bank_transaction_count",
       "fieldtype": "Int",
-      "label": "Bank Transactions",
+      "label": "POS Bank Transactions",
       "read_only": 1
     },
     {
