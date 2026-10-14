@@ -53,7 +53,9 @@
       "fieldtype": "Link",
       "label": "Company",
       "options": "Company",
-      "reqd": 1
+      "reqd": 1,
+      "fetch_from": "bank_account.company",
+      "fetch_if_empty": 1
     },
     {
       "fieldname": "bank_account",
