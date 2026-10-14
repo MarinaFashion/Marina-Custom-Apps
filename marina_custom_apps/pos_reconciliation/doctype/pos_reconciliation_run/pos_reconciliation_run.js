@@ -9,7 +9,7 @@ frappe.ui.form.on("POS Reconciliation Run", {
         const has_results = Boolean(frm.doc.last_reconciled_on);
         const period_locked = lifecycle === "Closed";
 
-        ["from_date", "to_date", "pos_profile", "card_type"].forEach((fieldname) => {
+        ["from_date", "to_date", "pos_profile", "card_type", "bank_account"].forEach((fieldname) => {
             frm.set_df_property(fieldname, "read_only", period_locked ? 1 : 0);
         });
 
@@ -25,7 +25,7 @@ frappe.ui.form.on("POS Reconciliation Run", {
             const label = has_results ? __("Re-run Reconciliation") : __("Run Reconciliation");
             const btn = frm.add_custom_button(label, () => {
                 frappe.confirm(
-                    __("Reconcile all currently available transactions dated inside this period?"),
+                    __("Reconcile POS and Alhamrani transactions for this period and apply any imported Marina bank statement evidence for the selected Statement Bank Account?"),
                     () => frappe.call({
                         method:"marina_custom_apps.pos_reconciliation.doctype.pos_reconciliation_run.pos_reconciliation_run.run_reconciliation",
                         args:{run_name:frm.doc.name},freeze:true,freeze_message:__("Reconciling POS transactions...")
