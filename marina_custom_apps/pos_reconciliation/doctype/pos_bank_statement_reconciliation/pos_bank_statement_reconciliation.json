@@ -80,7 +80,7 @@
       "fieldname": "status",
       "fieldtype": "Select",
       "label": "Status",
-      "options": "Draft\\nCompleted",
+      "options": "Draft\nCompleted",
       "default": "Draft",
       "read_only": 1,
       "in_list_view": 1
