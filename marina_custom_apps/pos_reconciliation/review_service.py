@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import frappe
 from frappe import _
 from frappe.utils import cint, cstr, flt, getdate
@@ -84,7 +85,7 @@ def _settlement_sort_key(value):
     text = cstr(value).strip()
     if text.isdigit():
         return (0, int(text), text)
-    match = __import__("re").match(r"^\s*(\d+)", text)
+    match = re.match(r"^\s*(\d+)", text)
     if match:
         return (0, int(match.group(1)), text.casefold())
     return (1, text.casefold(), text)
