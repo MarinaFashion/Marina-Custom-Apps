@@ -12,6 +12,15 @@ DEFAULT_CODE_MAPPINGS = [
     ("VC", "VISA", "Gross"),
     ("FV", "VISA", "Commission"),
     ("VV", "VISA", "VAT"),
+    ("MC", "MASTERCARD", "Gross"),
+    ("FM", "MASTERCARD", "Commission"),
+    ("VM", "MASTERCARD", "VAT"),
+    ("GN", "GCCCARD", "Gross"),
+    ("GF", "GCCCARD", "Commission"),
+    ("GV", "GCCCARD", "VAT"),
+    ("AX", "AMEX", "Gross"),
+    ("AF", "AMEX", "Commission"),
+    ("AV", "AMEX", "VAT"),
 ]
 
 DOC_SHORTCUTS = [
@@ -32,6 +41,10 @@ def _seed_statement_settings():
 
     if not settings.bank_statement_terminal_reference_length:
         settings.bank_statement_terminal_reference_length = 8
+        changed = True
+
+    if not settings.bank_statement_reconciliation_lookback_days:
+        settings.bank_statement_reconciliation_lookback_days = 7
         changed = True
 
     existing = {
