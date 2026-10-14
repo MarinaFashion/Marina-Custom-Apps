@@ -27,14 +27,14 @@ class POSReconciliationRun(Document):
         stored = frappe.db.get_value(
             self.doctype,
             self.name,
-            ["status", "from_date", "to_date", "pos_profile", "card_type"],
+            ["status", "from_date", "to_date", "pos_profile", "card_type", "bank_account"],
             as_dict=True,
         )
         if not stored or stored.status != "Closed":
             return
 
         changed = []
-        for fieldname in ("from_date", "to_date", "pos_profile", "card_type"):
+        for fieldname in ("from_date", "to_date", "pos_profile", "card_type", "bank_account"):
             if cstr(self.get(fieldname) or "") != cstr(stored.get(fieldname) or ""):
                 changed.append(fieldname)
 
