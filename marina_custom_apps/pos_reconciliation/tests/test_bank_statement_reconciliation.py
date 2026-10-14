@@ -4,7 +4,9 @@ import unittest
 
 from marina_custom_apps.pos_reconciliation.bank_statement_reconciliation_service import (
     normalize_settlement_number,
+    normalize_statement_card_type,
     parse_pos_statement_text,
+    parse_statement_reconciliation_date,
     terminal_bank_reference,
 )
 
@@ -27,6 +29,17 @@ class TestPOSBankStatementParser(unittest.TestCase):
     def test_terminal_reference_uses_leading_eight_digits(self):
         self.assertEqual(terminal_bank_reference("5562102342112671", 8), "55621023")
 
+
+    def test_parse_statement_reconciliation_date(self):
+        self.assertEqual(
+            str(parse_statement_reconciliation_date("260929")),
+            "2026-09-29",
+        )
+
+    def test_unified_card_type_aliases(self):
+        self.assertEqual(normalize_statement_card_type("GCC CARD"), "GCCCARD")
+        self.assertEqual(normalize_statement_card_type("AMERICAN EXPRESS"), "AMEX")
+
     def test_parse_mada_gross(self):
         parsed = parse_pos_statement_text(
             "RECON NO: 000263 000000 REFERENCE: 55621023 SM260925",
@@ -36,6 +49,7 @@ class TestPOSBankStatementParser(unittest.TestCase):
         self.assertEqual(parsed.bank_terminal_reference, "55621023")
         self.assertEqual(parsed.card_type, "MADA")
         self.assertEqual(parsed.component, "Gross")
+        self.assertEqual(str(parsed.reconciliation_date), "2026-09-25")
 
     def test_parse_visa_vat(self):
         parsed = parse_pos_statement_text(
