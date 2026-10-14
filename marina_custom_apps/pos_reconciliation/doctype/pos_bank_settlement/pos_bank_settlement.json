@@ -229,7 +229,7 @@
       "fieldname": "status",
       "fieldtype": "Select",
       "label": "Status",
-      "options": "ERP Settlement Only\\nPartial\\nAmount Difference\\nFully Reconciled",
+      "options": "ERP Settlement Only\nPartial\nAmount Difference\nFully Reconciled",
       "read_only": 1,
       "in_list_view": 1,
       "in_standard_filter": 1
