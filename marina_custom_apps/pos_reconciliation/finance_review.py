@@ -327,6 +327,10 @@ def _filtered_bank_only_rows(
             "card_type": like,
             "settlement_number": like,
             "finance_review_note": like,
+            "bank_statement_status": like,
+            "bank_statement_reconciliation": like,
+            "bank_statement_settlement": like,
+            "bank_statement_references": like,
         }
 
     rows = frappe.get_all(
