@@ -268,10 +268,16 @@ def _update_records(run, records, record_keys, settlements, evidence, checked_on
                 updates["resolution_status"] = "Auto Cleared"
             else:
                 updates["match_status"] = "Matching Not Settled"
-                updates["resolution_status"] = "One Side Matching"
-        elif current_match == "Bank Only":
-            updates["match_status"] = "Bank Only"
+                updates["resolution_status"] = "Pending"
+        elif current_match in {"Bank Only", "Bank Only - Settled", "Bank Only - Not Settled"}:
+            updates["match_status"] = (
+                "Bank Only - Settled"
+                if statement_status == "Fully Reconciled"
+                else "Bank Only - Not Settled"
+            )
             if current_resolution == "Manually Cleared":
+                # Preserve historical Finance approval. New approvals are allowed
+                # only after the statement settlement becomes Fully Reconciled.
                 updates["resolution_status"] = "Manually Cleared"
             else:
                 updates["resolution_status"] = "Pending"
