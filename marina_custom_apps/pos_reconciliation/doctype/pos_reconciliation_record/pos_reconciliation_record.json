@@ -257,7 +257,8 @@
     {
       "fieldname": "finance_review_section",
       "fieldtype": "Section Break",
-      "label": "Finance Review"
+      "label": "Finance Review",
+      "hidden": 1
     },
     {
       "default": "Not Required",
@@ -441,7 +442,8 @@
     {
       "fieldname": "manual_section",
       "fieldtype": "Section Break",
-      "label": "Manual Clearance"
+      "label": "Manual Clearance",
+      "hidden": 1
     },
     {
       "fieldname": "manual_clearance_reason",
