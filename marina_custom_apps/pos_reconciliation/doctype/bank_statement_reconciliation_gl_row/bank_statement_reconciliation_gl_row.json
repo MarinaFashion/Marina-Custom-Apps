@@ -31,9 +31,10 @@
     },
     {
       "fieldname": "voucher_type",
-      "fieldtype": "Data",
+      "fieldtype": "Link",
       "label": "Voucher Type",
-      "read_only": 1
+      "read_only": 1,
+      "options": "DocType"
     },
     {
       "fieldname": "voucher_no",
