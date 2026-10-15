@@ -259,7 +259,8 @@
       "fieldname": "manually_cleared_count",
       "fieldtype": "Int",
       "label": "Manually Cleared",
-      "read_only": 1
+      "read_only": 1,
+      "hidden": 1
     },
     {
       "fieldname": "pending_count",
