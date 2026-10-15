@@ -46,6 +46,7 @@
     "recon_column_break",
     "pos_reconciliation_run",
     "pos_bank_settlement",
+    "bank_statement_reconciliation_match",
     "reconciled_on",
     "reconciled_by",
     "allocations_section",
@@ -295,6 +296,14 @@
       "fieldtype": "Link",
       "label": "POS Bank Settlement",
       "options": "POS Bank Settlement",
+      "read_only": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "bank_statement_reconciliation_match",
+      "fieldtype": "Link",
+      "label": "Bank Statement Reconciliation Match",
+      "options": "Bank Statement Reconciliation Match",
       "read_only": 1,
       "in_standard_filter": 1
     },
