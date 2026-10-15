@@ -105,7 +105,7 @@ def run_reconciliation(run_name):
     if execution_status in {"Queued", "Running"}:
         frappe.throw(_("This reconciliation run is already queued or running."))
 
-    job_id = f"pos-reconciliation::{frappe.local.site}::{run.name}"
+    job_id = f"pos-reconciliation::{run.name}::{now_datetime().strftime('%Y%m%d%H%M%S%f')}"
     now = now_datetime()
     values = {
         "execution_status": "Queued",
