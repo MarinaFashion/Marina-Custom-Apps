@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import re
+
 import frappe
 from frappe import _
 from frappe.utils import cint, cstr, flt, getdate
@@ -44,6 +47,54 @@ ACCOUNTING_ELIGIBLE_STATUSES = {
     "Posted - Review Required",
     "No Charges",
 }
+
+
+def multi_filter_values(value):
+    """Return a clean list for UI filters that may submit one or many values."""
+    if value in (None, ""):
+        return []
+    if isinstance(value, (list, tuple, set)):
+        raw = list(value)
+    elif isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return []
+        if text.startswith("["):
+            try:
+                parsed = json.loads(text)
+            except (TypeError, ValueError):
+                parsed = None
+            raw = parsed if isinstance(parsed, list) else [text]
+        else:
+            raw = [text]
+    else:
+        raw = [value]
+
+    output = []
+    seen = set()
+    for item in raw:
+        item = cstr(item).strip()
+        if item and item not in seen:
+            seen.add(item)
+            output.append(item)
+    return output
+
+
+def _apply_multi_filter(filters, fieldname, value):
+    values = multi_filter_values(value)
+    if not values:
+        return
+    filters[fieldname] = values[0] if len(values) == 1 else ["in", values]
+
+
+def _settlement_sort_key(value):
+    text = cstr(value).strip()
+    if text.isdigit():
+        return (0, int(text), text)
+    match = re.match(r"^\s*(\d+)", text)
+    if match:
+        return (0, int(match.group(1)), text.casefold())
+    return (1, text.casefold(), text)
 
 
 def apply_accounting_filters(filters, accounting_status=None, ledger_posting_status=None):
@@ -135,14 +186,14 @@ def get_results_page(
     elif to_date:
         filters["transaction_date"] = ["<=", to_date]
 
+    _apply_multi_filter(filters, "settlement_number", settlement_number)
+    _apply_multi_filter(filters, "pos_profile", pos_profile)
+    _apply_multi_filter(filters, "terminal_id", terminal_id)
+
     values = {
-        "settlement_number": settlement_number,
         "settlement_date": settlement_date,
-        "pos_profile": pos_profile,
-        "terminal_id": terminal_id,
         "card_type": card_type,
         "finance_review_status": finance_review_status,
-        "bank_statement_status": bank_statement_status,
     }
     for fieldname, value in values.items():
         value = cstr(value).strip()
@@ -213,10 +264,16 @@ def _facet_filters(
         if start and end: filters["transaction_date"]=["between",[start,end]]
         elif start: filters["transaction_date"]=[">=",start]
         elif end: filters["transaction_date"]=["<=",end]
+    for fieldname, value in {
+        "settlement_number": settlement_number,
+        "pos_profile": pos_profile,
+        "terminal_id": terminal_id,
+    }.items():
+        if fieldname not in exclude:
+            _apply_multi_filter(filters, fieldname, value)
+
     for fieldname,value in {
-        "settlement_number":settlement_number,"settlement_date":settlement_date,"pos_profile":pos_profile,
-        "terminal_id":terminal_id,"card_type":card_type,"finance_review_status":finance_review_status,
-        "bank_statement_status":bank_statement_status,
+        "settlement_date":settlement_date,"card_type":card_type,"finance_review_status":finance_review_status,
     }.items():
         if fieldname in exclude: continue
         value=cstr(value).strip()
@@ -287,12 +344,11 @@ def get_result_filter_options(
     ledgers=[label for label,statuses in LEDGER_POSTING_STATUS_FILTERS.items() if ledger_source.intersection(statuses)]
     before=[str(cint(v)) for v in _facet_values("before_integration",f("before_integration"))]
     return {
-        "settlement_numbers":_facet_values("settlement_number",f("settlement_number")),
+        "settlement_numbers":sorted(_facet_values("settlement_number",f("settlement_number")), key=_settlement_sort_key),
         "pos_profiles":_facet_values("pos_profile",f("pos_profile")),
         "terminal_ids":_facet_values("terminal_id",f("terminal_id")),
         "card_types":_facet_values("card_type",f("card_type")),
         "finance_review_statuses":_facet_values("finance_review_status",f("finance_review_status")),
-        "bank_statement_statuses":_facet_values("bank_statement_status",f("bank_statement_status")),
         "accounting_statuses":accounting,
         "ledger_posting_statuses":ledgers,
         "before_integration_values":before,
