@@ -14,6 +14,11 @@
     "status_section",
     "status",
     "execution_status",
+    "execution_job_id",
+    "execution_queued_on",
+    "execution_started_on",
+    "execution_completed_on",
+    "execution_error",
     "last_reconciled_on",
     "lifecycle_audit_section",
     "closed_by",
@@ -123,7 +128,7 @@
       "fieldname": "execution_status",
       "fieldtype": "Select",
       "label": "Execution Status",
-      "options": "Idle\nRunning",
+      "options": "Idle\nQueued\nRunning\nCompleted\nFailed",
       "read_only": 1
     },
     {
@@ -313,6 +318,36 @@
       "fieldname": "bank_only_not_settled_count",
       "fieldtype": "Int",
       "label": "Bank Only - Not Settled",
+      "read_only": 1
+    },
+    {
+      "fieldname": "execution_job_id",
+      "fieldtype": "Data",
+      "label": "Execution Job ID",
+      "read_only": 1
+    },
+    {
+      "fieldname": "execution_queued_on",
+      "fieldtype": "Datetime",
+      "label": "Queued On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "execution_started_on",
+      "fieldtype": "Datetime",
+      "label": "Started On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "execution_completed_on",
+      "fieldtype": "Datetime",
+      "label": "Completed On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "execution_error",
+      "fieldtype": "Long Text",
+      "label": "Last Execution Error",
       "read_only": 1
     }
   ],
