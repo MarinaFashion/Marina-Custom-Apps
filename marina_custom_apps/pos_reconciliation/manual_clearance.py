@@ -55,7 +55,7 @@ def _ensure_statement_confirmed(bank_transactions):
             "POS Reconciliation Record",
             {
                 "bank_transaction": bank_name,
-                "match_status": "Bank Only",
+                "match_status": "Bank Only - Settled",
                 "bank_statement_status": "Fully Reconciled",
             },
         )
@@ -114,7 +114,7 @@ def mark_bank_transactions(bank_transactions, reason=None):
 
         records = frappe.get_all(
             "POS Reconciliation Record",
-            filters={"bank_transaction": bank_name, "match_status": "Bank Only"},
+            filters={"bank_transaction": bank_name, "match_status": ["in", ["Bank Only - Settled", "Bank Only - Not Settled", "Bank Only"]]},
             fields=["name", "run"],
             limit_page_length=0,
         )
@@ -176,7 +176,7 @@ def reopen_bank_transactions(bank_transactions):
 
         records = frappe.get_all(
             "POS Reconciliation Record",
-            filters={"bank_transaction": bank_name, "match_status": "Bank Only"},
+            filters={"bank_transaction": bank_name, "match_status": ["in", ["Bank Only - Settled", "Bank Only - Not Settled", "Bank Only"]]},
             fields=["name", "run"],
             limit_page_length=0,
         )
@@ -258,9 +258,9 @@ def mark_selected_reconciliation_records(record_names, reason=None):
         fields=["name", "bank_transaction", "match_status"],
         limit_page_length=0,
     )
-    invalid = [row.name for row in rows if row.match_status != "Bank Only" or not row.bank_transaction]
+    invalid = [row.name for row in rows if row.match_status != "Bank Only - Settled" or not row.bank_transaction]
     if invalid:
-        frappe.throw(_("Manual clearing is allowed only for Bank Only records."))
+        frappe.throw(_("Manual clearing is allowed only for Bank Only - Settled records."))
     return mark_bank_transactions([row.bank_transaction for row in rows], reason)
 
 
