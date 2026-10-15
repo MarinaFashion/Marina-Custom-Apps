@@ -1,6 +1,5 @@
 frappe.ui.form.on("Bank Statement Reconciliation", {
     refresh(frm) {
-        frm.disable_save();
         bsr_load(frm);
     },
     bank_account(frm) {
