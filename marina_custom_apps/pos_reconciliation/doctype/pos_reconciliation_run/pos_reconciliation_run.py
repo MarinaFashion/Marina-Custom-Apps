@@ -203,14 +203,12 @@ def get_review_filter_options(
 
 @frappe.whitelist()
 def finance_review_selected(record_names, decision, note=None):
-    _ensure_records_open(record_names)
-    return review_selected_records(record_names, decision, note)
+    frappe.throw(_("Manual Finance clearance is retired. Settled reconciliation statuses are evaluated automatically."))
 
 
 @frappe.whitelist()
 def finance_review_reset(record_names):
-    _ensure_records_open(record_names)
-    return reset_selected_records(record_names)
+    frappe.throw(_("Manual Finance clearance is retired. Settled reconciliation statuses are evaluated automatically."))
 
 
 @frappe.whitelist()
@@ -219,13 +217,7 @@ def finance_review_filtered(
     pos_profile=None,terminal_id=None,card_type=None,finance_review_status=None,bank_statement_status=None,accounting_status=None,
     ledger_posting_status=None,before_integration=None,search=None,
 ):
-    _ensure_open(run_name)
-    return review_filtered_bank_only(
-        run_name,settlement_number,decision,note=note,from_date=from_date,to_date=to_date,
-        settlement_date=settlement_date,pos_profile=pos_profile,terminal_id=terminal_id,card_type=card_type,
-        finance_review_status=finance_review_status,bank_statement_status=bank_statement_status,accounting_status=accounting_status,
-        ledger_posting_status=ledger_posting_status,before_integration=before_integration,search=search,
-    )
+    frappe.throw(_("Manual Finance clearance is retired. Settled reconciliation statuses are evaluated automatically."))
 
 
 @frappe.whitelist()
