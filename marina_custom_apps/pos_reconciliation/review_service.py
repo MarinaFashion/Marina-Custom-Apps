@@ -13,16 +13,20 @@ MAX_PAGE_LENGTH = 100
 RESULT_STATUS_FILTERS = {
     "Fully Matching": {"match_status": "Fully Matching"},
     "Matching Not Settled": {"match_status": "Matching Not Settled"},
-    "Discrepancy": {"match_status": "Discrepancy"},
-    "Bank Pending": {"match_status": "Bank Only", "resolution_status": "Pending"},
-    "Marina Pending": {"match_status": "Alhamrani Only", "resolution_status": "Pending"},
-    "Manually Cleared": {"resolution_status": "Manually Cleared"},
-    "One Side Matching": {"resolution_status": "One Side Matching"},
-    "All Pending": {"resolution_status": "Pending"},
-    # Backward-compatible aliases for records created before the unified statement model.
-    "Matching": {"match_status": ["in", ["Fully Matching", "Matching Not Settled", "Matching"]]},
-    "Bank Only": {"match_status": "Bank Only"},
+    "Bank Only - Settled": {"match_status": "Bank Only - Settled"},
+    "Bank Only - Not Settled": {"match_status": "Bank Only - Not Settled"},
     "Alhamrani Only": {"match_status": "Alhamrani Only"},
+    "Discrepancy": {"match_status": "Discrepancy"},
+    "Manually Cleared": {"resolution_status": "Manually Cleared"},
+    "All Pending": {"resolution_status": "Pending"},
+    # Backward-compatible aliases for earlier experimental links/API calls.
+    "Matching": {"match_status": ["in", ["Fully Matching", "Matching Not Settled", "Matching"]]},
+    "Bank Pending": {
+        "match_status": ["in", ["Bank Only - Settled", "Bank Only - Not Settled", "Bank Only"]],
+        "resolution_status": "Pending",
+    },
+    "Bank Only": {"match_status": ["in", ["Bank Only - Settled", "Bank Only - Not Settled", "Bank Only"]]},
+    "Marina Pending": {"match_status": "Alhamrani Only", "resolution_status": "Pending"},
     "Pending": {"resolution_status": "Pending"},
 }
 
@@ -242,17 +246,27 @@ def _facet_status_counts(filters):
         fields=["match_status","resolution_status","count(name) as total"],
         group_by="match_status, resolution_status",limit_page_length=0,
     )
-    out={"All":0,"Fully Matching":0,"Matching Not Settled":0,"Discrepancy":0,"Bank Pending":0,"Marina Pending":0,"Manually Cleared":0,"One Side Matching":0,"All Pending":0}
+    out={
+        "All":0,
+        "Fully Matching":0,
+        "Matching Not Settled":0,
+        "Bank Only - Settled":0,
+        "Bank Only - Not Settled":0,
+        "Alhamrani Only":0,
+        "Discrepancy":0,
+        "Manually Cleared":0,
+        "All Pending":0,
+    }
     for row in rows:
         n=cint(row.total); m=cstr(row.match_status).strip(); r=cstr(row.resolution_status).strip()
         out["All"]+=n
         if m=="Fully Matching": out["Fully Matching"]+=n
         if m in {"Matching Not Settled", "Matching"}: out["Matching Not Settled"]+=n
+        if m=="Bank Only - Settled": out["Bank Only - Settled"]+=n
+        if m in {"Bank Only - Not Settled", "Bank Only"}: out["Bank Only - Not Settled"]+=n
+        if m=="Alhamrani Only": out["Alhamrani Only"]+=n
         if m=="Discrepancy": out["Discrepancy"]+=n
-        if m=="Bank Only" and r=="Pending": out["Bank Pending"]+=n
-        if m=="Alhamrani Only" and r=="Pending": out["Marina Pending"]+=n
         if r=="Manually Cleared": out["Manually Cleared"]+=n
-        if r=="One Side Matching": out["One Side Matching"]+=n
         if r=="Pending": out["All Pending"]+=n
     return out
 
