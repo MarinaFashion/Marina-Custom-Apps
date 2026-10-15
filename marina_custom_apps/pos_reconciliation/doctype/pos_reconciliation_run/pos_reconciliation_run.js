@@ -50,7 +50,6 @@ frappe.ui.form.on("POS Reconciliation Run", {
         frm.add_custom_button(__("Bank Only - Settled"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Bank Only - Settled"}), __("View"));
         frm.add_custom_button(__("Bank Only - Not Settled"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Bank Only - Not Settled"}), __("View"));
         frm.add_custom_button(__("Alhamrani Only"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Alhamrani Only"}), __("View"));
-        frm.add_custom_button(__("Manually Cleared"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,resolution_status:"Manually Cleared"}), __("View"));
         frm.add_custom_button(__("Bank Statement Imports"), () => frappe.set_route("List","Marina Bank Statement Import"), __("View"));
         frm.add_custom_button(__("Unreconciled Statement Transactions"), () => {
             const filters = {reconciliation_status:"Unreconciled"};
