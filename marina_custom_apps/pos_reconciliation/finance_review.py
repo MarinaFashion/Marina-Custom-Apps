@@ -65,7 +65,8 @@ def _review_record_rows(record_names, require_pending=False):
         ],
         limit_page_length=0,
     )
-    invalid = [row.name for row in rows if row.match_status != "Bank Only" or not row.bank_transaction]
+    bank_only_statuses = {"Bank Only - Settled", "Bank Only - Not Settled", "Bank Only"}
+    invalid = [row.name for row in rows if row.match_status not in bank_only_statuses or not row.bank_transaction]
     if invalid:
         frappe.throw(_("Finance review actions are allowed only for Bank Only records."))
 
@@ -162,7 +163,7 @@ def _mark_needs_investigation(bank_transactions, note=None):
 
         records = frappe.get_all(
             "POS Reconciliation Record",
-            filters={"bank_transaction": bank_name, "match_status": "Bank Only"},
+            filters={"bank_transaction": bank_name, "match_status": ["in", ["Bank Only - Settled", "Bank Only - Not Settled", "Bank Only"]]},
             fields=["name", "run"],
             limit_page_length=0,
         )
@@ -221,7 +222,7 @@ def _reset_review(bank_transactions):
 
         records = frappe.get_all(
             "POS Reconciliation Record",
-            filters={"bank_transaction": bank_name, "match_status": "Bank Only"},
+            filters={"bank_transaction": bank_name, "match_status": ["in", ["Bank Only - Settled", "Bank Only - Not Settled", "Bank Only"]]},
             fields=["name", "run"],
             limit_page_length=0,
         )
@@ -288,10 +289,11 @@ def _filtered_bank_only_rows(
 
     filters = {
         "run": run_name,
-        "match_status": "Bank Only",
+        "match_status": ["in", ["Bank Only - Settled", "Bank Only - Not Settled", "Bank Only"]],
         "resolution_status": "Pending",
     }
     if require_statement_confirmed:
+        filters["match_status"] = "Bank Only - Settled"
         filters["bank_statement_status"] = "Fully Reconciled"
     if settlement_number:
         filters["settlement_number"] = settlement_number
