@@ -38,6 +38,8 @@
     "matching_not_settled_count",
     "discrepancy_count",
     "bank_only_count",
+    "bank_only_settled_count",
+    "bank_only_not_settled_count",
     "result_counts_column_break",
     "alhamrani_only_count",
     "manually_cleared_count",
@@ -239,8 +241,9 @@
     {
       "fieldname": "bank_only_count",
       "fieldtype": "Int",
-      "label": "Bank Only",
-      "read_only": 1
+      "label": "Bank Only Total",
+      "read_only": 1,
+      "hidden": 1
     },
     {
       "fieldname": "result_counts_column_break",
@@ -297,6 +300,18 @@
       "fieldname": "statement_missing_identity_count",
       "fieldtype": "Int",
       "label": "POS Records Missing Settlement Identity",
+      "read_only": 1
+    },
+    {
+      "fieldname": "bank_only_settled_count",
+      "fieldtype": "Int",
+      "label": "Bank Only - Settled",
+      "read_only": 1
+    },
+    {
+      "fieldname": "bank_only_not_settled_count",
+      "fieldtype": "Int",
+      "label": "Bank Only - Not Settled",
       "read_only": 1
     }
   ],
