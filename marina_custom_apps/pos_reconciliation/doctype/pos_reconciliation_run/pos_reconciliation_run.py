@@ -96,38 +96,106 @@ def _ensure_records_open(record_names):
 
 @frappe.whitelist()
 def run_reconciliation(run_name):
+    """Queue reconciliation on Frappe's long worker and return immediately."""
     run = _writable_run(run_name)
     if run.status == "Closed":
         frappe.throw(_("Closed reconciliation runs must be reopened before re-running."))
-    if cstr(run.execution_status).strip() == "Running":
-        frappe.throw(_("This reconciliation run is already running."))
 
-    frappe.db.set_value("POS Reconciliation Run", run.name, "execution_status", "Running", update_modified=True)
+    execution_status = cstr(run.execution_status).strip() or "Idle"
+    if execution_status in {"Queued", "Running"}:
+        frappe.throw(_("This reconciliation run is already queued or running."))
+
+    job_id = f"pos-reconciliation::{frappe.local.site}::{run.name}"
+    now = now_datetime()
+    values = {
+        "execution_status": "Queued",
+        "execution_job_id": job_id,
+        "execution_queued_on": now,
+        "execution_started_on": None,
+        "execution_completed_on": None,
+        "execution_error": None,
+    }
+    frappe.db.set_value(
+        "POS Reconciliation Run",
+        run.name,
+        values,
+        update_modified=True,
+    )
+
+    frappe.enqueue(
+        "marina_custom_apps.pos_reconciliation.doctype.pos_reconciliation_run.pos_reconciliation_run.execute_reconciliation_job",
+        queue="long",
+        timeout=3600,
+        job_id=job_id,
+        enqueue_after_commit=True,
+        run_name=run.name,
+    )
+
+    return {
+        "run": run.name,
+        "execution_status": "Queued",
+        "job_id": job_id,
+    }
+
+
+def execute_reconciliation_job(run_name):
+    """RQ worker entry point for a complete three-source reconciliation run."""
+    run = frappe.get_doc("POS Reconciliation Run", run_name)
+    if run.status == "Closed":
+        frappe.throw(_("Closed reconciliation runs cannot be executed."))
+
+    started_on = now_datetime()
+    frappe.db.set_value(
+        "POS Reconciliation Run",
+        run.name,
+        {
+            "execution_status": "Running",
+            "execution_started_on": started_on,
+            "execution_completed_on": None,
+            "execution_error": None,
+        },
+        update_modified=True,
+    )
+    # Publish Running state while the long transaction continues.
+    frappe.db.commit()
 
     try:
         result = execute_run(run_name)
 
-        from marina_custom_apps.pos_reconciliation.accounting_service import sync_run_accounting_status
+        from marina_custom_apps.pos_reconciliation.accounting_service import (
+            sync_run_accounting_status,
+        )
         sync_run_accounting_status(run_name)
 
+        completed_on = now_datetime()
         frappe.db.set_value(
             "POS Reconciliation Run",
             run.name,
-            {"status": "Open", "execution_status": "Idle"},
+            {
+                "status": "Open",
+                "execution_status": "Completed",
+                "execution_completed_on": completed_on,
+                "execution_error": None,
+            },
             update_modified=True,
         )
-        result["status"] = "Open"
-        return result
-    finally:
-        # Do not leave a monthly period stuck in Running if reconciliation,
-        # accounting synchronization, or a later hook raises an exception.
+        frappe.db.commit()
+        return {"run": run.name, "status": "Open", **(result or {})}
+    except Exception:
+        frappe.db.rollback()
+        error_text = cstr(frappe.get_traceback())[-12000:]
         frappe.db.set_value(
             "POS Reconciliation Run",
             run.name,
-            "execution_status",
-            "Idle",
-            update_modified=False,
+            {
+                "execution_status": "Failed",
+                "execution_completed_on": now_datetime(),
+                "execution_error": error_text,
+            },
+            update_modified=True,
         )
+        frappe.db.commit()
+        raise
 
 
 @frappe.whitelist()
@@ -137,7 +205,7 @@ def close_reconciliation(run_name, note=None):
         frappe.throw(_("Only an Open reconciliation run can be closed."))
     if not run.last_reconciled_on:
         frappe.throw(_("Run reconciliation at least once before closing this period."))
-    if cstr(run.execution_status).strip() == "Running":
+    if cstr(run.execution_status).strip() in {"Queued", "Running"}:
         frappe.throw(_("Wait for the current reconciliation execution to finish."))
 
     note = cstr(note).strip()
