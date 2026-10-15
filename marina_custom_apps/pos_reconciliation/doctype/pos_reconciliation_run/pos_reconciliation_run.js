@@ -58,11 +58,13 @@ frappe.ui.form.on("POS Reconciliation Run", {
             btn.addClass("btn-primary");
         }
 
-        if (has_results && ["Open","Closed"].includes(lifecycle)) {
+        if (has_results) {
             frm.add_custom_button(__("View Records"), () => {
                 frappe.set_route("List", "POS Reconciliation Record", {run: frm.doc.name});
             }, __("Actions"));
+        }
 
+        if (lifecycle !== "Closed") {
             frm.add_custom_button(__("Import POS Transactions"), () => {
                 frappe.set_route("Form", "POS Bank Import", "POS Bank Import");
             }, __("Actions"));
@@ -72,23 +74,27 @@ frappe.ui.form.on("POS Reconciliation Run", {
                     bank_account: frm.doc.bank_account || "",
                 });
             }, __("Actions"));
+        }
 
-            if (lifecycle === "Open") {
-                frm.add_custom_button(__("Create Journal Entries"), () => {
-                    pos_recon_open_accounting_dialog(frm);
-                }, __("Actions"));
+        if (lifecycle === "Open" && has_results) {
+            frm.add_custom_button(__("Create Journal Entries"), () => {
+                pos_recon_open_accounting_dialog(frm);
+            }, __("Actions"));
 
-                if (!execution_active) {
-                    frm.add_custom_button(__("Close Reconciliation"), () => {
-                        pos_recon_close_run(frm);
-                    }, __("Actions"));
-                }
-            } else {
-                frm.add_custom_button(__("Reopen Reconciliation"), () => {
-                    pos_recon_reopen_run(frm);
+            if (!execution_active) {
+                frm.add_custom_button(__("Close Reconciliation"), () => {
+                    pos_recon_close_run(frm);
                 }, __("Actions"));
             }
+        }
 
+        if (lifecycle === "Closed") {
+            frm.add_custom_button(__("Reopen Reconciliation"), () => {
+                pos_recon_reopen_run(frm);
+            }, __("Actions"));
+        }
+
+        if (has_results && ["Open","Closed"].includes(lifecycle)) {
             pos_recon_setup_review(frm);
         }
 
