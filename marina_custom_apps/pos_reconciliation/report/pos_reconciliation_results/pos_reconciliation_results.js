@@ -21,13 +21,13 @@ frappe.query_reports["POS Reconciliation Results"] = {
             fieldname: "match_status",
             label: __("Match Status"),
             fieldtype: "Select",
-            options: "\nFully Matching\nMatching Not Settled\nDiscrepancy\nBank Only\nAlhamrani Only",
+            options: "\nFully Matching\nMatching Not Settled\nBank Only - Settled\nBank Only - Not Settled\nAlhamrani Only\nDiscrepancy",
         },
         {
             fieldname: "resolution_status",
             label: __("Resolution Status"),
             fieldtype: "Select",
-            options: "\nAuto Cleared\nOne Side Matching\nPending\nManually Cleared",
+            options: "\nAuto Cleared\nPending\nManually Cleared",
         },
         {
             fieldname: "finance_review_status",
