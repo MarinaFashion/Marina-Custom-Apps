@@ -900,7 +900,6 @@ function pos_recon_resolution_pill(status) {
     const color = {
         "Auto Cleared": "green",
         "Pending": "orange",
-        "Manually Cleared": "blue",
     }[value] || "gray";
     return `<span class="indicator-pill ${color}">${pos_recon_escape(value || "—")}</span>`;
 }
