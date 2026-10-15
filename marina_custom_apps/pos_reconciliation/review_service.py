@@ -17,7 +17,6 @@ RESULT_STATUS_FILTERS = {
     "Bank Only - Not Settled": {"match_status": "Bank Only - Not Settled"},
     "Alhamrani Only": {"match_status": "Alhamrani Only"},
     "Discrepancy": {"match_status": "Discrepancy"},
-    "Manually Cleared": {"resolution_status": "Manually Cleared"},
     "All Pending": {"resolution_status": "Pending"},
     # Backward-compatible aliases for earlier experimental links/API calls.
     "Matching": {"match_status": ["in", ["Fully Matching", "Matching Not Settled", "Matching"]]},
@@ -254,7 +253,6 @@ def _facet_status_counts(filters):
         "Bank Only - Not Settled":0,
         "Alhamrani Only":0,
         "Discrepancy":0,
-        "Manually Cleared":0,
         "All Pending":0,
     }
     for row in rows:
@@ -266,7 +264,6 @@ def _facet_status_counts(filters):
         if m in {"Bank Only - Not Settled", "Bank Only"}: out["Bank Only - Not Settled"]+=n
         if m=="Alhamrani Only": out["Alhamrani Only"]+=n
         if m=="Discrepancy": out["Discrepancy"]+=n
-        if r=="Manually Cleared": out["Manually Cleared"]+=n
         if r=="Pending": out["All Pending"]+=n
     return out
 
