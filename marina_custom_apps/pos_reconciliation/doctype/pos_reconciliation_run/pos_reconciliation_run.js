@@ -324,7 +324,7 @@ function pos_recon_render_results(frm, $wrapper, data) {
     const total = cint(data.total || 0);
     const start = cint(data.start || 0);
     const page_length = cint(data.page_length || POS_RECON_PAGE_LENGTH);
-    const is_bank_only = state.status === "Bank Only - Settled";
+    const is_bank_only = false;
     const can_review = is_bank_only && frm.doc.status === "Open";
     const counts = state.status_counts || {};
     const statuses = [
