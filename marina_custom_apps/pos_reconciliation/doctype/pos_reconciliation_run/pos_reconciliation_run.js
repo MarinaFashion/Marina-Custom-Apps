@@ -6,14 +6,26 @@ frappe.ui.form.on("POS Reconciliation Run", {
 
         const lifecycle = frm.doc.status || "Draft";
         const execution = frm.doc.execution_status || "Idle";
+        const execution_active = ["Queued", "Running"].includes(execution);
         const has_results = Boolean(frm.doc.last_reconciled_on);
         const period_locked = lifecycle === "Closed";
+
+        if (frm.__pos_recon_execution_timer) {
+            clearTimeout(frm.__pos_recon_execution_timer);
+            frm.__pos_recon_execution_timer = null;
+        }
 
         ["from_date", "to_date", "pos_profile", "card_type", "bank_account"].forEach((fieldname) => {
             frm.set_df_property(fieldname, "read_only", period_locked ? 1 : 0);
         });
 
-        if (lifecycle === "Draft") {
+        if (execution === "Queued") {
+            frm.set_intro(__("Reconciliation is queued on the long background worker. This form will refresh automatically."), "blue");
+        } else if (execution === "Running") {
+            frm.set_intro(__("Reconciliation is running in the background. You can leave this page; the job will continue."), "blue");
+        } else if (execution === "Failed") {
+            frm.set_intro(__("The last background reconciliation failed. Review Last Execution Error, correct the issue, then run again."), "red");
+        } else if (lifecycle === "Draft") {
             frm.set_intro(__("This reconciliation period has not been run yet."), "blue");
         } else if (lifecycle === "Open") {
             frm.set_intro(__("This period is Open. Import late Bank data and re-run the same period until Finance decides the month is complete."), "green");
@@ -21,21 +33,32 @@ frappe.ui.form.on("POS Reconciliation Run", {
             frm.set_intro(__("This period is Closed. Reopen it if late source data must be processed."), "orange");
         }
 
-        if (lifecycle !== "Closed" && execution !== "Running" && !frm.is_dirty()) {
+        if (execution_active) {
+            frm.__pos_recon_execution_timer = setTimeout(() => frm.reload_doc(), 5000);
+        }
+
+        if (lifecycle !== "Closed" && !execution_active && !frm.is_dirty()) {
             const label = has_results ? __("Re-run Reconciliation") : __("Run Reconciliation");
             const btn = frm.add_custom_button(label, () => {
                 frappe.confirm(
                     __("Reconcile POS and Alhamrani transactions for this period and apply any imported Marina bank statement evidence for the selected Statement Bank Account?"),
                     () => frappe.call({
                         method:"marina_custom_apps.pos_reconciliation.doctype.pos_reconciliation_run.pos_reconciliation_run.run_reconciliation",
-                        args:{run_name:frm.doc.name},freeze:true,freeze_message:__("Reconciling POS transactions...")
-                    }).then(() => frm.reload_doc())
+                        args:{run_name:frm.doc.name}
+                    }).then((r) => {
+                        const result = r.message || {};
+                        frappe.show_alert({
+                            message: __("Reconciliation queued in background: {0}", [result.job_id || "long queue"]),
+                            indicator: "blue",
+                        }, 5);
+                        frm.reload_doc();
+                    })
                 );
             });
             btn.addClass("btn-primary");
         }
 
-        if (lifecycle === "Open" && has_results && execution !== "Running") {
+        if (lifecycle === "Open" && has_results && !execution_active) {
             frm.add_custom_button(__("Close Reconciliation"), () => pos_recon_close_run(frm));
         }
         if (lifecycle === "Closed") {
