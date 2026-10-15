@@ -509,6 +509,23 @@ def summarize_results(results):
     return summary
 
 
+def _set_run_values(run_name, values):
+    """Persist only fields that exist on the installed POS Reconciliation Run schema."""
+    meta = frappe.get_meta("POS Reconciliation Run")
+    safe_values = {
+        fieldname: value
+        for fieldname, value in (values or {}).items()
+        if meta.has_field(fieldname)
+    }
+    if safe_values:
+        frappe.db.set_value(
+            "POS Reconciliation Run",
+            run_name,
+            safe_values,
+            update_modified=True,
+        )
+
+
 def refresh_run_summary(run_name):
     rows = frappe.get_all(
         "POS Reconciliation Record",
@@ -517,7 +534,7 @@ def refresh_run_summary(run_name):
         limit_page_length=0,
     )
     summary = summarize_results(rows)
-    frappe.db.set_value("POS Reconciliation Run", run_name, summary, update_modified=True)
+    _set_run_values(run_name, summary)
     return summary
 
 
@@ -548,5 +565,5 @@ def execute_run(run_name):
         last_reconciled_on=now_datetime(),
         **statement_summary,
     )
-    frappe.db.set_value("POS Reconciliation Run", run.name, summary, update_modified=True)
+    _set_run_values(run.name, summary)
     return {"run": run.name, **summary}
