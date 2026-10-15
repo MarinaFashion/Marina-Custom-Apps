@@ -47,8 +47,9 @@ frappe.ui.form.on("POS Reconciliation Run", {
         frm.add_custom_button(__("Fully Matching"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Fully Matching"}), __("View"));
         frm.add_custom_button(__("Matching Not Settled"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Matching Not Settled"}), __("View"));
         frm.add_custom_button(__("Discrepancies"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Discrepancy"}), __("View"));
-        frm.add_custom_button(__("Bank Pending"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Bank Only",resolution_status:"Pending"}), __("View"));
-        frm.add_custom_button(__("Marina Pending"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Alhamrani Only",resolution_status:"Pending"}), __("View"));
+        frm.add_custom_button(__("Bank Only - Settled"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Bank Only - Settled"}), __("View"));
+        frm.add_custom_button(__("Bank Only - Not Settled"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Bank Only - Not Settled"}), __("View"));
+        frm.add_custom_button(__("Alhamrani Only"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Alhamrani Only"}), __("View"));
         frm.add_custom_button(__("Manually Cleared"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,resolution_status:"Manually Cleared"}), __("View"));
         frm.add_custom_button(__("Bank Statement Imports"), () => frappe.set_route("List","Marina Bank Statement Import"), __("View"));
         frm.add_custom_button(__("Unreconciled Statement Transactions"), () => {
@@ -324,18 +325,18 @@ function pos_recon_render_results(frm, $wrapper, data) {
     const total = cint(data.total || 0);
     const start = cint(data.start || 0);
     const page_length = cint(data.page_length || POS_RECON_PAGE_LENGTH);
-    const is_bank_only = state.status === "Bank Pending";
+    const is_bank_only = state.status === "Bank Only - Settled";
     const can_review = is_bank_only && frm.doc.status === "Open";
     const counts = state.status_counts || {};
     const statuses = [
         ["All",__("All"),cint(counts["All"]||0)],
         ["Fully Matching",__("Fully Matching"),cint(counts["Fully Matching"]||0)],
         ["Matching Not Settled",__("Matching Not Settled"),cint(counts["Matching Not Settled"]||0)],
+        ["Bank Only - Settled",__("Bank Only - Settled"),cint(counts["Bank Only - Settled"]||0)],
+        ["Bank Only - Not Settled",__("Bank Only - Not Settled"),cint(counts["Bank Only - Not Settled"]||0)],
+        ["Alhamrani Only",__("Alhamrani Only"),cint(counts["Alhamrani Only"]||0)],
         ["Discrepancy",__("Discrepancies"),cint(counts["Discrepancy"]||0)],
-        ["Bank Pending",__("Bank Pending"),cint(counts["Bank Pending"]||0)],
-        ["Marina Pending",__("Alhamrani Pending"),cint(counts["Marina Pending"]||0)],
         ["Manually Cleared",__("Manually Cleared"),cint(counts["Manually Cleared"]||0)],
-        ["One Side Matching",__("One Side Matching"),cint(counts["One Side Matching"]||0)],
         ["All Pending",__("All Pending"),cint(counts["All Pending"]||0)],
     ];
 
@@ -445,7 +446,7 @@ function pos_recon_render_results(frm, $wrapper, data) {
 
     $wrapper.find(".pos-recon-status-filter").on("click", function () {
         state.status = $(this).attr("data-status") || "All";
-        if (state.status !== "Bank Pending") { state.finance_review_status=""; state.before_integration="All"; }
+        if (state.status !== "Bank Only - Settled") { state.finance_review_status=""; state.before_integration="All"; }
         state.start=0;
         pos_recon_load_filter_options(frm).then(()=>pos_recon_load_results(frm));
     });
@@ -712,7 +713,7 @@ function pos_recon_review_selected(frm, $wrapper, decision) {
     if (!pos_recon_require_settlement_filter(frm)) return;
     const records = pos_recon_selected_records($wrapper);
     if (!records.length) {
-        frappe.msgprint(__("Select at least one Bank Only transaction."));
+        frappe.msgprint(__("Select at least one Bank Only - Settled transaction."));
         return;
     }
     if (decision === "Checked & Approved") {
@@ -720,7 +721,7 @@ function pos_recon_review_selected(frm, $wrapper, decision) {
             return ($(this).attr("data-statement-status") || "") !== "Fully Reconciled";
         });
         if (invalid.length) {
-            frappe.msgprint(__("Checked & Approved requires every selected Bank Only transaction to have Bank Statement Status = Fully Reconciled."));
+            frappe.msgprint(__("Checked & Approved requires every selected Bank Only - Settled transaction to have Bank Statement Status = Fully Reconciled."));
             return;
         }
     }
@@ -739,7 +740,7 @@ function pos_recon_reset_selected(frm, $wrapper) {
     if (!pos_recon_require_settlement_filter(frm)) return;
     const records = pos_recon_selected_records($wrapper);
     if (!records.length) {
-        frappe.msgprint(__("Select at least one Bank Only transaction."));
+        frappe.msgprint(__("Select at least one Bank Only - Settled transaction."));
         return;
     }
     frappe.confirm(__("Reset Finance review for {0} selected transactions?", [records.length]), () => {
@@ -759,7 +760,7 @@ function pos_recon_review_filtered(frm, data, decision) {
     const summary = data.filtered_summary || data.settlement_summary || {};
     const count = cint(summary.transaction_count || data.total || 0);
     if (!count) {
-        frappe.msgprint(__("No Bank Only transactions match the current filters."));
+        frappe.msgprint(__("No Bank Only - Settled transactions match the current filters."));
         return;
     }
 
@@ -804,8 +805,8 @@ function pos_recon_prompt_review(decision, count, detail, callback) {
         (values) => {
             const extra = detail ? `<br>${pos_recon_escape(detail)}` : "";
             const message = approved
-                ? __("Mark {0} Bank Only transactions as Checked & Approved?", [count]) + extra
-                : __("Mark {0} Bank Only transactions as Needs Investigation?", [count]) + extra;
+                ? __("Mark {0} Bank Only - Settled transactions as Checked & Approved?", [count]) + extra
+                : __("Mark {0} Bank Only - Settled transactions as Needs Investigation?", [count]) + extra;
             frappe.confirm(message, () => callback(values.note || ""));
         },
         __("Finance Review"),
@@ -886,8 +887,10 @@ function pos_recon_status_pill(status) {
         "Fully Matching": "green",
         "Matching Not Settled": "blue",
         "Matching": "blue",
+        "Bank Only - Settled": "blue",
+        "Bank Only - Not Settled": "orange",
         "Discrepancy": "orange",
-        "Bank Only": "red",
+        "Bank Only": "orange",
         "Alhamrani Only": "red",
     }[value] || "gray";
     return `<span class="indicator-pill ${color}">${pos_recon_escape(value || "—")}</span>`;
@@ -898,7 +901,6 @@ function pos_recon_resolution_pill(status) {
     const value = status || "";
     const color = {
         "Auto Cleared": "green",
-        "One Side Matching": "blue",
         "Pending": "orange",
         "Manually Cleared": "blue",
     }[value] || "gray";
