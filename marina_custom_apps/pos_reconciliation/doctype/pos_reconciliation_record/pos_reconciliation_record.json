@@ -230,7 +230,7 @@
       "in_list_view": 1,
       "in_standard_filter": 1,
       "label": "Match Status",
-      "options": "Fully Matching\nMatching Not Settled\nDiscrepancy\nBank Only\nAlhamrani Only",
+      "options": "Fully Matching\nMatching Not Settled\nDiscrepancy\nBank Only - Settled\nBank Only - Not Settled\nAlhamrani Only",
       "read_only": 1
     },
     {
@@ -239,7 +239,7 @@
       "in_list_view": 1,
       "in_standard_filter": 1,
       "label": "Resolution Status",
-      "options": "Auto Cleared\nOne Side Matching\nPending\nManually Cleared",
+      "options": "Auto Cleared\nPending\nManually Cleared",
       "read_only": 1
     },
     {
