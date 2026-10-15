@@ -29,6 +29,10 @@
     "statement_transaction_count",
     "statement_reconciled_count",
     "statement_unreconciled_count",
+    "statement_pos_line_count",
+    "statement_settlement_count",
+    "statement_fully_reconciled_settlements",
+    "statement_missing_identity_count",
     "result_counts_section",
     "matching_count",
     "matching_not_settled_count",
@@ -270,6 +274,30 @@
       "fieldname": "results_review_html",
       "fieldtype": "HTML",
       "label": "Reconciliation Results Review"
+    },
+    {
+      "fieldname": "statement_pos_line_count",
+      "fieldtype": "Int",
+      "label": "POS Statement Lines",
+      "read_only": 1
+    },
+    {
+      "fieldname": "statement_settlement_count",
+      "fieldtype": "Int",
+      "label": "POS Settlement Groups",
+      "read_only": 1
+    },
+    {
+      "fieldname": "statement_fully_reconciled_settlements",
+      "fieldtype": "Int",
+      "label": "Fully Reconciled Settlements",
+      "read_only": 1
+    },
+    {
+      "fieldname": "statement_missing_identity_count",
+      "fieldtype": "Int",
+      "label": "POS Records Missing Settlement Identity",
+      "read_only": 1
     }
   ],
   "name": "POS Reconciliation Run",
