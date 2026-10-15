@@ -20,7 +20,8 @@
       "label": "GL Entry",
       "options": "GL Entry",
       "reqd": 1,
-      "in_list_view": 1
+      "in_list_view": 1,
+      "search_index": 1
     },
     {
       "fieldname": "posting_date",
