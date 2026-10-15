@@ -58,37 +58,40 @@ frappe.ui.form.on("POS Reconciliation Run", {
             btn.addClass("btn-primary");
         }
 
-        if (lifecycle === "Open" && has_results && !execution_active) {
-            frm.add_custom_button(__("Close Reconciliation"), () => pos_recon_close_run(frm));
-        }
-        if (lifecycle === "Closed") {
-            frm.add_custom_button(__("Reopen Reconciliation"), () => pos_recon_reopen_run(frm));
-        }
-
-        frm.add_custom_button(__("All Records"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name}), __("View"));
-        frm.add_custom_button(__("All Pending"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,resolution_status:"Pending"}), __("View"));
-        frm.add_custom_button(__("Fully Matching"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Fully Matching"}), __("View"));
-        frm.add_custom_button(__("Matching Not Settled"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Matching Not Settled"}), __("View"));
-        frm.add_custom_button(__("Discrepancies"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Discrepancy"}), __("View"));
-        frm.add_custom_button(__("Bank Only - Settled"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Bank Only - Settled"}), __("View"));
-        frm.add_custom_button(__("Bank Only - Not Settled"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Bank Only - Not Settled"}), __("View"));
-        frm.add_custom_button(__("Alhamrani Only"), () => frappe.set_route("List","POS Reconciliation Record",{run:frm.doc.name,match_status:"Alhamrani Only"}), __("View"));
-        frm.add_custom_button(__("Bank Statement Imports"), () => frappe.set_route("List","Marina Bank Statement Import"), __("View"));
-        frm.add_custom_button(__("Unreconciled Statement Transactions"), () => {
-            const filters = {reconciliation_status:"Unreconciled"};
-            if (frm.doc.bank_account) filters.bank_account = frm.doc.bank_account;
-            frappe.set_route("List","Marina Bank Statement Transaction",filters);
-        }, __("View"));
-        frm.add_custom_button(__("Import Bank Statement"), () => frappe.new_doc("Marina Bank Statement Import", {bank_account:frm.doc.bank_account || ""}), __("Bank Statement"));
-        frm.add_custom_button(__("Reconciliation Settings"), () => frappe.set_route("Form","POS Reconciliation Settings","POS Reconciliation Settings"), __("View"));
-
         if (has_results && ["Open","Closed"].includes(lifecycle)) {
-            frm.add_custom_button(__("Accounting Postings"), () => frappe.set_route("List","POS Accounting Posting",{source_run:frm.doc.name}), __("Accounting"));
+            frm.add_custom_button(__("View Records"), () => {
+                frappe.set_route("List", "POS Reconciliation Record", {run: frm.doc.name});
+            }, __("Actions"));
+
+            frm.add_custom_button(__("Import POS Transactions"), () => {
+                frappe.set_route("Form", "POS Bank Import", "POS Bank Import");
+            }, __("Actions"));
+
+            frm.add_custom_button(__("Import Bank Statement"), () => {
+                frappe.new_doc("Marina Bank Statement Import", {
+                    bank_account: frm.doc.bank_account || "",
+                });
+            }, __("Actions"));
+
             if (lifecycle === "Open") {
-                frm.add_custom_button(__("Create Journal Entries"), () => pos_recon_open_accounting_dialog(frm), __("Accounting"));
+                frm.add_custom_button(__("Create Journal Entries"), () => {
+                    pos_recon_open_accounting_dialog(frm);
+                }, __("Actions"));
+
+                if (!execution_active) {
+                    frm.add_custom_button(__("Close Reconciliation"), () => {
+                        pos_recon_close_run(frm);
+                    }, __("Actions"));
+                }
+            } else {
+                frm.add_custom_button(__("Reopen Reconciliation"), () => {
+                    pos_recon_reopen_run(frm);
+                }, __("Actions"));
             }
+
             pos_recon_setup_review(frm);
         }
+
     },
 });
 
