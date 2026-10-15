@@ -355,7 +355,7 @@ def _build_results(run, bank_rows, alhamrani_rows, card_mapper):
         if not candidates:
             result = _base_result(run, bank=bank, card_mapper=card_mapper)
             result.update(
-                match_status="Bank Only",
+                match_status="Bank Only - Not Settled",
                 resolution_status="Pending",
                 before_integration=_is_before_integration(bank, integration_dates),
                 discrepancy_fields="",
@@ -384,7 +384,7 @@ def _build_results(run, bank_rows, alhamrani_rows, card_mapper):
         result = _base_result(run, bank=bank, alhamrani=alh, card_mapper=card_mapper)
         result.update(
             match_status="Discrepancy" if discrepancies else "Matching Not Settled",
-            resolution_status="Pending" if discrepancies else "One Side Matching",
+            resolution_status="Pending",
             before_integration=0,
             discrepancy_fields=", ".join(discrepancies),
         )
@@ -486,6 +486,8 @@ def summarize_results(results):
         "matching_not_settled_count": 0,
         "discrepancy_count": 0,
         "bank_only_count": 0,
+        "bank_only_settled_count": 0,
+        "bank_only_not_settled_count": 0,
         "alhamrani_only_count": 0,
         "manually_cleared_count": 0,
         "pending_count": 0,
@@ -495,13 +497,17 @@ def summarize_results(results):
         "Matching Not Settled": "matching_not_settled_count",
         "Matching": "matching_not_settled_count",
         "Discrepancy": "discrepancy_count",
-        "Bank Only": "bank_only_count",
+        "Bank Only - Settled": "bank_only_settled_count",
+        "Bank Only - Not Settled": "bank_only_not_settled_count",
+        "Bank Only": "bank_only_not_settled_count",
         "Alhamrani Only": "alhamrani_only_count",
     }
     for row in results:
         bucket = mapping.get(row["match_status"])
         if bucket:
             summary[bucket] += 1
+        if row["match_status"] in {"Bank Only - Settled", "Bank Only - Not Settled", "Bank Only"}:
+            summary["bank_only_count"] += 1
         if row["resolution_status"] == "Manually Cleared":
             summary["manually_cleared_count"] += 1
         if row["resolution_status"] == "Pending":
