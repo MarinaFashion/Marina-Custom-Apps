@@ -45,13 +45,13 @@ When a POS settlement is fully confirmed, the related custom statement Gross / C
 ### Match Status
 - Fully Matching
 - Matching Not Settled
-- Discrepancy
-- Bank Only
+- Bank Only - Settled
+- Bank Only - Not Settled
 - Alhamrani Only
+- Discrepancy
 
 ### Resolution Status
 - Auto Cleared
-- One Side Matching
 - Pending
 - Manually Cleared
 
@@ -63,12 +63,16 @@ Rules:
 
 - POS = Alhamrani + statement settlement not yet fully reconciled
   - Match Status = Matching Not Settled
-  - Resolution = One Side Matching
-
-- POS exists, Alhamrani missing
-  - Match Status = Bank Only
   - Resolution = Pending
-  - Finance may manually clear only after the POS settlement is Fully Reconciled to the bank statement.
+
+- POS exists, Alhamrani missing, statement settlement fully reconciled
+  - Match Status = Bank Only - Settled
+  - Resolution = Pending
+  - Finance may manually clear this state.
+
+- POS exists, Alhamrani missing, statement settlement not yet fully reconciled
+  - Match Status = Bank Only - Not Settled
+  - Resolution = Pending
 
 - Alhamrani exists, POS missing
   - Match Status = Alhamrani Only
@@ -136,7 +140,6 @@ Eligible:
 - Manually Cleared
 
 Not eligible:
-- One Side Matching
 - Pending
 
 This prevents commission/VAT accounting from being treated as confirmed before the three-source control is complete, unless Finance explicitly clears a supported Bank Only exception.
