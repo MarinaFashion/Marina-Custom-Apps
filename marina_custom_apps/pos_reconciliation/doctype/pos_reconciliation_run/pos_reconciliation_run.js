@@ -336,7 +336,6 @@ function pos_recon_render_results(frm, $wrapper, data) {
         ["Bank Only - Not Settled",__("Bank Only - Not Settled"),cint(counts["Bank Only - Not Settled"]||0)],
         ["Alhamrani Only",__("Alhamrani Only"),cint(counts["Alhamrani Only"]||0)],
         ["Discrepancy",__("Discrepancies"),cint(counts["Discrepancy"]||0)],
-        ["Manually Cleared",__("Manually Cleared"),cint(counts["Manually Cleared"]||0)],
         ["All Pending",__("All Pending"),cint(counts["All Pending"]||0)],
     ];
 
