@@ -7,6 +7,8 @@ import frappe
 from frappe import _
 from frappe.utils import cstr, flt, getdate, now_datetime
 
+from marina_custom_apps.pos_reconciliation.bank_reconciliation_exclusion_service import active_excluded_names, _source_key
+
 STATEMENT_DOCTYPE = "Marina Bank Statement Transaction"
 MATCH_DOCTYPE = "Bank Statement Reconciliation Match"
 GL_CHILD_DOCTYPE = "Bank Statement Reconciliation GL Row"
@@ -96,13 +98,17 @@ def _voucher_reference_map(rows):
 
 
 def _load_bank_rows(bank_account):
+    excluded_bank = active_excluded_names(bank_account, "Bank Statement")
+    bank_filters = {
+        "bank_account": bank_account,
+        "is_pos_statement_line": 0,
+        "reconciliation_status": "Unreconciled",
+    }
+    if excluded_bank:
+        bank_filters["name"] = ["not in", list(excluded_bank)]
     rows = frappe.get_all(
         STATEMENT_DOCTYPE,
-        filters={
-            "bank_account": bank_account,
-            "is_pos_statement_line": 0,
-            "reconciliation_status": "Unreconciled",
-        },
+        filters=bank_filters,
         fields=[
             "name",
             "processing_date",
@@ -136,15 +142,19 @@ def _load_bank_rows(bank_account):
 def _load_gl_rows(bank_account):
     account = _bank_gl_account(bank_account)
     excluded_gl = _already_reconciled_gl_entries()
+    excluded_gl.update(active_excluded_names(bank_account, "GL Entry"))
     excluded_pos_jes = _pos_generated_journal_entries()
+    gl_filters = {
+        "account": account,
+        "voucher_type": ["in", ["Payment Entry", "Journal Entry"]],
+        "is_cancelled": 0,
+    }
+    if excluded_gl:
+        gl_filters["name"] = ["not in", list(excluded_gl)]
 
     rows = frappe.get_all(
         "GL Entry",
-        filters={
-            "account": account,
-            "voucher_type": ["in", ["Payment Entry", "Journal Entry"]],
-            "is_cancelled": 0,
-        },
+        filters=gl_filters,
         fields=[
             "name",
             "posting_date",
@@ -363,6 +373,8 @@ def _current_bank_rows(names, bank_account):
     )
     if len(rows) != len(names):
         frappe.throw(_("One or more Bank Statement rows are no longer available for reconciliation. Refresh the screen."))
+    if active_excluded_names(bank_account, "Bank Statement").intersection(names):
+        frappe.throw(_("One or more Bank Statement rows have been excluded. Refresh the screen."))
     return rows
 
 
@@ -374,6 +386,8 @@ def _current_gl_rows(names, bank_account):
     excluded = _already_reconciled_gl_entries()
     if excluded.intersection(names):
         frappe.throw(_("One or more GL Entries were already reconciled. Refresh the screen."))
+    if active_excluded_names(bank_account, "GL Entry").intersection(names):
+        frappe.throw(_("One or more GL Entries have been excluded. Refresh the screen."))
 
     rows = frappe.get_all(
         "GL Entry",
@@ -393,6 +407,28 @@ def _current_gl_rows(names, bank_account):
     if any(row.voucher_type == "Journal Entry" and row.voucher_no in excluded_pos_jes for row in rows):
         frappe.throw(_("POS Reconciliation generated Journal Entries cannot be used in general bank reconciliation."))
     return rows
+
+
+
+def _lock_and_check_not_excluded(source_type, names):
+    """Lock source rows and the exclusion state to prevent concurrent saves/exclusions."""
+    if source_type == "Bank Statement":
+        source_table = "tabMarina Bank Statement Transaction"
+    else:
+        source_table = "tabGL Entry"
+    for name in sorted(names):
+        frappe.db.sql(
+            f"SELECT name FROM `{source_table}` WHERE name = %s FOR UPDATE",
+            (name,),
+        )
+        key = _source_key(source_type, name)
+        state = frappe.db.sql(
+            "SELECT status FROM `tabBank Reconciliation Exclusion` WHERE source_key = %s FOR UPDATE",
+            (key,),
+            as_dict=True,
+        )
+        if state and state[0].status == "Excluded":
+            frappe.throw(_("A selected transaction was excluded while reconciliation was being prepared. Refresh the screen."))
 
 
 def save_matches(bank_account, matches, tolerance=None):
@@ -420,6 +456,8 @@ def save_matches(bank_account, matches, tolerance=None):
         if consumed_bank.intersection(bank_names) or consumed_gl.intersection(gl_names):
             frappe.throw(_("The same Bank or GL row cannot be used in more than one match."))
 
+        _lock_and_check_not_excluded("Bank Statement", bank_names)
+        _lock_and_check_not_excluded("GL Entry", gl_names)
         bank_rows = _current_bank_rows(bank_names, bank_account)
         gl_rows = _current_gl_rows(gl_names, bank_account)
 

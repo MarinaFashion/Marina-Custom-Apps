@@ -47,6 +47,7 @@ function bsr_load(frm) {
 }
 
 function bsr_render(frm) {
+    const canExclude = frappe.user.has_role("Accounts Manager") || frappe.user.has_role("System Manager");
     const field = frm.fields_dict.workspace_html;
     if (!field || !field.$wrapper) return;
     const state = frm.__bsr || {bank_rows: [], gl_rows: [], matches: [], counts: {}};
@@ -58,6 +59,7 @@ function bsr_render(frm) {
     const bankBody = bankRows.length
         ? bankRows.map((row) => `
             <tr data-bank-name="${bsr_escape(row.name)}">
+                <td>${canExclude ? `<button class="btn btn-xs btn-default bsr-exclude-row" data-source-type="Bank Statement" data-record-name="${bsr_escape(row.name)}">${__("Exclude")}</button>` : "—"}</td>
                 <td>${bsr_escape(row.date || "")}</td>
                 <td><a href="#" class="bsr-open-doc" data-doctype="Marina Bank Statement Transaction" data-name="${bsr_escape(row.name)}">${bsr_escape(row.transaction_id || row.name)}</a></td>
                 <td>${bsr_escape(row.reference_number || "—")}</td>
@@ -66,11 +68,12 @@ function bsr_render(frm) {
                 <td style="width:80px"><input type="number" min="1" step="1" class="form-control input-xs bsr-tr-input" placeholder="TR#"></td>
             </tr>
         `).join("")
-        : `<tr><td colspan="6" class="text-muted text-center">${__("No unreconciled Bank Statement rows.")}</td></tr>`;
+        : `<tr><td colspan="7" class="text-muted text-center">${__("No unreconciled Bank Statement rows.")}</td></tr>`;
 
     const glBody = glRows.length
         ? glRows.map((row) => `
             <tr data-gl-name="${bsr_escape(row.name)}" data-tr-no="${cint(row.tr_no)}">
+                <td>${canExclude ? `<button class="btn btn-xs btn-default bsr-exclude-row" data-source-type="GL Entry" data-record-name="${bsr_escape(row.name)}">${__("Exclude")}</button>` : "—"}</td>
                 <td>${bsr_escape(row.date || "")}</td>
                 <td><a href="#" class="bsr-open-doc" data-doctype="GL Entry" data-name="${bsr_escape(row.name)}">${bsr_escape(row.transaction_id || row.name)}</a></td>
                 <td>${bsr_escape(row.reference_number || "—")}</td>
@@ -79,7 +82,7 @@ function bsr_render(frm) {
                 <td><b>${cint(row.tr_no)}</b></td>
             </tr>
         `).join("")
-        : `<tr><td colspan="6" class="text-muted text-center">${__("No unreconciled GL Entries.")}</td></tr>`;
+        : `<tr><td colspan="7" class="text-muted text-center">${__("No unreconciled GL Entries.")}</td></tr>`;
 
     const matchBody = matches.length
         ? matches.map((match, idx) => `
@@ -106,6 +109,7 @@ function bsr_render(frm) {
             </div>
             <div class="bsr-actions">
                 <button class="btn btn-xs btn-default bsr-refresh">${__("Refresh")}</button>
+                <button class="btn btn-xs btn-default bsr-view-excluded">${__("View Excluded Transactions")}</button>
                 <button class="btn btn-xs btn-default bsr-apply-manual">${__("Apply Manual TR Links")}</button>
                 <button class="btn btn-xs btn-primary bsr-save" ${matches.length ? "" : "disabled"}>${__("Save Reconciliation")}</button>
             </div>
@@ -126,6 +130,7 @@ function bsr_render(frm) {
                 <div class="bsr-table-wrap">
                     <table class="table table-bordered table-hover bsr-table">
                         <thead><tr>
+                            <th>${__("Actions")}</th>
                             <th>${__("Date")}</th>
                             <th>${__("Transaction ID")}</th>
                             <th>${__("Reference #")}</th>
@@ -143,6 +148,7 @@ function bsr_render(frm) {
                 <div class="bsr-table-wrap">
                     <table class="table table-bordered table-hover bsr-table">
                         <thead><tr>
+                            <th>${__("Actions")}</th>
                             <th>${__("Date")}</th>
                             <th>${__("Transaction ID")}</th>
                             <th>${__("Reference #")}</th>
@@ -201,6 +207,15 @@ function bsr_bind(frm) {
     $w.find(".bsr-clear-filters").on("click", () => {
         bsr_reload_confirm(frm, () => { frm.__bsr_filters = {}; bsr_load(frm); });
     });
+    $w.find(".bsr-view-excluded").on("click", () => {
+        frappe.set_route("List", "Bank Reconciliation Exclusion", {
+            bank_account: frm.doc.bank_account,
+            status: "Excluded",
+        });
+    });
+    $w.find(".bsr-exclude-row").on("click", function () {
+        bsr_exclude_row(frm, $(this).attr("data-source-type"), $(this).attr("data-record-name"));
+    });
     $w.find(".bsr-open-doc").on("click", function (e) {
         e.preventDefault();
         frappe.set_route("Form", $(this).attr("data-doctype"), $(this).attr("data-name"));
@@ -208,6 +223,44 @@ function bsr_bind(frm) {
 
     $w.find(".bsr-apply-manual").on("click", () => bsr_apply_manual(frm));
     $w.find(".bsr-save").on("click", () => bsr_save(frm));
+}
+
+
+function bsr_exclude_row(frm, sourceType, recordName) {
+    if (!frm.doc.bank_account || !recordName) return;
+    const options = "POS / Sales Transaction\nDuplicate Transaction\nHistorical Transaction\nOut of Reconciliation Scope\nOther";
+    frappe.prompt(
+        [
+            {
+                fieldname: "reason", fieldtype: "Select", options: options,
+                label: __("Exclusion Reason"), reqd: 1
+            },
+            {
+                fieldname: "comments", fieldtype: "Small Text",
+                label: __("Comments")
+            }
+        ],
+        (values) => {
+            bsr_reload_confirm(frm, () => {
+                frappe.call({
+                    method: "marina_custom_apps.pos_reconciliation.doctype.bank_statement_reconciliation.bank_statement_reconciliation.exclude_transaction",
+                    args: {
+                        bank_account: frm.doc.bank_account,
+                        source_type: sourceType,
+                        record_name: recordName,
+                        reason: values.reason,
+                        comments: values.comments || "",
+                    },
+                    freeze: true,
+                }).then(() => {
+                    frappe.show_alert({message: __("Transaction excluded. Restore it through Excluded Transactions."), indicator: "green"}, 5);
+                    bsr_load(frm);
+                });
+            });
+        },
+        __("Exclude {0}: {1}", [sourceType, recordName]),
+        __("Exclude")
+    );
 }
 
 function bsr_apply_manual(frm) {
