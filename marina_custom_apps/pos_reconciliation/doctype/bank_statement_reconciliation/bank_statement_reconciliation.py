@@ -15,10 +15,10 @@ class BankStatementReconciliation(Document):
 
 
 @frappe.whitelist()
-def get_workspace(bank_account, tolerance=None):
+def get_workspace(bank_account, tolerance=None, from_date=None, to_date=None, reference=None):
     if not frappe.has_permission("Bank Statement Reconciliation", "read"):
         frappe.throw(_("You are not permitted to view Bank Statement Reconciliation."), frappe.PermissionError)
-    return get_reconciliation_workspace(bank_account, tolerance)
+    return get_reconciliation_workspace(bank_account, tolerance, from_date, to_date, reference)
 
 
 @frappe.whitelist()

@@ -11,6 +11,9 @@ frappe.ui.form.on("Bank Statement Reconciliation", {
 });
 
 function bsr_load(frm) {
+    const filters = frm.__bsr_filters || {};
+    const requestId = (frm.__bsr_request_id || 0) + 1;
+    frm.__bsr_request_id = requestId;
     const field = frm.fields_dict.workspace_html;
     if (!field || !field.$wrapper) return;
 
@@ -32,9 +35,13 @@ function bsr_load(frm) {
         args: {
             bank_account: frm.doc.bank_account,
             tolerance: frm.doc.tolerance || 0.01,
+            from_date: filters.from_date || "",
+            to_date: filters.to_date || "",
+            reference: filters.reference || "",
         },
     }).then((r) => {
-        frm.__bsr = r.message || {bank_rows: [], gl_rows: [], matches: [], counts: {}};
+        if (requestId !== frm.__bsr_request_id) return;
+        frm.__bsr = r.message || {bank_rows: [], gl_rows: [], matches: [], counts: {}, summary: {}};
         bsr_render(frm);
     });
 }
@@ -104,9 +111,12 @@ function bsr_render(frm) {
             </div>
         </div>
 
+        ${bsr_filter_html(frm.__bsr_filters || {})}
+        ${bsr_summary_html(state.summary || {})}
+
         <div class="bsr-counts">
-            <span class="indicator-pill orange">${bankRows.length} ${__("Bank Unreconciled")}</span>
-            <span class="indicator-pill orange">${glRows.length} ${__("GL Unreconciled")}</span>
+            <span class="indicator-pill orange">${bankRows.length} ${__("Bank Rows to Link")}</span>
+            <span class="indicator-pill orange">${glRows.length} ${__("GL Rows to Link")}</span>
             <span class="indicator-pill blue">${matches.length} ${__("Prepared Matches")}</span>
         </div>
 
@@ -173,7 +183,24 @@ function bsr_render(frm) {
 function bsr_bind(frm) {
     const $w = frm.fields_dict.workspace_html.$wrapper;
 
-    $w.find(".bsr-refresh").on("click", () => bsr_load(frm));
+    $w.find(".bsr-refresh").on("click", () => bsr_reload_confirm(frm, () => bsr_load(frm)));
+    $w.find(".bsr-apply-filters").on("click", () => {
+        const fromDate = String($w.find(".bsr-from-date").val() || "");
+        const toDate = String($w.find(".bsr-to-date").val() || "");
+        if (fromDate && toDate && fromDate > toDate) {
+            frappe.msgprint(__("From Date must be on or before To Date."));
+            return;
+        }
+        const next = {
+            from_date: fromDate,
+            to_date: toDate,
+            reference: String($w.find(".bsr-reference").val() || "").trim(),
+        };
+        bsr_reload_confirm(frm, () => { frm.__bsr_filters = next; bsr_load(frm); });
+    });
+    $w.find(".bsr-clear-filters").on("click", () => {
+        bsr_reload_confirm(frm, () => { frm.__bsr_filters = {}; bsr_load(frm); });
+    });
     $w.find(".bsr-open-doc").on("click", function (e) {
         e.preventDefault();
         frappe.set_route("Form", $(this).attr("data-doctype"), $(this).attr("data-name"));
@@ -308,6 +335,79 @@ function bsr_save(frm) {
     );
 }
 
+
+function bsr_filter_html(filters) {
+    return `
+        <div class="bsr-panel bsr-filter-panel">
+            <div class="bsr-panel-title">${__("Reconciliation Filters")}</div>
+            <div class="bsr-filter-grid">
+                <label>${__("From Date")}
+                    <input type="date" class="form-control input-sm bsr-from-date" value="${bsr_escape(filters.from_date || "")}">
+                </label>
+                <label>${__("To Date")}
+                    <input type="date" class="form-control input-sm bsr-to-date" value="${bsr_escape(filters.to_date || "")}">
+                </label>
+                <label>${__("Reference #")}
+                    <input type="text" class="form-control input-sm bsr-reference" placeholder="${__("Search both tables")}" value="${bsr_escape(filters.reference || "")}">
+                </label>
+                <div class="bsr-filter-buttons">
+                    <button class="btn btn-sm btn-primary bsr-apply-filters">${__("Apply Filters")}</button>
+                    <button class="btn btn-sm btn-default bsr-clear-filters">${__("Clear")}</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function bsr_summary_html(summary) {
+    const rows = [
+        [
+            ["Reconciled Bank Transactions", summary.reconciled_bank_transactions, false],
+            ["Reconciled GL Transactions", summary.reconciled_gl_transactions, false],
+            ["Reconciled Bank Amt", summary.reconciled_bank_amount, true],
+            ["Reconciled GL Amt", summary.reconciled_gl_amount, true],
+        ],
+        [
+            ["Unreconciled Bank Transactions", summary.unreconciled_bank_transactions, false],
+            ["Unreconciled GL Transactions", summary.unreconciled_gl_transactions, false],
+            ["Unreconciled Bank Amt", summary.unreconciled_bank_amount, true],
+            ["Unreconciled GL Amt", summary.unreconciled_gl_amount, true],
+        ],
+    ];
+    return `
+        <div class="bsr-summary">
+            ${rows.map((items) => `
+                <div class="bsr-summary-row">
+                    ${items.map(([label, value, currency]) => `
+                        <div class="bsr-summary-card">
+                            <div class="bsr-summary-label">${__(label)}</div>
+                            <div class="bsr-summary-value">${currency ? bsr_money(value) : cint(value || 0)}</div>
+                        </div>
+                    `).join("")}
+                </div>
+            `).join("")}
+        </div>
+        <div class="text-muted small bsr-filter-note">
+            ${__("Amounts are signed net bank movements. Prepared matches remain unreconciled until saved. Only complete reference groups within the selected filters are prepared automatically.")}
+        </div>
+    `;
+}
+
+function bsr_reload_confirm(frm, action) {
+    const state = frm.__bsr || {};
+    const hasManual = (state.matches || []).some((match) => match.match_type === "Manual TR");
+    const $w = frm.fields_dict.workspace_html.$wrapper;
+    const hasTypedLinks = $w.find(".bsr-tr-input").toArray().some((el) => String($(el).val() || "").trim());
+    if (hasManual || hasTypedLinks) {
+        frappe.confirm(
+            __("Refreshing or changing filters will discard unsaved manual TR links. Continue?"),
+            action
+        );
+    } else {
+        action();
+    }
+}
+
 function bsr_round(value) {
     return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
 }
@@ -328,6 +428,17 @@ function bsr_styles() {
         .bsr-title{font-size:15px;font-weight:700;}
         .bsr-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
         .bsr-counts{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 12px;}
+        .bsr-filter-panel{margin-bottom:12px;}
+        .bsr-filter-grid{display:grid;grid-template-columns:1fr 1fr 1.5fr auto;gap:10px;align-items:end;}
+        .bsr-filter-grid label{display:block;margin:0;font-size:12px;font-weight:600;}
+        .bsr-filter-grid input{margin-top:4px;}
+        .bsr-filter-buttons{display:flex;gap:6px;align-items:center;min-height:30px;}
+        .bsr-summary{display:flex;flex-direction:column;gap:8px;margin-bottom:4px;}
+        .bsr-summary-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;}
+        .bsr-summary-card{background:var(--control-bg);border:1px solid var(--border-color);border-radius:var(--border-radius-md);padding:10px;min-width:0;}
+        .bsr-summary-label{font-size:11px;color:var(--text-muted);font-weight:600;min-height:30px;}
+        .bsr-summary-value{font-size:18px;font-weight:700;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;}
+        .bsr-filter-note{margin:6px 0 10px;}
         .bsr-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;}
         .bsr-panel{border:1px solid var(--border-color);border-radius:var(--border-radius-md);background:var(--card-bg);padding:10px;min-width:0;}
         .bsr-panel-title{font-weight:600;margin-bottom:8px;}
@@ -337,6 +448,7 @@ function bsr_styles() {
         .bsr-table th,.bsr-table td{font-size:11px;vertical-align:middle !important;white-space:nowrap;}
         .bsr-table .bsr-description{max-width:260px;overflow:hidden;text-overflow:ellipsis;}
         .bsr-tr-input{min-width:62px;text-align:center;}
-        @media(max-width:1200px){.bsr-grid{grid-template-columns:1fr;}}
+        @media(max-width:1200px){.bsr-grid{grid-template-columns:1fr;}.bsr-filter-grid{grid-template-columns:1fr 1fr;}}
+        @media(max-width:700px){.bsr-summary-row{grid-template-columns:1fr 1fr;}.bsr-filter-grid{grid-template-columns:1fr;}}
     </style>`;
 }

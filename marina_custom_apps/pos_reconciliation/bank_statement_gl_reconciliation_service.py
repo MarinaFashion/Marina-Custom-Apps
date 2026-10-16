@@ -5,7 +5,7 @@ import re
 
 import frappe
 from frappe import _
-from frappe.utils import cstr, flt, now_datetime
+from frappe.utils import cstr, flt, getdate, now_datetime
 
 STATEMENT_DOCTYPE = "Marina Bank Statement Transaction"
 MATCH_DOCTYPE = "Bank Statement Reconciliation Match"
@@ -226,29 +226,117 @@ def _auto_reference_matches(bank_rows, gl_rows, tolerance):
     return matches, used_bank, used_gl
 
 
-def get_workspace(bank_account, tolerance=None):
+
+def _workspace_filters(from_date=None, to_date=None, reference=None):
+    start = getdate(from_date) if from_date else None
+    end = getdate(to_date) if to_date else None
+    if start and end and start > end:
+        frappe.throw(_("From Date must be on or before To Date."))
+    reference = cstr(reference or "").strip()
+    if len(reference) > 140:
+        frappe.throw(_("Reference filter is too long."))
+    return {"from_date": start, "to_date": end, "reference": reference.casefold()}
+
+
+def _visible_row(row, filters):
+    date = getdate(row.date)
+    if filters["from_date"] and date < filters["from_date"]:
+        return False
+    if filters["to_date"] and date > filters["to_date"]:
+        return False
+    return not filters["reference"] or filters["reference"] in cstr(row.reference_number).casefold()
+
+
+def _reconciled_summary(bank_account, filters):
+    """Summarize saved general-bank reconciliation evidence, not POS settlements."""
+    bank_sql = """
+        SELECT COUNT(*) AS transaction_count,
+               COALESCE(SUM(COALESCE(credit, 0) - COALESCE(debit, 0)), 0) AS amount
+        FROM `tabMarina Bank Statement Transaction`
+        WHERE bank_account = %s AND is_pos_statement_line = 0
+          AND reconciliation_status = 'Reconciled'
+          AND bank_statement_reconciliation_match IS NOT NULL
+          AND bank_statement_reconciliation_match != ''
+    """
+    gl_sql = """
+        SELECT COUNT(*) AS transaction_count, COALESCE(SUM(g.amount), 0) AS amount
+        FROM `tabBank Statement Reconciliation GL Row` g
+        INNER JOIN `tabBank Statement Reconciliation Match` m ON m.name = g.parent
+        WHERE m.bank_account = %s AND m.status = 'Reconciled'
+          AND g.parenttype = 'Bank Statement Reconciliation Match'
+          AND g.parentfield = 'gl_rows'
+    """
+    bank_args, gl_args = [bank_account], [bank_account]
+    if filters["from_date"]:
+        bank_sql += " AND processing_date >= %s"
+        gl_sql += " AND g.posting_date >= %s"
+        bank_args.append(filters["from_date"])
+        gl_args.append(filters["from_date"])
+    if filters["to_date"]:
+        bank_sql += " AND processing_date <= %s"
+        gl_sql += " AND g.posting_date <= %s"
+        bank_args.append(filters["to_date"])
+        gl_args.append(filters["to_date"])
+    if filters["reference"]:
+        # INSTR treats % and _ as literal text, rather than SQL LIKE wildcards.
+        bank_sql += " AND INSTR(LOWER(COALESCE(reference_number, '')), %s) > 0"
+        gl_sql += " AND INSTR(LOWER(COALESCE(g.reference_number, '')), %s) > 0"
+        bank_args.append(filters["reference"])
+        gl_args.append(filters["reference"])
+    bank = frappe.db.sql(bank_sql, tuple(bank_args), as_dict=True)[0]
+    gl = frappe.db.sql(gl_sql, tuple(gl_args), as_dict=True)[0]
+    return {
+        "reconciled_bank_transactions": int(bank.transaction_count or 0),
+        "reconciled_gl_transactions": int(gl.transaction_count or 0),
+        "reconciled_bank_amount": flt(bank.amount, 2),
+        "reconciled_gl_amount": flt(gl.amount, 2),
+    }
+
+
+def get_workspace(bank_account, tolerance=None, from_date=None, to_date=None, reference=None):
     bank_account = cstr(bank_account).strip()
     if not bank_account:
-        return {"bank_rows": [], "gl_rows": [], "matches": [], "counts": {}}
+        return {"bank_rows": [], "gl_rows": [], "matches": [], "counts": {}, "summary": {}}
 
+    filters = _workspace_filters(from_date, to_date, reference)
     tolerance = abs(flt(tolerance if tolerance not in (None, "") else DEFAULT_TOLERANCE, 2))
     bank_rows = _load_bank_rows(bank_account)
     gl_rows = _load_gl_rows(bank_account)
-    auto_matches, used_bank, used_gl = _auto_reference_matches(bank_rows, gl_rows, tolerance)
 
-    remaining_bank = [dict(row) for row in bank_rows if row.name not in used_bank]
-    remaining_gl = [dict(row) for row in gl_rows if row.name not in used_gl]
+    # Match over the complete dataset: reference grouping must not depend on date.
+    auto_matches, _used_bank, _used_gl = _auto_reference_matches(bank_rows, gl_rows, tolerance)
+    visible_bank = [row for row in bank_rows if _visible_row(row, filters)]
+    visible_gl = [row for row in gl_rows if _visible_row(row, filters)]
+    # Never save rows hidden by filters as part of an automatically prepared group.
+    visible_matches = [
+        match for match in auto_matches
+        if all(_visible_row(frappe._dict(row), filters) for row in match["bank_rows"])
+        and all(_visible_row(frappe._dict(row), filters) for row in match["gl_rows"])
+    ]
+    used_bank = {row["name"] for match in visible_matches for row in match["bank_rows"]}
+    used_gl = {row["name"] for match in visible_matches for row in match["gl_rows"]}
+    remaining_bank = [dict(row) for row in visible_bank if row.name not in used_bank]
+    remaining_gl = [dict(row) for row in visible_gl if row.name not in used_gl]
     for idx, row in enumerate(remaining_gl, start=1):
         row["tr_no"] = idx
 
+    summary = _reconciled_summary(bank_account, filters)
+    summary.update({
+        # Prepared matches remain unreconciled until the Save action succeeds.
+        "unreconciled_bank_transactions": len(visible_bank),
+        "unreconciled_gl_transactions": len(visible_gl),
+        "unreconciled_bank_amount": flt(sum(row.amount for row in visible_bank), 2),
+        "unreconciled_gl_amount": flt(sum(row.amount for row in visible_gl), 2),
+    })
     return {
         "bank_rows": remaining_bank,
         "gl_rows": remaining_gl,
-        "matches": auto_matches,
+        "matches": visible_matches,
+        "summary": summary,
         "counts": {
             "unreconciled_bank": len(remaining_bank),
             "unreconciled_gl": len(remaining_gl),
-            "auto_matches": len(auto_matches),
+            "auto_matches": len(visible_matches),
             "auto_bank_rows": len(used_bank),
             "auto_gl_rows": len(used_gl),
         },
