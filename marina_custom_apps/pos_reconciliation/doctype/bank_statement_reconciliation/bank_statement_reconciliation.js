@@ -64,12 +64,12 @@ function bsr_render(frm) {
     const glBody = glRows.length
         ? glRows.map((row) => `
             <tr data-gl-name="${bsr_escape(row.name)}" data-tr-no="${cint(row.tr_no)}">
-                <td><b>${cint(row.tr_no)}</b></td>
                 <td>${bsr_escape(row.date || "")}</td>
                 <td><a href="#" class="bsr-open-doc" data-doctype="GL Entry" data-name="${bsr_escape(row.name)}">${bsr_escape(row.transaction_id || row.name)}</a></td>
                 <td>${bsr_escape(row.reference_number || "—")}</td>
                 <td class="bsr-description">${bsr_escape(row.description || "—")}</td>
                 <td class="text-right">${bsr_money(row.amount)}</td>
+                <td><b>${cint(row.tr_no)}</b></td>
             </tr>
         `).join("")
         : `<tr><td colspan="6" class="text-muted text-center">${__("No unreconciled GL Entries.")}</td></tr>`;
@@ -133,12 +133,12 @@ function bsr_render(frm) {
                 <div class="bsr-table-wrap">
                     <table class="table table-bordered table-hover bsr-table">
                         <thead><tr>
-                            <th>${__("TR#")}</th>
                             <th>${__("Date")}</th>
                             <th>${__("Transaction ID")}</th>
                             <th>${__("Reference #")}</th>
                             <th>${__("Description")}</th>
                             <th class="text-right">${__("Amount")}</th>
+                            <th>${__("TR#")}</th>
                         </tr></thead>
                         <tbody>${glBody}</tbody>
                     </table>
