@@ -560,7 +560,9 @@ function pos_recon_result_filters(state, options, is_bank_only, summary, can_rev
     const multiple=cint(summary.settlement_date_count||0)>1||cint(summary.terminal_count||0)>1;
     const all_statement_confirmed = cint(summary.transaction_count||0) > 0
         && cint(summary.bank_statement_fully_reconciled_count||0) === cint(summary.transaction_count||0);
-    const base_disabled=!can_review||multiple||!state.settlement_number;
+    // Bulk actions must target exactly one settlement; an empty array is truthy.
+    const settlement_filter_count = pos_recon_multi_values(state.settlement_number).length;
+    const base_disabled = !can_review || multiple || settlement_filter_count !== 1;
     const approve_disabled=base_disabled||!all_statement_confirmed?"disabled":"";
     const investigate_disabled=base_disabled?"disabled":"";
     const actions=can_review?`<div class="pos-recon-finance-actions">

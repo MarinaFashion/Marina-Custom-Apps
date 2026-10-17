@@ -17,7 +17,10 @@ from marina_custom_apps.pos_reconciliation.reconciliation_engine import (
     FINANCE_PENDING,
     refresh_run_summary,
 )
-from marina_custom_apps.pos_reconciliation.review_service import apply_accounting_filters
+from marina_custom_apps.pos_reconciliation.review_service import (
+    apply_accounting_filters,
+    multi_filter_values,
+)
 
 VALID_DECISIONS = {FINANCE_APPROVED, FINANCE_INVESTIGATE}
 SETTINGS_DOCTYPE = "POS Reconciliation Settings"
@@ -283,9 +286,11 @@ def _filtered_bank_only_rows(
     if not run_name:
         frappe.throw(_("Reconciliation Run is required."))
 
-    settlement_number = cstr(settlement_number).strip()
-    if not settlement_number:
+    settlement_numbers = multi_filter_values(settlement_number)
+    if not settlement_numbers:
         frappe.throw(_("Settlement Number is required for bulk Finance review."))
+    if len(settlement_numbers) != 1:
+        frappe.throw(_("Bulk Finance review requires exactly one Settlement Number."))
 
     filters = {
         "run": run_name,
@@ -295,8 +300,7 @@ def _filtered_bank_only_rows(
     if require_statement_confirmed:
         filters["match_status"] = "Bank Only - Settled"
         filters["bank_statement_status"] = "Fully Reconciled"
-    if settlement_number:
-        filters["settlement_number"] = settlement_number
+    filters["settlement_number"] = settlement_numbers[0]
 
     if from_date and to_date:
         from_date, to_date = getdate(from_date), getdate(to_date)
@@ -309,9 +313,15 @@ def _filtered_bank_only_rows(
         filters["transaction_date"] = ["<=", getdate(to_date)]
 
     for fieldname, value in {
-        "settlement_date": settlement_date,
         "pos_profile": pos_profile,
         "terminal_id": terminal_id,
+    }.items():
+        values = multi_filter_values(value)
+        if values:
+            filters[fieldname] = values[0] if len(values) == 1 else ["in", values]
+
+    for fieldname, value in {
+        "settlement_date": settlement_date,
         "card_type": card_type,
         "finance_review_status": finance_review_status,
         "bank_statement_status": None if require_statement_confirmed else bank_statement_status,
