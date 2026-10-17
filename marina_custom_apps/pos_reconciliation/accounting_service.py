@@ -880,53 +880,36 @@ def _profile_summaries(posting_doc):
 
 
 def _journal_entry_description(posting_doc, summaries):
-    all_transactions = [
-        item.bank_transaction
+    """Concise, audit-friendly header remark. Posting items retain full details."""
+    transaction_count = len({
+        cstr(item.bank_transaction).strip()
         for item in posting_doc.items
-        if item.bank_transaction
-    ]
+        if cstr(item.bank_transaction).strip()
+    })
     transaction_dates = [
         getdate(item.transaction_date)
         for item in posting_doc.items
         if item.transaction_date
     ]
-    settlement_numbers = sorted(
-        {
-            cstr(item.settlement_number).strip()
-            for item in posting_doc.items
-            if cstr(item.settlement_number).strip()
-        }
-    )
-    profiles = [summary.pos_profile for summary in summaries if summary.pos_profile]
+    store_count = len({
+        cstr(summary.pos_profile).strip()
+        for summary in summaries
+        if cstr(summary.pos_profile).strip()
+    })
 
-    date_range = "—"
-    if transaction_dates:
-        date_range = "{0} to {1}".format(
-            min(transaction_dates),
-            max(transaction_dates),
-        )
-
-    settlement_text = (
-        ", ".join(settlement_numbers[:10])
-        if settlement_numbers
-        else "—"
-    )
-    if len(settlement_numbers) > 10:
-        settlement_text += _(" (+{0} more)").format(len(settlement_numbers) - 10)
+    first_date = min(transaction_dates) if transaction_dates else "—"
+    last_date = max(transaction_dates) if transaction_dates else "—"
 
     return _(
-        "POS bank commission and VAT posting | Posting: {0} | Reconciliation Run: {1} | "
-        "Posting Date: {2} | Transactions: {3} | Transaction Date Range: {4} | "
-        "POS Profiles: {5} | Settlements: {6} | Bank POS Transactions: {7}"
+        "Recording bank commission and VAT for {0} POS transactions "
+        "from {1} to {2} across {3} {4}. Posting: {5}"
     ).format(
+        f"{transaction_count:,}",
+        first_date,
+        last_date,
+        store_count,
+        _("store") if store_count == 1 else _("stores"),
         posting_doc.name,
-        posting_doc.source_run,
-        posting_doc.posting_date,
-        len(all_transactions),
-        date_range,
-        ", ".join(profiles) or "—",
-        settlement_text,
-        _transaction_reference_text(all_transactions),
     )
 
 
@@ -1317,8 +1300,15 @@ def _generated_posting_reference(doc):
         return cstr(posting_name).strip()
     cheque_no = cstr(doc.cheque_no).strip()
     remark = cstr(doc.user_remark).strip()
-    marker = "POS bank commission and VAT posting | Posting: {0}".format(cheque_no)
-    if cheque_no and remark.startswith(marker):
+    legacy_marker = "POS bank commission and VAT posting | Posting: {0}".format(cheque_no)
+    # The compact remark must remain recognizable before the parent Posting's
+    # journal_entry Link has been populated. Keep legacy JE protection intact.
+    compact_marker = "Recording bank commission and VAT for "
+    compact_suffix = ". Posting: {0}".format(cheque_no)
+    if cheque_no and (
+        remark.startswith(legacy_marker)
+        or (remark.startswith(compact_marker) and remark.endswith(compact_suffix))
+    ):
         return cheque_no
     return None
 
