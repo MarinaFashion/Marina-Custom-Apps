@@ -237,7 +237,35 @@ def _mark_statement_rows(rows, settlement, run_name, fully_reconciled, checked_o
         )
 
 
-def _update_records(run, records, record_keys, settlements, evidence, checked_on):
+def _has_protected_statement_change(record, updates, newly_created_names=None):
+    """Protect historical Finance decisions and accounting, not a new record's first status.
+
+    The matching engine creates a record and inherits an existing source-level
+    Finance approval *before* its initial bank-statement check. That inherited
+    approval must not be misread as an earlier reconciliation decision.
+    """
+    accounting_protected = bool(
+        record.accounting_posting or record.journal_entry
+        or cstr(record.accounting_status) in {
+            "Posted", "Draft Created", "Draft - Review Required", "Posted - Review Required"
+        }
+    )
+    review_status = cstr(record.finance_review_status).strip()
+    reviewed = review_status in {"Checked & Approved", "Needs Investigation"}
+    initial_approved_record = bool(
+        record.name in (newly_created_names or ())
+        and review_status == "Checked & Approved"
+        and not accounting_protected
+    )
+    protected = accounting_protected or (reviewed and not initial_approved_record)
+    return protected and any(
+        cstr(record.get(field)) != cstr(value)
+        for field, value in updates.items()
+        if field in {"match_status", "resolution_status", "bank_statement_status"}
+    )
+
+
+def _update_records(run, records, record_keys, settlements, evidence, checked_on, newly_created_names=None):
     for record in records:
         key = record_keys.get(record.name)
         if not key:
@@ -295,26 +323,18 @@ def _update_records(run, records, record_keys, settlements, evidence, checked_on
         elif current_match in {"Discrepancy", "Alhamrani Only"}:
             updates["resolution_status"] = "Pending"
 
-        protected = bool(
-            record.accounting_posting or record.journal_entry
-            or cstr(record.accounting_status) in {
-                "Posted", "Draft Created", "Draft - Review Required", "Posted - Review Required"
-            }
-            or cstr(record.finance_review_status) in {"Checked & Approved", "Needs Investigation"}
-        )
-        if protected and any(
-            cstr(record.get(field)) != cstr(value)
-            for field, value in updates.items()
-            if field in {"match_status", "resolution_status", "bank_statement_status"}
-        ):
+        # Preserve an existing manual clearance before checking protected
+        # changes; otherwise the temporary Auto Cleared/Pending outcome can
+        # falsely appear to reverse Finance's decision.
+        if current_resolution == "Manually Cleared":
+            updates["resolution_status"] = "Manually Cleared"
+
+        if _has_protected_statement_change(record, updates, newly_created_names):
             frappe.throw(
                 "Previously reviewed or posted reconciliation {0} has changed bank-statement evidence. Resolve it through Finance review before rerunning.".format(
                     record.name
                 )
             )
-        # A Finance-approved manual clearance remains the authoritative decision.
-        if current_resolution == "Manually Cleared":
-            updates["resolution_status"] = "Manually Cleared"
 
         frappe.db.set_value(
             RECORD_DOCTYPE,
@@ -324,7 +344,7 @@ def _update_records(run, records, record_keys, settlements, evidence, checked_on
         )
 
 
-def reconcile_run_statement(run):
+def reconcile_run_statement(run, newly_created_names=None):
     if not run.bank_account:
         return {
             "statement_transaction_count": 0,
@@ -395,7 +415,7 @@ def reconcile_run_statement(run):
             checked_on,
         )
 
-    _update_records(run, records, record_keys, settlements, evidence, checked_on)
+    _update_records(run, records, record_keys, settlements, evidence, checked_on, newly_created_names)
 
     # Add settlement-level POS record links to each participating statement row.
     # Run after status updates so the child table shows final settled statuses.

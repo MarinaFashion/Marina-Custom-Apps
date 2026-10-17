@@ -508,6 +508,7 @@ def _persist_results(run, results, bank_rows, alhamrani_rows, execution_name=Non
         "finance_review_note", "match_status", "resolution_status",
     }
     new_rows = []
+    new_record_names = set()
     for result in results:
         existing_row = existing_by_key.get(result["record_key"])
         if existing_row:
@@ -530,6 +531,7 @@ def _persist_results(run, results, bank_rows, alhamrani_rows, execution_name=Non
                     update_modified=True,
                 )
             continue
+        new_record_names.add(result["name"])
         row = {
             "name": result["name"], "owner": user, "creation": now,
             "modified": now, "modified_by": user, "docstatus": 0, "idx": 0,
@@ -544,6 +546,10 @@ def _persist_results(run, results, bank_rows, alhamrani_rows, execution_name=Non
         frappe.db.bulk_insert(
             "POS Reconciliation Record", fields=fields, values=new_rows, chunk_size=1000
         )
+    # Only names inserted by this execution can bypass the initial inherited
+    # Finance-approval comparison in statement reconciliation. Existing
+    # reviewed and posted records remain fully protected.
+    return new_record_names
 
 
 def summarize_results(results):
@@ -612,7 +618,7 @@ def execute_run(run, execution_name=None):
     bank_rows = _bank_rows(run, card_mapper)
     alhamrani_rows = _alhamrani_rows(run, card_mapper)
     results = _build_results(run, bank_rows, alhamrani_rows, card_mapper)
-    _persist_results(run, results, bank_rows, alhamrani_rows, execution_name)
+    newly_created_names = _persist_results(run, results, bank_rows, alhamrani_rows, execution_name)
 
     # Never carry a previous execution's statement counters into a no-bank run.
     statement_summary = {
@@ -628,7 +634,7 @@ def execute_run(run, execution_name=None):
         from marina_custom_apps.pos_reconciliation.unified_statement_reconciliation import (
             reconcile_run_statement,
         )
-        statement_summary = reconcile_run_statement(run)
+        statement_summary = reconcile_run_statement(run, newly_created_names=newly_created_names)
 
     summary = refresh_run_summary(run.name)
     summary.update(
