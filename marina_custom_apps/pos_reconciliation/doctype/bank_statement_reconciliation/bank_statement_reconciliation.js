@@ -61,7 +61,7 @@ function bsr_render(frm) {
             <tr data-bank-name="${bsr_escape(row.name)}">
                 <td>${canExclude ? `<button class="btn btn-xs btn-default bsr-exclude-row" data-source-type="Bank Statement" data-record-name="${bsr_escape(row.name)}">${__("Exclude")}</button>` : "—"}</td>
                 <td>${bsr_escape(row.date || "")}</td>
-                <td><a href="#" class="bsr-open-doc" data-doctype="Marina Bank Statement Transaction" data-name="${bsr_escape(row.name)}">${bsr_escape(row.transaction_id || row.name)}</a></td>
+                <td><a href="${bsr_escape(bsr_transaction_href("Marina Bank Statement Transaction", row.name))}" target="_blank" rel="noopener noreferrer" class="bsr-open-doc">${bsr_escape(row.transaction_id || row.name)}</a></td>
                 <td>${bsr_escape(row.reference_number || "—")}</td>
                 <td class="bsr-description">${bsr_escape(row.description || "—")}</td>
                 <td class="text-right">${bsr_money(row.amount)}</td>
@@ -76,7 +76,7 @@ function bsr_render(frm) {
             <tr data-gl-name="${bsr_escape(row.name)}">
                 <td>${canExclude ? `<button class="btn btn-xs btn-default bsr-exclude-row" data-source-type="GL Entry" data-record-name="${bsr_escape(row.name)}">${__("Exclude")}</button>` : "—"}</td>
                 <td>${bsr_escape(row.date || "")}</td>
-                <td><a href="#" class="bsr-open-doc" data-doctype="GL Entry" data-name="${bsr_escape(row.name)}">${bsr_escape(row.transaction_id || row.name)}</a></td>
+                <td><a href="${bsr_escape(bsr_transaction_href("GL Entry", row.name))}" target="_blank" rel="noopener noreferrer" class="bsr-open-doc">${bsr_escape(row.transaction_id || row.name)}</a></td>
                 <td>${bsr_escape(row.reference_number || "—")}</td>
                 <td class="bsr-description">${bsr_escape(row.description || "—")}</td>
                 <td class="text-right">${bsr_money(row.amount)}</td>
@@ -221,10 +221,6 @@ function bsr_bind(frm) {
     });
     $w.find(".bsr-exclude-row").on("click", function () {
         bsr_exclude_row(frm, $(this).attr("data-source-type"), $(this).attr("data-record-name"));
-    });
-    $w.find(".bsr-open-doc").on("click", function (e) {
-        e.preventDefault();
-        frappe.set_route("Form", $(this).attr("data-doctype"), $(this).attr("data-name"));
     });
 
     $w.find(".bsr-apply-manual").on("click", () => bsr_apply_manual(frm));
@@ -494,6 +490,18 @@ function bsr_round(value) {
 function bsr_money(value) {
     const number = Number(value || 0);
     return format_currency(number, frappe.defaults.get_default("currency") || "SAR");
+}
+
+function bsr_transaction_href(doctype, name) {
+    // Real, browser-navigable links preserve the reconciliation working tab.
+    // Explicit route slugs avoid dependence on the Frappe client router's state.
+    const routes = {
+        "GL Entry": "gl-entry",
+        "Marina Bank Statement Transaction": "marina-bank-statement-transaction",
+    };
+    const route = routes[doctype];
+    if (!route || !name) return "#";
+    return "/app/" + route + "/" + encodeURIComponent(String(name));
 }
 
 function bsr_escape(value) {
