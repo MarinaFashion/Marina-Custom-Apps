@@ -1,13 +1,6 @@
 frappe.query_reports["POS Reconciliation Results"] = {
     filters: [
         {
-            fieldname: "run",
-            label: __("Reconciliation Run"),
-            fieldtype: "Link",
-            options: "POS Reconciliation Run",
-            reqd: 1,
-        },
-        {
             fieldname: "from_date",
             label: __("From Date"),
             fieldtype: "Date",

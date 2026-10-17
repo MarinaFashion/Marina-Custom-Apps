@@ -1,4 +1,5 @@
 [pre_model_sync]
+marina_custom_apps.patches.v0_53_1.validate_pos_single_migration
 
 [post_model_sync]
 marina_custom_apps.patches.v0_47_20.reset_operational_naming_series
@@ -23,3 +24,5 @@ marina_custom_apps.patches.v0_53_0.normalize_resolution_from_match_status
 marina_custom_apps.patches.v0_53_0.fix_bank_reconciliation_match_type_options
 marina_custom_apps.patches.v0_53_0.ensure_bank_reconciliation_exclusions_workspace
 marina_custom_apps.patches.v0_53_0.enable_bank_manual_group_matching
+marina_custom_apps.patches.v0_53_1.initialize_pos_single
+marina_custom_apps.patches.v0_53_1.ensure_pos_single_workspace

@@ -31,22 +31,9 @@ def _check_permission():
 
 
 def _ensure_bank_transactions_open(bank_transactions):
-    bank_transactions = list(dict.fromkeys(_as_list(bank_transactions)))
-    if not bank_transactions:
-        return
+    from marina_custom_apps.pos_reconciliation.period_control import assert_bank_transactions_open
+    assert_bank_transactions_open(_as_list(bank_transactions))
 
-    rows = frappe.get_all(
-        "POS Reconciliation Record",
-        filters={"bank_transaction": ["in", bank_transactions]},
-        fields=["run"],
-        group_by="run",
-        limit_page_length=0,
-    )
-    for row in rows:
-        if row.run and frappe.db.get_value("POS Reconciliation Run", row.run, "status") == "Closed":
-            frappe.throw(
-                _("Closed reconciliation runs must be reopened before manual clearance can be changed.")
-            )
 
 def _ensure_statement_confirmed(bank_transactions):
     bank_transactions = list(dict.fromkeys(_as_list(bank_transactions)))

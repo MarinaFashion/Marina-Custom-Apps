@@ -146,10 +146,13 @@ def _record_name(record_key):
     return f"PREC-{digest}"
 
 
-def _record_key(run_name, bank_transaction=None, alhamrani_transaction=None):
+def _record_key(run_name=None, bank_transaction=None, alhamrani_transaction=None):
+    """Stable source identity, independent of how many executions cover it."""
     if bank_transaction:
-        return f"{run_name}|BANK|{bank_transaction}"
-    return f"{run_name}|ALHAMRANI|{alhamrani_transaction}"
+        return f"BANK|{bank_transaction}"
+    if alhamrani_transaction:
+        return f"ALHAMRANI|{alhamrani_transaction}"
+    frappe.throw(_("Reconciliation records require a source transaction."))
 
 
 def _bank_review_states():
@@ -417,66 +420,129 @@ def _value_equal(left, right):
     return cstr(left) == cstr(right)
 
 
-def _persist_results(run, results):
-    existing = frappe.get_all(
-        "POS Reconciliation Record",
-        filters={"run": run.name},
-        fields=["name", "record_key", *RECORD_UPDATE_FIELDS],
-        limit_page_length=0,
-    )
-    existing_by_key = {row.record_key: row for row in existing}
-    desired_keys = {row["record_key"] for row in results}
+def _existing_records_for_scope(bank_rows, alhamrani_rows):
+    """Retrieve only affected source rows via indexed transaction identifiers."""
+    fields = list(dict.fromkeys(
+        ["name", "record_key", "accounting_status", "accounting_posting", "journal_entry"]
+        + list(RECORD_UPDATE_FIELDS)
+    ))
+    found = {}
+    for fieldname, rows in (("bank_transaction", bank_rows), ("alhamrani_transaction", alhamrani_rows)):
+        names = list({row.name for row in rows})
+        for i in range(0, len(names), 500):
+            for row in frappe.get_all(
+                "POS Reconciliation Record",
+                filters={fieldname: ["in", names[i:i + 500]]},
+                fields=fields,
+                limit_page_length=0,
+            ):
+                found[row.name] = row
+    return list(found.values())
 
-    stale_names = [row.name for row in existing if row.record_key not in desired_keys]
-    if stale_names:
-        frappe.db.delete("POS Reconciliation Record", {"name": ["in", stale_names]})
+
+def _material_change(current, proposed):
+    fields = (
+        "bank_transaction", "alhamrani_transaction", "bank_amount",
+        "alhamrani_amount", "bank_commission_amount", "bank_commission_vat_amount",
+        "settlement_number", "settlement_date", "bank_settlement_amount",
+        "card_type", "terminal_id", "discrepancy_fields",
+    )
+    if any(not _value_equal(current.get(f), proposed.get(f)) for f in fields):
+        return True
+    # The engine's initial pass sets "Not Settled"; statement integration
+    # promotes it back to Fully Matching in the same database transaction.
+    equivalences = {
+        "Fully Matching": "Matching Not Settled",
+        "Bank Only - Settled": "Bank Only - Not Settled",
+    }
+    old_status = equivalences.get(cstr(current.match_status), cstr(current.match_status))
+    return old_status != cstr(proposed.get("match_status"))
+
+
+def _protected_result(row):
+    return bool(
+        row.accounting_posting or row.journal_entry
+        or cstr(row.accounting_status) in {
+            "Posted", "Draft Created", "Draft - Review Required", "Posted - Review Required"
+        }
+        or cstr(row.finance_review_status) in {FINANCE_APPROVED, FINANCE_INVESTIGATE}
+    )
+
+
+def _persist_results(run, results, bank_rows, alhamrani_rows, execution_name=None):
+    """Upsert global current results, without deleting data outside this execution."""
+    from marina_custom_apps.pos_reconciliation.period_control import assert_dates_open
+
+    assert_dates_open([row.transaction_date for row in bank_rows] + [
+        row.transaction_date for row in alhamrani_rows
+    ])
+    existing = _existing_records_for_scope(bank_rows, alhamrani_rows)
+    existing_by_key = {row.record_key: row for row in existing}
+    desired = {row["record_key"] for row in results}
+    if len(desired) != len(results):
+        frappe.throw(_("Duplicate reconciliation source keys in the same execution."))
+
+    stale = [row for row in existing if row.record_key not in desired]
+    for row in stale:
+        if _protected_result(row):
+            frappe.throw(
+                _("Existing result {0} has review or posting evidence. Reset/reverse it before changing its source pairing.").format(row.name)
+            )
+        for child in ("POS Accounting Posting Item", "POS Bank Settlement Transaction"):
+            if frappe.db.exists(child, {"reconciliation_record": row.name}):
+                frappe.throw(
+                    _("Existing result {0} is referenced by {1}.").format(row.name, child)
+                )
+
+    if stale:
+        frappe.db.delete("POS Reconciliation Record", {"name": ["in", [row.name for row in stale]]})
 
     now = now_datetime()
     user = frappe.session.user or "Administrator"
-    new_rows = []
-    new_fields = [
+    fields = [
         "name", "owner", "creation", "modified", "modified_by", "docstatus", "idx",
-        "run", "record_key", *RECORD_UPDATE_FIELDS,
+        "run", "record_key", "last_execution", *RECORD_UPDATE_FIELDS,
     ]
-
+    no_reset_if_protected = {
+        "finance_review_status", "finance_reviewed_by", "finance_reviewed_on",
+        "finance_review_note", "match_status", "resolution_status",
+    }
+    new_rows = []
     for result in results:
         existing_row = existing_by_key.get(result["record_key"])
         if existing_row:
+            if _protected_result(existing_row) and _material_change(existing_row, result):
+                frappe.throw(
+                    _("Result {0} was reviewed or posted and its financial match has changed. Resolve the review/posting before rerunning.").format(existing_row.name)
+                )
             updates = {}
             for fieldname in RECORD_UPDATE_FIELDS:
-                new_value = result.get(fieldname)
-                if not _value_equal(existing_row.get(fieldname), new_value):
-                    updates[fieldname] = new_value
+                if _protected_result(existing_row) and fieldname in no_reset_if_protected:
+                    continue
+                val = result.get(fieldname)
+                if not _value_equal(existing_row.get(fieldname), val):
+                    updates[fieldname] = val
+            if execution_name:
+                updates["last_execution"] = execution_name
             if updates:
                 frappe.db.set_value(
-                    "POS Reconciliation Record",
-                    existing_row.name,
-                    updates,
+                    "POS Reconciliation Record", existing_row.name, updates,
                     update_modified=True,
                 )
             continue
-
-        values = {
-            "name": result["name"],
-            "owner": user,
-            "creation": now,
-            "modified": now,
-            "modified_by": user,
-            "docstatus": 0,
-            "idx": 0,
-            "run": run.name,
-            "record_key": result["record_key"],
+        row = {
+            "name": result["name"], "owner": user, "creation": now,
+            "modified": now, "modified_by": user, "docstatus": 0, "idx": 0,
+            "run": run.name, "record_key": result["record_key"],
+            "last_execution": execution_name,
         }
         for fieldname in RECORD_UPDATE_FIELDS:
-            values[fieldname] = result.get(fieldname)
-        new_rows.append(tuple(values.get(fieldname) for fieldname in new_fields))
+            row[fieldname] = result.get(fieldname)
+        new_rows.append(tuple(row.get(fieldname) for fieldname in fields))
 
     if new_rows:
         frappe.db.bulk_insert(
-            "POS Reconciliation Record",
-            fields=new_fields,
-            values=new_rows,
-            chunk_size=1000,
+            "POS Reconciliation Record", fields=fields, values=new_rows, chunk_size=1000
         )
 
 
@@ -516,20 +582,13 @@ def summarize_results(results):
 
 
 def _set_run_values(run_name, values):
-    """Persist only fields that exist on the installed POS Reconciliation Run schema."""
+    """Write controller state to tabSingles (never tabPOS Reconciliation Run)."""
+    if run_name != "POS Reconciliation Run":
+        frappe.throw(_("Invalid reconciliation control name."))
     meta = frappe.get_meta("POS Reconciliation Run")
-    safe_values = {
-        fieldname: value
-        for fieldname, value in (values or {}).items()
-        if meta.has_field(fieldname)
-    }
-    if safe_values:
-        frappe.db.set_value(
-            "POS Reconciliation Run",
-            run_name,
-            safe_values,
-            update_modified=True,
-        )
+    for fieldname, value in (values or {}).items():
+        if meta.has_field(fieldname):
+            frappe.db.set_single_value("POS Reconciliation Run", fieldname, value)
 
 
 def refresh_run_summary(run_name):
@@ -544,20 +603,27 @@ def refresh_run_summary(run_name):
     return summary
 
 
-def execute_run(run_name):
-    run = frappe.get_doc("POS Reconciliation Run", run_name)
-    run.check_permission("write")
-    run.validate_date_range()
-    if run.status == "Closed":
-        frappe.throw(_("Closed reconciliation runs must be reopened before re-running."))
+def execute_run(run, execution_name=None):
+    """Execute the immutable scope captured in POS Reconciliation Execution."""
+    from marina_custom_apps.pos_reconciliation.period_control import assert_scope_open
+    assert_scope_open(run.from_date, run.to_date)
 
     card_mapper = get_card_type_mapper()
     bank_rows = _bank_rows(run, card_mapper)
     alhamrani_rows = _alhamrani_rows(run, card_mapper)
     results = _build_results(run, bank_rows, alhamrani_rows, card_mapper)
-    _persist_results(run, results)
+    _persist_results(run, results, bank_rows, alhamrani_rows, execution_name)
 
-    statement_summary = {}
+    # Never carry a previous execution's statement counters into a no-bank run.
+    statement_summary = {
+        "statement_transaction_count": 0,
+        "statement_reconciled_count": 0,
+        "statement_unreconciled_count": 0,
+        "statement_pos_line_count": 0,
+        "statement_settlement_count": 0,
+        "statement_fully_reconciled_settlements": 0,
+        "statement_missing_identity_count": 0,
+    }
     if run.get("bank_account"):
         from marina_custom_apps.pos_reconciliation.unified_statement_reconciliation import (
             reconcile_run_statement,
@@ -572,4 +638,9 @@ def execute_run(run_name):
         **statement_summary,
     )
     _set_run_values(run.name, summary)
+    # Synchronize only this execution's source transactions, not all history.
+    from marina_custom_apps.pos_reconciliation.accounting_service import (
+        sync_accounting_status_for_bank_transactions,
+    )
+    sync_accounting_status_for_bank_transactions([row.name for row in bank_rows])
     return {"run": run.name, **summary}
