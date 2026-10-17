@@ -1,0 +1,197 @@
+{
+  "doctype": "DocType",
+  "module": "POS Reconciliation",
+  "name": "POS Bank Statement Reconciliation",
+  "engine": "InnoDB",
+  "track_changes": 1,
+  "autoname": "naming_series:",
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "field_order": [
+    "naming_series",
+    "period_section",
+    "bank_account",
+    "from_date",
+    "to_date",
+    "tolerance",
+    "status",
+    "summary_section",
+    "settlement_count",
+    "fully_reconciled_settlements",
+    "exception_settlements",
+    "source_exception_count",
+    "statement_column_break",
+    "statement_line_count",
+    "parsed_pos_statement_lines",
+    "matched_pos_statement_lines",
+    "unmatched_pos_statement_lines",
+    "other_statement_lines",
+    "amounts_section",
+    "statement_deposit_total",
+    "statement_withdrawal_total",
+    "last_run_on"
+  ],
+  "fields": [
+    {
+      "fieldname": "naming_series",
+      "fieldtype": "Select",
+      "label": "Series",
+      "options": "POS-BANK-REC-.YYYY.-",
+      "default": "POS-BANK-REC-.YYYY.-",
+      "reqd": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "period_section",
+      "fieldtype": "Section Break",
+      "label": "Statement Period"
+    },
+    {
+      "fieldname": "bank_account",
+      "fieldtype": "Link",
+      "label": "Bank Account",
+      "options": "Bank Account",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "from_date",
+      "fieldtype": "Date",
+      "label": "From Date",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "to_date",
+      "fieldtype": "Date",
+      "label": "To Date",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "tolerance",
+      "fieldtype": "Currency",
+      "label": "Amount Tolerance",
+      "default": "0.01",
+      "description": "Maximum absolute component difference treated as matching."
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "label": "Status",
+      "options": "Draft\nCompleted",
+      "default": "Draft",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "summary_section",
+      "fieldtype": "Section Break",
+      "label": "POS Settlement Result"
+    },
+    {
+      "fieldname": "settlement_count",
+      "fieldtype": "Int",
+      "label": "Settlement Groups",
+      "read_only": 1
+    },
+    {
+      "fieldname": "fully_reconciled_settlements",
+      "fieldtype": "Int",
+      "label": "Fully Reconciled Settlements",
+      "read_only": 1
+    },
+    {
+      "fieldname": "exception_settlements",
+      "fieldtype": "Int",
+      "label": "Settlement Exceptions",
+      "read_only": 1
+    },
+    {
+      "fieldname": "source_exception_count",
+      "fieldtype": "Int",
+      "label": "Confirmed POS Transactions Without Settlement Number",
+      "read_only": 1
+    },
+    {
+      "fieldname": "statement_column_break",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "statement_line_count",
+      "fieldtype": "Int",
+      "label": "Statement Lines",
+      "read_only": 1
+    },
+    {
+      "fieldname": "parsed_pos_statement_lines",
+      "fieldtype": "Int",
+      "label": "Parsed POS Statement Lines",
+      "read_only": 1
+    },
+    {
+      "fieldname": "matched_pos_statement_lines",
+      "fieldtype": "Int",
+      "label": "Matched POS Statement Lines",
+      "read_only": 1
+    },
+    {
+      "fieldname": "unmatched_pos_statement_lines",
+      "fieldtype": "Int",
+      "label": "Unmatched POS Statement Lines",
+      "read_only": 1
+    },
+    {
+      "fieldname": "other_statement_lines",
+      "fieldtype": "Int",
+      "label": "Other Statement Lines",
+      "read_only": 1
+    },
+    {
+      "fieldname": "amounts_section",
+      "fieldtype": "Section Break",
+      "label": "Statement Totals"
+    },
+    {
+      "fieldname": "statement_deposit_total",
+      "fieldtype": "Currency",
+      "label": "Total Deposits",
+      "read_only": 1
+    },
+    {
+      "fieldname": "statement_withdrawal_total",
+      "fieldtype": "Currency",
+      "label": "Total Withdrawals",
+      "read_only": 1
+    },
+    {
+      "fieldname": "last_run_on",
+      "fieldtype": "Datetime",
+      "label": "Last Run On",
+      "read_only": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Accounts User",
+      "read": 1,
+      "write": 1,
+      "create": 1
+    },
+    {
+      "role": "Accounts Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    }
+  ]
+}

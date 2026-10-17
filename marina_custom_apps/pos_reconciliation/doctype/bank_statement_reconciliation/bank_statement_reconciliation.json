@@ -1,0 +1,62 @@
+{
+  "doctype": "DocType",
+  "issingle": 1,
+  "module": "POS Reconciliation",
+  "name": "Bank Statement Reconciliation",
+  "engine": "InnoDB",
+  "field_order": [
+    "settings_section",
+    "bank_account",
+    "tolerance",
+    "workspace_section",
+    "workspace_html"
+  ],
+  "fields": [
+    {
+      "fieldname": "settings_section",
+      "fieldtype": "Section Break",
+      "label": "Reconciliation Settings"
+    },
+    {
+      "fieldname": "bank_account",
+      "fieldtype": "Link",
+      "label": "Bank Account",
+      "options": "Bank Account",
+      "reqd": 1
+    },
+    {
+      "fieldname": "tolerance",
+      "fieldtype": "Currency",
+      "label": "Amount Tolerance",
+      "default": "0.01",
+      "reqd": 1,
+      "description": "Maximum allowed difference between grouped Bank Statement and GL totals."
+    },
+    {
+      "fieldname": "workspace_section",
+      "fieldtype": "Section Break",
+      "label": "Reconciliation Workspace"
+    },
+    {
+      "fieldname": "workspace_html",
+      "fieldtype": "HTML",
+      "label": "Workspace"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Accounts User",
+      "read": 1
+    },
+    {
+      "role": "Accounts Manager",
+      "read": 1,
+      "write": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1
+    }
+  ]
+}

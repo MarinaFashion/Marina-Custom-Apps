@@ -1,0 +1,364 @@
+{
+  "doctype": "DocType",
+  "module": "POS Reconciliation",
+  "name": "Marina Bank Statement Transaction",
+  "engine": "InnoDB",
+  "track_changes": 1,
+  "allow_import": 1,
+  "autoname": "field:source_key",
+  "title_field": "description",
+  "sort_field": "processing_date",
+  "sort_order": "DESC",
+  "field_order": [
+    "identity_section",
+    "source_key",
+    "statement_import",
+    "bank_account",
+    "identity_column_break",
+    "source_row_no",
+    "processing_date",
+    "reference_number",
+    "amount_section",
+    "debit",
+    "credit",
+    "balance",
+    "amount_column_break",
+    "currency",
+    "description_section",
+    "transaction_description",
+    "description",
+    "description_extra",
+    "remarks",
+    "pos_parse_section",
+    "is_pos_statement_line",
+    "statement_code",
+    "component",
+    "settlement_number",
+    "pos_parse_column_break",
+    "bank_terminal_reference",
+    "reconciliation_date",
+    "card_type",
+    "reconciliation_section",
+    "reconciliation_status",
+    "transaction_category",
+    "allocated_amount",
+    "remaining_amount",
+    "recon_column_break",
+    "pos_reconciliation_run",
+    "pos_bank_settlement",
+    "bank_statement_reconciliation_match",
+    "reconciled_on",
+    "reconciled_by",
+    "allocations_section",
+    "allocations"
+  ],
+  "fields": [
+    {
+      "fieldname": "identity_section",
+      "fieldtype": "Section Break",
+      "label": "Statement Identity"
+    },
+    {
+      "fieldname": "source_key",
+      "fieldtype": "Data",
+      "label": "Source Key",
+      "reqd": 1,
+      "read_only": 1,
+      "unique": 1,
+      "in_standard_filter": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "statement_import",
+      "fieldtype": "Link",
+      "label": "Statement Import",
+      "options": "Marina Bank Statement Import",
+      "read_only": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "bank_account",
+      "fieldtype": "Link",
+      "label": "Bank Account",
+      "options": "Bank Account",
+      "reqd": 1,
+      "read_only": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "identity_column_break",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "source_row_no",
+      "fieldtype": "Int",
+      "label": "Source Row",
+      "read_only": 1
+    },
+    {
+      "fieldname": "processing_date",
+      "fieldtype": "Date",
+      "label": "Processing Date",
+      "reqd": 1,
+      "read_only": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "reference_number",
+      "fieldtype": "Data",
+      "label": "Reference Number",
+      "read_only": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "amount_section",
+      "fieldtype": "Section Break",
+      "label": "Statement Amount"
+    },
+    {
+      "fieldname": "debit",
+      "fieldtype": "Currency",
+      "label": "Debit / Withdrawal",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "credit",
+      "fieldtype": "Currency",
+      "label": "Credit / Deposit",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "balance",
+      "fieldtype": "Currency",
+      "label": "Statement Balance",
+      "read_only": 1
+    },
+    {
+      "fieldname": "amount_column_break",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "currency",
+      "fieldtype": "Link",
+      "label": "Currency",
+      "options": "Currency",
+      "default": "SAR",
+      "read_only": 1
+    },
+    {
+      "fieldname": "description_section",
+      "fieldtype": "Section Break",
+      "label": "Bank Description",
+      "collapsible": 1
+    },
+    {
+      "fieldname": "transaction_description",
+      "fieldtype": "Small Text",
+      "label": "Transaction Description",
+      "read_only": 1
+    },
+    {
+      "fieldname": "description",
+      "fieldtype": "Small Text",
+      "label": "Description",
+      "read_only": 1
+    },
+    {
+      "fieldname": "description_extra",
+      "fieldtype": "Small Text",
+      "label": "Description Extra",
+      "read_only": 1
+    },
+    {
+      "fieldname": "remarks",
+      "fieldtype": "Small Text",
+      "label": "Remarks",
+      "read_only": 1
+    },
+    {
+      "fieldname": "pos_parse_section",
+      "fieldtype": "Section Break",
+      "label": "POS Settlement Parsing"
+    },
+    {
+      "fieldname": "is_pos_statement_line",
+      "fieldtype": "Check",
+      "label": "POS Statement Line",
+      "read_only": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "statement_code",
+      "fieldtype": "Data",
+      "label": "Statement Code",
+      "read_only": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "component",
+      "fieldtype": "Select",
+      "label": "Component",
+      "options": "\nGross\nCommission\nVAT",
+      "read_only": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "settlement_number",
+      "fieldtype": "Data",
+      "label": "Settlement Number",
+      "read_only": 1,
+      "in_standard_filter": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "pos_parse_column_break",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "bank_terminal_reference",
+      "fieldtype": "Data",
+      "label": "Bank Terminal Reference",
+      "read_only": 1,
+      "in_standard_filter": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "reconciliation_date",
+      "fieldtype": "Date",
+      "label": "Reconciliation Date",
+      "read_only": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "card_type",
+      "fieldtype": "Data",
+      "label": "Card Type",
+      "read_only": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "reconciliation_section",
+      "fieldtype": "Section Break",
+      "label": "Reconciliation"
+    },
+    {
+      "fieldname": "reconciliation_status",
+      "fieldtype": "Select",
+      "label": "Reconciliation Status",
+      "options": "Unreconciled\nPartially Reconciled\nReconciled\nExcluded",
+      "default": "Unreconciled",
+      "read_only": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "transaction_category",
+      "fieldtype": "Select",
+      "label": "Transaction Category",
+      "options": "\nPOS Settlement\nPayment Entry\nJournal Entry\nTransfer\nExpense\nOther",
+      "read_only": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "allocated_amount",
+      "fieldtype": "Currency",
+      "label": "Allocated Amount",
+      "read_only": 1
+    },
+    {
+      "fieldname": "remaining_amount",
+      "fieldtype": "Currency",
+      "label": "Remaining Amount",
+      "read_only": 1
+    },
+    {
+      "fieldname": "recon_column_break",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "pos_reconciliation_run",
+      "fieldtype": "Link",
+      "label": "POS Reconciliation Run",
+      "options": "POS Reconciliation Run",
+      "read_only": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "pos_bank_settlement",
+      "fieldtype": "Link",
+      "label": "POS Bank Settlement",
+      "options": "POS Bank Settlement",
+      "read_only": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "bank_statement_reconciliation_match",
+      "fieldtype": "Link",
+      "label": "Bank Statement Reconciliation Match",
+      "options": "Bank Statement Reconciliation Match",
+      "read_only": 1,
+      "in_standard_filter": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "reconciled_on",
+      "fieldtype": "Datetime",
+      "label": "Reconciled On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reconciled_by",
+      "fieldtype": "Link",
+      "label": "Reconciled By",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "allocations_section",
+      "fieldtype": "Section Break",
+      "label": "Allocations",
+      "collapsible": 1
+    },
+    {
+      "fieldname": "allocations",
+      "fieldtype": "Table",
+      "label": "Allocations",
+      "options": "Marina Bank Statement Allocation",
+      "read_only": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Accounts User",
+      "read": 1,
+      "export": 1,
+      "report": 1
+    },
+    {
+      "role": "Accounts Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "export": 1,
+      "report": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "export": 1,
+      "report": 1
+    }
+  ],
+  "search_fields": "reference_number,settlement_number,bank_terminal_reference,statement_code"
+}

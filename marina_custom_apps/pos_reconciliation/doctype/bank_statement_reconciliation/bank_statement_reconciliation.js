@@ -1,0 +1,542 @@
+frappe.ui.form.on("Bank Statement Reconciliation", {
+    refresh(frm) {
+        bsr_load(frm);
+    },
+    bank_account(frm) {
+        bsr_load(frm);
+    },
+    tolerance(frm) {
+        bsr_load(frm);
+    },
+});
+
+function bsr_load(frm) {
+    const filters = frm.__bsr_filters || {};
+    const requestId = (frm.__bsr_request_id || 0) + 1;
+    frm.__bsr_request_id = requestId;
+    const field = frm.fields_dict.workspace_html;
+    if (!field || !field.$wrapper) return;
+
+    if (!frm.doc.bank_account) {
+        field.$wrapper.html(
+            bsr_styles() +
+            `<div class="bsr-empty">${__("Select a Bank Account to load unreconciled Bank Statement and GL transactions.")}</div>`
+        );
+        return;
+    }
+
+    field.$wrapper.html(
+        bsr_styles() +
+        `<div class="bsr-loading">${__("Loading unreconciled transactions and matching by Reference #...")}</div>`
+    );
+
+    frappe.call({
+        method: "marina_custom_apps.pos_reconciliation.doctype.bank_statement_reconciliation.bank_statement_reconciliation.get_workspace",
+        args: {
+            bank_account: frm.doc.bank_account,
+            tolerance: frm.doc.tolerance || 0.01,
+            from_date: filters.from_date || "",
+            to_date: filters.to_date || "",
+            reference: filters.reference || "",
+        },
+    }).then((r) => {
+        if (requestId !== frm.__bsr_request_id) return;
+        frm.__bsr = r.message || {bank_rows: [], gl_rows: [], matches: [], counts: {}, summary: {}};
+        bsr_render(frm);
+    });
+}
+
+function bsr_render(frm) {
+    const canExclude = frappe.user.has_role("Accounts Manager") || frappe.user.has_role("System Manager");
+    const field = frm.fields_dict.workspace_html;
+    if (!field || !field.$wrapper) return;
+    const state = frm.__bsr || {bank_rows: [], gl_rows: [], matches: [], counts: {}};
+
+    const bankRows = state.bank_rows || [];
+    const glRows = state.gl_rows || [];
+    const matches = state.matches || [];
+
+    const bankBody = bankRows.length
+        ? bankRows.map((row) => `
+            <tr data-bank-name="${bsr_escape(row.name)}">
+                <td>${canExclude ? `<button class="btn btn-xs btn-default bsr-exclude-row" data-source-type="Bank Statement" data-record-name="${bsr_escape(row.name)}">${__("Exclude")}</button>` : "—"}</td>
+                <td>${bsr_escape(row.date || "")}</td>
+                <td><a href="${bsr_escape(bsr_transaction_href("Marina Bank Statement Transaction", row.name))}" target="_blank" rel="noopener noreferrer" class="bsr-open-doc">${bsr_escape(row.transaction_id || row.name)}</a></td>
+                <td>${bsr_escape(row.reference_number || "—")}</td>
+                <td class="bsr-description">${bsr_escape(row.description || "—")}</td>
+                <td class="text-right">${bsr_money(row.amount)}</td>
+                <td class="text-center"><b>${cint(row.row_no)}</b></td>
+                <td class="bsr-match-cell"><input type="number" min="1" max="999999" step="1" class="form-control input-xs bsr-match-input" placeholder="${__("Match #")}" aria-label="${__("Match #")}"></td>
+            </tr>
+        `).join("")
+        : `<tr><td colspan="8" class="text-muted text-center">${__("No unreconciled Bank Statement rows.")}</td></tr>`;
+
+    const glBody = glRows.length
+        ? glRows.map((row) => `
+            <tr data-gl-name="${bsr_escape(row.name)}">
+                <td>${canExclude ? `<button class="btn btn-xs btn-default bsr-exclude-row" data-source-type="GL Entry" data-record-name="${bsr_escape(row.name)}">${__("Exclude")}</button>` : "—"}</td>
+                <td>${bsr_escape(row.date || "")}</td>
+                <td><a href="${bsr_escape(bsr_transaction_href("GL Entry", row.name))}" target="_blank" rel="noopener noreferrer" class="bsr-open-doc">${bsr_escape(row.transaction_id || row.name)}</a></td>
+                <td>${bsr_escape(row.reference_number || "—")}</td>
+                <td class="bsr-description">${bsr_escape(row.description || "—")}</td>
+                <td class="text-right">${bsr_money(row.amount)}</td>
+                <td class="text-center"><b>${cint(row.row_no)}</b></td>
+                <td class="bsr-match-cell"><input type="number" min="1" max="999999" step="1" class="form-control input-xs bsr-match-input" placeholder="${__("Match #")}" aria-label="${__("Match #")}"></td>
+            </tr>
+        `).join("")
+        : `<tr><td colspan="8" class="text-muted text-center">${__("No unreconciled GL Entries.")}</td></tr>`;
+
+    const matchBody = matches.length
+        ? matches.map((match, idx) => `
+            <tr>
+                <td>${idx + 1}</td>
+                <td>${bsr_escape(match.match_type || "")}</td>
+                <td>${bsr_escape(match.group_no || "—")}</td>
+                <td>${bsr_escape(match.reference_number || "—")}</td>
+                <td class="text-right">${bsr_money(match.bank_amount)}</td>
+                <td class="text-right">${bsr_money(match.gl_amount)}</td>
+                <td class="text-right">${bsr_money(match.difference)}</td>
+                <td>${(match.bank_rows || []).length}</td>
+                <td>${(match.gl_rows || []).length}</td>
+                <td><span class="indicator-pill green">${__("Ready to Save")}</span></td>
+            </tr>
+        `).join("")
+        : `<tr><td colspan="10" class="text-muted text-center">${__("No matches prepared yet.")}</td></tr>`;
+
+    field.$wrapper.html(`
+        ${bsr_styles()}
+        <div class="bsr-toolbar">
+            <div>
+                <div class="bsr-title">${__("Bank Statement Reconciliation")}</div>
+                <div class="text-muted small">${__("Reference # is matched first by grouped totals, regardless of date. Enter the same Match # against one or more Bank and GL rows to match them manually.")}</div>
+            </div>
+            <div class="bsr-actions">
+                <button class="btn btn-xs btn-default bsr-refresh">${__("Refresh")}</button>
+                <button class="btn btn-xs btn-default bsr-view-excluded">${__("View Excluded Transactions")}</button>
+                <button class="btn btn-xs btn-default bsr-apply-manual">${__("Apply Manual Matches")}</button>
+                <button class="btn btn-xs btn-primary bsr-save" ${matches.length ? "" : "disabled"}>${__("Save Reconciliation")}</button>
+            </div>
+        </div>
+
+        ${bsr_filter_html(frm.__bsr_filters || {})}
+        ${bsr_summary_html(state.summary || {})}
+
+        <div class="bsr-counts">
+            <span class="indicator-pill orange">${bankRows.length} ${__("Bank Rows to Link")}</span>
+            <span class="indicator-pill orange">${glRows.length} ${__("GL Rows to Link")}</span>
+            <span class="indicator-pill blue">${matches.length} ${__("Prepared Matches")}</span>
+        </div>
+
+        <div class="bsr-grid">
+            <div class="bsr-panel">
+                <div class="bsr-panel-title">${__("Unreconciled Bank Statement")}</div>
+                <div class="bsr-table-wrap">
+                    <table class="table table-bordered table-hover bsr-table">
+                        <thead><tr>
+                            <th>${__("Actions")}</th>
+                            <th>${__("Date")}</th>
+                            <th>${__("Transaction ID")}</th>
+                            <th>${__("Reference #")}</th>
+                            <th>${__("Description")}</th>
+                            <th class="text-right">${__("Amount")}</th>
+                            <th>${__("Row #")}</th>
+                            <th>${__("Match #")}</th>
+                        </tr></thead>
+                        <tbody>${bankBody}</tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bsr-panel">
+                <div class="bsr-panel-title">${__("Unreconciled GL Entries")}</div>
+                <div class="bsr-table-wrap">
+                    <table class="table table-bordered table-hover bsr-table">
+                        <thead><tr>
+                            <th>${__("Actions")}</th>
+                            <th>${__("Date")}</th>
+                            <th>${__("Transaction ID")}</th>
+                            <th>${__("Reference #")}</th>
+                            <th>${__("Description")}</th>
+                            <th class="text-right">${__("Amount")}</th>
+                            <th>${__("Row #")}</th>
+                            <th>${__("Match #")}</th>
+                        </tr></thead>
+                        <tbody>${glBody}</tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="bsr-panel bsr-results">
+            <div class="bsr-panel-title">${__("Reconciliation Results")}</div>
+            <div class="bsr-table-wrap">
+                <table class="table table-bordered table-hover bsr-table">
+                    <thead><tr>
+                        <th>#</th>
+                        <th>${__("Match Type")}</th>
+                        <th>${__("Match #")}</th>
+                        <th>${__("Reference #")}</th>
+                        <th class="text-right">${__("Bank Amount")}</th>
+                        <th class="text-right">${__("GL Amount")}</th>
+                        <th class="text-right">${__("Difference")}</th>
+                        <th>${__("Bank Lines")}</th>
+                        <th>${__("GL Lines")}</th>
+                        <th>${__("Status")}</th>
+                    </tr></thead>
+                    <tbody>${matchBody}</tbody>
+                </table>
+            </div>
+        </div>
+    `);
+
+    bsr_bind(frm);
+}
+
+function bsr_bind(frm) {
+    const $w = frm.fields_dict.workspace_html.$wrapper;
+
+    $w.find(".bsr-refresh").on("click", () => bsr_reload_confirm(frm, () => bsr_load(frm)));
+    $w.find(".bsr-apply-filters").on("click", () => {
+        const fromDate = String($w.find(".bsr-from-date").val() || "");
+        const toDate = String($w.find(".bsr-to-date").val() || "");
+        if (fromDate && toDate && fromDate > toDate) {
+            frappe.msgprint(__("From Date must be on or before To Date."));
+            return;
+        }
+        const next = {
+            from_date: fromDate,
+            to_date: toDate,
+            reference: String($w.find(".bsr-reference").val() || "").trim(),
+        };
+        bsr_reload_confirm(frm, () => { frm.__bsr_filters = next; bsr_load(frm); });
+    });
+    $w.find(".bsr-clear-filters").on("click", () => {
+        bsr_reload_confirm(frm, () => { frm.__bsr_filters = {}; bsr_load(frm); });
+    });
+    $w.find(".bsr-view-excluded").on("click", () => {
+        frappe.set_route("List", "Bank Reconciliation Exclusion", {
+            bank_account: frm.doc.bank_account,
+            status: "Excluded",
+        });
+    });
+    $w.find(".bsr-exclude-row").on("click", function () {
+        bsr_exclude_row(frm, $(this).attr("data-source-type"), $(this).attr("data-record-name"));
+    });
+
+    $w.find(".bsr-apply-manual").on("click", () => bsr_apply_manual(frm));
+    $w.find(".bsr-save").on("click", () => bsr_save(frm));
+}
+
+
+function bsr_exclude_row(frm, sourceType, recordName) {
+    if (!frm.doc.bank_account || !recordName) return;
+    const options = "POS / Sales Transaction\nDuplicate Transaction\nHistorical Transaction\nOut of Reconciliation Scope\nOther";
+    frappe.prompt(
+        [
+            {
+                fieldname: "reason", fieldtype: "Select", options: options,
+                label: __("Exclusion Reason"), reqd: 1
+            },
+            {
+                fieldname: "comments", fieldtype: "Small Text",
+                label: __("Comments")
+            }
+        ],
+        (values) => {
+            bsr_reload_confirm(frm, () => {
+                frappe.call({
+                    method: "marina_custom_apps.pos_reconciliation.doctype.bank_statement_reconciliation.bank_statement_reconciliation.exclude_transaction",
+                    args: {
+                        bank_account: frm.doc.bank_account,
+                        source_type: sourceType,
+                        record_name: recordName,
+                        reason: values.reason,
+                        comments: values.comments || "",
+                    },
+                    freeze: true,
+                }).then(() => {
+                    frappe.show_alert({message: __("Transaction excluded. Restore it through Excluded Transactions."), indicator: "green"}, 5);
+                    bsr_load(frm);
+                });
+            });
+        },
+        __("Exclude {0}: {1}", [sourceType, recordName]),
+        __("Exclude")
+    );
+}
+
+
+function bsr_collect_match_inputs(frm) {
+    const $w = frm.fields_dict.workspace_html.$wrapper;
+    const state = frm.__bsr || {};
+    const bankRows = (state.bank_rows || []).map((row) => ({ ...row }));
+    const glRows = (state.gl_rows || []).map((row) => ({ ...row }));
+    const bankLookup = Object.fromEntries(bankRows.map((row) => [row.name, row]));
+    const glLookup = Object.fromEntries(glRows.map((row) => [row.name, row]));
+    $w.find("tr[data-bank-name]").each(function () {
+        const row = bankLookup[$(this).attr("data-bank-name")];
+        if (row) row.group_no = String($(this).find(".bsr-match-input").val() || "").trim();
+    });
+    $w.find("tr[data-gl-name]").each(function () {
+        const row = glLookup[$(this).attr("data-gl-name")];
+        if (row) row.group_no = String($(this).find(".bsr-match-input").val() || "").trim();
+    });
+    return { bankRows, glRows };
+}
+
+// No accounting writes: this prepares groups for server-side validation on Save.
+function bsr_build_manual_matches(bankRows, glRows, tolerance) {
+    const groups = new Map();
+    const errors = [];
+    const pattern = /^[1-9][0-9]{0,5}$/;
+    const add = (row, side) => {
+        const id = String(row.group_no || "").trim();
+        if (!id) return;
+        if (!pattern.test(id)) {
+            errors.push(__("Invalid Match # on {0} row {1}: {2}. Enter a positive whole number (1–999999).", [
+                side, row.row_no, id,
+            ]));
+            return;
+        }
+        if (!groups.has(id)) groups.set(id, { bank_rows: [], gl_rows: [] });
+        groups.get(id)[side === "Bank" ? "bank_rows" : "gl_rows"].push(row);
+    };
+    bankRows.forEach((row) => add(row, "Bank"));
+    glRows.forEach((row) => add(row, "GL"));
+
+    const matches = [];
+    const limit = Math.abs(Number(tolerance || 0.01));
+    for (const [group, rows] of groups) {
+        if (!rows.bank_rows.length || !rows.gl_rows.length) {
+            errors.push(__("Match # {0} must contain at least one Bank and one GL row.", [group]));
+            continue;
+        }
+        const bank = bsr_round(rows.bank_rows.reduce((total, row) => total + Number(row.amount || 0), 0));
+        const gl = bsr_round(rows.gl_rows.reduce((total, row) => total + Number(row.amount || 0), 0));
+        const difference = bsr_round(bank - gl);
+        if (Math.abs(difference) > limit + 0.000001) {
+            errors.push(__("Match # {0}: Bank {1}, GL {2}, difference {3} exceeds tolerance.", [
+                group, bsr_money(bank), bsr_money(gl), bsr_money(difference),
+            ]));
+            continue;
+        }
+        matches.push({
+            match_type: "Manual Group", group_no: group,
+            reference_number: rows.bank_rows.map((r) => r.reference_number).find(Boolean)
+                || rows.gl_rows.map((r) => r.reference_number).find(Boolean) || "",
+            bank_amount: bank, gl_amount: gl, difference,
+            bank_rows: rows.bank_rows, gl_rows: rows.gl_rows,
+        });
+    }
+    matches.sort((a, b) => Number(a.group_no) - Number(b.group_no));
+    return { matches, errors };
+}
+
+function bsr_apply_manual(frm) {
+    const { bankRows, glRows } = bsr_collect_match_inputs(frm);
+    const result = bsr_build_manual_matches(bankRows, glRows, frm.doc.tolerance || 0.01);
+    if (result.errors.length) {
+        frappe.msgprint({
+            title: __("Manual Match Groups Not Valid"),
+            indicator: "orange",
+            message: result.errors.map((message) => bsr_escape(message)).join("<br>"),
+        });
+        return;
+    }
+    if (!result.matches.length) {
+        frappe.msgprint(__("Enter the same Match # on Bank and GL rows to prepare manual reconciliation."));
+        return;
+    }
+    const state = frm.__bsr || {};
+    const bankIds = new Set(result.matches.flatMap((m) => m.bank_rows.map((row) => row.name)));
+    const glIds = new Set(result.matches.flatMap((m) => m.gl_rows.map((row) => row.name)));
+    state.matches = (state.matches || []).concat(result.matches);
+    state.bank_rows = bankRows.filter((row) => !bankIds.has(row.name));
+    state.gl_rows = glRows.filter((row) => !glIds.has(row.name));
+    state.bank_rows.forEach((row, idx) => { row.row_no = idx + 1; });
+    state.gl_rows.forEach((row, idx) => { row.row_no = idx + 1; });
+    bsr_render(frm);
+}
+
+function bsr_save(frm) {
+    const $w = frm.fields_dict.workspace_html.$wrapper;
+    const unapplied = $w.find(".bsr-match-input").toArray().some(
+        (input) => String($(input).val() || "").trim()
+    );
+    if (unapplied) {
+        frappe.msgprint(__("Some rows still have unapplied Match # values. Apply Manual Matches before saving reconciliation."));
+        return;
+    }
+    const state = frm.__bsr || {};
+    const matches = state.matches || [];
+    if (!matches.length) {
+        frappe.msgprint(__("There are no prepared matches to save."));
+        return;
+    }
+
+    const payload = matches.map((match) => ({
+        match_type: match.match_type,
+        reference_number: match.reference_number || "",
+        bank_names: (match.bank_rows || []).map((row) => row.name),
+        gl_names: (match.gl_rows || []).map((row) => row.name),
+    }));
+
+    frappe.confirm(
+        __("Save {0} reconciliation match(es)? Matching Bank Statement rows will be marked Reconciled.", [matches.length]),
+        () => {
+            frappe.call({
+                method: "marina_custom_apps.pos_reconciliation.doctype.bank_statement_reconciliation.bank_statement_reconciliation.save_matches",
+                args: {
+                    bank_account: frm.doc.bank_account,
+                    matches: payload,
+                    tolerance: frm.doc.tolerance || 0.01,
+                },
+                freeze: true,
+                freeze_message: __("Saving bank reconciliation..."),
+            }).then((r) => {
+                const result = r.message || {};
+                frappe.show_alert({
+                    message: __("{0} match(es) saved; {1} Bank rows reconciled.", [
+                        cint(result.match_count || 0),
+                        cint(result.bank_rows_reconciled || 0),
+                    ]),
+                    indicator: "green",
+                }, 6);
+                bsr_load(frm);
+            });
+        }
+    );
+}
+
+
+function bsr_filter_html(filters) {
+    return `
+        <div class="bsr-panel bsr-filter-panel">
+            <div class="bsr-panel-title">${__("Reconciliation Filters")}</div>
+            <div class="bsr-filter-grid">
+                <label>${__("From Date")}
+                    <input type="date" class="form-control input-sm bsr-from-date" value="${bsr_escape(filters.from_date || "")}">
+                </label>
+                <label>${__("To Date")}
+                    <input type="date" class="form-control input-sm bsr-to-date" value="${bsr_escape(filters.to_date || "")}">
+                </label>
+                <label>${__("Reference #")}
+                    <input type="text" class="form-control input-sm bsr-reference" placeholder="${__("Search both tables")}" value="${bsr_escape(filters.reference || "")}">
+                </label>
+                <div class="bsr-filter-buttons">
+                    <button class="btn btn-sm btn-primary bsr-apply-filters">${__("Apply Filters")}</button>
+                    <button class="btn btn-sm btn-default bsr-clear-filters">${__("Clear")}</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function bsr_summary_html(summary) {
+    const rows = [
+        [
+            ["Reconciled Bank Transactions", summary.reconciled_bank_transactions, false],
+            ["Reconciled GL Transactions", summary.reconciled_gl_transactions, false],
+            ["Reconciled Bank Amt", summary.reconciled_bank_amount, true],
+            ["Reconciled GL Amt", summary.reconciled_gl_amount, true],
+        ],
+        [
+            ["Unreconciled Bank Transactions", summary.unreconciled_bank_transactions, false],
+            ["Unreconciled GL Transactions", summary.unreconciled_gl_transactions, false],
+            ["Unreconciled Bank Amt", summary.unreconciled_bank_amount, true],
+            ["Unreconciled GL Amt", summary.unreconciled_gl_amount, true],
+        ],
+    ];
+    return `
+        <div class="bsr-summary">
+            ${rows.map((items) => `
+                <div class="bsr-summary-row">
+                    ${items.map(([label, value, currency]) => `
+                        <div class="bsr-summary-card">
+                            <div class="bsr-summary-label">${__(label)}</div>
+                            <div class="bsr-summary-value">${currency ? bsr_money(value) : cint(value || 0)}</div>
+                        </div>
+                    `).join("")}
+                </div>
+            `).join("")}
+        </div>
+        <div class="text-muted small bsr-filter-note">
+            ${__("Amounts are signed net bank movements. Prepared matches remain unreconciled until saved. Only complete reference groups within the selected filters are prepared automatically.")}
+        </div>
+    `;
+}
+
+function bsr_reload_confirm(frm, action) {
+    const state = frm.__bsr || {};
+    const hasManual = (state.matches || []).some((match) =>
+        ["Manual TR", "Manual Group"].includes(match.match_type)
+    );
+    const $w = frm.fields_dict.workspace_html.$wrapper;
+    const hasTypedLinks = $w.find(".bsr-match-input").toArray().some((el) => String($(el).val() || "").trim());
+    if (hasManual || hasTypedLinks) {
+        frappe.confirm(
+            __("Refreshing or changing filters will discard unsaved manual Match # groups. Continue?"),
+            action
+        );
+    } else {
+        action();
+    }
+}
+
+function bsr_round(value) {
+    return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100;
+}
+
+function bsr_money(value) {
+    const number = Number(value || 0);
+    return format_currency(number, frappe.defaults.get_default("currency") || "SAR");
+}
+
+function bsr_transaction_href(doctype, name) {
+    // Real, browser-navigable links preserve the reconciliation working tab.
+    // Explicit route slugs avoid dependence on the Frappe client router's state.
+    const routes = {
+        "GL Entry": "gl-entry",
+        "Marina Bank Statement Transaction": "marina-bank-statement-transaction",
+    };
+    const route = routes[doctype];
+    if (!route || !name) return "#";
+    return "/app/" + route + "/" + encodeURIComponent(String(name));
+}
+
+function bsr_escape(value) {
+    return frappe.utils.escape_html(String(value === null || value === undefined ? "" : value));
+}
+
+function bsr_styles() {
+    return `<style>
+        .bsr-loading,.bsr-empty{padding:24px;text-align:center;color:var(--text-muted);border:1px dashed var(--border-color);border-radius:var(--border-radius-md);}
+        .bsr-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;}
+        .bsr-title{font-size:15px;font-weight:700;}
+        .bsr-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+        .bsr-counts{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 12px;}
+        .bsr-filter-panel{margin-bottom:12px;}
+        .bsr-filter-grid{display:grid;grid-template-columns:1fr 1fr 1.5fr auto;gap:10px;align-items:end;}
+        .bsr-filter-grid label{display:block;margin:0;font-size:12px;font-weight:600;}
+        .bsr-filter-grid input{margin-top:4px;}
+        .bsr-filter-buttons{display:flex;gap:6px;align-items:center;min-height:30px;}
+        .bsr-summary{display:flex;flex-direction:column;gap:8px;margin-bottom:4px;}
+        .bsr-summary-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;}
+        .bsr-summary-card{background:var(--control-bg);border:1px solid var(--border-color);border-radius:var(--border-radius-md);padding:10px;min-width:0;}
+        .bsr-summary-label{font-size:11px;color:var(--text-muted);font-weight:600;min-height:30px;}
+        .bsr-summary-value{font-size:18px;font-weight:700;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;}
+        .bsr-filter-note{margin:6px 0 10px;}
+        .bsr-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;}
+        .bsr-panel{border:1px solid var(--border-color);border-radius:var(--border-radius-md);background:var(--card-bg);padding:10px;min-width:0;}
+        .bsr-panel-title{font-weight:600;margin-bottom:8px;}
+        .bsr-results{margin-top:12px;}
+        .bsr-table-wrap{overflow:auto;max-height:520px;}
+        .bsr-table{margin:0;min-width:760px;}
+        .bsr-table th,.bsr-table td{font-size:11px;vertical-align:middle !important;white-space:nowrap;}
+        .bsr-table .bsr-description{max-width:260px;overflow:hidden;text-overflow:ellipsis;}
+        .bsr-match-cell{min-width:95px;}
+        .bsr-match-input{width:100%;min-width:75px;text-align:center;}
+        @media(max-width:1200px){.bsr-grid{grid-template-columns:1fr;}.bsr-filter-grid{grid-template-columns:1fr 1fr;}}
+        @media(max-width:700px){.bsr-summary-row{grid-template-columns:1fr 1fr;}.bsr-filter-grid{grid-template-columns:1fr;}}
+    </style>`;
+}

@@ -1,0 +1,228 @@
+{
+  "doctype": "DocType",
+  "module": "POS Reconciliation",
+  "name": "Marina Bank Statement Import",
+  "engine": "InnoDB",
+  "track_changes": 1,
+  "autoname": "naming_series:",
+  "field_order": [
+    "identity_section",
+    "naming_series",
+    "company",
+    "bank_account",
+    "identity_column_break",
+    "import_file",
+    "status",
+    "period_section",
+    "statement_from_date",
+    "statement_to_date",
+    "period_column_break",
+    "total_debit",
+    "total_credit",
+    "result_section",
+    "total_rows",
+    "inserted_records",
+    "duplicate_records",
+    "error_records",
+    "result_column_break",
+    "pos_statement_lines",
+    "other_statement_lines",
+    "imported_on",
+    "imported_by",
+    "errors_section",
+    "errors",
+    "notes_section",
+    "notes"
+  ],
+  "fields": [
+    {
+      "fieldname": "identity_section",
+      "fieldtype": "Section Break",
+      "label": "Bank Statement Import"
+    },
+    {
+      "fieldname": "naming_series",
+      "fieldtype": "Select",
+      "label": "Series",
+      "options": "MBS-IMP-.YYYY.-.#####",
+      "default": "MBS-IMP-.YYYY.-.#####",
+      "reqd": 1
+    },
+    {
+      "fieldname": "company",
+      "fieldtype": "Link",
+      "label": "Company",
+      "options": "Company",
+      "reqd": 1,
+      "fetch_from": "bank_account.company",
+      "fetch_if_empty": 1
+    },
+    {
+      "fieldname": "bank_account",
+      "fieldtype": "Link",
+      "label": "Bank Account",
+      "options": "Bank Account",
+      "reqd": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "identity_column_break",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "import_file",
+      "fieldtype": "Attach",
+      "label": "Statement XLSX",
+      "reqd": 1
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "label": "Status",
+      "options": "Draft\nValidated\nImporting\nCompleted\nCompleted with Errors\nFailed",
+      "default": "Draft",
+      "read_only": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "period_section",
+      "fieldtype": "Section Break",
+      "label": "Statement Period"
+    },
+    {
+      "fieldname": "statement_from_date",
+      "fieldtype": "Date",
+      "label": "From Date",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "statement_to_date",
+      "fieldtype": "Date",
+      "label": "To Date",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "period_column_break",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "total_debit",
+      "fieldtype": "Currency",
+      "label": "Total Debit / Withdrawal",
+      "read_only": 1
+    },
+    {
+      "fieldname": "total_credit",
+      "fieldtype": "Currency",
+      "label": "Total Credit / Deposit",
+      "read_only": 1
+    },
+    {
+      "fieldname": "result_section",
+      "fieldtype": "Section Break",
+      "label": "Import Result"
+    },
+    {
+      "fieldname": "total_rows",
+      "fieldtype": "Int",
+      "label": "Statement Rows",
+      "read_only": 1
+    },
+    {
+      "fieldname": "inserted_records",
+      "fieldtype": "Int",
+      "label": "Inserted",
+      "read_only": 1
+    },
+    {
+      "fieldname": "duplicate_records",
+      "fieldtype": "Int",
+      "label": "Duplicates Skipped",
+      "read_only": 1
+    },
+    {
+      "fieldname": "error_records",
+      "fieldtype": "Int",
+      "label": "Errors",
+      "read_only": 1
+    },
+    {
+      "fieldname": "result_column_break",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "pos_statement_lines",
+      "fieldtype": "Int",
+      "label": "POS Statement Lines",
+      "read_only": 1
+    },
+    {
+      "fieldname": "other_statement_lines",
+      "fieldtype": "Int",
+      "label": "Other Statement Lines",
+      "read_only": 1
+    },
+    {
+      "fieldname": "imported_on",
+      "fieldtype": "Datetime",
+      "label": "Imported On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "imported_by",
+      "fieldtype": "Link",
+      "label": "Imported By",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "errors_section",
+      "fieldtype": "Section Break",
+      "label": "Errors",
+      "collapsible": 1
+    },
+    {
+      "fieldname": "errors",
+      "fieldtype": "Table",
+      "label": "Import Errors",
+      "options": "POS Bank Import Error",
+      "read_only": 1
+    },
+    {
+      "fieldname": "notes_section",
+      "fieldtype": "Section Break",
+      "label": "How This Works",
+      "collapsible": 1
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "HTML",
+      "label": "Notes",
+      "options": "<div class=\"text-muted\">Imports the raw SNB XLSX statement into Marina Bank Statement Transaction. Debit values are stored as positive withdrawals. POS settlement metadata is parsed automatically from RECON NO / REFERENCE / statement codes. Duplicate source lines are skipped.</div>"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Accounts Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 0,
+      "export": 1,
+      "report": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "export": 1,
+      "report": 1
+    }
+  ],
+  "search_fields": "name,bank_account,status"
+}

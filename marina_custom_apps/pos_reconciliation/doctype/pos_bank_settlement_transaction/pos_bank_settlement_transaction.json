@@ -1,0 +1,86 @@
+{
+  "doctype": "DocType",
+  "istable": 1,
+  "editable_grid": 1,
+  "module": "POS Reconciliation",
+  "name": "POS Bank Settlement Transaction",
+  "field_order": [
+    "reconciliation_record",
+    "bank_pos_transaction",
+    "transaction_date",
+    "reconciliation_date",
+    "pos_profile",
+    "terminal_id",
+    "card_type",
+    "gross_amount",
+    "commission_amount",
+    "vat_amount"
+  ],
+  "fields": [
+    {
+      "fieldname": "reconciliation_record",
+      "fieldtype": "Link",
+      "label": "Reconciliation Record",
+      "options": "POS Reconciliation Record",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "bank_pos_transaction",
+      "fieldtype": "Link",
+      "label": "Bank POS Transaction",
+      "options": "Bank POS Transaction",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "transaction_date",
+      "fieldtype": "Date",
+      "label": "Transaction Date",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "reconciliation_date",
+      "fieldtype": "Date",
+      "label": "Reconciliation Date",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "pos_profile",
+      "fieldtype": "Link",
+      "label": "POS Profile",
+      "options": "POS Profile",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "terminal_id",
+      "fieldtype": "Data",
+      "label": "Terminal ID",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "card_type",
+      "fieldtype": "Data",
+      "label": "Card Type",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "gross_amount",
+      "fieldtype": "Currency",
+      "label": "Gross Amount",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "commission_amount",
+      "fieldtype": "Currency",
+      "label": "Commission",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "vat_amount",
+      "fieldtype": "Currency",
+      "label": "VAT",
+      "in_list_view": 1
+    }
+  ]
+}

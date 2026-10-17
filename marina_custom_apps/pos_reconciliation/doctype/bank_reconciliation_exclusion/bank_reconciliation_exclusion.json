@@ -1,0 +1,219 @@
+{
+  "doctype": "DocType",
+  "name": "Bank Reconciliation Exclusion",
+  "module": "POS Reconciliation",
+  "engine": "InnoDB",
+  "autoname": "hash",
+  "track_changes": 1,
+  "allow_rename": 0,
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "search_fields": "bank_account,source_type,source_record,reference_number,exclusion_reason,status",
+  "field_order": [
+    "source_section",
+    "source_key",
+    "bank_account",
+    "source_type",
+    "source_doctype",
+    "source_record",
+    "source_col",
+    "transaction_date",
+    "amount",
+    "reference_number",
+    "reason_section",
+    "status",
+    "exclusion_reason",
+    "comments",
+    "audit_section",
+    "excluded_by",
+    "excluded_on",
+    "audit_col",
+    "restored_by",
+    "restored_on",
+    "restore_reason",
+    "history_section",
+    "history"
+  ],
+  "fields": [
+    {
+      "fieldname": "source_section",
+      "fieldtype": "Section Break",
+      "label": "Source Transaction"
+    },
+    {
+      "fieldname": "source_key",
+      "fieldtype": "Data",
+      "label": "Unique Source Key",
+      "unique": 1,
+      "read_only": 1,
+      "hidden": 1,
+      "no_copy": 1
+    },
+    {
+      "fieldname": "bank_account",
+      "fieldtype": "Link",
+      "options": "Bank Account",
+      "label": "Bank Account",
+      "reqd": 1,
+      "read_only": 1,
+      "in_list_view": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "source_type",
+      "fieldtype": "Select",
+      "options": "Bank Statement\nGL Entry",
+      "label": "Source Type",
+      "reqd": 1,
+      "read_only": 1,
+      "in_list_view": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "source_doctype",
+      "fieldtype": "Link",
+      "options": "DocType",
+      "label": "Source DocType",
+      "reqd": 1,
+      "read_only": 1,
+      "hidden": 1
+    },
+    {
+      "fieldname": "source_record",
+      "fieldtype": "Dynamic Link",
+      "options": "source_doctype",
+      "label": "Transaction",
+      "reqd": 1,
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "source_col",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "transaction_date",
+      "fieldtype": "Date",
+      "label": "Transaction Date",
+      "read_only": 1
+    },
+    {
+      "fieldname": "amount",
+      "fieldtype": "Currency",
+      "label": "Signed Amount",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reference_number",
+      "fieldtype": "Data",
+      "label": "Reference #",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reason_section",
+      "fieldtype": "Section Break",
+      "label": "Exclusion Details"
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "options": "Excluded\nRestored",
+      "label": "Status",
+      "reqd": 1,
+      "read_only": 1,
+      "in_list_view": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "exclusion_reason",
+      "fieldtype": "Select",
+      "options": "POS / Sales Transaction\nDuplicate Transaction\nHistorical Transaction\nOut of Reconciliation Scope\nOther",
+      "label": "Exclusion Reason",
+      "reqd": 1,
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "comments",
+      "fieldtype": "Small Text",
+      "label": "Comments",
+      "read_only": 1
+    },
+    {
+      "fieldname": "audit_section",
+      "fieldtype": "Section Break",
+      "label": "Exclusion / Restoration Audit"
+    },
+    {
+      "fieldname": "excluded_by",
+      "fieldtype": "Link",
+      "options": "User",
+      "label": "Excluded By",
+      "read_only": 1
+    },
+    {
+      "fieldname": "excluded_on",
+      "fieldtype": "Datetime",
+      "label": "Excluded On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "audit_col",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "restored_by",
+      "fieldtype": "Link",
+      "options": "User",
+      "label": "Restored By",
+      "read_only": 1
+    },
+    {
+      "fieldname": "restored_on",
+      "fieldtype": "Datetime",
+      "label": "Restored On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "restore_reason",
+      "fieldtype": "Small Text",
+      "label": "Last Restoration Reason",
+      "read_only": 1
+    },
+    {
+      "fieldname": "history_section",
+      "fieldtype": "Section Break",
+      "label": "Action History"
+    },
+    {
+      "fieldname": "history",
+      "fieldtype": "Table",
+      "options": "Bank Reconciliation Exclusion Event",
+      "label": "History",
+      "read_only": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Accounts User",
+      "read": 1,
+      "report": 1
+    },
+    {
+      "role": "Accounts Manager",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "report": 1,
+      "export": 1
+    }
+  ]
+}

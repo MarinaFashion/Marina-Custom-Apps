@@ -1,0 +1,158 @@
+{
+  "doctype": "DocType",
+  "module": "POS Reconciliation",
+  "name": "Bank Statement Reconciliation Match",
+  "engine": "InnoDB",
+  "autoname": "naming_series:",
+  "track_changes": 1,
+  "field_order": [
+    "naming_series",
+    "bank_account",
+    "match_type",
+    "reference_number",
+    "status",
+    "amount_section",
+    "bank_amount",
+    "gl_amount",
+    "difference",
+    "audit_section",
+    "reconciled_on",
+    "reconciled_by",
+    "bank_rows_section",
+    "bank_rows",
+    "gl_rows_section",
+    "gl_rows"
+  ],
+  "fields": [
+    {
+      "fieldname": "naming_series",
+      "fieldtype": "Select",
+      "label": "Series",
+      "options": "BSR-MATCH-.YYYY.-.#####",
+      "default": "BSR-MATCH-.YYYY.-.#####",
+      "reqd": 1
+    },
+    {
+      "fieldname": "bank_account",
+      "fieldtype": "Link",
+      "label": "Bank Account",
+      "options": "Bank Account",
+      "reqd": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "match_type",
+      "fieldtype": "Select",
+      "label": "Match Type",
+      "options": "Auto Reference\nManual TR\nManual Group",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "reference_number",
+      "fieldtype": "Data",
+      "label": "Reference #",
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "label": "Status",
+      "options": "Reconciled",
+      "default": "Reconciled",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "amount_section",
+      "fieldtype": "Section Break",
+      "label": "Amounts"
+    },
+    {
+      "fieldname": "bank_amount",
+      "fieldtype": "Currency",
+      "label": "Bank Amount",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "gl_amount",
+      "fieldtype": "Currency",
+      "label": "GL Amount",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "difference",
+      "fieldtype": "Currency",
+      "label": "Difference",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "audit_section",
+      "fieldtype": "Section Break",
+      "label": "Audit"
+    },
+    {
+      "fieldname": "reconciled_on",
+      "fieldtype": "Datetime",
+      "label": "Reconciled On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reconciled_by",
+      "fieldtype": "Link",
+      "label": "Reconciled By",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "bank_rows_section",
+      "fieldtype": "Section Break",
+      "label": "Bank Statement Rows"
+    },
+    {
+      "fieldname": "bank_rows",
+      "fieldtype": "Table",
+      "label": "Bank Rows",
+      "options": "Bank Statement Reconciliation Bank Row",
+      "read_only": 1
+    },
+    {
+      "fieldname": "gl_rows_section",
+      "fieldtype": "Section Break",
+      "label": "GL Entries"
+    },
+    {
+      "fieldname": "gl_rows",
+      "fieldtype": "Table",
+      "label": "GL Rows",
+      "options": "Bank Statement Reconciliation GL Row",
+      "read_only": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Accounts User",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Accounts Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    }
+  ],
+  "search_fields": "reference_number,reconciled_by"
+}

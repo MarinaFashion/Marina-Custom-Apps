@@ -17,9 +17,11 @@ from marina_custom_apps.pos_reconciliation.accounting_service import (
 
 class TestPOSAccountingService(TestCase):
     def test_confirmation_rule(self):
-        self.assertTrue(is_reconciliation_confirmed("Matching", "Auto Cleared"))
-        self.assertTrue(is_reconciliation_confirmed("Bank Only", "Manually Cleared"))
-        self.assertFalse(is_reconciliation_confirmed("Bank Only", "Pending"))
+        self.assertTrue(is_reconciliation_confirmed("Fully Matching", "Auto Cleared"))
+        self.assertTrue(is_reconciliation_confirmed("Bank Only - Settled", "Auto Cleared"))
+        self.assertFalse(is_reconciliation_confirmed("Matching Not Settled", "Pending"))
+        self.assertFalse(is_reconciliation_confirmed("Bank Only - Not Settled", "Pending"))
+        self.assertFalse(is_reconciliation_confirmed("Alhamrani Only", "Pending"))
         self.assertFalse(is_reconciliation_confirmed("Discrepancy", "Pending"))
 
     def test_accounting_status_rule(self):

@@ -35,9 +35,14 @@ JOURNAL_ENTRY_MODE_DRAFT = "Draft"
 JOURNAL_ENTRY_MODE_SUBMIT = "Submit"
 
 
-def is_reconciliation_confirmed(match_status, resolution_status):
-    """Accounting is allowed only after reconciliation has confirmed the bank transaction."""
-    return cstr(match_status).strip() == "Matching" or cstr(resolution_status).strip() == "Manually Cleared"
+def is_reconciliation_confirmed(match_status, resolution_status=None):
+    """Accounting eligibility is driven by objective reconciliation evidence.
+
+    Fully Matching means POS = Alhamrani = bank statement.
+    Bank Only - Settled means POS = bank statement while Alhamrani is absent.
+    Both are eligible automatically; Finance manual clearance is no longer required.
+    """
+    return cstr(match_status).strip() in {"Fully Matching", "Bank Only - Settled"}
 
 
 
