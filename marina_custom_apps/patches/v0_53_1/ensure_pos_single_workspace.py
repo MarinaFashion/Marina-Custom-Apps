@@ -13,9 +13,11 @@ def execute():
     changed = False
     for row in doc.get("shortcuts") or []:
         if row.link_to == "POS Reconciliation Run":
-            if row.label != "Reconciliation Control" or row.doc_view != "Form":
+            # Frappe Workspace Shortcut.doc_view does not support "Form".
+            # Blank is valid and Frappe routes Singles directly to their form.
+            if row.label != "Reconciliation Control" or row.doc_view:
                 row.label = "Reconciliation Control"
-                row.doc_view = "Form"
+                row.doc_view = ""
                 changed = True
     for label, link in (
         ("Execution History", "POS Reconciliation Execution"),

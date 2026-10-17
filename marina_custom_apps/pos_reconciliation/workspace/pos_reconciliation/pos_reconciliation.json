@@ -196,7 +196,7 @@
     },
     {
       "color": "Orange",
-      "doc_view": "Form",
+      "doc_view": "",
       "label": "Reconciliation Control",
       "link_to": "POS Reconciliation Run",
       "type": "DocType"
