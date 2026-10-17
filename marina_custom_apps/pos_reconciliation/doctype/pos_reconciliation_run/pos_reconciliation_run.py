@@ -17,53 +17,39 @@ from marina_custom_apps.pos_reconciliation.review_service import (
 
 class POSReconciliationRun(Document):
     def validate(self):
-        self.validate_date_range()
-        self.validate_closed_run_immutability()
-
-    def validate_closed_run_immutability(self):
-        if self.is_new():
-            return
-
-        stored = frappe.db.get_value(
-            self.doctype,
-            self.name,
-            ["status", "from_date", "to_date", "pos_profile", "card_type", "bank_account"],
-            as_dict=True,
-        )
-        if not stored or stored.status != "Closed":
-            return
-
-        changed = []
-        for fieldname in ("from_date", "to_date", "pos_profile", "card_type", "bank_account"):
-            if cstr(self.get(fieldname) or "") != cstr(stored.get(fieldname) or ""):
-                changed.append(fieldname)
-
-        if changed:
-            frappe.throw(
-                _(
-                    "Closed reconciliation runs are immutable. Reopen the run before changing: {0}."
-                ).format(", ".join(changed))
-            )
-
-    def validate_date_range(self):
-        if not self.from_date or not self.to_date:
-            frappe.throw(_("From Date and To Date are required."))
-        if getdate(self.from_date) > getdate(self.to_date):
+        if self.from_date and self.to_date and getdate(self.from_date) > getdate(self.to_date):
             frappe.throw(_("From Date cannot be after To Date."))
+        # A user's stale Single form Save must never replace the worker's
+        # execution lock, accounting summary or system-managed result fields.
+        for fieldname in (
+            "status", "execution_status", "execution_job_id",
+            "execution_queued_on", "execution_started_on", "execution_completed_on",
+            "execution_error", "last_reconciled_on",
+            "bank_transaction_count", "alhamrani_transaction_count",
+            "statement_transaction_count", "statement_reconciled_count",
+            "statement_unreconciled_count", "statement_pos_line_count",
+            "statement_settlement_count", "statement_fully_reconciled_settlements",
+            "statement_missing_identity_count", "matching_count",
+            "matching_not_settled_count", "discrepancy_count", "bank_only_count",
+            "bank_only_settled_count", "bank_only_not_settled_count",
+            "alhamrani_only_count", "manually_cleared_count", "pending_count",
+        ):
+            self.set(fieldname, frappe.db.get_single_value(self.doctype, fieldname))
 
 
-def _writable_run(run_name):
-    if not run_name:
-        frappe.throw(_("Reconciliation Run is required."))
-    run = frappe.get_doc("POS Reconciliation Run", run_name)
+def _writable_run(run_name=None):
+    if run_name and cstr(run_name) != "POS Reconciliation Run":
+        frappe.throw(_("Only the Single POS Reconciliation Run control is supported."))
+    run = frappe.get_single("POS Reconciliation Run")
     run.check_permission("write")
     return run
 
 
-def _ensure_open(run_name):
-    run = frappe.get_doc("POS Reconciliation Run", run_name)
+def _ensure_open(run_name=None):
+    run = frappe.get_single("POS Reconciliation Run")
+    run.check_permission("read")
     if run.status != "Open":
-        frappe.throw(_("This action is available only while the reconciliation run is Open."))
+        frappe.throw(_("Run reconciliation once before performing this action."))
     return run
 
 
@@ -79,160 +65,149 @@ def _record_names(value):
 
 
 def _ensure_records_open(record_names):
-    names = _record_names(record_names)
-    if not names:
-        return
-    rows = frappe.get_all(
-        "POS Reconciliation Record",
-        filters={"name": ["in", names]},
-        fields=["run"],
-        group_by="run",
-        limit_page_length=0,
-    )
-    for row in rows:
-        if row.run:
-            _ensure_open(row.run)
+    _ensure_open()
+    from marina_custom_apps.pos_reconciliation.period_control import assert_records_open
+    assert_records_open(_record_names(record_names))
+
+
+def _set_control_fields(values):
+    for key, value in values.items():
+        frappe.db.set_single_value("POS Reconciliation Run", key, value)
+
+
+def _validate_execution_input(data):
+    if not data["from_date"] or not data["to_date"]:
+        frappe.throw(_("From Date and To Date are required."))
+    data["from_date"], data["to_date"] = getdate(data["from_date"]), getdate(data["to_date"])
+    if data["from_date"] > data["to_date"]:
+        frappe.throw(_("From Date cannot be after To Date."))
+    for fieldname, doctype in (("pos_profile", "POS Profile"), ("bank_account", "Bank Account")):
+        if data[fieldname] and not frappe.db.exists(doctype, data[fieldname]):
+            frappe.throw(_("Invalid {0}: {1}.").format(fieldname, data[fieldname]))
+    from marina_custom_apps.pos_reconciliation.period_control import assert_scope_open
+    assert_scope_open(data["from_date"], data["to_date"])
 
 
 @frappe.whitelist()
-def run_reconciliation(run_name):
-    """Queue reconciliation on Frappe's long worker and return immediately."""
+def run_reconciliation(
+    run_name=None, from_date=None, to_date=None, pos_profile=None,
+    card_type=None, bank_account=None,
+):
+    """Queue a snapshot of form inputs, not a mutable global Run."""
     run = _writable_run(run_name)
-    if run.status == "Closed":
-        frappe.throw(_("Closed reconciliation runs must be reopened before re-running."))
-
-    execution_status = cstr(run.execution_status).strip() or "Idle"
-    if execution_status in {"Queued", "Running"}:
-        frappe.throw(_("This reconciliation run is already queued or running."))
-
-    job_id = f"pos-reconciliation::{run.name}::{now_datetime().strftime('%Y%m%d%H%M%S%f')}"
-    now = now_datetime()
-    values = {
-        "execution_status": "Queued",
-        "execution_job_id": job_id,
-        "execution_queued_on": now,
-        "execution_started_on": None,
-        "execution_completed_on": None,
-        "execution_error": None,
+    scope = {
+        fieldname: cstr(value if value is not None else run.get(fieldname) or "").strip()
+        for fieldname, value in (
+            ("from_date", from_date), ("to_date", to_date),
+            ("pos_profile", pos_profile), ("card_type", card_type),
+            ("bank_account", bank_account),
+        )
     }
-    frappe.db.set_value(
-        "POS Reconciliation Run",
-        run.name,
-        values,
-        update_modified=True,
+    _validate_execution_input(scope)
+    # Serialise concurrent requests even if two Finance users click at once.
+    frappe.db.sql(
+        "SELECT name FROM `tabDocType` WHERE name = 'POS Reconciliation Run' FOR UPDATE"
     )
+    status = cstr(frappe.db.get_single_value("POS Reconciliation Run", "execution_status"))
+    if status in {"Queued", "Running"}:
+        frappe.throw(_("A POS reconciliation job is already queued or running."))
 
+    now = now_datetime()
+    execution = frappe.new_doc("POS Reconciliation Execution")
+    execution.update(scope)
+    execution.run_status = "Queued"
+    execution.initiated_by = frappe.session.user
+    execution.initiated_on = now
+    execution.queued_on = now
+    execution.flags.ignore_permissions = True
+    execution.insert()
+    job_id = f"pos-reconciliation-single::{execution.name}"
+    _set_control_fields({
+        **scope, "execution_status": "Queued", "execution_job_id": job_id,
+        "execution_queued_on": now, "execution_started_on": None,
+        "execution_completed_on": None, "execution_error": None,
+    })
     frappe.enqueue(
         "marina_custom_apps.pos_reconciliation.doctype.pos_reconciliation_run.pos_reconciliation_run.execute_reconciliation_job",
-        queue="long",
-        timeout=3600,
-        job_id=job_id,
-        enqueue_after_commit=True,
-        run_name=run.name,
+        queue="long", timeout=3600, job_id=job_id, enqueue_after_commit=True,
+        execution_name=execution.name,
     )
-
-    return {
-        "run": run.name,
-        "execution_status": "Queued",
-        "job_id": job_id,
-    }
+    return {"execution": execution.name, "execution_status": "Queued", "job_id": job_id}
 
 
-def execute_reconciliation_job(run_name):
-    """RQ worker entry point for a complete three-source reconciliation run."""
-    run = frappe.get_doc("POS Reconciliation Run", run_name)
-    if run.status == "Closed":
-        frappe.throw(_("Closed reconciliation runs cannot be executed."))
-
-    started_on = now_datetime()
+def execute_reconciliation_job(execution_name):
+    """Worker uses immutable execution inputs even if someone opens/saves the Single form."""
+    execution = frappe.get_doc("POS Reconciliation Execution", execution_name)
+    if execution.run_status != "Queued":
+        frappe.throw(_("Execution is not queued."))
+    started = now_datetime()
     frappe.db.set_value(
-        "POS Reconciliation Run",
-        run.name,
-        {
-            "execution_status": "Running",
-            "execution_started_on": started_on,
-            "execution_completed_on": None,
-            "execution_error": None,
-        },
-        update_modified=True,
+        "POS Reconciliation Execution", execution.name,
+        {"run_status": "Running", "started_on": started},
+        update_modified=False,
     )
-    # Publish Running state while the long transaction continues.
+    _set_control_fields({"execution_status": "Running", "execution_started_on": started})
     frappe.db.commit()
 
     try:
-        result = execute_run(run_name)
+        run = frappe.get_single("POS Reconciliation Run")
+        for fieldname in ("from_date", "to_date", "pos_profile", "card_type", "bank_account"):
+            run.set(fieldname, execution.get(fieldname))
+        # execute_run modifies only the source scope; account postings stay separate.
+        result = execute_run(run, execution_name=execution.name)
 
-        from marina_custom_apps.pos_reconciliation.accounting_service import (
-            sync_run_accounting_status,
-        )
-        sync_run_accounting_status(run_name)
-
-        completed_on = now_datetime()
+        completed = now_datetime()
         frappe.db.set_value(
-            "POS Reconciliation Run",
-            run.name,
+            "POS Reconciliation Execution", execution.name,
             {
-                "status": "Open",
-                "execution_status": "Completed",
-                "execution_completed_on": completed_on,
-                "execution_error": None,
+                "run_status": "Completed", "completed_on": completed,
+                **{
+                    field: result.get(field, 0)
+                    for field in (
+                        "bank_transaction_count", "alhamrani_transaction_count",
+                        "matching_count", "pending_count",
+                        "statement_transaction_count", "statement_reconciled_count",
+                    )
+                },
             },
-            update_modified=True,
+            update_modified=False,
         )
+        _set_control_fields({
+            "status": "Open", "execution_status": "Completed",
+            "execution_completed_on": completed, "execution_error": None,
+        })
         frappe.db.commit()
-        return {"run": run.name, "status": "Open", **(result or {})}
+        return {"execution": execution.name, "status": "Completed", **(result or {})}
     except Exception:
         frappe.db.rollback()
-        error_text = cstr(frappe.get_traceback())[-12000:]
+        details = cstr(frappe.get_traceback())[-12000:]
         frappe.db.set_value(
-            "POS Reconciliation Run",
-            run.name,
-            {
-                "execution_status": "Failed",
-                "execution_completed_on": now_datetime(),
-                "execution_error": error_text,
-            },
-            update_modified=True,
+            "POS Reconciliation Execution", execution.name,
+            {"run_status": "Failed", "completed_on": now_datetime(), "error": details},
+            update_modified=False,
         )
+        _set_control_fields({
+            "execution_status": "Failed",
+            "execution_completed_on": now_datetime(), "execution_error": details,
+        })
         frappe.db.commit()
         raise
 
 
 @frappe.whitelist()
-def close_reconciliation(run_name, note=None):
+def close_reconciliation(run_name=None, note=None, from_date=None, to_date=None):
     run = _writable_run(run_name)
-    if run.status != "Open":
-        frappe.throw(_("Only an Open reconciliation run can be closed."))
-    if not run.last_reconciled_on:
-        frappe.throw(_("Run reconciliation at least once before closing this period."))
-    if cstr(run.execution_status).strip() in {"Queued", "Running"}:
-        frappe.throw(_("Wait for the current reconciliation execution to finish."))
-
-    note = cstr(note).strip()
-    now = now_datetime()
-    values = {"status":"Closed","closed_by":frappe.session.user,"closed_on":now,"closing_note":note or None}
-    frappe.db.set_value("POS Reconciliation Run", run.name, values, update_modified=True)
-    run.add_comment("Info", _("Reconciliation closed by {0}.{1}").format(
-        frappe.session.user, f" Closing note: {note}" if note else ""
-    ))
-    return values
+    from marina_custom_apps.pos_reconciliation.period_control import close_period
+    return close_period(from_date or run.from_date, to_date or run.to_date, note)
 
 
 @frappe.whitelist()
-def reopen_reconciliation(run_name, reason):
-    if not {"Accounts Manager","System Manager"}.intersection(set(frappe.get_roles())):
-        frappe.throw(_("Only Accounts Manager or System Manager can reopen a closed reconciliation."), frappe.PermissionError)
-    run = _writable_run(run_name)
-    if run.status != "Closed":
-        frappe.throw(_("Only a Closed reconciliation run can be reopened."))
-    reason = cstr(reason).strip()
-    if not reason:
-        frappe.throw(_("Reopen Reason is required."))
-    now = now_datetime()
-    values = {"status":"Open","reopened_by":frappe.session.user,"reopened_on":now,"reopen_reason":reason,"execution_status":"Idle"}
-    frappe.db.set_value("POS Reconciliation Run", run.name, values, update_modified=True)
-    run.add_comment("Info", _("Reconciliation reopened by {0}. Reason: {1}").format(frappe.session.user, reason))
-    return values
+def reopen_reconciliation(run_name=None, reason=None, period_lock=None):
+    _writable_run(run_name)
+    if not period_lock:
+        frappe.throw(_("Select the period lock from the Period Locks list to reopen it."))
+    from marina_custom_apps.pos_reconciliation.period_control import reopen_period
+    return reopen_period(period_lock, reason)
 
 
 @frappe.whitelist()

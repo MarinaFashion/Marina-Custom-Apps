@@ -1,9 +1,7 @@
 {
-  "autoname": "naming_series:",
   "doctype": "DocType",
   "engine": "InnoDB",
   "field_order": [
-    "naming_series",
     "period_section",
     "from_date",
     "to_date",
@@ -20,14 +18,6 @@
     "execution_completed_on",
     "execution_error",
     "last_reconciled_on",
-    "lifecycle_audit_section",
-    "closed_by",
-    "closed_on",
-    "lifecycle_column_break",
-    "closing_note",
-    "reopened_by",
-    "reopened_on",
-    "reopen_reason",
     "source_counts_section",
     "bank_transaction_count",
     "alhamrani_transaction_count",
@@ -54,14 +44,6 @@
   ],
   "fields": [
     {
-      "default": "POS-REC-.YYYY.-.#####",
-      "fieldname": "naming_series",
-      "fieldtype": "Select",
-      "label": "Series",
-      "options": "POS-REC-.YYYY.-.#####",
-      "reqd": 1
-    },
-    {
       "fieldname": "period_section",
       "fieldtype": "Section Break",
       "label": "Reconciliation Period"
@@ -72,7 +54,8 @@
       "in_list_view": 1,
       "in_standard_filter": 1,
       "label": "From Date",
-      "reqd": 1
+      "reqd": 1,
+      "description": "Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked."
     },
     {
       "fieldname": "to_date",
@@ -80,7 +63,8 @@
       "in_list_view": 1,
       "in_standard_filter": 1,
       "label": "To Date",
-      "reqd": 1
+      "reqd": 1,
+      "description": "Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked."
     },
     {
       "fieldname": "period_column_break",
@@ -91,10 +75,11 @@
       "fieldtype": "Link",
       "in_standard_filter": 1,
       "label": "POS Profile",
-      "options": "POS Profile"
+      "options": "POS Profile",
+      "description": "Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked."
     },
     {
-      "description": "Optional normalized card scheme filter.",
+      "description": "Optional normalized card scheme filter. Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked.",
       "fieldname": "card_type",
       "fieldtype": "Data",
       "in_standard_filter": 1,
@@ -106,7 +91,7 @@
       "label": "Statement Bank Account",
       "options": "Bank Account",
       "in_standard_filter": 1,
-      "description": "Custom Marina bank statement account used to confirm POS settlements. Leave blank only when statement confirmation is not required for this run."
+      "description": "Custom Marina bank statement account used to confirm POS settlements. Leave blank only when statement confirmation is not required for this run. Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked."
     },
     {
       "fieldname": "status_section",
@@ -120,8 +105,9 @@
       "in_list_view": 1,
       "in_standard_filter": 1,
       "label": "Status",
-      "options": "Draft\nOpen\nClosed",
-      "read_only": 1
+      "options": "Draft\nOpen",
+      "read_only": 1,
+      "description": "Global controller state. Financial periods are locked separately."
     },
     {
       "default": "Idle",
@@ -135,54 +121,6 @@
       "fieldname": "last_reconciled_on",
       "fieldtype": "Datetime",
       "label": "Last Reconciled On",
-      "read_only": 1
-    },
-    {
-      "fieldname": "lifecycle_audit_section",
-      "fieldtype": "Section Break",
-      "label": "Closure Audit",
-      "collapsible": 1
-    },
-    {
-      "fieldname": "closed_by",
-      "fieldtype": "Link",
-      "label": "Closed By",
-      "options": "User",
-      "read_only": 1
-    },
-    {
-      "fieldname": "closed_on",
-      "fieldtype": "Datetime",
-      "label": "Closed On",
-      "read_only": 1
-    },
-    {
-      "fieldname": "lifecycle_column_break",
-      "fieldtype": "Column Break"
-    },
-    {
-      "fieldname": "closing_note",
-      "fieldtype": "Small Text",
-      "label": "Closing Note",
-      "read_only": 1
-    },
-    {
-      "fieldname": "reopened_by",
-      "fieldtype": "Link",
-      "label": "Last Reopened By",
-      "options": "User",
-      "read_only": 1
-    },
-    {
-      "fieldname": "reopened_on",
-      "fieldtype": "Datetime",
-      "label": "Last Reopened On",
-      "read_only": 1
-    },
-    {
-      "fieldname": "reopen_reason",
-      "fieldtype": "Small Text",
-      "label": "Last Reopen Reason",
       "read_only": 1
     },
     {
@@ -382,5 +320,6 @@
   "search_fields": "name,pos_profile,card_type,bank_account,status",
   "sort_field": "modified",
   "sort_order": "DESC",
-  "track_changes": 1
+  "track_changes": 1,
+  "issingle": 1
 }

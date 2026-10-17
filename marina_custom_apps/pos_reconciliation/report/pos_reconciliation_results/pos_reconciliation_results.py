@@ -4,8 +4,6 @@ from frappe import _
 
 def execute(filters=None):
     filters = frappe._dict(filters or {})
-    if not filters.run:
-        frappe.throw(_("Reconciliation Run is required."))
     return get_columns(), get_data(filters)
 
 
@@ -36,7 +34,7 @@ def get_columns():
 
 
 def get_data(filters):
-    db_filters = {"run": filters.run}
+    db_filters = {}
     for fieldname in (
         "match_status",
         "resolution_status",

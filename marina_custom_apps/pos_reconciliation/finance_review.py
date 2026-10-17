@@ -92,21 +92,16 @@ def _ensure_statement_confirmed(rows):
 
 
 def _ensure_runs_open(rows):
-    run_names = {cstr(getattr(row, "run", None)).strip() for row in rows}
-    for run_name in run_names:
-        if not run_name:
-            continue
-        if frappe.db.get_value("POS Reconciliation Run", run_name, "status") == "Closed":
-            frappe.throw(
-                _("Closed reconciliation runs must be reopened before Finance review can be changed.")
-            )
+    from marina_custom_apps.pos_reconciliation.period_control import assert_records_open
+    assert_records_open([row.name for row in rows])
 
 
 def _ensure_run_open(run_name):
-    if frappe.db.get_value("POS Reconciliation Run", run_name, "status") == "Closed":
-        frappe.throw(
-            _("Closed reconciliation runs must be reopened before Finance review can be changed.")
-        )
+    if run_name != "POS Reconciliation Run":
+        frappe.throw(_("Invalid reconciliation control."))
+    if frappe.db.get_single_value("POS Reconciliation Run", "status") != "Open":
+        frappe.throw(_("Execute reconciliation before Finance review."))
+
 
 def _validate_one_settlement_group(rows):
     if not rows:
@@ -427,4 +422,6 @@ def review_filtered_bank_only(
     )
     if not rows:
         return {"updated": 0, "affected_runs": 0}
+    from marina_custom_apps.pos_reconciliation.period_control import assert_records_open
+    assert_records_open([row.name for row in rows])
     return review_bank_transactions([row.bank_transaction for row in rows], decision, note)

@@ -356,9 +356,9 @@ def get_result_filter_options(
     }
 
 def _get_run(run_name):
-    if not run_name:
-        frappe.throw(_("Reconciliation Run is required."))
-    run = frappe.get_doc("POS Reconciliation Run", run_name)
+    if run_name != "POS Reconciliation Run":
+        frappe.throw(_("Invalid Single POS Reconciliation Control."))
+    run = frappe.get_single("POS Reconciliation Run")
     run.check_permission("read")
     return run
 

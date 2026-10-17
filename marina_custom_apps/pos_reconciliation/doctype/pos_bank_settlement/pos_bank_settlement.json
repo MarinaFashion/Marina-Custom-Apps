@@ -51,9 +51,8 @@
     },
     {
       "fieldname": "reconciliation_run",
-      "fieldtype": "Link",
-      "label": "POS Reconciliation Run",
-      "options": "POS Reconciliation Run",
+      "fieldtype": "Data",
+      "label": "POS Reconciliation Control",
       "read_only": 1,
       "in_standard_filter": 1
     },

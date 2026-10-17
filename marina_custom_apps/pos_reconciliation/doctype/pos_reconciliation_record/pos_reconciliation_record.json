@@ -3,6 +3,7 @@
   "engine": "InnoDB",
   "field_order": [
     "run",
+    "last_execution",
     "record_key",
     "identity_section",
     "transaction_date",
@@ -73,13 +74,22 @@
   "fields": [
     {
       "fieldname": "run",
-      "fieldtype": "Link",
-      "in_list_view": 1,
-      "in_standard_filter": 1,
-      "label": "Reconciliation Run",
-      "options": "POS Reconciliation Run",
+      "fieldtype": "Data",
+      "in_list_view": 0,
+      "in_standard_filter": 0,
+      "label": "Reconciliation Control",
       "reqd": 1,
-      "search_index": 1
+      "search_index": 1,
+      "read_only": 1,
+      "hidden": 1
+    },
+    {
+      "fieldname": "last_execution",
+      "fieldtype": "Link",
+      "label": "Last Reconciliation Execution",
+      "options": "POS Reconciliation Execution",
+      "read_only": 1,
+      "in_standard_filter": 1
     },
     {
       "fieldname": "record_key",
@@ -200,7 +210,8 @@
       "in_standard_filter": 1,
       "label": "Bank POS Transaction",
       "options": "Bank POS Transaction",
-      "read_only": 1
+      "read_only": 1,
+      "search_index": 1
     },
     {
       "default": "Alhamrani Transaction",
@@ -217,7 +228,8 @@
       "in_standard_filter": 1,
       "label": "Alhamrani Transaction",
       "options": "alhamrani_doctype",
-      "read_only": 1
+      "read_only": 1,
+      "search_index": 1
     },
     {
       "fieldname": "status_section",
@@ -312,9 +324,8 @@
     },
     {
       "fieldname": "bank_statement_reconciliation",
-      "fieldtype": "Link",
-      "label": "POS Reconciliation Run",
-      "options": "POS Reconciliation Run",
+      "fieldtype": "Data",
+      "label": "POS Reconciliation Control",
       "read_only": 1,
       "in_standard_filter": 1,
       "search_index": 1
