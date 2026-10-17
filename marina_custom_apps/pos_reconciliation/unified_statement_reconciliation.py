@@ -397,6 +397,15 @@ def reconcile_run_statement(run):
 
     _update_records(run, records, record_keys, settlements, evidence, checked_on)
 
+    # Add settlement-level POS record links to each participating statement row.
+    # Run after status updates so the child table shows final settled statuses.
+    # The projection is idempotent and restricted to this run's matched sources.
+    from marina_custom_apps.pos_reconciliation.statement_pos_links import (
+        sync_statement_pos_links,
+    )
+
+    sync_statement_pos_links(statement_rows, settlements, evidence)
+
     period_statement_count = frappe.db.count(
         STATEMENT_DOCTYPE,
         filters={

@@ -46,11 +46,14 @@
     "recon_column_break",
     "pos_reconciliation_run",
     "pos_bank_settlement",
+    "pos_profile",
     "bank_statement_reconciliation_match",
     "reconciled_on",
     "reconciled_by",
     "allocations_section",
-    "allocations"
+    "allocations",
+    "pos_link_section",
+    "pos_reconciliation_records"
   ],
   "fields": [
     {
@@ -299,6 +302,16 @@
       "in_standard_filter": 1
     },
     {
+      "fieldname": "pos_profile",
+      "fieldtype": "Link",
+      "label": "POS Profile",
+      "options": "POS Profile",
+      "read_only": 1,
+      "description": "Derived from the settled POS reconciliation records; blank when more than one POS Profile contributes.",
+      "in_standard_filter": 1,
+      "search_index": 1
+    },
+    {
       "fieldname": "bank_statement_reconciliation_match",
       "fieldtype": "Link",
       "label": "Bank Statement Reconciliation Match",
@@ -332,6 +345,24 @@
       "label": "Allocations",
       "options": "Marina Bank Statement Allocation",
       "read_only": 1
+    },
+    {
+      "fieldname": "pos_link_section",
+      "fieldtype": "Section Break",
+      "label": "Linked POS Reconciliation Records",
+      "depends_on": "eval:doc.is_pos_statement_line && doc.pos_bank_settlement"
+    },
+    {
+      "fieldname": "pos_reconciliation_records",
+      "fieldtype": "Table",
+      "label": "Contributing POS Reconciliation Records",
+      "options": "Marina Statement POS Record",
+      "read_only": 1,
+      "cannot_add_rows": 1,
+      "cannot_delete_rows": 1,
+      "cannot_delete_all_rows": 1,
+      "depends_on": "eval:doc.is_pos_statement_line && doc.pos_bank_settlement",
+      "description": "Shows contributing POS records for the reconciled settlement. The same settlement may have Gross, Commission and VAT bank statement lines."
     }
   ],
   "permissions": [
