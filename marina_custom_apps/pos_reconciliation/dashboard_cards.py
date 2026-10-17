@@ -251,8 +251,11 @@ def get_manual_cleared_card(filters=None):
 @frappe.whitelist()
 def get_match_percent_card(filters=None):
     summary = _reconciliation_status_summary()
-    value = summary.matching_records / summary.total_records * 100 if summary.total_records else 0.0
-    route, options = _record_route(match_status="Fully Matching")
+    # Match % represents overall reconciliation clearance, including both
+    # automatically cleared and manually cleared records. Use the same
+    # canonical counters and route as the Cleared Records number card.
+    value = summary.cleared_records / summary.total_records * 100 if summary.total_records else 0.0
+    route, options = _record_route(resolution_status=["in", ["Auto Cleared", "Manually Cleared"]])
     return _result(flt(value, 2), "Percent", route, options)
 
 
