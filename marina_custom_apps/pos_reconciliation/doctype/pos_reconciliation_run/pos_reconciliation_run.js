@@ -2,13 +2,13 @@ const POS_RECON_PAGE_LENGTH = 25;
 
 frappe.ui.form.on("POS Reconciliation Run", {
     refresh(frm) {
-        if (frm.is_new()) return;
+        // Singles have one fixed document, with no New document workflow.
 
         const lifecycle = frm.doc.status || "Draft";
         const execution = frm.doc.execution_status || "Idle";
         const execution_active = ["Queued", "Running"].includes(execution);
         const has_results = Boolean(frm.doc.last_reconciled_on);
-        const period_locked = lifecycle === "Closed";
+        const period_locked = false; // Closing is managed by period locks, not the Single control.
 
         if (frm.__pos_recon_execution_timer) {
             clearTimeout(frm.__pos_recon_execution_timer);
@@ -29,22 +29,27 @@ frappe.ui.form.on("POS Reconciliation Run", {
             frm.set_intro(__("This reconciliation period has not been run yet."), "blue");
         } else if (lifecycle === "Open") {
             frm.set_intro(__("This period is Open. Import late Bank data and re-run the same period until Finance decides the month is complete."), "green");
-        } else {
-            frm.set_intro(__("This period is Closed. Reopen it if late source data must be processed."), "orange");
         }
 
         if (execution_active) {
             frm.__pos_recon_execution_timer = setTimeout(() => frm.reload_doc(), 5000);
         }
 
-        if (lifecycle !== "Closed" && !execution_active && !frm.is_dirty()) {
+        if (!execution_active) {
             const label = has_results ? __("Re-run Reconciliation") : __("Run Reconciliation");
             const btn = frm.add_custom_button(label, () => {
                 frappe.confirm(
                     __("Reconcile POS and Alhamrani transactions for this period and apply any imported Marina bank statement evidence for the selected Statement Bank Account?"),
                     () => frappe.call({
                         method:"marina_custom_apps.pos_reconciliation.doctype.pos_reconciliation_run.pos_reconciliation_run.run_reconciliation",
-                        args:{run_name:frm.doc.name}
+                        args:{
+                            run_name:frm.doc.name,
+                            from_date:frm.doc.from_date || "",
+                            to_date:frm.doc.to_date || "",
+                            pos_profile:frm.doc.pos_profile || "",
+                            card_type:frm.doc.card_type || "",
+                            bank_account:frm.doc.bank_account || ""
+                        }
                     }).then((r) => {
                         const result = r.message || {};
                         frappe.show_alert({
@@ -60,11 +65,11 @@ frappe.ui.form.on("POS Reconciliation Run", {
 
         if (has_results) {
             frm.add_custom_button(__("View Records"), () => {
-                frappe.set_route("List", "POS Reconciliation Record", {run: frm.doc.name});
+                frappe.set_route("List", "POS Reconciliation Record");
             }, __("Actions"));
         }
 
-        if (lifecycle !== "Closed") {
+        {
             frm.add_custom_button(__("Import POS Transactions"), () => {
                 frappe.set_route("Form", "POS Bank Import", "POS Bank Import");
             }, __("Actions"));
@@ -82,19 +87,20 @@ frappe.ui.form.on("POS Reconciliation Run", {
             }, __("Actions"));
 
             if (!execution_active) {
-                frm.add_custom_button(__("Close Reconciliation"), () => {
+                frm.add_custom_button(__("Close Selected Period"), () => {
                     pos_recon_close_run(frm);
                 }, __("Actions"));
             }
         }
 
-        if (lifecycle === "Closed") {
-            frm.add_custom_button(__("Reopen Reconciliation"), () => {
-                pos_recon_reopen_run(frm);
-            }, __("Actions"));
-        }
+        frm.add_custom_button(__("Period Locks"), () => {
+            frappe.set_route("List", "POS Reconciliation Period Lock");
+        }, __("Actions"));
+        frm.add_custom_button(__("Execution History"), () => {
+            frappe.set_route("List", "POS Reconciliation Execution");
+        }, __("Actions"));
 
-        if (has_results && ["Open","Closed"].includes(lifecycle)) {
+        if (has_results && lifecycle === "Open") {
             pos_recon_setup_review(frm);
         }
 
@@ -112,7 +118,12 @@ function pos_recon_close_run(frm) {
             ]),
             () => frappe.call({
                 method:"marina_custom_apps.pos_reconciliation.doctype.pos_reconciliation_run.pos_reconciliation_run.close_reconciliation",
-                args:{run_name:frm.doc.name,note:values.closing_note||""},freeze:true,
+                args:{
+                    run_name:frm.doc.name,
+                    from_date:frm.doc.from_date,
+                    to_date:frm.doc.to_date,
+                    note:values.closing_note||""
+                },freeze:true,
                 freeze_message:__("Closing reconciliation period...")
             }).then(() => frm.reload_doc())
         ),
@@ -120,18 +131,6 @@ function pos_recon_close_run(frm) {
     );
 }
 
-function pos_recon_reopen_run(frm) {
-    frappe.prompt(
-        [{fieldname:"reopen_reason",fieldtype:"Small Text",label:__("Reopen Reason"),reqd:1,
-          description:__("Explain why the closed period must be reopened, for example late Bank settlement data.")}],
-        (values) => frappe.call({
-            method:"marina_custom_apps.pos_reconciliation.doctype.pos_reconciliation_run.pos_reconciliation_run.reopen_reconciliation",
-            args:{run_name:frm.doc.name,reason:values.reopen_reason},freeze:true,
-            freeze_message:__("Reopening reconciliation period...")
-        }).then(() => frm.reload_doc()),
-        __("Reopen Reconciliation"),__("Reopen")
-    );
-}
 function pos_recon_setup_review(frm) {
     if (!frm.__pos_recon_review) {
         frm.__pos_recon_review = {

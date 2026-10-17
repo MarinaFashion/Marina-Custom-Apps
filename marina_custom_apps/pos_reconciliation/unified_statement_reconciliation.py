@@ -27,15 +27,29 @@ def _chunks(values, size=500):
         yield values[start : start + size]
 
 
-def _run_records(run_name):
+def _run_records(run):
+    filters = {
+        "run": run.name,
+        "transaction_date": ["between", [run.from_date, run.to_date]],
+    }
+    if run.pos_profile:
+        filters["pos_profile"] = run.pos_profile
+    if run.card_type:
+        from marina_custom_apps.pos_reconciliation.card_type_mapping import get_card_type_mapper
+        filters["card_type"] = get_card_type_mapper().resolve(run.card_type)
     return frappe.get_all(
         RECORD_DOCTYPE,
-        filters={"run": run_name},
+        filters=filters,
         fields=[
             "name",
             "bank_transaction",
             "match_status",
             "resolution_status",
+            "accounting_status",
+            "accounting_posting",
+            "journal_entry",
+            "finance_review_status",
+            "bank_statement_status",
             "transaction_date",
             "pos_profile",
             "terminal_id",
@@ -176,14 +190,15 @@ def _statement_amount(row):
     return debit or credit, "Withdrawal" if debit else "Deposit"
 
 
-def _reset_previous_run_links(run_name):
-    rows = frappe.get_all(
-        STATEMENT_DOCTYPE,
-        filters={"pos_reconciliation_run": run_name},
-        fields=["name", "debit", "credit"],
-        limit_page_length=0,
-    )
-    for row in rows:
+def _reset_previous_run_links(run, statement_rows):
+    """Clear only matched POS statement lines in this execution's settlement groups.
+
+    Previous implementations reset every line ever linked to a run. A Single
+    controller is global, so doing that would corrupt unrelated date ranges.
+    """
+    for row in statement_rows:
+        if row.pos_reconciliation_run != run.name:
+            continue
         amount = abs(flt(row.debit, 2)) or abs(flt(row.credit, 2))
         frappe.db.set_value(
             STATEMENT_DOCTYPE,
@@ -280,6 +295,27 @@ def _update_records(run, records, record_keys, settlements, evidence, checked_on
         elif current_match in {"Discrepancy", "Alhamrani Only"}:
             updates["resolution_status"] = "Pending"
 
+        protected = bool(
+            record.accounting_posting or record.journal_entry
+            or cstr(record.accounting_status) in {
+                "Posted", "Draft Created", "Draft - Review Required", "Posted - Review Required"
+            }
+            or cstr(record.finance_review_status) in {"Checked & Approved", "Needs Investigation"}
+        )
+        if protected and any(
+            cstr(record.get(field)) != cstr(value)
+            for field, value in updates.items()
+            if field in {"match_status", "resolution_status", "bank_statement_status"}
+        ):
+            frappe.throw(
+                "Previously reviewed or posted reconciliation {0} has changed bank-statement evidence. Resolve it through Finance review before rerunning.".format(
+                    record.name
+                )
+            )
+        # A Finance-approved manual clearance remains the authoritative decision.
+        if current_resolution == "Manually Cleared":
+            updates["resolution_status"] = "Manually Cleared"
+
         frappe.db.set_value(
             RECORD_DOCTYPE,
             record.name,
@@ -300,9 +336,12 @@ def reconcile_run_statement(run):
             "statement_missing_identity_count": 0,
         }
 
-    records = _run_records(run.name)
+    records = _run_records(run)
     groups, record_keys, missing_identity = _record_groups(run, records)
-    _reset_previous_run_links(run.name)
+    all_statement_rows = _statement_rows(run)
+    # Do not touch rows belonging to other POS profiles/card types/groups.
+    statement_rows = [row for row in all_statement_rows if _statement_key(row) in groups]
+    _reset_previous_run_links(run, statement_rows)
 
     settlements = {}
     for key, rows in groups.items():
@@ -323,7 +362,6 @@ def reconcile_run_statement(run):
         )
         settlements[key] = doc
 
-    statement_rows = _statement_rows(run)
     evidence = defaultdict(list)
     for row in statement_rows:
         evidence[_statement_key(row)].append(row)

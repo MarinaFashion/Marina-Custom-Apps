@@ -88,50 +88,10 @@ def _bank_route():
 
 
 def _current_reconciliation_cte():
-    """SQL CTE for one current row per Bank/Alhamrani source transaction.
-
-    Reconciliation Records are run-specific, so rerunning overlapping periods can create
-    multiple historical rows for the same source transaction. The dashboard must count
-    all source transactions once, not all historical run snapshots.
-    """
+    """Canonical reconciliation: one source record, no expensive ROW_NUMBER dedup."""
     return """
-        with ranked_bank as (
-            select
-                r.*,
-                row_number() over (
-                    partition by r.bank_transaction
-                    order by
-                        coalesce(r.last_reconciled_on, r.modified) desc,
-                        r.modified desc,
-                        r.name desc
-                ) as source_rank
-            from `tabPOS Reconciliation Record` r
-            where coalesce(r.bank_transaction, '') <> ''
-        ),
-        ranked_alhamrani_only as (
-            select
-                r.*,
-                row_number() over (
-                    partition by r.alhamrani_transaction
-                    order by
-                        coalesce(r.last_reconciled_on, r.modified) desc,
-                        r.modified desc,
-                        r.name desc
-                ) as source_rank
-            from `tabPOS Reconciliation Record` r
-            where coalesce(r.bank_transaction, '') = ''
-              and coalesce(r.alhamrani_transaction, '') <> ''
-              and not exists (
-                  select 1
-                  from `tabPOS Reconciliation Record` matched
-                  where matched.alhamrani_transaction = r.alhamrani_transaction
-                    and coalesce(matched.bank_transaction, '') <> ''
-              )
-        ),
-        current_records as (
-            select * from ranked_bank where source_rank = 1
-            union all
-            select * from ranked_alhamrani_only where source_rank = 1
+        with current_records as (
+            select * from `tabPOS Reconciliation Record`
         )
     """
 

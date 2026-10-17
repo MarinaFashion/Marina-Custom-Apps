@@ -1,6 +1,6 @@
 {
   "charts": [],
-  "content": "[{\"id\":\"pr-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>POS Reconciliation</b></span>\",\"col\":12}},{\"id\":\"pr-s1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Bank POS Transactions\",\"col\":3}},{\"id\":\"pr-s2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Terminal References\",\"col\":3}},{\"id\":\"pr-s3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Reconciliation Runs\",\"col\":3}},{\"id\":\"pr-s4\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Reconciliation Records\",\"col\":3}},{\"id\":\"pr-sp1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"pr-s5\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Bank Statement Reconciliation\",\"col\":3}},{\"id\":\"pr-s6\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Bank Reconciliation Matches\",\"col\":3}},{\"id\":\"pr-s-exclusions\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Excluded Bank Transactions\",\"col\":3}},{\"id\":\"pr-sp2\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"pr-rhead\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Reports</b></span>\",\"col\":12}},{\"id\":\"pr-r0\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Reconciliation Results\",\"col\":4}},{\"id\":\"pr-r1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Commission by Store & Device\",\"col\":4}},{\"id\":\"pr-r2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Card Type Summary by Store\",\"col\":4}}]",
+  "content": "[{\"id\":\"pr-head\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>POS Reconciliation</b></span>\",\"col\":12}},{\"id\":\"pr-s1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Bank POS Transactions\",\"col\":3}},{\"id\":\"pr-s2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Terminal References\",\"col\":3}},{\"id\":\"pr-s3\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Reconciliation Control\",\"col\":3}},{\"id\":\"pr-s-execution-history\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Execution History\",\"col\":3}},{\"id\":\"pr-s-period-locks\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Period Locks\",\"col\":3}},{\"id\":\"pr-s4\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Reconciliation Records\",\"col\":3}},{\"id\":\"pr-sp1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"pr-s5\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Bank Statement Reconciliation\",\"col\":3}},{\"id\":\"pr-s6\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Bank Reconciliation Matches\",\"col\":3}},{\"id\":\"pr-s-exclusions\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Excluded Bank Transactions\",\"col\":3}},{\"id\":\"pr-sp2\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"pr-rhead\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Reports</b></span>\",\"col\":12}},{\"id\":\"pr-r0\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Reconciliation Results\",\"col\":4}},{\"id\":\"pr-r1\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Commission by Store & Device\",\"col\":4}},{\"id\":\"pr-r2\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Card Type Summary by Store\",\"col\":4}}]",
   "creation": "2026-10-02 00:00:00.000000",
   "custom_blocks": [],
   "docstatus": 0,
@@ -51,6 +51,28 @@
       "link_to": "POS Reconciliation Run",
       "link_type": "DocType",
       "onboard": 1,
+      "type": "Link"
+    },
+    {
+      "dependencies": "",
+      "hidden": 0,
+      "is_query_report": 0,
+      "label": "POS Reconciliation Period Lock",
+      "link_count": 0,
+      "link_to": "POS Reconciliation Period Lock",
+      "link_type": "DocType",
+      "onboard": 0,
+      "type": "Link"
+    },
+    {
+      "dependencies": "",
+      "hidden": 0,
+      "is_query_report": 0,
+      "label": "POS Reconciliation Execution",
+      "link_count": 0,
+      "link_to": "POS Reconciliation Execution",
+      "link_type": "DocType",
+      "onboard": 0,
       "type": "Link"
     },
     {
@@ -174,8 +196,8 @@
     },
     {
       "color": "Orange",
-      "doc_view": "List",
-      "label": "Reconciliation Runs",
+      "doc_view": "Form",
+      "label": "Reconciliation Control",
       "link_to": "POS Reconciliation Run",
       "type": "DocType"
     },
@@ -224,6 +246,20 @@
       "label": "Card Type Summary by Store",
       "link_to": "POS Card Type Summary by Store",
       "type": "Report"
+    },
+    {
+      "color": "Grey",
+      "doc_view": "List",
+      "label": "Execution History",
+      "link_to": "POS Reconciliation Execution",
+      "type": "DocType"
+    },
+    {
+      "color": "Grey",
+      "doc_view": "List",
+      "label": "Period Locks",
+      "link_to": "POS Reconciliation Period Lock",
+      "type": "DocType"
     }
   ],
   "title": "POS Reconciliation"

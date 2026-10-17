@@ -1,0 +1,202 @@
+{
+  "doctype": "DocType",
+  "module": "POS Reconciliation",
+  "name": "POS Reconciliation Execution",
+  "engine": "InnoDB",
+  "autoname": "naming_series:",
+  "track_changes": 1,
+  "field_order": [
+    "naming_series",
+    "run_status",
+    "scope",
+    "from_date",
+    "to_date",
+    "scope_split",
+    "pos_profile",
+    "card_type",
+    "bank_account",
+    "timing",
+    "initiated_by",
+    "initiated_on",
+    "queued_on",
+    "started_on",
+    "completed_on",
+    "results",
+    "bank_transaction_count",
+    "alhamrani_transaction_count",
+    "result_split",
+    "matching_count",
+    "pending_count",
+    "statement_transaction_count",
+    "statement_reconciled_count",
+    "error"
+  ],
+  "fields": [
+    {
+      "fieldname": "naming_series",
+      "fieldtype": "Select",
+      "label": "Series",
+      "options": "POS-EXE-.YYYY.-.#####",
+      "default": "POS-EXE-.YYYY.-.#####",
+      "reqd": 1
+    },
+    {
+      "fieldname": "run_status",
+      "fieldtype": "Select",
+      "label": "Execution Status",
+      "options": "Queued\nRunning\nCompleted\nFailed",
+      "default": "Queued",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "scope",
+      "fieldtype": "Section Break",
+      "label": "Execution Scope"
+    },
+    {
+      "fieldname": "from_date",
+      "fieldtype": "Date",
+      "label": "From Date",
+      "reqd": 1,
+      "in_list_view": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "to_date",
+      "fieldtype": "Date",
+      "label": "To Date",
+      "reqd": 1,
+      "in_list_view": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "scope_split",
+      "fieldtype": "Column Break",
+      "label": ""
+    },
+    {
+      "fieldname": "pos_profile",
+      "fieldtype": "Link",
+      "label": "POS Profile",
+      "options": "POS Profile",
+      "read_only": 1
+    },
+    {
+      "fieldname": "card_type",
+      "fieldtype": "Data",
+      "label": "Card Type",
+      "read_only": 1
+    },
+    {
+      "fieldname": "bank_account",
+      "fieldtype": "Link",
+      "label": "Bank Account",
+      "options": "Bank Account",
+      "read_only": 1
+    },
+    {
+      "fieldname": "timing",
+      "fieldtype": "Section Break",
+      "label": "Audit and Timing"
+    },
+    {
+      "fieldname": "initiated_by",
+      "fieldtype": "Link",
+      "label": "Initiated By",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "initiated_on",
+      "fieldtype": "Datetime",
+      "label": "Initiated On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "queued_on",
+      "fieldtype": "Datetime",
+      "label": "Queued On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "started_on",
+      "fieldtype": "Datetime",
+      "label": "Started On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "completed_on",
+      "fieldtype": "Datetime",
+      "label": "Completed On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "results",
+      "fieldtype": "Section Break",
+      "label": "Execution Results"
+    },
+    {
+      "fieldname": "bank_transaction_count",
+      "fieldtype": "Int",
+      "label": "Bank Transactions",
+      "read_only": 1
+    },
+    {
+      "fieldname": "alhamrani_transaction_count",
+      "fieldtype": "Int",
+      "label": "Alhamrani Transactions",
+      "read_only": 1
+    },
+    {
+      "fieldname": "result_split",
+      "fieldtype": "Column Break",
+      "label": ""
+    },
+    {
+      "fieldname": "matching_count",
+      "fieldtype": "Int",
+      "label": "Matching Records",
+      "read_only": 1
+    },
+    {
+      "fieldname": "pending_count",
+      "fieldtype": "Int",
+      "label": "Pending Records",
+      "read_only": 1
+    },
+    {
+      "fieldname": "statement_transaction_count",
+      "fieldtype": "Int",
+      "label": "Statement Transactions",
+      "read_only": 1
+    },
+    {
+      "fieldname": "statement_reconciled_count",
+      "fieldtype": "Int",
+      "label": "Statement Reconciled",
+      "read_only": 1
+    },
+    {
+      "fieldname": "error",
+      "fieldtype": "Long Text",
+      "label": "Error Details",
+      "read_only": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Accounts Manager",
+      "read": 1,
+      "report": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1
+    }
+  ],
+  "search_fields": "run_status,initiated_by"
+}

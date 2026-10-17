@@ -83,9 +83,9 @@ def _check_permission(ptype="read"):
 
 
 def _check_run(run_name):
-    if not run_name:
-        frappe.throw(_("Reconciliation Run is required."))
-    run = frappe.get_doc(RUN_DOCTYPE, run_name)
+    if run_name != RUN_DOCTYPE:
+        frappe.throw(_("Invalid POS Reconciliation Control."))
+    run = frappe.get_single(RUN_DOCTYPE)
     run.check_permission("read")
     if run.status != "Open":
         frappe.throw(_("Accounting actions are available only while the reconciliation run is Open."))
@@ -373,20 +373,8 @@ def _validate_accounting_transaction_dates(run, from_date, to_date):
     if from_date > to_date:
         frappe.throw(_("Transaction From Date cannot be after Transaction To Date."))
 
-    run_from = getdate(run.from_date) if run.from_date else None
-    run_to = getdate(run.to_date) if run.to_date else None
-    if run_from and from_date < run_from:
-        frappe.throw(
-            _("Transaction From Date cannot be before the reconciliation run From Date ({0}).").format(
-                run_from
-            )
-        )
-    if run_to and to_date > run_to:
-        frappe.throw(
-            _("Transaction To Date cannot be after the reconciliation run To Date ({0}).").format(
-                run_to
-            )
-        )
+    from marina_custom_apps.pos_reconciliation.period_control import assert_scope_open
+    assert_scope_open(from_date, to_date)
     return from_date, to_date
 
 
@@ -963,6 +951,9 @@ def _validate_posting_sources(
     bank_names = [item.bank_transaction for item in posting_doc.items]
     if not bank_names:
         frappe.throw(_("POS Accounting Posting has no Bank POS Transactions."))
+
+    from marina_custom_apps.pos_reconciliation.period_control import assert_bank_transactions_open
+    assert_bank_transactions_open(bank_names)
 
     placeholders = ", ".join(["%s"] * len(bank_names))
     frappe.db.sql(
