@@ -327,8 +327,11 @@ def get_workspace(bank_account, tolerance=None, from_date=None, to_date=None, re
     used_gl = {row["name"] for match in visible_matches for row in match["gl_rows"]}
     remaining_bank = [dict(row) for row in visible_bank if row.name not in used_bank]
     remaining_gl = [dict(row) for row in visible_gl if row.name not in used_gl]
+    # Screen-only row numbers, independently numbered after filtering.
+    for idx, row in enumerate(remaining_bank, start=1):
+        row["row_no"] = idx
     for idx, row in enumerate(remaining_gl, start=1):
-        row["tr_no"] = idx
+        row["row_no"] = idx
 
     summary = _reconciled_summary(bank_account, filters)
     summary.update({
@@ -461,6 +464,20 @@ def save_matches(bank_account, matches, tolerance=None):
         bank_rows = _current_bank_rows(bank_names, bank_account)
         gl_rows = _current_gl_rows(gl_names, bank_account)
 
+        match_type = cstr(proposal.get("match_type")).strip()
+        if match_type not in {"Auto Reference", "Manual TR", "Manual Group"}:
+            frappe.throw(_("Unsupported reconciliation Match Type."))
+        # Fetch references only once per group; also reused for saved GL audit rows.
+        ref_map = _voucher_reference_map(gl_rows)
+        if match_type == "Auto Reference":
+            references = {_normalize_reference(row.reference_number) for row in bank_rows}
+            references.update(
+                _normalize_reference(ref_map.get((row.voucher_type, row.voucher_no)))
+                for row in gl_rows
+            )
+            if len(references) != 1 or not next(iter(references)):
+                frappe.throw(_("Automatic matching requires the same non-empty reference on all Bank and GL rows."))
+
         bank_total = flt(sum(_bank_signed_amount(row) for row in bank_rows), 2)
         gl_total = flt(sum(_gl_signed_amount(row) for row in gl_rows), 2)
         difference = flt(bank_total - gl_total, 2)
@@ -472,10 +489,6 @@ def save_matches(bank_account, matches, tolerance=None):
             )
 
         references = [cstr(row.reference_number).strip() for row in bank_rows if cstr(row.reference_number).strip()]
-        match_type = cstr(proposal.get("match_type")).strip() or "Manual TR"
-        if match_type not in {"Auto Reference", "Manual TR"}:
-            match_type = "Manual TR"
-
         doc = frappe.new_doc(MATCH_DOCTYPE)
         doc.bank_account = bank_account
         doc.match_type = match_type
@@ -499,7 +512,6 @@ def save_matches(bank_account, matches, tolerance=None):
                 },
             )
 
-        ref_map = _voucher_reference_map(gl_rows)
         for row in gl_rows:
             doc.append(
                 "gl_rows",

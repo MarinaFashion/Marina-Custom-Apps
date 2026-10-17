@@ -65,30 +65,33 @@ function bsr_render(frm) {
                 <td>${bsr_escape(row.reference_number || "—")}</td>
                 <td class="bsr-description">${bsr_escape(row.description || "—")}</td>
                 <td class="text-right">${bsr_money(row.amount)}</td>
-                <td style="width:80px"><input type="number" min="1" step="1" class="form-control input-xs bsr-tr-input" placeholder="TR#"></td>
+                <td class="text-center"><b>${cint(row.row_no)}</b></td>
+                <td class="bsr-match-cell"><input type="number" min="1" max="999999" step="1" class="form-control input-xs bsr-match-input" placeholder="${__("Match #")}" aria-label="${__("Match #")}"></td>
             </tr>
         `).join("")
-        : `<tr><td colspan="7" class="text-muted text-center">${__("No unreconciled Bank Statement rows.")}</td></tr>`;
+        : `<tr><td colspan="8" class="text-muted text-center">${__("No unreconciled Bank Statement rows.")}</td></tr>`;
 
     const glBody = glRows.length
         ? glRows.map((row) => `
-            <tr data-gl-name="${bsr_escape(row.name)}" data-tr-no="${cint(row.tr_no)}">
+            <tr data-gl-name="${bsr_escape(row.name)}">
                 <td>${canExclude ? `<button class="btn btn-xs btn-default bsr-exclude-row" data-source-type="GL Entry" data-record-name="${bsr_escape(row.name)}">${__("Exclude")}</button>` : "—"}</td>
                 <td>${bsr_escape(row.date || "")}</td>
                 <td><a href="#" class="bsr-open-doc" data-doctype="GL Entry" data-name="${bsr_escape(row.name)}">${bsr_escape(row.transaction_id || row.name)}</a></td>
                 <td>${bsr_escape(row.reference_number || "—")}</td>
                 <td class="bsr-description">${bsr_escape(row.description || "—")}</td>
                 <td class="text-right">${bsr_money(row.amount)}</td>
-                <td><b>${cint(row.tr_no)}</b></td>
+                <td class="text-center"><b>${cint(row.row_no)}</b></td>
+                <td class="bsr-match-cell"><input type="number" min="1" max="999999" step="1" class="form-control input-xs bsr-match-input" placeholder="${__("Match #")}" aria-label="${__("Match #")}"></td>
             </tr>
         `).join("")
-        : `<tr><td colspan="7" class="text-muted text-center">${__("No unreconciled GL Entries.")}</td></tr>`;
+        : `<tr><td colspan="8" class="text-muted text-center">${__("No unreconciled GL Entries.")}</td></tr>`;
 
     const matchBody = matches.length
         ? matches.map((match, idx) => `
             <tr>
                 <td>${idx + 1}</td>
                 <td>${bsr_escape(match.match_type || "")}</td>
+                <td>${bsr_escape(match.group_no || "—")}</td>
                 <td>${bsr_escape(match.reference_number || "—")}</td>
                 <td class="text-right">${bsr_money(match.bank_amount)}</td>
                 <td class="text-right">${bsr_money(match.gl_amount)}</td>
@@ -98,19 +101,19 @@ function bsr_render(frm) {
                 <td><span class="indicator-pill green">${__("Ready to Save")}</span></td>
             </tr>
         `).join("")
-        : `<tr><td colspan="9" class="text-muted text-center">${__("No matches prepared yet.")}</td></tr>`;
+        : `<tr><td colspan="10" class="text-muted text-center">${__("No matches prepared yet.")}</td></tr>`;
 
     field.$wrapper.html(`
         ${bsr_styles()}
         <div class="bsr-toolbar">
             <div>
                 <div class="bsr-title">${__("Bank Statement Reconciliation")}</div>
-                <div class="text-muted small">${__("Reference # is matched first by grouped totals, regardless of date. Use GL TR# for manual matching.")}</div>
+                <div class="text-muted small">${__("Reference # is matched first by grouped totals, regardless of date. Enter the same Match # against one or more Bank and GL rows to match them manually.")}</div>
             </div>
             <div class="bsr-actions">
                 <button class="btn btn-xs btn-default bsr-refresh">${__("Refresh")}</button>
                 <button class="btn btn-xs btn-default bsr-view-excluded">${__("View Excluded Transactions")}</button>
-                <button class="btn btn-xs btn-default bsr-apply-manual">${__("Apply Manual TR Links")}</button>
+                <button class="btn btn-xs btn-default bsr-apply-manual">${__("Apply Manual Matches")}</button>
                 <button class="btn btn-xs btn-primary bsr-save" ${matches.length ? "" : "disabled"}>${__("Save Reconciliation")}</button>
             </div>
         </div>
@@ -136,7 +139,8 @@ function bsr_render(frm) {
                             <th>${__("Reference #")}</th>
                             <th>${__("Description")}</th>
                             <th class="text-right">${__("Amount")}</th>
-                            <th>${__("TR#")}</th>
+                            <th>${__("Row #")}</th>
+                            <th>${__("Match #")}</th>
                         </tr></thead>
                         <tbody>${bankBody}</tbody>
                     </table>
@@ -154,7 +158,8 @@ function bsr_render(frm) {
                             <th>${__("Reference #")}</th>
                             <th>${__("Description")}</th>
                             <th class="text-right">${__("Amount")}</th>
-                            <th>${__("TR#")}</th>
+                            <th>${__("Row #")}</th>
+                            <th>${__("Match #")}</th>
                         </tr></thead>
                         <tbody>${glBody}</tbody>
                     </table>
@@ -169,6 +174,7 @@ function bsr_render(frm) {
                     <thead><tr>
                         <th>#</th>
                         <th>${__("Match Type")}</th>
+                        <th>${__("Match #")}</th>
                         <th>${__("Reference #")}</th>
                         <th class="text-right">${__("Bank Amount")}</th>
                         <th class="text-right">${__("GL Amount")}</th>
@@ -263,90 +269,108 @@ function bsr_exclude_row(frm, sourceType, recordName) {
     );
 }
 
-function bsr_apply_manual(frm) {
-    const state = frm.__bsr || {};
-    const bankRows = state.bank_rows || [];
-    const glRows = state.gl_rows || [];
+
+function bsr_collect_match_inputs(frm) {
     const $w = frm.fields_dict.workspace_html.$wrapper;
-    const glByTr = {};
-    glRows.forEach((row) => { glByTr[String(row.tr_no)] = row; });
-
-    const grouped = {};
-    const invalid = [];
+    const state = frm.__bsr || {};
+    const bankRows = (state.bank_rows || []).map((row) => ({ ...row }));
+    const glRows = (state.gl_rows || []).map((row) => ({ ...row }));
+    const bankLookup = Object.fromEntries(bankRows.map((row) => [row.name, row]));
+    const glLookup = Object.fromEntries(glRows.map((row) => [row.name, row]));
     $w.find("tr[data-bank-name]").each(function () {
-        const bankName = $(this).attr("data-bank-name");
-        const tr = String($(this).find(".bsr-tr-input").val() || "").trim();
-        if (!tr) return;
-        if (!glByTr[tr]) {
-            invalid.push(tr);
-            return;
-        }
-        if (!grouped[tr]) grouped[tr] = [];
-        grouped[tr].push(bankName);
+        const row = bankLookup[$(this).attr("data-bank-name")];
+        if (row) row.group_no = String($(this).find(".bsr-match-input").val() || "").trim();
     });
+    $w.find("tr[data-gl-name]").each(function () {
+        const row = glLookup[$(this).attr("data-gl-name")];
+        if (row) row.group_no = String($(this).find(".bsr-match-input").val() || "").trim();
+    });
+    return { bankRows, glRows };
+}
 
-    if (invalid.length) {
-        frappe.msgprint(__("Unknown GL TR#: {0}", [Array.from(new Set(invalid)).join(", ")]));
-        return;
-    }
-    if (!Object.keys(grouped).length) {
-        frappe.msgprint(__("Enter a GL TR# on one or more Bank Statement rows."));
-        return;
-    }
-
-    const bankByName = {};
-    bankRows.forEach((row) => { bankByName[row.name] = row; });
-    const tolerance = Math.abs(Number(frm.doc.tolerance || 0.01));
-    const newMatches = [];
-    const usedBank = new Set();
-    const usedGl = new Set();
+// No accounting writes: this prepares groups for server-side validation on Save.
+function bsr_build_manual_matches(bankRows, glRows, tolerance) {
+    const groups = new Map();
     const errors = [];
-
-    Object.keys(grouped).forEach((tr) => {
-        const gl = glByTr[tr];
-        const banks = grouped[tr].map((name) => bankByName[name]).filter(Boolean);
-        const bankTotal = bsr_round(banks.reduce((sum, row) => sum + Number(row.amount || 0), 0));
-        const glTotal = bsr_round(Number(gl.amount || 0));
-        const difference = bsr_round(bankTotal - glTotal);
-
-        if (Math.abs(difference) > tolerance) {
-            errors.push(__("TR# {0}: Bank {1}, GL {2}, difference {3}", [
-                tr, bsr_money(bankTotal), bsr_money(glTotal), bsr_money(difference),
+    const pattern = /^[1-9][0-9]{0,5}$/;
+    const add = (row, side) => {
+        const id = String(row.group_no || "").trim();
+        if (!id) return;
+        if (!pattern.test(id)) {
+            errors.push(__("Invalid Match # on {0} row {1}: {2}. Enter a positive whole number (1–999999).", [
+                side, row.row_no, id,
             ]));
             return;
         }
+        if (!groups.has(id)) groups.set(id, { bank_rows: [], gl_rows: [] });
+        groups.get(id)[side === "Bank" ? "bank_rows" : "gl_rows"].push(row);
+    };
+    bankRows.forEach((row) => add(row, "Bank"));
+    glRows.forEach((row) => add(row, "GL"));
 
-        newMatches.push({
-            match_type: "Manual TR",
-            reference_number: banks.map((row) => row.reference_number).find(Boolean) || gl.reference_number || "",
-            bank_amount: bankTotal,
-            gl_amount: glTotal,
-            difference: difference,
-            bank_rows: banks,
-            gl_rows: [gl],
-        });
-        banks.forEach((row) => usedBank.add(row.name));
-        usedGl.add(gl.name);
-    });
-
-    if (errors.length) {
-        frappe.msgprint({
-            title: __("Manual Links Not Balanced"),
-            indicator: "orange",
-            message: errors.join("<br>"),
+    const matches = [];
+    const limit = Math.abs(Number(tolerance || 0.01));
+    for (const [group, rows] of groups) {
+        if (!rows.bank_rows.length || !rows.gl_rows.length) {
+            errors.push(__("Match # {0} must contain at least one Bank and one GL row.", [group]));
+            continue;
+        }
+        const bank = bsr_round(rows.bank_rows.reduce((total, row) => total + Number(row.amount || 0), 0));
+        const gl = bsr_round(rows.gl_rows.reduce((total, row) => total + Number(row.amount || 0), 0));
+        const difference = bsr_round(bank - gl);
+        if (Math.abs(difference) > limit + 0.000001) {
+            errors.push(__("Match # {0}: Bank {1}, GL {2}, difference {3} exceeds tolerance.", [
+                group, bsr_money(bank), bsr_money(gl), bsr_money(difference),
+            ]));
+            continue;
+        }
+        matches.push({
+            match_type: "Manual Group", group_no: group,
+            reference_number: rows.bank_rows.map((r) => r.reference_number).find(Boolean)
+                || rows.gl_rows.map((r) => r.reference_number).find(Boolean) || "",
+            bank_amount: bank, gl_amount: gl, difference,
+            bank_rows: rows.bank_rows, gl_rows: rows.gl_rows,
         });
     }
+    matches.sort((a, b) => Number(a.group_no) - Number(b.group_no));
+    return { matches, errors };
+}
 
-    if (!newMatches.length) return;
-
-    state.matches = (state.matches || []).concat(newMatches);
-    state.bank_rows = bankRows.filter((row) => !usedBank.has(row.name));
-    state.gl_rows = glRows.filter((row) => !usedGl.has(row.name));
-    state.gl_rows.forEach((row, idx) => { row.tr_no = idx + 1; });
+function bsr_apply_manual(frm) {
+    const { bankRows, glRows } = bsr_collect_match_inputs(frm);
+    const result = bsr_build_manual_matches(bankRows, glRows, frm.doc.tolerance || 0.01);
+    if (result.errors.length) {
+        frappe.msgprint({
+            title: __("Manual Match Groups Not Valid"),
+            indicator: "orange",
+            message: result.errors.map((message) => bsr_escape(message)).join("<br>"),
+        });
+        return;
+    }
+    if (!result.matches.length) {
+        frappe.msgprint(__("Enter the same Match # on Bank and GL rows to prepare manual reconciliation."));
+        return;
+    }
+    const state = frm.__bsr || {};
+    const bankIds = new Set(result.matches.flatMap((m) => m.bank_rows.map((row) => row.name)));
+    const glIds = new Set(result.matches.flatMap((m) => m.gl_rows.map((row) => row.name)));
+    state.matches = (state.matches || []).concat(result.matches);
+    state.bank_rows = bankRows.filter((row) => !bankIds.has(row.name));
+    state.gl_rows = glRows.filter((row) => !glIds.has(row.name));
+    state.bank_rows.forEach((row, idx) => { row.row_no = idx + 1; });
+    state.gl_rows.forEach((row, idx) => { row.row_no = idx + 1; });
     bsr_render(frm);
 }
 
 function bsr_save(frm) {
+    const $w = frm.fields_dict.workspace_html.$wrapper;
+    const unapplied = $w.find(".bsr-match-input").toArray().some(
+        (input) => String($(input).val() || "").trim()
+    );
+    if (unapplied) {
+        frappe.msgprint(__("Some rows still have unapplied Match # values. Apply Manual Matches before saving reconciliation."));
+        return;
+    }
     const state = frm.__bsr || {};
     const matches = state.matches || [];
     if (!matches.length) {
@@ -448,12 +472,14 @@ function bsr_summary_html(summary) {
 
 function bsr_reload_confirm(frm, action) {
     const state = frm.__bsr || {};
-    const hasManual = (state.matches || []).some((match) => match.match_type === "Manual TR");
+    const hasManual = (state.matches || []).some((match) =>
+        ["Manual TR", "Manual Group"].includes(match.match_type)
+    );
     const $w = frm.fields_dict.workspace_html.$wrapper;
-    const hasTypedLinks = $w.find(".bsr-tr-input").toArray().some((el) => String($(el).val() || "").trim());
+    const hasTypedLinks = $w.find(".bsr-match-input").toArray().some((el) => String($(el).val() || "").trim());
     if (hasManual || hasTypedLinks) {
         frappe.confirm(
-            __("Refreshing or changing filters will discard unsaved manual TR links. Continue?"),
+            __("Refreshing or changing filters will discard unsaved manual Match # groups. Continue?"),
             action
         );
     } else {
@@ -500,7 +526,8 @@ function bsr_styles() {
         .bsr-table{margin:0;min-width:760px;}
         .bsr-table th,.bsr-table td{font-size:11px;vertical-align:middle !important;white-space:nowrap;}
         .bsr-table .bsr-description{max-width:260px;overflow:hidden;text-overflow:ellipsis;}
-        .bsr-tr-input{min-width:62px;text-align:center;}
+        .bsr-match-cell{min-width:95px;}
+        .bsr-match-input{width:100%;min-width:75px;text-align:center;}
         @media(max-width:1200px){.bsr-grid{grid-template-columns:1fr;}.bsr-filter-grid{grid-template-columns:1fr 1fr;}}
         @media(max-width:700px){.bsr-summary-row{grid-template-columns:1fr 1fr;}.bsr-filter-grid{grid-template-columns:1fr;}}
     </style>`;
