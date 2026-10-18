@@ -533,7 +533,7 @@
    "write": 0
   }
  ],
- "search_fields": "terminal_id,settlement_number,bank_transaction,alhamrani_transaction,discrepancy_fields,finance_review_note,accounting_status,journal_entry",
+ "search_fields": "terminal_id,settlement_number,bank_transaction,alhamrani_transaction,discrepancy_fields,accounting_status,journal_entry",
  "sort_field": "transaction_date",
  "sort_order": "DESC",
  "track_changes": 1
