@@ -6,8 +6,8 @@
  "module": "POS Reconciliation",
  "name": "POS Accounting Posting",
  "field_order": [
-  "naming_series",
   "ui_tab_pos_accounting_posting_1",
+  "naming_series",
   "status_section",
   "posting_status",
   "posting_date",
@@ -46,17 +46,17 @@
  ],
  "fields": [
   {
+   "fieldname": "ui_tab_pos_accounting_posting_1",
+   "fieldtype": "Tab Break",
+   "label": "Posting"
+  },
+  {
    "default": "POS-ACC-.YYYY.-.#####",
    "fieldname": "naming_series",
    "fieldtype": "Select",
    "label": "Series",
    "options": "POS-ACC-.YYYY.-.#####",
    "reqd": 1
-  },
-  {
-   "fieldname": "ui_tab_pos_accounting_posting_1",
-   "fieldtype": "Tab Break",
-   "label": "Posting"
   },
   {
    "fieldname": "status_section",
