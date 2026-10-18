@@ -295,6 +295,11 @@ def _update_records(run, records, record_keys, settlements, evidence, checked_on
         elif current_match in {"Discrepancy", "Alhamrani Only"}:
             updates["resolution_status"] = "Pending"
 
+        # Preserve historical manual clearances before comparing protected
+        # fields: an intermediate automatic outcome is not a Finance reversal.
+        if current_resolution == "Manually Cleared":
+            updates["resolution_status"] = "Manually Cleared"
+
         protected = bool(
             record.accounting_posting or record.journal_entry
             or cstr(record.accounting_status) in {
@@ -312,9 +317,6 @@ def _update_records(run, records, record_keys, settlements, evidence, checked_on
                     record.name
                 )
             )
-        # A Finance-approved manual clearance remains the authoritative decision.
-        if current_resolution == "Manually Cleared":
-            updates["resolution_status"] = "Manually Cleared"
 
         frappe.db.set_value(
             RECORD_DOCTYPE,

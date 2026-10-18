@@ -50,8 +50,6 @@
     "bank_statement_reconciliation_match",
     "reconciled_on",
     "reconciled_by",
-    "allocations_section",
-    "allocations",
     "pos_link_section",
     "pos_reconciliation_records"
   ],
@@ -331,19 +329,6 @@
       "fieldtype": "Link",
       "label": "Reconciled By",
       "options": "User",
-      "read_only": 1
-    },
-    {
-      "fieldname": "allocations_section",
-      "fieldtype": "Section Break",
-      "label": "Allocations",
-      "collapsible": 1
-    },
-    {
-      "fieldname": "allocations",
-      "fieldtype": "Table",
-      "label": "Allocations",
-      "options": "Marina Bank Statement Allocation",
       "read_only": 1
     },
     {

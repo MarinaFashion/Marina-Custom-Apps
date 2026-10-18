@@ -21,7 +21,6 @@ from marina_custom_apps.pos_reconciliation.location_service import resolve_pos_p
 AMOUNT_TOLERANCE = 0.01
 
 FINANCE_NOT_REQUIRED = "Not Required"
-FINANCE_PENDING = "Pending Review"
 FINANCE_APPROVED = "Checked & Approved"
 FINANCE_INVESTIGATE = "Needs Investigation"
 
@@ -154,27 +153,6 @@ def _record_key(run_name=None, bank_transaction=None, alhamrani_transaction=None
         return f"ALHAMRANI|{alhamrani_transaction}"
     frappe.throw(_("Reconciliation records require a source transaction."))
 
-
-def _bank_review_states():
-    return {
-        row.bank_transaction: row
-        for row in frappe.get_all(
-            "POS Bank Manual Clearance",
-            fields=[
-                "bank_transaction",
-                "active",
-                "reason",
-                "cleared_by",
-                "cleared_on",
-                "finance_review_status",
-                "finance_review_note",
-                "finance_reviewed_by",
-                "finance_reviewed_on",
-            ],
-            limit_page_length=0,
-        )
-        if row.bank_transaction
-    }
 
 
 def _integration_dates():
@@ -318,31 +296,8 @@ def _base_result(run, bank=None, alhamrani=None, card_mapper=None):
     }
 
 
-def _apply_bank_review(result, bank, reviews):
-    review = reviews.get(bank.name)
-    result["finance_review_status"] = FINANCE_PENDING
-
-    if not review:
-        return
-
-    review_status = cstr(review.finance_review_status).strip()
-    if review_status in {FINANCE_APPROVED, FINANCE_INVESTIGATE}:
-        result["finance_review_status"] = review_status
-        result["finance_reviewed_by"] = review.finance_reviewed_by
-        result["finance_reviewed_on"] = review.finance_reviewed_on
-        result["finance_review_note"] = review.finance_review_note
-
-    if review.active:
-        result.update(
-            resolution_status="Manually Cleared",
-            manual_clearance_reason=review.reason,
-            manual_cleared_by=review.cleared_by,
-            manual_cleared_on=review.cleared_on,
-        )
-
 
 def _build_results(run, bank_rows, alhamrani_rows, card_mapper):
-    reviews = _bank_review_states()
     integration_dates = _integration_dates()
     alh_by_key = defaultdict(list)
     for row in alhamrani_rows:
@@ -363,7 +318,6 @@ def _build_results(run, bank_rows, alhamrani_rows, card_mapper):
                 before_integration=_is_before_integration(bank, integration_dates),
                 discrepancy_fields="",
             )
-            _apply_bank_review(result, bank, reviews)
             results.append(result)
             continue
 

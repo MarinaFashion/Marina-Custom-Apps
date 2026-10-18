@@ -210,7 +210,7 @@
     },
     {
       "color": "Purple",
-      "doc_view": "Form",
+      "doc_view": "",
       "label": "Bank Statement Reconciliation",
       "link_to": "Bank Statement Reconciliation",
       "type": "DocType"
