@@ -45,7 +45,6 @@
    "reqd": 1
   },
   {
-   "description": "Debit account for bank commission.",
    "fieldname": "commission_expense_account",
    "fieldtype": "Link",
    "label": "Commission Expense Account",
@@ -56,14 +55,12 @@
    "fieldtype": "Column Break"
   },
   {
-   "description": "Debit account for VAT on bank commission.",
    "fieldname": "vat_input_account",
    "fieldtype": "Link",
    "label": "VAT Input Account",
    "options": "Account"
   },
   {
-   "description": "Bank charges credit account.",
    "fieldname": "default_offset_account",
    "fieldtype": "Link",
    "label": "Bank Account",
@@ -76,14 +73,13 @@
   },
   {
    "default": "0",
-   "description": "Enable manual posting of bank charges.",
    "fieldname": "enable_accounting_posting",
    "fieldtype": "Check",
    "label": "Enable POS Accounting Posting"
   },
   {
    "default": "1",
-   "description": "Combine eligible POS Profiles into one Journal Entry.",
+   "description": "Combine POS Profiles in one Journal Entry.",
    "fieldname": "consolidate_pos_profiles_in_one_journal_entry",
    "fieldtype": "Check",
    "label": "Consolidate Multiple POS Profiles in One Journal Entry"
@@ -94,14 +90,13 @@
   },
   {
    "default": "1",
-   "description": "Combine bank credits by commission and VAT.",
+   "description": "Group bank credits by commission and VAT.",
    "fieldname": "consolidate_bank_entries",
    "fieldtype": "Check",
    "label": "Consolidate Bank Entries"
   },
   {
    "default": "Draft",
-   "description": "Create Journal Entries as Draft or Submitted.",
    "fieldname": "journal_entry_creation_mode",
    "fieldtype": "Select",
    "label": "Journal Entry Creation Mode",
@@ -136,20 +131,20 @@
   },
   {
    "default": "8",
-   "description": "Leading terminal digits to match SNB references.",
+   "description": "Digits used to match SNB terminal references.",
    "fieldname": "bank_statement_terminal_reference_length",
    "fieldtype": "Int",
    "label": "Bank Terminal Reference Length"
   },
   {
    "default": "7",
-   "description": "Include earlier POS settlements for delayed bank posting.",
+   "description": "Include earlier settlements for delayed deposits.",
    "fieldname": "bank_statement_reconciliation_lookback_days",
    "fieldtype": "Int",
    "label": "POS Reconciliation Lookback Days"
   },
   {
-   "description": "Map SNB suffix codes to card types and components.",
+   "description": "Map SNB codes to card types and components.",
    "fieldname": "bank_statement_code_mappings",
    "fieldtype": "Table",
    "label": "Bank Statement Code Mappings",

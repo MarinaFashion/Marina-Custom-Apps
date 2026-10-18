@@ -63,8 +63,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "From Date",
-   "reqd": 1,
-   "description": "Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked."
+   "reqd": 1
   },
   {
    "fieldname": "to_date",
@@ -72,23 +71,20 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "To Date",
-   "reqd": 1,
-   "description": "Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked."
+   "reqd": 1
   },
   {
    "fieldname": "pos_profile",
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "POS Profile",
-   "options": "POS Profile",
-   "description": "Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked."
+   "options": "POS Profile"
   },
   {
    "fieldname": "period_column_break",
    "fieldtype": "Column Break"
   },
   {
-   "description": "Optional normalized card scheme filter. Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked.",
    "fieldname": "card_type",
    "fieldtype": "Data",
    "in_standard_filter": 1,
@@ -100,7 +96,7 @@
    "label": "Statement Bank Account",
    "options": "Bank Account",
    "in_standard_filter": 1,
-   "description": "Custom Marina bank statement account used to confirm POS settlements. Leave blank only when statement confirmation is not required for this run. Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked."
+   "description": "Bank account for settlement matching; optional if no statement check."
   },
   {
    "fieldname": "status_section",
@@ -115,8 +111,7 @@
    "in_standard_filter": 1,
    "label": "Status",
    "options": "Draft\nOpen",
-   "read_only": 1,
-   "description": "Global controller state. Financial periods are locked separately."
+   "read_only": 1
   },
   {
    "default": "Idle",
