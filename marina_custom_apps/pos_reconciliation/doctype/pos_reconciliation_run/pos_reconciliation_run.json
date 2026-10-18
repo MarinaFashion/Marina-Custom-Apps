@@ -1,325 +1,317 @@
 {
-  "doctype": "DocType",
-  "engine": "InnoDB",
-  "field_order": [
-    "period_section",
-    "from_date",
-    "to_date",
-    "period_column_break",
-    "pos_profile",
-    "card_type",
-    "bank_account",
-    "status_section",
-    "status",
-    "execution_status",
-    "execution_job_id",
-    "execution_queued_on",
-    "execution_started_on",
-    "execution_completed_on",
-    "execution_error",
-    "last_reconciled_on",
-    "source_counts_section",
-    "bank_transaction_count",
-    "alhamrani_transaction_count",
-    "statement_transaction_count",
-    "statement_reconciled_count",
-    "statement_unreconciled_count",
-    "statement_pos_line_count",
-    "statement_settlement_count",
-    "statement_fully_reconciled_settlements",
-    "statement_missing_identity_count",
-    "result_counts_section",
-    "matching_count",
-    "matching_not_settled_count",
-    "discrepancy_count",
-    "bank_only_count",
-    "bank_only_settled_count",
-    "bank_only_not_settled_count",
-    "result_counts_column_break",
-    "alhamrani_only_count",
-    "manually_cleared_count",
-    "pending_count",
-    "results_review_section",
-    "results_review_html"
-  ],
-  "fields": [
-    {
-      "fieldname": "period_section",
-      "fieldtype": "Section Break",
-      "label": "Reconciliation Period"
-    },
-    {
-      "fieldname": "from_date",
-      "fieldtype": "Date",
-      "in_list_view": 1,
-      "in_standard_filter": 1,
-      "label": "From Date",
-      "reqd": 1,
-      "description": "Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked."
-    },
-    {
-      "fieldname": "to_date",
-      "fieldtype": "Date",
-      "in_list_view": 1,
-      "in_standard_filter": 1,
-      "label": "To Date",
-      "reqd": 1,
-      "description": "Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked."
-    },
-    {
-      "fieldname": "period_column_break",
-      "fieldtype": "Column Break"
-    },
-    {
-      "fieldname": "pos_profile",
-      "fieldtype": "Link",
-      "in_standard_filter": 1,
-      "label": "POS Profile",
-      "options": "POS Profile",
-      "description": "Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked."
-    },
-    {
-      "description": "Optional normalized card scheme filter. Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked.",
-      "fieldname": "card_type",
-      "fieldtype": "Data",
-      "in_standard_filter": 1,
-      "label": "Card Type"
-    },
-    {
-      "fieldname": "bank_account",
-      "fieldtype": "Link",
-      "label": "Statement Bank Account",
-      "options": "Bank Account",
-      "in_standard_filter": 1,
-      "description": "Custom Marina bank statement account used to confirm POS settlements. Leave blank only when statement confirmation is not required for this run. Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked."
-    },
-    {
-      "fieldname": "status_section",
-      "fieldtype": "Section Break",
-      "label": "Lifecycle"
-    },
-    {
-      "default": "Draft",
-      "fieldname": "status",
-      "fieldtype": "Select",
-      "in_list_view": 1,
-      "in_standard_filter": 1,
-      "label": "Status",
-      "options": "Draft\nOpen",
-      "read_only": 1,
-      "description": "Global controller state. Financial periods are locked separately."
-    },
-    {
-      "default": "Idle",
-      "fieldname": "execution_status",
-      "fieldtype": "Select",
-      "label": "Execution Status",
-      "options": "Idle\nQueued\nRunning\nCompleted\nFailed",
-      "read_only": 1
-    },
-    {
-      "fieldname": "last_reconciled_on",
-      "fieldtype": "Datetime",
-      "label": "Last Reconciled On",
-      "read_only": 1
-    },
-    {
-      "fieldname": "source_counts_section",
-      "fieldtype": "Section Break",
-      "label": "Source Counts"
-    },
-    {
-      "fieldname": "bank_transaction_count",
-      "fieldtype": "Int",
-      "label": "POS Bank Transactions",
-      "read_only": 1
-    },
-    {
-      "fieldname": "alhamrani_transaction_count",
-      "fieldtype": "Int",
-      "label": "Alhamrani Transactions",
-      "read_only": 1
-    },
-    {
-      "fieldname": "statement_transaction_count",
-      "fieldtype": "Int",
-      "label": "Statement Transactions",
-      "read_only": 1
-    },
-    {
-      "fieldname": "statement_reconciled_count",
-      "fieldtype": "Int",
-      "label": "Statement Reconciled",
-      "read_only": 1
-    },
-    {
-      "fieldname": "statement_unreconciled_count",
-      "fieldtype": "Int",
-      "label": "Statement Unreconciled",
-      "read_only": 1
-    },
-    {
-      "fieldname": "result_counts_section",
-      "fieldtype": "Section Break",
-      "label": "Reconciliation Results"
-    },
-    {
-      "fieldname": "matching_count",
-      "fieldtype": "Int",
-      "label": "Fully Matching",
-      "read_only": 1
-    },
-    {
-      "fieldname": "matching_not_settled_count",
-      "fieldtype": "Int",
-      "label": "Matching Not Settled",
-      "read_only": 1
-    },
-    {
-      "fieldname": "discrepancy_count",
-      "fieldtype": "Int",
-      "label": "Discrepancies",
-      "read_only": 1
-    },
-    {
-      "fieldname": "bank_only_count",
-      "fieldtype": "Int",
-      "label": "Bank Only Total",
-      "read_only": 1,
-      "hidden": 1
-    },
-    {
-      "fieldname": "result_counts_column_break",
-      "fieldtype": "Column Break"
-    },
-    {
-      "fieldname": "alhamrani_only_count",
-      "fieldtype": "Int",
-      "label": "Alhamrani Only",
-      "read_only": 1
-    },
-    {
-      "fieldname": "manually_cleared_count",
-      "fieldtype": "Int",
-      "label": "Manually Cleared",
-      "read_only": 1,
-      "hidden": 1
-    },
-    {
-      "fieldname": "pending_count",
-      "fieldtype": "Int",
-      "label": "Pending Exceptions",
-      "read_only": 1
-    },
-    {
-      "depends_on": "eval:(doc.status == 'Open' || doc.status == 'Closed') && doc.last_reconciled_on",
-      "fieldname": "results_review_section",
-      "fieldtype": "Section Break",
-      "label": "Reconciliation Results Review"
-    },
-    {
-      "fieldname": "results_review_html",
-      "fieldtype": "HTML",
-      "label": "Reconciliation Results Review"
-    },
-    {
-      "fieldname": "statement_pos_line_count",
-      "fieldtype": "Int",
-      "label": "POS Statement Lines",
-      "read_only": 1
-    },
-    {
-      "fieldname": "statement_settlement_count",
-      "fieldtype": "Int",
-      "label": "POS Settlement Groups",
-      "read_only": 1
-    },
-    {
-      "fieldname": "statement_fully_reconciled_settlements",
-      "fieldtype": "Int",
-      "label": "Fully Reconciled Settlements",
-      "read_only": 1
-    },
-    {
-      "fieldname": "statement_missing_identity_count",
-      "fieldtype": "Int",
-      "label": "POS Records Missing Settlement Identity",
-      "read_only": 1
-    },
-    {
-      "fieldname": "bank_only_settled_count",
-      "fieldtype": "Int",
-      "label": "Bank Only - Settled",
-      "read_only": 1
-    },
-    {
-      "fieldname": "bank_only_not_settled_count",
-      "fieldtype": "Int",
-      "label": "Bank Only - Not Settled",
-      "read_only": 1
-    },
-    {
-      "fieldname": "execution_job_id",
-      "fieldtype": "Data",
-      "label": "Execution Job ID",
-      "read_only": 1
-    },
-    {
-      "fieldname": "execution_queued_on",
-      "fieldtype": "Datetime",
-      "label": "Queued On",
-      "read_only": 1
-    },
-    {
-      "fieldname": "execution_started_on",
-      "fieldtype": "Datetime",
-      "label": "Started On",
-      "read_only": 1
-    },
-    {
-      "fieldname": "execution_completed_on",
-      "fieldtype": "Datetime",
-      "label": "Completed On",
-      "read_only": 1
-    },
-    {
-      "fieldname": "execution_error",
-      "fieldtype": "Long Text",
-      "label": "Last Execution Error",
-      "read_only": 1
-    }
-  ],
-  "name": "POS Reconciliation Run",
-  "module": "POS Reconciliation",
-  "permissions": [
-    {
-      "create": 1,
-      "delete": 0,
-      "email": 1,
-      "export": 1,
-      "print": 1,
-      "read": 1,
-      "report": 1,
-      "role": "Accounts Manager",
-      "share": 1,
-      "write": 1
-    },
-    {
-      "create": 1,
-      "delete": 1,
-      "email": 1,
-      "export": 1,
-      "print": 1,
-      "read": 1,
-      "report": 1,
-      "role": "System Manager",
-      "share": 1,
-      "write": 1
-    }
-  ],
-  "search_fields": "name,pos_profile,card_type,bank_account,status",
-  "sort_field": "modified",
-  "sort_order": "DESC",
-  "track_changes": 1,
-  "issingle": 1
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "period_section",
+  "from_date",
+  "to_date",
+  "period_column_break",
+  "pos_profile",
+  "card_type",
+  "bank_account",
+  "status_section",
+  "status",
+  "execution_status",
+  "execution_job_id",
+  "execution_queued_on",
+  "execution_started_on",
+  "execution_completed_on",
+  "execution_error",
+  "last_reconciled_on",
+  "source_counts_section",
+  "bank_transaction_count",
+  "alhamrani_transaction_count",
+  "statement_transaction_count",
+  "statement_reconciled_count",
+  "statement_unreconciled_count",
+  "statement_pos_line_count",
+  "statement_settlement_count",
+  "statement_fully_reconciled_settlements",
+  "statement_missing_identity_count",
+  "result_counts_section",
+  "matching_count",
+  "matching_not_settled_count",
+  "discrepancy_count",
+  "bank_only_count",
+  "bank_only_settled_count",
+  "bank_only_not_settled_count",
+  "result_counts_column_break",
+  "alhamrani_only_count",
+  "pending_count",
+  "results_review_section",
+  "results_review_html"
+ ],
+ "fields": [
+  {
+   "fieldname": "period_section",
+   "fieldtype": "Section Break",
+   "label": "Reconciliation Period"
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "From Date",
+   "reqd": 1,
+   "description": "Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked."
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "To Date",
+   "reqd": 1,
+   "description": "Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked."
+  },
+  {
+   "fieldname": "period_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "pos_profile",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "POS Profile",
+   "options": "POS Profile",
+   "description": "Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked."
+  },
+  {
+   "description": "Optional normalized card scheme filter. Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked.",
+   "fieldname": "card_type",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Card Type"
+  },
+  {
+   "fieldname": "bank_account",
+   "fieldtype": "Link",
+   "label": "Statement Bank Account",
+   "options": "Bank Account",
+   "in_standard_filter": 1,
+   "description": "Custom Marina bank statement account used to confirm POS settlements. Leave blank only when statement confirmation is not required for this run. Execution inputs; captured in the immutable execution record when Run Reconciliation is clicked."
+  },
+  {
+   "fieldname": "status_section",
+   "fieldtype": "Section Break",
+   "label": "Lifecycle"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nOpen",
+   "read_only": 1,
+   "description": "Global controller state. Financial periods are locked separately."
+  },
+  {
+   "default": "Idle",
+   "fieldname": "execution_status",
+   "fieldtype": "Select",
+   "label": "Execution Status",
+   "options": "Idle\nQueued\nRunning\nCompleted\nFailed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_reconciled_on",
+   "fieldtype": "Datetime",
+   "label": "Last Reconciled On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_counts_section",
+   "fieldtype": "Section Break",
+   "label": "Source Counts"
+  },
+  {
+   "fieldname": "bank_transaction_count",
+   "fieldtype": "Int",
+   "label": "POS Bank Transactions",
+   "read_only": 1
+  },
+  {
+   "fieldname": "alhamrani_transaction_count",
+   "fieldtype": "Int",
+   "label": "Alhamrani Transactions",
+   "read_only": 1
+  },
+  {
+   "fieldname": "statement_transaction_count",
+   "fieldtype": "Int",
+   "label": "Statement Transactions",
+   "read_only": 1
+  },
+  {
+   "fieldname": "statement_reconciled_count",
+   "fieldtype": "Int",
+   "label": "Statement Reconciled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "statement_unreconciled_count",
+   "fieldtype": "Int",
+   "label": "Statement Unreconciled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "result_counts_section",
+   "fieldtype": "Section Break",
+   "label": "Reconciliation Results"
+  },
+  {
+   "fieldname": "matching_count",
+   "fieldtype": "Int",
+   "label": "Fully Matching",
+   "read_only": 1
+  },
+  {
+   "fieldname": "matching_not_settled_count",
+   "fieldtype": "Int",
+   "label": "Matching Not Settled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "discrepancy_count",
+   "fieldtype": "Int",
+   "label": "Discrepancies",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bank_only_count",
+   "fieldtype": "Int",
+   "label": "Bank Only Total",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "result_counts_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "alhamrani_only_count",
+   "fieldtype": "Int",
+   "label": "Alhamrani Only",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pending_count",
+   "fieldtype": "Int",
+   "label": "Pending Exceptions",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:(doc.status == 'Open' || doc.status == 'Closed') && doc.last_reconciled_on",
+   "fieldname": "results_review_section",
+   "fieldtype": "Section Break",
+   "label": "Reconciliation Results Review"
+  },
+  {
+   "fieldname": "results_review_html",
+   "fieldtype": "HTML",
+   "label": "Reconciliation Results Review"
+  },
+  {
+   "fieldname": "statement_pos_line_count",
+   "fieldtype": "Int",
+   "label": "POS Statement Lines",
+   "read_only": 1
+  },
+  {
+   "fieldname": "statement_settlement_count",
+   "fieldtype": "Int",
+   "label": "POS Settlement Groups",
+   "read_only": 1
+  },
+  {
+   "fieldname": "statement_fully_reconciled_settlements",
+   "fieldtype": "Int",
+   "label": "Fully Reconciled Settlements",
+   "read_only": 1
+  },
+  {
+   "fieldname": "statement_missing_identity_count",
+   "fieldtype": "Int",
+   "label": "POS Records Missing Settlement Identity",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bank_only_settled_count",
+   "fieldtype": "Int",
+   "label": "Bank Only - Settled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bank_only_not_settled_count",
+   "fieldtype": "Int",
+   "label": "Bank Only - Not Settled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "execution_job_id",
+   "fieldtype": "Data",
+   "label": "Execution Job ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "execution_queued_on",
+   "fieldtype": "Datetime",
+   "label": "Queued On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "execution_started_on",
+   "fieldtype": "Datetime",
+   "label": "Started On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "execution_completed_on",
+   "fieldtype": "Datetime",
+   "label": "Completed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "execution_error",
+   "fieldtype": "Long Text",
+   "label": "Last Execution Error",
+   "read_only": 1
+  }
+ ],
+ "name": "POS Reconciliation Run",
+ "module": "POS Reconciliation",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "name,pos_profile,card_type,bank_account,status",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1,
+ "issingle": 1
 }
