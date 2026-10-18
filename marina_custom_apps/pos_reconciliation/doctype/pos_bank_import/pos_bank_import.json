@@ -24,7 +24,6 @@
   "ui_column_pos_bank_import_2",
   "skipped_records",
   "date_conversions",
-  "ui_tab_pos_bank_import_3",
   "errors_section",
   "errors",
   "notes_section",
@@ -151,11 +150,6 @@
    "fieldtype": "Int",
    "label": "Compact Dates Converted",
    "read_only": 1
-  },
-  {
-   "fieldname": "ui_tab_pos_bank_import_3",
-   "fieldtype": "Tab Break",
-   "label": "Errors"
   },
   {
    "fieldname": "errors_section",
