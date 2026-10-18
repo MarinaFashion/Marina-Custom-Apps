@@ -2,10 +2,10 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "ui_tab_pos_reconciliation_recor_1",
   "run",
   "last_execution",
   "record_key",
-  "ui_tab_pos_reconciliation_recor_1",
   "identity_section",
   "transaction_date",
   "pos_profile",
@@ -72,6 +72,11 @@
  ],
  "fields": [
   {
+   "fieldname": "ui_tab_pos_reconciliation_recor_1",
+   "fieldtype": "Tab Break",
+   "label": "Transaction"
+  },
+  {
    "fieldname": "run",
    "fieldtype": "Data",
    "in_list_view": 0,
@@ -96,11 +101,6 @@
    "label": "Record Key",
    "read_only": 1,
    "unique": 1
-  },
-  {
-   "fieldname": "ui_tab_pos_reconciliation_recor_1",
-   "fieldtype": "Tab Break",
-   "label": "Transaction"
   },
   {
    "fieldname": "identity_section",
