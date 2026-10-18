@@ -1,0 +1,81 @@
+name: POS UI-only release validation
+on:
+  push:
+    branches: [pos-reconciliation-ui-v0.53.10, main]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify all 26 DocTypes and unchanged operational fields
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+          from pathlib import Path
+          base = "e0910c12e312fb31433790da45456895feb6a472"
+          root = Path("marina_custom_apps/pos_reconciliation/doctype")
+          paths = sorted(root.glob("*/*.json"))
+          assert len(paths) == 26, len(paths)
+          for path in paths:
+              old = json.loads(subprocess.check_output(["git", "show", f"{base}:{path}"]))
+              now = json.loads(path.read_text())
+              assert old.get("istable") == now.get("istable"), path
+              original = {f["fieldname"]: f for f in old["fields"]}
+              current = {f["fieldname"]: f for f in now["fields"]}
+              assert set(original).issubset(current), (str(path), "missing field")
+              assert len(current) == len(now["fields"]), (str(path), "duplicate field")
+              for name, before in original.items():
+                  after = current[name]
+                  a = {k:v for k,v in before.items() if k != "description"}
+                  b = {k:v for k,v in after.items() if k != "description"}
+                  assert a == b, (str(path), name, "functional field metadata changed")
+              for name in set(current) - set(original):
+                  assert current[name]["fieldtype"] in ("Column Break", "Tab Break"), (str(path), name)
+              seq = now["field_order"]
+              assert len(seq) == len(set(seq)) and set(seq) == set(current), str(path)
+              if now.get("istable"):
+                  assert seq == old["field_order"], (str(path), "child table layout changed")
+              segments = []
+              active = []
+              for fieldname in seq:
+                  typ = current[fieldname]["fieldtype"]
+                  if typ in ("Section Break", "Tab Break"):
+                      if active:
+                          segments.append(active)
+                      active = []
+                  else:
+                      active.append(fieldname)
+              if active:
+                  segments.append(active)
+              for seg in segments:
+                  data = [current[x] for x in seg if current[x]["fieldtype"] != "Column Break"]
+                  if len(data) < 2 or any(x["fieldtype"] in ("Table", "Table MultiSelect", "HTML", "Text Editor", "Code") for x in data):
+                      continue
+                  if now.get("istable"):
+                      continue
+                  # Sections with ordinary fields should have two balanced columns.
+                  breaks = [i for i,x in enumerate(seg) if current[x]["fieldtype"] == "Column Break"]
+                  assert len(breaks) == 1, (str(path), seg, breaks)
+                  left = breaks[0]
+                  right = len(seg)-breaks[0]-1
+                  assert abs(left-right) <= 1, (str(path), seg, left, right)
+          assert "0.53.10" in Path("pyproject.toml").read_text()
+          assert '0.53.10' in Path("marina_custom_apps/__init__.py").read_text()
+          print("26 DocTypes pass layout, original field metadata, child table and version checks")
+          PY
+      - name: Python syntax
+        run: python -m compileall -q marina_custom_apps/pos_reconciliation
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: JavaScript syntax
+        run: |
+          find marina_custom_apps/pos_reconciliation -type f -name '*.js' -print0 | xargs -0 -r -n 1 node --check
