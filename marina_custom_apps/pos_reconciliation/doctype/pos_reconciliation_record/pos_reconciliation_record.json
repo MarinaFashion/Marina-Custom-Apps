@@ -5,6 +5,7 @@
   "run",
   "last_execution",
   "record_key",
+  "ui_tab_pos_reconciliation_recor_1",
   "identity_section",
   "transaction_date",
   "pos_profile",
@@ -15,49 +16,57 @@
   "settlement_section",
   "settlement_number",
   "settlement_date",
-  "settlement_column_break",
   "pos_reconciliation_number",
+  "settlement_column_break",
   "bank_commission_amount",
   "bank_commission_vat_amount",
   "bank_settlement_amount",
   "source_section",
   "bank_transaction",
   "alhamrani_doctype",
+  "ui_column_pos_reconciliation_r_2",
   "alhamrani_transaction",
   "status_section",
   "match_status",
   "resolution_status",
+  "ui_column_pos_reconciliation_r_3",
   "alhamrani_duplicate_count",
   "discrepancy_fields",
+  "ui_tab_pos_reconciliation_recor_4",
   "bank_statement_section",
   "bank_statement_status",
   "bank_statement_reconciliation",
-  "bank_statement_column_break",
   "bank_statement_settlement",
+  "bank_statement_column_break",
   "bank_statement_references",
   "bank_statement_checked_on",
+  "ui_tab_pos_reconciliation_recor_5",
   "accounting_section",
   "accounting_status",
   "accounting_posting",
-  "accounting_column_break",
   "journal_entry",
+  "accounting_column_break",
   "accounting_posted_by",
   "accounting_posted_on",
   "amount_section",
   "bank_amount",
   "alhamrani_amount",
+  "ui_column_pos_reconciliation_r_6",
   "amount_difference",
   "comparison_section",
   "bank_card_type",
   "alhamrani_card_type",
   "bank_masked_pan",
+  "ui_column_pos_reconciliation_r_7",
   "alhamrani_masked_pan",
   "alhamrani_emv_last4",
   "pan_validation_method",
+  "ui_tab_pos_reconciliation_recor_8",
   "dates_section",
   "bank_transaction_date",
   "alhamrani_transaction_date",
   "bank_transaction_time",
+  "ui_column_pos_reconciliation_r_9",
   "alhamrani_transaction_time",
   "last_reconciled_on"
  ],
@@ -87,6 +96,11 @@
    "label": "Record Key",
    "read_only": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "ui_tab_pos_reconciliation_recor_1",
+   "fieldtype": "Tab Break",
+   "label": "Transaction"
   },
   {
    "fieldname": "identity_section",
@@ -161,15 +175,15 @@
    "search_index": 1
   },
   {
-   "fieldname": "settlement_column_break",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "pos_reconciliation_number",
    "fieldtype": "Data",
    "in_standard_filter": 1,
    "label": "POS Reconciliation Number",
    "read_only": 1
+  },
+  {
+   "fieldname": "settlement_column_break",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "bank_commission_amount",
@@ -213,6 +227,10 @@
    "read_only": 1
   },
   {
+   "fieldname": "ui_column_pos_reconciliation_r_2",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "alhamrani_transaction",
    "fieldtype": "Dynamic Link",
    "in_standard_filter": 1,
@@ -245,6 +263,10 @@
    "read_only": 1
   },
   {
+   "fieldname": "ui_column_pos_reconciliation_r_3",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "alhamrani_duplicate_count",
    "fieldtype": "Int",
    "label": "Alhamrani Duplicate Count",
@@ -255,6 +277,11 @@
    "fieldtype": "Small Text",
    "label": "Discrepancy Fields",
    "read_only": 1
+  },
+  {
+   "fieldname": "ui_tab_pos_reconciliation_recor_4",
+   "fieldtype": "Tab Break",
+   "label": "Bank Statement"
   },
   {
    "fieldname": "bank_statement_section",
@@ -281,10 +308,6 @@
    "search_index": 1
   },
   {
-   "fieldname": "bank_statement_column_break",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "bank_statement_settlement",
    "fieldtype": "Link",
    "label": "POS Bank Settlement",
@@ -292,6 +315,10 @@
    "read_only": 1,
    "in_standard_filter": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "bank_statement_column_break",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "bank_statement_references",
@@ -303,6 +330,60 @@
    "fieldname": "bank_statement_checked_on",
    "fieldtype": "Datetime",
    "label": "Bank Statement Checked On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ui_tab_pos_reconciliation_recor_5",
+   "fieldtype": "Tab Break",
+   "label": "Accounting"
+  },
+  {
+   "fieldname": "accounting_section",
+   "fieldtype": "Section Break",
+   "label": "Accounting Posting"
+  },
+  {
+   "default": "Not Eligible",
+   "fieldname": "accounting_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Accounting Status",
+   "options": "Not Eligible\nPending Accounting\nDraft Created\nPosted\nNo Charges\nDraft - Review Required\nPosted - Review Required",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "accounting_posting",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "POS Accounting Posting",
+   "options": "POS Accounting Posting",
+   "read_only": 1
+  },
+  {
+   "fieldname": "journal_entry",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Journal Entry",
+   "options": "Journal Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "accounting_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "accounting_posted_by",
+   "fieldtype": "Link",
+   "label": "Accounting Posted By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "accounting_posted_on",
+   "fieldtype": "Datetime",
+   "label": "Accounting Posted On",
    "read_only": 1
   },
   {
@@ -321,6 +402,10 @@
    "fieldtype": "Currency",
    "label": "Alhamrani Amount",
    "read_only": 1
+  },
+  {
+   "fieldname": "ui_column_pos_reconciliation_r_6",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "amount_difference",
@@ -352,6 +437,10 @@
    "read_only": 1
   },
   {
+   "fieldname": "ui_column_pos_reconciliation_r_7",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "alhamrani_masked_pan",
    "fieldtype": "Data",
    "label": "Alhamrani Masked PAN",
@@ -370,6 +459,11 @@
    "label": "PAN Validation",
    "options": "Direct PAN\nEMV Last 4\nMismatch\nNot Available",
    "read_only": 1
+  },
+  {
+   "fieldname": "ui_tab_pos_reconciliation_recor_8",
+   "fieldtype": "Tab Break",
+   "label": "Audit & Dates"
   },
   {
    "fieldname": "dates_section",
@@ -395,6 +489,10 @@
    "read_only": 1
   },
   {
+   "fieldname": "ui_column_pos_reconciliation_r_9",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "alhamrani_transaction_time",
    "fieldtype": "Time",
    "label": "Alhamrani Transaction Time",
@@ -404,55 +502,6 @@
    "fieldname": "last_reconciled_on",
    "fieldtype": "Datetime",
    "label": "Last Reconciled On",
-   "read_only": 1
-  },
-  {
-   "fieldname": "accounting_section",
-   "fieldtype": "Section Break",
-   "label": "Accounting Posting"
-  },
-  {
-   "default": "Not Eligible",
-   "fieldname": "accounting_status",
-   "fieldtype": "Select",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Accounting Status",
-   "options": "Not Eligible\nPending Accounting\nDraft Created\nPosted\nNo Charges\nDraft - Review Required\nPosted - Review Required",
-   "read_only": 1,
-   "search_index": 1
-  },
-  {
-   "fieldname": "accounting_posting",
-   "fieldtype": "Link",
-   "in_standard_filter": 1,
-   "label": "POS Accounting Posting",
-   "options": "POS Accounting Posting",
-   "read_only": 1
-  },
-  {
-   "fieldname": "accounting_column_break",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "journal_entry",
-   "fieldtype": "Link",
-   "in_standard_filter": 1,
-   "label": "Journal Entry",
-   "options": "Journal Entry",
-   "read_only": 1
-  },
-  {
-   "fieldname": "accounting_posted_by",
-   "fieldtype": "Link",
-   "label": "Accounting Posted By",
-   "options": "User",
-   "read_only": 1
-  },
-  {
-   "fieldname": "accounting_posted_on",
-   "fieldtype": "Datetime",
-   "label": "Accounting Posted On",
    "read_only": 1
   }
  ],

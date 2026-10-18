@@ -1,114 +1,119 @@
 {
-  "doctype": "DocType",
-  "module": "POS Reconciliation",
-  "name": "POS Reconciliation Period Lock",
-  "engine": "InnoDB",
-  "autoname": "naming_series:",
-  "track_changes": 1,
-  "field_order": [
-    "naming_series",
-    "status",
-    "from_date",
-    "to_date",
-    "audit",
-    "closed_by",
-    "closed_on",
-    "closing_note",
-    "reopened_by",
-    "reopened_on",
-    "reopen_reason"
-  ],
-  "fields": [
-    {
-      "fieldname": "naming_series",
-      "fieldtype": "Select",
-      "label": "Series",
-      "options": "POS-LOCK-.YYYY.-.#####",
-      "default": "POS-LOCK-.YYYY.-.#####",
-      "reqd": 1
-    },
-    {
-      "fieldname": "status",
-      "fieldtype": "Select",
-      "label": "Status",
-      "options": "Closed\nReopened",
-      "default": "Closed",
-      "reqd": 1,
-      "in_list_view": 1,
-      "in_standard_filter": 1,
-      "read_only": 1
-    },
-    {
-      "fieldname": "from_date",
-      "fieldtype": "Date",
-      "label": "From Date",
-      "reqd": 1,
-      "in_list_view": 1,
-      "read_only": 1
-    },
-    {
-      "fieldname": "to_date",
-      "fieldtype": "Date",
-      "label": "To Date",
-      "reqd": 1,
-      "in_list_view": 1,
-      "read_only": 1
-    },
-    {
-      "fieldname": "audit",
-      "fieldtype": "Section Break",
-      "label": "Audit"
-    },
-    {
-      "fieldname": "closed_by",
-      "fieldtype": "Link",
-      "label": "Closed By",
-      "options": "User",
-      "read_only": 1
-    },
-    {
-      "fieldname": "closed_on",
-      "fieldtype": "Datetime",
-      "label": "Closed On",
-      "read_only": 1
-    },
-    {
-      "fieldname": "closing_note",
-      "fieldtype": "Small Text",
-      "label": "Closing Note",
-      "read_only": 1
-    },
-    {
-      "fieldname": "reopened_by",
-      "fieldtype": "Link",
-      "label": "Reopened By",
-      "options": "User",
-      "read_only": 1
-    },
-    {
-      "fieldname": "reopened_on",
-      "fieldtype": "Datetime",
-      "label": "Reopened On",
-      "read_only": 1
-    },
-    {
-      "fieldname": "reopen_reason",
-      "fieldtype": "Small Text",
-      "label": "Reopen Reason",
-      "read_only": 1
-    }
-  ],
-  "permissions": [
-    {
-      "role": "Accounts Manager",
-      "read": 1,
-      "report": 1
-    },
-    {
-      "role": "System Manager",
-      "read": 1,
-      "report": 1
-    }
-  ],
-  "search_fields": "closed_by,closing_note"
+ "doctype": "DocType",
+ "module": "POS Reconciliation",
+ "name": "POS Reconciliation Period Lock",
+ "engine": "InnoDB",
+ "autoname": "naming_series:",
+ "track_changes": 1,
+ "field_order": [
+  "naming_series",
+  "status",
+  "from_date",
+  "to_date",
+  "audit",
+  "closed_by",
+  "closed_on",
+  "closing_note",
+  "ui_column_pos_reconciliation_p_1",
+  "reopened_by",
+  "reopened_on",
+  "reopen_reason"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "POS-LOCK-.YYYY.-.#####",
+   "default": "POS-LOCK-.YYYY.-.#####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Closed\nReopened",
+   "default": "Closed",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "From Date",
+   "reqd": 1,
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To Date",
+   "reqd": 1,
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "audit",
+   "fieldtype": "Section Break",
+   "label": "Audit"
+  },
+  {
+   "fieldname": "closed_by",
+   "fieldtype": "Link",
+   "label": "Closed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "closed_on",
+   "fieldtype": "Datetime",
+   "label": "Closed On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "closing_note",
+   "fieldtype": "Small Text",
+   "label": "Closing Note",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ui_column_pos_reconciliation_p_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reopened_by",
+   "fieldtype": "Link",
+   "label": "Reopened By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reopened_on",
+   "fieldtype": "Datetime",
+   "label": "Reopened On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reopen_reason",
+   "fieldtype": "Small Text",
+   "label": "Reopen Reason",
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "Accounts Manager",
+   "read": 1,
+   "report": 1
+  },
+  {
+   "role": "System Manager",
+   "read": 1,
+   "report": 1
+  }
+ ],
+ "search_fields": "closed_by,closing_note"
 }
