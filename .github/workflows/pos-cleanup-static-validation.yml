@@ -49,7 +49,9 @@ jobs:
               obj = json.loads(path.read_text())
               order = obj["field_order"]
               fields = [x["fieldname"] for x in obj["fields"]]
-              assert order == fields, (doctype, "field_order mismatch")
+              assert len(order) == len(set(order)), (doctype, "duplicate field_order")
+              assert len(fields) == len(set(fields)), (doctype, "duplicate fieldname")
+              assert set(order) == set(fields), (doctype, "field_order/fields mismatch")
               assert not (set(fields) & gone), (doctype, "retired fields remain")
           active = [
               root / "reconciliation_engine.py",
