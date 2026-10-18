@@ -45,15 +45,17 @@ jobs:
                   assert seq == old["field_order"], (str(path), "child table layout changed")
               segments = []
               active = []
+              started = False
               for fieldname in seq:
                   typ = current[fieldname]["fieldtype"]
                   if typ in ("Section Break", "Tab Break"):
-                      if active:
+                      if started and active:
                           segments.append(active)
+                      started = True
                       active = []
-                  else:
+                  elif started:
                       active.append(fieldname)
-              if active:
+              if started and active:
                   segments.append(active)
               for seg in segments:
                   data = [current[x] for x in seg if current[x]["fieldtype"] != "Column Break"]
