@@ -48,7 +48,6 @@ def _run_records(run):
             "accounting_status",
             "accounting_posting",
             "journal_entry",
-            "finance_review_status",
             "bank_statement_status",
             "transaction_date",
             "pos_profile",
@@ -305,7 +304,6 @@ def _update_records(run, records, record_keys, settlements, evidence, checked_on
             or cstr(record.accounting_status) in {
                 "Posted", "Draft Created", "Draft - Review Required", "Posted - Review Required"
             }
-            or cstr(record.finance_review_status) in {"Checked & Approved", "Needs Investigation"}
         )
         if protected and any(
             cstr(record.get(field)) != cstr(value)
@@ -313,7 +311,7 @@ def _update_records(run, records, record_keys, settlements, evidence, checked_on
             if field in {"match_status", "resolution_status", "bank_statement_status"}
         ):
             frappe.throw(
-                "Previously reviewed or posted reconciliation {0} has changed bank-statement evidence. Resolve it through Finance review before rerunning.".format(
+                "Previously posted reconciliation {0} has changed bank-statement evidence. Resolve accounting/posting evidence before rerunning.".format(
                     record.name
                 )
             )

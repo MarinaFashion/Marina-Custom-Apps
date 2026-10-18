@@ -23,12 +23,6 @@ frappe.query_reports["POS Reconciliation Results"] = {
             options: "\nAuto Cleared\nPending",
         },
         {
-            fieldname: "finance_review_status",
-            label: __("Finance Review"),
-            fieldtype: "Select",
-            options: "\nNot Required\nPending Review\nChecked & Approved\nNeeds Investigation",
-        },
-        {
             fieldname: "settlement_number",
             label: __("Settlement Number"),
             fieldtype: "Data",

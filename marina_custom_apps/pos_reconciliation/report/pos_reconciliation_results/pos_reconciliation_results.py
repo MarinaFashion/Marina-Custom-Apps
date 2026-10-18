@@ -17,8 +17,6 @@ def get_columns():
         {"label": _("Card Type"), "fieldname": "card_type", "fieldtype": "Data", "width": 100},
         {"label": _("Match Status"), "fieldname": "match_status", "fieldtype": "Data", "width": 115},
         {"label": _("Resolution"), "fieldname": "resolution_status", "fieldtype": "Data", "width": 120},
-        {"label": _("Finance Review"), "fieldname": "finance_review_status", "fieldtype": "Data", "width": 135},
-        {"label": _("Reviewed By"), "fieldname": "finance_reviewed_by", "fieldtype": "Link", "options": "User", "width": 140},
         {"label": _("Before Integration"), "fieldname": "before_integration", "fieldtype": "Check", "width": 105},
         {"label": _("Bank Transaction"), "fieldname": "bank_transaction", "fieldtype": "Link", "options": "Bank POS Transaction", "width": 145},
         {"label": _("Alhamrani Transaction"), "fieldname": "alhamrani_transaction", "fieldtype": "Data", "width": 155},
@@ -29,7 +27,6 @@ def get_columns():
         {"label": _("Difference"), "fieldname": "amount_difference", "fieldtype": "Currency", "width": 105},
         {"label": _("PAN Validation"), "fieldname": "pan_validation_method", "fieldtype": "Data", "width": 110},
         {"label": _("Discrepancy Fields"), "fieldname": "discrepancy_fields", "fieldtype": "Data", "width": 190},
-        {"label": _("Finance Note"), "fieldname": "finance_review_note", "fieldtype": "Data", "width": 190},
     ]
 
 
@@ -38,7 +35,6 @@ def get_data(filters):
     for fieldname in (
         "match_status",
         "resolution_status",
-        "finance_review_status",
         "pos_profile",
         "card_type",
         "settlement_number",
@@ -69,8 +65,6 @@ def get_data(filters):
             "card_type",
             "match_status",
             "resolution_status",
-            "finance_review_status",
-            "finance_reviewed_by",
             "before_integration",
             "bank_transaction",
             "alhamrani_transaction",
@@ -81,7 +75,6 @@ def get_data(filters):
             "amount_difference",
             "pan_validation_method",
             "discrepancy_fields",
-            "finance_review_note",
         ],
         order_by="transaction_date desc, terminal_id asc",
         limit_page_length=0,

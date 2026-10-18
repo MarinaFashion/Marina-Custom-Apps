@@ -20,10 +20,6 @@ from marina_custom_apps.pos_reconciliation.location_service import resolve_pos_p
 
 AMOUNT_TOLERANCE = 0.01
 
-FINANCE_NOT_REQUIRED = "Not Required"
-FINANCE_APPROVED = "Checked & Approved"
-FINANCE_INVESTIGATE = "Needs Investigation"
-
 RECORD_UPDATE_FIELDS = (
     "transaction_date",
     "pos_profile",
@@ -56,13 +52,6 @@ RECORD_UPDATE_FIELDS = (
     "alhamrani_transaction_date",
     "bank_transaction_time",
     "alhamrani_transaction_time",
-    "finance_review_status",
-    "finance_reviewed_by",
-    "finance_reviewed_on",
-    "finance_review_note",
-    "manual_clearance_reason",
-    "manual_cleared_by",
-    "manual_cleared_on",
     "last_reconciled_on",
 )
 
@@ -288,10 +277,6 @@ def _base_result(run, bank=None, alhamrani=None, card_mapper=None):
         "alhamrani_transaction_date": alhamrani.transaction_date if alhamrani else None,
         "bank_transaction_time": normalize_time(bank.transaction_time) if bank else None,
         "alhamrani_transaction_time": normalize_time(alhamrani.transaction_time) if alhamrani else None,
-        "finance_review_status": FINANCE_NOT_REQUIRED,
-        "finance_reviewed_by": None,
-        "finance_reviewed_on": None,
-        "finance_review_note": None,
         "alhamrani_duplicate_count": 0,
     }
 
@@ -361,9 +346,6 @@ def _build_results(run, bank_rows, alhamrani_rows, card_mapper):
 
     for row in results:
         row["last_reconciled_on"] = now
-        row.setdefault("manual_clearance_reason", None)
-        row.setdefault("manual_cleared_by", None)
-        row.setdefault("manual_cleared_on", None)
 
     return results
 
@@ -419,7 +401,6 @@ def _protected_result(row):
         or cstr(row.accounting_status) in {
             "Posted", "Draft Created", "Draft - Review Required", "Posted - Review Required"
         }
-        or cstr(row.finance_review_status) in {FINANCE_APPROVED, FINANCE_INVESTIGATE}
     )
 
 
@@ -440,7 +421,7 @@ def _persist_results(run, results, bank_rows, alhamrani_rows, execution_name=Non
     for row in stale:
         if _protected_result(row):
             frappe.throw(
-                _("Existing result {0} has review or posting evidence. Reset/reverse it before changing its source pairing.").format(row.name)
+                _("Existing result {0} has accounting or posting evidence. Reset/reverse it before changing its source pairing.").format(row.name)
             )
         for child in ("POS Accounting Posting Item", "POS Bank Settlement Transaction"):
             if frappe.db.exists(child, {"reconciliation_record": row.name}):
@@ -457,17 +438,14 @@ def _persist_results(run, results, bank_rows, alhamrani_rows, execution_name=Non
         "name", "owner", "creation", "modified", "modified_by", "docstatus", "idx",
         "run", "record_key", "last_execution", *RECORD_UPDATE_FIELDS,
     ]
-    no_reset_if_protected = {
-        "finance_review_status", "finance_reviewed_by", "finance_reviewed_on",
-        "finance_review_note", "match_status", "resolution_status",
-    }
+    no_reset_if_protected = {"match_status", "resolution_status"}
     new_rows = []
     for result in results:
         existing_row = existing_by_key.get(result["record_key"])
         if existing_row:
             if _protected_result(existing_row) and _material_change(existing_row, result):
                 frappe.throw(
-                    _("Result {0} was reviewed or posted and its financial match has changed. Resolve the review/posting before rerunning.").format(existing_row.name)
+                    _("Result {0} has protected accounting or posting evidence and its financial match has changed. Resolve it before rerunning.").format(existing_row.name)
                 )
             updates = {}
             for fieldname in RECORD_UPDATE_FIELDS:
@@ -509,7 +487,6 @@ def summarize_results(results):
         "bank_only_settled_count": 0,
         "bank_only_not_settled_count": 0,
         "alhamrani_only_count": 0,
-        "manually_cleared_count": 0,
         "pending_count": 0,
     }
     mapping = {
@@ -528,8 +505,6 @@ def summarize_results(results):
             summary[bucket] += 1
         if row["match_status"] in {"Bank Only - Settled", "Bank Only - Not Settled", "Bank Only"}:
             summary["bank_only_count"] += 1
-        if row["resolution_status"] == "Manually Cleared":
-            summary["manually_cleared_count"] += 1
         if row["resolution_status"] == "Pending":
             summary["pending_count"] += 1
     return summary

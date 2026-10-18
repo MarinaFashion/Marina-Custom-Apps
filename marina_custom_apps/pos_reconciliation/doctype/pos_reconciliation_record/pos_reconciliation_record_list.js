@@ -3,18 +3,11 @@ frappe.listview_settings["POS Reconciliation Record"] = {
         "match_status",
         "resolution_status",
         "before_integration",
-        "finance_review_status",
         "bank_statement_status",
         "settlement_number",
     ],
 
     get_indicator(doc) {
-        if (["Bank Only - Settled", "Bank Only - Not Settled", "Bank Only"].includes(doc.match_status) && doc.finance_review_status === "Needs Investigation") {
-            return [__("Needs Investigation"), "orange", "finance_review_status,=,Needs Investigation"];
-        }
-        if (["Bank Only - Settled", "Bank Only - Not Settled", "Bank Only"].includes(doc.match_status) && doc.finance_review_status === "Checked & Approved") {
-            return [__("Finance Approved"), "blue", "finance_review_status,=,Checked & Approved"];
-        }
         if (doc.resolution_status === "Manually Cleared") {
             return [__("Manually Cleared"), "blue", "resolution_status,=,Manually Cleared"];
         }

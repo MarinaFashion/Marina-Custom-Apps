@@ -147,13 +147,12 @@ function pos_recon_setup_review(frm) {
                 pos_profile: [],
                 terminal_id: [],
                 card_type: "",
-                finance_review_status: "",
                 accounting_status: "",
                 ledger_posting_status: "",
                 before_integration: "All",
                 status_counts: {},
                 options: { settlement_numbers: [], pos_profiles: [], terminal_ids: [], card_types: [],
-                    finance_review_statuses: [], accounting_statuses: [], ledger_posting_statuses: [], before_integration_values: [] },
+                    accounting_statuses: [], ledger_posting_statuses: [], before_integration_values: [] },
             },
         };
     }
@@ -167,7 +166,7 @@ function pos_recon_filter_args(frm, values) {
     return {
         run_name:frm.doc.name,status:v.status||"All",from_date:v.from_date||"",to_date:v.to_date||"",
         settlement_number:v.settlement_number||[],settlement_date:v.settlement_date||"",pos_profile:v.pos_profile||[],
-        terminal_id:v.terminal_id||[],card_type:v.card_type||"",finance_review_status:v.finance_review_status||"",
+        terminal_id:v.terminal_id||[],card_type:v.card_type||"",
         accounting_status:v.accounting_status||"",ledger_posting_status:v.ledger_posting_status||"",
         before_integration:v.before_integration===undefined?"All":v.before_integration
     };
@@ -203,7 +202,7 @@ function pos_recon_reconcile_state(state,o) {
         }
     });
 
-    [["card_type","card_types"],["finance_review_status","finance_review_statuses"],
+    [["card_type","card_types"],
      ["accounting_status","accounting_statuses"],["ledger_posting_status","ledger_posting_statuses"]]
     .forEach(([f,k]) => {
         if(!pos_recon_available(o[k],state[f])){
@@ -289,7 +288,6 @@ function pos_recon_load_results(frm) {
             pos_profile: state.pos_profile,
             terminal_id: state.terminal_id,
             card_type: state.card_type,
-            finance_review_status: state.finance_review_status,
             accounting_status: state.accounting_status,
             ledger_posting_status: state.ledger_posting_status,
             before_integration: state.before_integration,
@@ -403,8 +401,6 @@ function pos_recon_render_results(frm, $wrapper, data) {
             const details = [
                 row.discrepancy_fields || "",
                 row.before_integration ? __("Before Integration") : "",
-                row.finance_review_note || "",
-                row.manual_clearance_reason || "",
             ].filter(Boolean).join(" · ");
             const actionable = can_review && row.resolution_status === "Pending";
             const checkbox = can_review
@@ -433,14 +429,13 @@ function pos_recon_render_results(frm, $wrapper, data) {
                     <td class="text-right">${pos_recon_money(row.amount_difference)}</td>
                     <td>${pos_recon_escape(row.pan_validation_method || "—")}</td>
                     <td>${pos_recon_bank_statement_cell(row)}</td>
-                    <td>${pos_recon_finance_pill(row.finance_review_status)}</td>
                     <td>${pos_recon_accounting_pill(row.accounting_status)}</td>
                     <td>${pos_recon_escape(details || "—")}</td>
                     <td>${pos_recon_resolution_pill(row.resolution_status)}</td>
                 </tr>
             `;
         }).join("")
-        : `<tr><td colspan="${can_review ? 17 : 16}" class="text-muted text-center">${__("No reconciliation records found")}</td></tr>`;
+        : `<tr><td colspan="${can_review ? 16 : 15}" class="text-muted text-center">${__("No reconciliation records found")}</td></tr>`;
 
     const selected_summary = can_review ? `
         <div class="pos-recon-selected-summary" style="display:none">
@@ -479,7 +474,7 @@ function pos_recon_render_results(frm, $wrapper, data) {
                         <th>${__("Date")}</th><th>${__("POS Profile")}</th><th>${__("Terminal ID")}</th><th>${__("Settlement No.")}</th>
                         <th>${__("Status")}</th><th class="text-right">${__("Bank Amount")}</th>
                         <th class="text-right">${__("Alhamrani Amount")}</th><th class="text-right">${__("Difference")}</th>
-                        <th>${__("PAN Validation")}</th><th>${__("Bank Statement")}</th><th>${__("Finance Review")}</th><th>${__("Accounting")}</th>
+                        <th>${__("PAN Validation")}</th><th>${__("Bank Statement")}</th><th>${__("Accounting")}</th>
                         <th>${__("Discrepancy / Note")}</th><th>${__("Resolution")}</th>
                     </tr></thead>
                     <tbody>${body}</tbody>
@@ -496,7 +491,7 @@ function pos_recon_render_results(frm, $wrapper, data) {
 
     $wrapper.find(".pos-recon-status-filter").on("click", function () {
         state.status = $(this).attr("data-status") || "All";
-        if (state.status !== "Bank Only - Settled") { state.finance_review_status=""; state.before_integration="All"; }
+        if (state.status !== "Bank Only - Settled") { state.before_integration="All"; }
         state.start=0;
         pos_recon_load_filter_options(frm).then(()=>pos_recon_load_results(frm));
     });
@@ -545,7 +540,6 @@ function pos_recon_result_filters(state, options, is_bank_only, summary, can_rev
       </div>`;
 
     const finance_fields=is_bank_only?`
-      <div><label>${__("Finance Review")}</label><select class="form-control input-xs pos-recon-filter-finance">${pos_recon_select_options(options.finance_review_statuses||[],state.finance_review_status,__("All"))}</select></div>
       <div><label>${__("Before Integration")}</label><select class="form-control input-xs pos-recon-filter-before">
         <option value="All">${__("All")}</option>
         ${(options.before_integration_values||[]).includes("1")?`<option value="1" ${String(state.before_integration)==="1"?"selected":""}>${__("Yes")}</option>`:""}
@@ -641,7 +635,6 @@ function pos_recon_read_controls($w,is_bank,state){
       terminal_id:pos_recon_searchable_value($w,".pos-recon-filter-terminal"),card_type:$w.find(".pos-recon-filter-card").val()||"",
 
       ledger_posting_status:$w.find(".pos-recon-filter-ledger").val()||"",accounting_status:$w.find(".pos-recon-filter-accounting").val()||"",
-      finance_review_status:is_bank?($w.find(".pos-recon-filter-finance").val()||""):"",
       before_integration:is_bank?($w.find(".pos-recon-filter-before").val()||"All"):"All"};
 }
 function pos_recon_update_select($w,selector,values,current){const $f=$w.find(selector);if($f.length)$f.html(pos_recon_select_options(values||[],current||"",__("All")));}
@@ -653,7 +646,6 @@ function pos_recon_update_cascade($w,o,d,is_bank){
     pos_recon_update_select($w,".pos-recon-filter-ledger",o.ledger_posting_statuses,d.ledger_posting_status);
     pos_recon_update_select($w,".pos-recon-filter-accounting",o.accounting_statuses,d.accounting_status);
     if(is_bank){
-        pos_recon_update_select($w,".pos-recon-filter-finance",o.finance_review_statuses,d.finance_review_status);
         const $before=$w.find(".pos-recon-filter-before");
         if($before.length){
             const values=o.before_integration_values||[];
@@ -682,7 +674,7 @@ function pos_recon_bind_result_filters(frm,$wrapper,data,is_bank_only,can_review
     });
     $wrapper.find(".pos-recon-clear-bank-filters").on("click",()=>{
         Object.assign(state,{from_date:frm.doc.from_date||"",to_date:frm.doc.to_date||"",settlement_number:[],
-          settlement_date:"",pos_profile:[],terminal_id:[],card_type:"",finance_review_status:"",
+          settlement_date:"",pos_profile:[],terminal_id:[],card_type:"",
           accounting_status:"",ledger_posting_status:"",before_integration:"All",start:0});
         pos_recon_load_filter_options(frm).then(()=>pos_recon_load_results(frm));
     });
@@ -810,17 +802,6 @@ function pos_recon_bank_statement_cell(row) {
         <span class="indicator-pill ${color}">${pos_recon_escape(status)}</span>
         ${context.length ? `<div class="small" style="margin-top:3px;">${context.join("<br>")}</div>` : ""}
     </div>`;
-}
-
-function pos_recon_finance_pill(status) {
-    const value = status || "";
-    const color = {
-        "Checked & Approved": "green",
-        "Needs Investigation": "orange",
-        "Pending Review": "gray",
-        "Not Required": "gray",
-    }[value] || "gray";
-    return `<span class="indicator-pill ${color}">${pos_recon_escape(value || "—")}</span>`;
 }
 
 
