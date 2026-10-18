@@ -1,0 +1,41 @@
+name: Bank GL search UI validation
+on:
+  push:
+    branches: [bank-gl-search-wrap-v0.53.11, main]
+  pull_request:
+    branches: [main]
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax checks
+        run: |
+          python -m compileall -q marina_custom_apps/pos_reconciliation
+          node --check marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js
+      - name: Search and rendering invariants
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          js=Path("marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js").read_text()
+          service=Path("marina_custom_apps/pos_reconciliation/bank_statement_gl_reconciliation_service.py").read_text()
+          assert '<th>${__("Row #")}</th>' not in js
+          assert 'colspan="7"' in js
+          assert 'row.row_no' in js, "retain internal manual match row numbers"
+          assert "white-space:normal !important" in js
+          assert "text-overflow:ellipsis" not in js
+          assert '${__("Amount, Reference #, Description")}' in js
+          assert "cstr(row.description).casefold()" in service
+          assert "amount = \"{:.2f}\".format" in service
+          assert "INSTR(LOWER(CONCAT_WS" in service
+          assert "COALESCE(g.description" in service
+          assert "auto_matches, _used_bank" in service
+          assert "0.53.11" in Path("pyproject.toml").read_text()
+          print("Static UI and matching invariants verified")
+          PY
