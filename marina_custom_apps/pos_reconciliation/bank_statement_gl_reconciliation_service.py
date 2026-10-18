@@ -254,7 +254,14 @@ def _visible_row(row, filters):
         return False
     if filters["to_date"] and date > filters["to_date"]:
         return False
-    return not filters["reference"] or filters["reference"] in cstr(row.reference_number).casefold()
+    query = filters["reference"]
+    if not query:
+        return True
+    amount = "{:.2f}".format(flt(row.amount, 2))
+    return (query in cstr(row.reference_number).casefold()
+            or query in cstr(row.description).casefold()
+            or query in amount
+            or query in amount.replace(",", ""))
 
 
 def _reconciled_summary(bank_account, filters):
@@ -289,10 +296,18 @@ def _reconciled_summary(bank_account, filters):
         gl_args.append(filters["to_date"])
     if filters["reference"]:
         # INSTR treats % and _ as literal text, rather than SQL LIKE wildcards.
-        bank_sql += " AND INSTR(LOWER(COALESCE(reference_number, '')), %s) > 0"
-        gl_sql += " AND INSTR(LOWER(COALESCE(g.reference_number, '')), %s) > 0"
-        bank_args.append(filters["reference"])
-        gl_args.append(filters["reference"])
+        bank_sql += """ AND (
+            INSTR(LOWER(COALESCE(reference_number, '')), %s) > 0
+            OR INSTR(LOWER(CONCAT_WS(' ', transaction_description, description, description_extra, remarks)), %s) > 0
+            OR INSTR(CAST(ROUND(COALESCE(credit, 0) - COALESCE(debit, 0), 2) AS CHAR), %s) > 0
+        )"""
+        gl_sql += """ AND (
+            INSTR(LOWER(COALESCE(g.reference_number, '')), %s) > 0
+            OR INSTR(LOWER(COALESCE(g.description, '')), %s) > 0
+            OR INSTR(CAST(ROUND(g.amount, 2) AS CHAR), %s) > 0
+        )"""
+        bank_args.extend([filters["reference"]] * 3)
+        gl_args.extend([filters["reference"]] * 3)
     bank = frappe.db.sql(bank_sql, tuple(bank_args), as_dict=True)[0]
     gl = frappe.db.sql(gl_sql, tuple(gl_args), as_dict=True)[0]
     return {

@@ -65,11 +65,10 @@ function bsr_render(frm) {
                 <td>${bsr_escape(row.reference_number || "—")}</td>
                 <td class="bsr-description">${bsr_escape(row.description || "—")}</td>
                 <td class="text-right">${bsr_money(row.amount)}</td>
-                <td class="text-center"><b>${cint(row.row_no)}</b></td>
                 <td class="bsr-match-cell"><input type="number" min="1" max="999999" step="1" class="form-control input-xs bsr-match-input" placeholder="${__("Match #")}" aria-label="${__("Match #")}"></td>
             </tr>
         `).join("")
-        : `<tr><td colspan="8" class="text-muted text-center">${__("No unreconciled Bank Statement rows.")}</td></tr>`;
+        : `<tr><td colspan="7" class="text-muted text-center">${__("No unreconciled Bank Statement rows.")}</td></tr>`;
 
     const glBody = glRows.length
         ? glRows.map((row) => `
@@ -80,11 +79,10 @@ function bsr_render(frm) {
                 <td>${bsr_escape(row.reference_number || "—")}</td>
                 <td class="bsr-description">${bsr_escape(row.description || "—")}</td>
                 <td class="text-right">${bsr_money(row.amount)}</td>
-                <td class="text-center"><b>${cint(row.row_no)}</b></td>
                 <td class="bsr-match-cell"><input type="number" min="1" max="999999" step="1" class="form-control input-xs bsr-match-input" placeholder="${__("Match #")}" aria-label="${__("Match #")}"></td>
             </tr>
         `).join("")
-        : `<tr><td colspan="8" class="text-muted text-center">${__("No unreconciled GL Entries.")}</td></tr>`;
+        : `<tr><td colspan="7" class="text-muted text-center">${__("No unreconciled GL Entries.")}</td></tr>`;
 
     const matchBody = matches.length
         ? matches.map((match, idx) => `
@@ -139,7 +137,6 @@ function bsr_render(frm) {
                             <th>${__("Reference #")}</th>
                             <th>${__("Description")}</th>
                             <th class="text-right">${__("Amount")}</th>
-                            <th>${__("Row #")}</th>
                             <th>${__("Match #")}</th>
                         </tr></thead>
                         <tbody>${bankBody}</tbody>
@@ -158,7 +155,6 @@ function bsr_render(frm) {
                             <th>${__("Reference #")}</th>
                             <th>${__("Description")}</th>
                             <th class="text-right">${__("Amount")}</th>
-                            <th>${__("Row #")}</th>
                             <th>${__("Match #")}</th>
                         </tr></thead>
                         <tbody>${glBody}</tbody>
@@ -420,8 +416,8 @@ function bsr_filter_html(filters) {
                 <label>${__("To Date")}
                     <input type="date" class="form-control input-sm bsr-to-date" value="${bsr_escape(filters.to_date || "")}">
                 </label>
-                <label>${__("Reference #")}
-                    <input type="text" class="form-control input-sm bsr-reference" placeholder="${__("Search both tables")}" value="${bsr_escape(filters.reference || "")}">
+                <label>${__("Search")}
+                    <input type="text" class="form-control input-sm bsr-reference" placeholder="${__("Amount, Reference #, Description")}" value="${bsr_escape(filters.reference || "")}">
                 </label>
                 <div class="bsr-filter-buttons">
                     <button class="btn btn-sm btn-primary bsr-apply-filters">${__("Apply Filters")}</button>
@@ -533,7 +529,7 @@ function bsr_styles() {
         .bsr-table-wrap{overflow:auto;max-height:520px;}
         .bsr-table{margin:0;min-width:760px;}
         .bsr-table th,.bsr-table td{font-size:11px;vertical-align:middle !important;white-space:nowrap;}
-        .bsr-table .bsr-description{max-width:260px;overflow:hidden;text-overflow:ellipsis;}
+        .bsr-table td.bsr-description{min-width:180px;max-width:320px;white-space:normal !important;overflow-wrap:anywhere;word-break:normal;line-height:1.4;}
         .bsr-match-cell{min-width:95px;}
         .bsr-match-input{width:100%;min-width:75px;text-align:center;}
         @media(max-width:1200px){.bsr-grid{grid-template-columns:1fr;}.bsr-filter-grid{grid-template-columns:1fr 1fr;}}
