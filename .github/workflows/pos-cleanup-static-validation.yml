@@ -1,0 +1,72 @@
+name: POS reconciliation cleanup validation
+on:
+  push:
+    branches: [pos-reconciliation-cleanup-v0.53.9, main]
+  pull_request:
+    branches: [main]
+jobs:
+  static-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Python syntax
+        run: python -m compileall -q marina_custom_apps/pos_reconciliation
+      - name: JavaScript syntax
+        shell: bash
+        run: |
+          set -e
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find marina_custom_apps/pos_reconciliation -name '*.js' -print0)
+      - name: DocType field and reference consistency
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("marina_custom_apps/pos_reconciliation")
+          retired = {
+              "pos_reconciliation_run": {"manually_cleared_count"},
+              "pos_reconciliation_settings": {
+                  "posting_frequency", "auto_create_accounting_entries",
+                  "allow_posting_before_finance_audit",
+                  "allow_bulk_finance_review", "finance_review_section"},
+              "pos_reconciliation_record": {
+                  "finance_review_section", "finance_review_status",
+                  "finance_reviewed_by", "finance_review_column_break",
+                  "finance_reviewed_on", "finance_review_note",
+                  "manual_section", "manual_clearance_reason",
+                  "manual_cleared_by", "manual_cleared_on"},
+              "terminal_location_history": {"address"},
+          }
+          for doctype, gone in retired.items():
+              path = root / "doctype" / doctype / f"{doctype}.json"
+              obj = json.loads(path.read_text())
+              order = obj["field_order"]
+              fields = [x["fieldname"] for x in obj["fields"]]
+              assert order == fields, (doctype, "field_order mismatch")
+              assert not (set(fields) & gone), (doctype, "retired fields remain")
+          active = [
+              root / "reconciliation_engine.py",
+              root / "review_service.py",
+              root / "unified_statement_reconciliation.py",
+              root / "doctype/pos_reconciliation_run/pos_reconciliation_run.py",
+              root / "doctype/pos_reconciliation_run/pos_reconciliation_run.js",
+              root / "doctype/pos_reconciliation_record/pos_reconciliation_record_list.js",
+              root / "report/pos_reconciliation_results/pos_reconciliation_results.py",
+              root / "report/pos_reconciliation_results/pos_reconciliation_results.js",
+          ]
+          old = ("finance_review_status", "finance_reviewed_by",
+                 "finance_reviewed_on", "finance_review_note",
+                 "manual_clearance_reason", "manual_cleared_by",
+                 "manual_cleared_on", "manually_cleared_count")
+          for path in active:
+              code = path.read_text()
+              assert not any(x in code for x in old), str(path)
+          print("Metadata and retired runtime references verified")
+          PY
