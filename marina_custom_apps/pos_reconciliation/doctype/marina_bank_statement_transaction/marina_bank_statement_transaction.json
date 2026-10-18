@@ -322,7 +322,7 @@
    "label": "POS Profile",
    "options": "POS Profile",
    "read_only": 1,
-   "description": "Derived from the settled POS reconciliation records; blank when more than one POS Profile contributes.",
+   "description": "Blank when multiple POS Profiles contribute.",
    "in_standard_filter": 1,
    "search_index": 1
   },
@@ -363,8 +363,7 @@
    "cannot_add_rows": 1,
    "cannot_delete_rows": 1,
    "cannot_delete_all_rows": 1,
-   "depends_on": "eval:doc.is_pos_statement_line && doc.pos_bank_settlement",
-   "description": "Shows contributing POS records for the reconciled settlement. The same settlement may have Gross, Commission and VAT bank statement lines."
+   "depends_on": "eval:doc.is_pos_statement_line && doc.pos_bank_settlement"
   }
  ],
  "permissions": [

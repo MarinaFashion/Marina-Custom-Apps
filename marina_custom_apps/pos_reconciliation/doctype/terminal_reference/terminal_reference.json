@@ -50,7 +50,7 @@
    "fieldtype": "Column Break"
   },
   {
-   "description": "First date included in POS reconciliation.",
+   "description": "Start date for integrated reconciliation.",
    "fieldname": "integration_date",
    "fieldtype": "Date",
    "in_list_view": 1,
@@ -78,8 +78,7 @@
    "fieldname": "locations",
    "fieldtype": "Table",
    "label": "Locations",
-   "options": "Terminal Location History",
-   "description": "Date-based POS Profile assignments."
+   "options": "Terminal Location History"
   }
  ],
  "name": "Terminal Reference",

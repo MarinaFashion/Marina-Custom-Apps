@@ -97,7 +97,7 @@
    "label": "Settlement Number",
    "read_only": 1,
    "reqd": 0,
-   "description": "Audit reference only. Populated when all posting items share one Settlement Number; otherwise left blank."
+   "description": "Blank when posting spans multiple settlements."
   },
   {
    "fieldname": "status_column_break",
@@ -110,7 +110,7 @@
    "label": "Settlement Date",
    "read_only": 1,
    "reqd": 0,
-   "description": "Audit reference only. Populated when all posting items share one Settlement Date; otherwise left blank."
+   "description": "Blank when posting spans multiple dates."
   },
   {
    "default": "1",

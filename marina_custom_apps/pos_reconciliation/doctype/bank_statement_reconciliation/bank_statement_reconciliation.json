@@ -35,7 +35,7 @@
    "label": "Amount Tolerance",
    "default": "0.01",
    "reqd": 1,
-   "description": "Maximum allowed difference between grouped Bank Statement and GL totals."
+   "description": "Maximum Bank–GL amount difference."
   },
   {
    "fieldname": "workspace_section",
