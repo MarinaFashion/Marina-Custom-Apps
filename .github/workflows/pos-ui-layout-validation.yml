@@ -48,7 +48,12 @@ jobs:
               started = False
               for fieldname in seq:
                   typ = current[fieldname]["fieldtype"]
-                  if typ in ("Section Break", "Tab Break"):
+                  if typ == "Tab Break":
+                      if started and active:
+                          segments.append(active)
+                      started = False
+                      active = []
+                  elif typ == "Section Break":
                       if started and active:
                           segments.append(active)
                       started = True
