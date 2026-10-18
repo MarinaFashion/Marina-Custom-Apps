@@ -1,281 +1,314 @@
 {
-  "doctype": "DocType",
-  "module": "POS Reconciliation",
-  "name": "POS Bank Settlement",
-  "engine": "InnoDB",
-  "track_changes": 1,
-  "autoname": "hash",
-  "title_field": "settlement_key",
-  "sort_field": "settlement_date",
-  "sort_order": "DESC",
-  "field_order": [
-    "identity_section",
-    "reconciliation_run",
-    "settlement_key",
-    "settlement_number",
-    "reconciliation_date",
-    "settlement_date",
-    "identity_column_break",
-    "bank_account",
-    "pos_profile",
-    "terminal_id",
-    "bank_terminal_reference",
-    "card_type",
-    "erp_totals_section",
-    "transaction_count",
-    "gross_amount",
-    "commission_amount",
-    "vat_amount",
-    "expected_net",
-    "statement_totals_section",
-    "statement_gross_amount",
-    "statement_commission_amount",
-    "statement_vat_amount",
-    "statement_net_amount",
-    "difference_section",
-    "gross_difference",
-    "commission_difference",
-    "vat_difference",
-    "net_difference",
-    "status",
-    "transactions_section",
-    "transactions",
-    "statement_matches_section",
-    "statement_matches"
-  ],
-  "fields": [
-    {
-      "fieldname": "identity_section",
-      "fieldtype": "Section Break",
-      "label": "Settlement Identity"
-    },
-    {
-      "fieldname": "reconciliation_run",
-      "fieldtype": "Data",
-      "label": "POS Reconciliation Control",
-      "read_only": 1,
-      "in_standard_filter": 1
-    },
-    {
-      "fieldname": "settlement_key",
-      "fieldtype": "Data",
-      "label": "Settlement Key",
-      "read_only": 1,
-      "unique": 1,
-      "in_list_view": 1
-    },
-    {
-      "fieldname": "settlement_number",
-      "fieldtype": "Data",
-      "label": "Settlement Number",
-      "read_only": 1,
-      "in_list_view": 1,
-      "in_standard_filter": 1
-    },
-    {
-      "fieldname": "reconciliation_date",
-      "fieldtype": "Date",
-      "label": "Reconciliation Date",
-      "read_only": 1,
-      "in_list_view": 1,
-      "in_standard_filter": 1
-    },
-    {
-      "fieldname": "settlement_date",
-      "fieldtype": "Date",
-      "label": "Settlement Date",
-      "read_only": 1,
-      "in_list_view": 1,
-      "in_standard_filter": 1
-    },
-    {
-      "fieldname": "identity_column_break",
-      "fieldtype": "Column Break"
-    },
-    {
-      "fieldname": "bank_account",
-      "fieldtype": "Link",
-      "label": "Bank Account",
-      "options": "Bank Account",
-      "read_only": 1,
-      "in_standard_filter": 1
-    },
-    {
-      "fieldname": "pos_profile",
-      "fieldtype": "Link",
-      "label": "POS Profile",
-      "options": "POS Profile",
-      "read_only": 1,
-      "in_list_view": 1,
-      "in_standard_filter": 1
-    },
-    {
-      "fieldname": "terminal_id",
-      "fieldtype": "Data",
-      "label": "Terminal ID",
-      "read_only": 1,
-      "in_list_view": 1
-    },
-    {
-      "fieldname": "bank_terminal_reference",
-      "fieldtype": "Data",
-      "label": "Bank Terminal Reference",
-      "read_only": 1,
-      "in_list_view": 1
-    },
-    {
-      "fieldname": "card_type",
-      "fieldtype": "Data",
-      "label": "Card Type",
-      "read_only": 1,
-      "in_list_view": 1,
-      "in_standard_filter": 1
-    },
-    {
-      "fieldname": "erp_totals_section",
-      "fieldtype": "Section Break",
-      "label": "ERP / POS Evidence"
-    },
-    {
-      "fieldname": "transaction_count",
-      "fieldtype": "Int",
-      "label": "Transactions",
-      "read_only": 1
-    },
-    {
-      "fieldname": "gross_amount",
-      "fieldtype": "Currency",
-      "label": "Gross Amount",
-      "read_only": 1
-    },
-    {
-      "fieldname": "commission_amount",
-      "fieldtype": "Currency",
-      "label": "Commission",
-      "read_only": 1
-    },
-    {
-      "fieldname": "vat_amount",
-      "fieldtype": "Currency",
-      "label": "VAT",
-      "read_only": 1
-    },
-    {
-      "fieldname": "expected_net",
-      "fieldtype": "Currency",
-      "label": "Expected Net",
-      "read_only": 1
-    },
-    {
-      "fieldname": "statement_totals_section",
-      "fieldtype": "Section Break",
-      "label": "SNB Statement Evidence"
-    },
-    {
-      "fieldname": "statement_gross_amount",
-      "fieldtype": "Currency",
-      "label": "Statement Gross",
-      "read_only": 1
-    },
-    {
-      "fieldname": "statement_commission_amount",
-      "fieldtype": "Currency",
-      "label": "Statement Commission",
-      "read_only": 1
-    },
-    {
-      "fieldname": "statement_vat_amount",
-      "fieldtype": "Currency",
-      "label": "Statement VAT",
-      "read_only": 1
-    },
-    {
-      "fieldname": "statement_net_amount",
-      "fieldtype": "Currency",
-      "label": "Statement Net",
-      "read_only": 1
-    },
-    {
-      "fieldname": "difference_section",
-      "fieldtype": "Section Break",
-      "label": "Reconciliation Result"
-    },
-    {
-      "fieldname": "gross_difference",
-      "fieldtype": "Currency",
-      "label": "Gross Difference",
-      "read_only": 1
-    },
-    {
-      "fieldname": "commission_difference",
-      "fieldtype": "Currency",
-      "label": "Commission Difference",
-      "read_only": 1
-    },
-    {
-      "fieldname": "vat_difference",
-      "fieldtype": "Currency",
-      "label": "VAT Difference",
-      "read_only": 1
-    },
-    {
-      "fieldname": "net_difference",
-      "fieldtype": "Currency",
-      "label": "Net Difference",
-      "read_only": 1
-    },
-    {
-      "fieldname": "status",
-      "fieldtype": "Select",
-      "label": "Status",
-      "options": "ERP Settlement Only\nPartial\nAmount Difference\nFully Reconciled",
-      "read_only": 1,
-      "in_list_view": 1,
-      "in_standard_filter": 1
-    },
-    {
-      "fieldname": "transactions_section",
-      "fieldtype": "Section Break",
-      "label": "POS Transactions"
-    },
-    {
-      "fieldname": "transactions",
-      "fieldtype": "Table",
-      "label": "POS Transactions",
-      "options": "POS Bank Settlement Transaction",
-      "read_only": 1
-    },
-    {
-      "fieldname": "statement_matches_section",
-      "fieldtype": "Section Break",
-      "label": "Bank Statement Matches"
-    },
-    {
-      "fieldname": "statement_matches",
-      "fieldtype": "Table",
-      "label": "Statement Matches",
-      "options": "POS Bank Settlement Statement Match",
-      "read_only": 1
-    }
-  ],
-  "permissions": [
-    {
-      "role": "Accounts User",
-      "read": 1
-    },
-    {
-      "role": "Accounts Manager",
-      "read": 1,
-      "write": 1,
-      "create": 1,
-      "delete": 1
-    },
-    {
-      "role": "System Manager",
-      "read": 1,
-      "write": 1,
-      "create": 1,
-      "delete": 1
-    }
-  ]
+ "doctype": "DocType",
+ "module": "POS Reconciliation",
+ "name": "POS Bank Settlement",
+ "engine": "InnoDB",
+ "track_changes": 1,
+ "autoname": "hash",
+ "title_field": "settlement_key",
+ "sort_field": "settlement_date",
+ "sort_order": "DESC",
+ "field_order": [
+  "ui_tab_pos_bank_settlement_1",
+  "identity_section",
+  "reconciliation_run",
+  "settlement_key",
+  "settlement_number",
+  "reconciliation_date",
+  "settlement_date",
+  "identity_column_break",
+  "bank_account",
+  "pos_profile",
+  "terminal_id",
+  "bank_terminal_reference",
+  "card_type",
+  "erp_totals_section",
+  "transaction_count",
+  "gross_amount",
+  "commission_amount",
+  "ui_column_pos_bank_settlement_2",
+  "vat_amount",
+  "expected_net",
+  "statement_totals_section",
+  "statement_gross_amount",
+  "statement_commission_amount",
+  "ui_column_pos_bank_settlement_3",
+  "statement_vat_amount",
+  "statement_net_amount",
+  "difference_section",
+  "gross_difference",
+  "commission_difference",
+  "vat_difference",
+  "ui_column_pos_bank_settlement_4",
+  "net_difference",
+  "status",
+  "ui_tab_pos_bank_settlement_5",
+  "transactions_section",
+  "transactions",
+  "ui_tab_pos_bank_settlement_6",
+  "statement_matches_section",
+  "statement_matches"
+ ],
+ "fields": [
+  {
+   "fieldname": "ui_tab_pos_bank_settlement_1",
+   "fieldtype": "Tab Break",
+   "label": "Settlement"
+  },
+  {
+   "fieldname": "identity_section",
+   "fieldtype": "Section Break",
+   "label": "Settlement Identity"
+  },
+  {
+   "fieldname": "reconciliation_run",
+   "fieldtype": "Data",
+   "label": "POS Reconciliation Control",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "settlement_key",
+   "fieldtype": "Data",
+   "label": "Settlement Key",
+   "read_only": 1,
+   "unique": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "settlement_number",
+   "fieldtype": "Data",
+   "label": "Settlement Number",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "reconciliation_date",
+   "fieldtype": "Date",
+   "label": "Reconciliation Date",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "settlement_date",
+   "fieldtype": "Date",
+   "label": "Settlement Date",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "identity_column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bank_account",
+   "fieldtype": "Link",
+   "label": "Bank Account",
+   "options": "Bank Account",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "pos_profile",
+   "fieldtype": "Link",
+   "label": "POS Profile",
+   "options": "POS Profile",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "terminal_id",
+   "fieldtype": "Data",
+   "label": "Terminal ID",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "bank_terminal_reference",
+   "fieldtype": "Data",
+   "label": "Bank Terminal Reference",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "card_type",
+   "fieldtype": "Data",
+   "label": "Card Type",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "erp_totals_section",
+   "fieldtype": "Section Break",
+   "label": "ERP / POS Evidence"
+  },
+  {
+   "fieldname": "transaction_count",
+   "fieldtype": "Int",
+   "label": "Transactions",
+   "read_only": 1
+  },
+  {
+   "fieldname": "gross_amount",
+   "fieldtype": "Currency",
+   "label": "Gross Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "commission_amount",
+   "fieldtype": "Currency",
+   "label": "Commission",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ui_column_pos_bank_settlement_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "vat_amount",
+   "fieldtype": "Currency",
+   "label": "VAT",
+   "read_only": 1
+  },
+  {
+   "fieldname": "expected_net",
+   "fieldtype": "Currency",
+   "label": "Expected Net",
+   "read_only": 1
+  },
+  {
+   "fieldname": "statement_totals_section",
+   "fieldtype": "Section Break",
+   "label": "SNB Statement Evidence"
+  },
+  {
+   "fieldname": "statement_gross_amount",
+   "fieldtype": "Currency",
+   "label": "Statement Gross",
+   "read_only": 1
+  },
+  {
+   "fieldname": "statement_commission_amount",
+   "fieldtype": "Currency",
+   "label": "Statement Commission",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ui_column_pos_bank_settlement_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "statement_vat_amount",
+   "fieldtype": "Currency",
+   "label": "Statement VAT",
+   "read_only": 1
+  },
+  {
+   "fieldname": "statement_net_amount",
+   "fieldtype": "Currency",
+   "label": "Statement Net",
+   "read_only": 1
+  },
+  {
+   "fieldname": "difference_section",
+   "fieldtype": "Section Break",
+   "label": "Reconciliation Result"
+  },
+  {
+   "fieldname": "gross_difference",
+   "fieldtype": "Currency",
+   "label": "Gross Difference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "commission_difference",
+   "fieldtype": "Currency",
+   "label": "Commission Difference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "vat_difference",
+   "fieldtype": "Currency",
+   "label": "VAT Difference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ui_column_pos_bank_settlement_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "net_difference",
+   "fieldtype": "Currency",
+   "label": "Net Difference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "ERP Settlement Only\nPartial\nAmount Difference\nFully Reconciled",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "ui_tab_pos_bank_settlement_5",
+   "fieldtype": "Tab Break",
+   "label": "Transactions"
+  },
+  {
+   "fieldname": "transactions_section",
+   "fieldtype": "Section Break",
+   "label": "POS Transactions"
+  },
+  {
+   "fieldname": "transactions",
+   "fieldtype": "Table",
+   "label": "POS Transactions",
+   "options": "POS Bank Settlement Transaction",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ui_tab_pos_bank_settlement_6",
+   "fieldtype": "Tab Break",
+   "label": "Bank Statement Matches"
+  },
+  {
+   "fieldname": "statement_matches_section",
+   "fieldtype": "Section Break",
+   "label": "Bank Statement Matches"
+  },
+  {
+   "fieldname": "statement_matches",
+   "fieldtype": "Table",
+   "label": "Statement Matches",
+   "options": "POS Bank Settlement Statement Match",
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "Accounts User",
+   "read": 1
+  },
+  {
+   "role": "Accounts Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  }
+ ]
 }
