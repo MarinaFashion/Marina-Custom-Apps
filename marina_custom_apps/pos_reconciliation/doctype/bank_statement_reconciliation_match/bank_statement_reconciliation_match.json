@@ -6,12 +6,12 @@
  "autoname": "naming_series:",
  "track_changes": 1,
  "field_order": [
+  "ui_tab_bank_statement_reconcili_1",
   "naming_series",
   "bank_account",
   "match_type",
   "reference_number",
   "status",
-  "ui_tab_bank_statement_reconcili_1",
   "amount_section",
   "bank_amount",
   "gl_amount",
@@ -30,6 +30,11 @@
   "gl_rows"
  ],
  "fields": [
+  {
+   "fieldname": "ui_tab_bank_statement_reconcili_1",
+   "fieldtype": "Tab Break",
+   "label": "Matching"
+  },
   {
    "fieldname": "naming_series",
    "fieldtype": "Select",
@@ -70,11 +75,6 @@
    "default": "Reconciled",
    "read_only": 1,
    "in_list_view": 1
-  },
-  {
-   "fieldname": "ui_tab_bank_statement_reconcili_1",
-   "fieldtype": "Tab Break",
-   "label": "Matching"
   },
   {
    "fieldname": "amount_section",
