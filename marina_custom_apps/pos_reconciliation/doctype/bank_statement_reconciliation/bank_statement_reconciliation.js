@@ -693,6 +693,7 @@ function bsr_apply_columns($table, side, prefs) {
                     $table.css("width", visibleWidth + "px");
                 }).one("pointerup" + ns + " pointercancel" + ns, function () {
                     $(document).off(ns);
+                    bsr_apply_columns($table, side, prefs);
                     bsr_save_column_preferences(side, prefs);
                 });
             });
