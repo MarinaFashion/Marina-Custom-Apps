@@ -1,0 +1,50 @@
+name: Bank reconciliation cancellation and permissions
+on:
+  push:
+    branches: [bank-reconciliation-je-cancel-v0.53.13, main]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Python and JavaScript syntax
+        run: |
+          python -m compileall -q marina_custom_apps/pos_reconciliation
+          node --check marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js
+      - name: Verify permissions and cancellation safeguards
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          hooks=Path("marina_custom_apps/hooks.py").read_text()
+          service=Path("marina_custom_apps/pos_reconciliation/journal_entry_reconciliation_cleanup.py").read_text()
+          permissions=Path("marina_custom_apps/pos_reconciliation/bank_reconciliation_exclusion_service.py").read_text()
+          ui=Path("marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js").read_text()
+          ws=Path("marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.py").read_text()
+          assert 'journal_entry_reconciliation_cleanup.on_cancel' in hooks
+          assert 'journal_entry_reconciliation_cleanup.on_trash' in hooks
+          assert 'existing_pos_on_cancel(doc, method)' in service
+          assert 'existing_pos_on_trash(doc, method)' in service
+          assert 'bank_statement_reconciliation_match": None' in service
+          assert 'frappe.delete_doc(MATCH, match_name, ignore_permissions=True)' in service
+          assert 'reconciliation_status": "Unreconciled"' in service
+          assert '"doctype": "Comment"' in service
+          assert 'FOR UPDATE' in service
+          assert 'frappe.db.commit(' not in service
+          assert 'frappe.get_roles' not in permissions
+          assert 'frappe.has_permission("Bank Statement Reconciliation", "write")' in permissions
+          assert 'frappe.has_permission(DOCTYPE, "write")' in permissions
+          assert 'result["can_exclude"]' in ws
+          assert 'const canExclude = Boolean(state.can_exclude)' in ui
+          assert ui.index('const state = frm.__bsr ||') < ui.index('const canExclude =')
+          assert '0.53.13' in Path('pyproject.toml').read_text()
+          assert '0.53.13' in Path('marina_custom_apps/__init__.py').read_text()
+          print("Cleanup and permission regression invariants passed")
+          PY
