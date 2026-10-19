@@ -95,7 +95,12 @@ def release_matches_for_journal_entry(journal_name):
             }).insert(ignore_permissions=True)
         # All incoming Bank transaction links are now cleared. Removing the Match
         # also deletes its Bank and GL child rows, releasing references to the JE.
-        frappe.delete_doc(MATCH, match_name, ignore_permissions=True)
+        previous = getattr(frappe.flags, "allow_bank_reconciliation_match_delete", False)
+        try:
+            frappe.flags.allow_bank_reconciliation_match_delete = True
+            frappe.delete_doc(MATCH, match_name, ignore_permissions=True)
+        finally:
+            frappe.flags.allow_bank_reconciliation_match_delete = previous
         count += 1
     return count
 
