@@ -139,7 +139,9 @@ function bsr_render(frm) {
                             <th>${__("Description")}</th>
                             <th class="text-right">${__("Amount")}</th>
                             <th>${__("Match #")}</th>
-                        </tr></thead>
+                        </tr>
+                        ${bsr_column_filter_header("bank")}
+                        </thead>
                         <tbody>${bankBody}</tbody>
                     </table>
                 </div>
@@ -158,7 +160,9 @@ function bsr_render(frm) {
                             <th>${__("Description")}</th>
                             <th class="text-right">${__("Amount")}</th>
                             <th>${__("Match #")}</th>
-                        </tr></thead>
+                        </tr>
+                        ${bsr_column_filter_header("gl")}
+                        </thead>
                         <tbody>${glBody}</tbody>
                     </table>
                 </div>
@@ -189,6 +193,58 @@ function bsr_render(frm) {
 
     bsr_bind(frm);
     bsr_setup_columns(frm);
+    bsr_bind_table_search(frm);
+}
+
+// Independent, display-only column filtering for Bank and GL tables.
+function bsr_column_filter_header(side) {
+    return '<tr class="bsr-column-filter-row">' + BSR_COLUMN_NAMES.map((name, i) => {
+        if (i === 0) return '<td></td>'; // Actions has no searchable value.
+        return '<td><input type="text" class="form-control input-xs bsr-column-search" ' +
+            'data-side="' + side + '" data-column="' + i + '" ' +
+            'autocomplete="off" placeholder="' + bsr_escape(__("Search")) + '" ' +
+            'aria-label="' + bsr_escape(__("Filter") + " " + __(name)) + '"></td>';
+    }).join("") + '</tr>';
+}
+
+function bsr_apply_table_search(frm, side) {
+    const $table = frm.fields_dict.workspace_html.$wrapper
+        .find('.bsr-config-table[data-side="' + side + '"]');
+    const filters = (frm.__bsr_table_search || {})[side] || {};
+    $table.find("tbody tr[data-bank-name], tbody tr[data-gl-name]").each(function () {
+        const $row = $(this);
+        const visible = Object.entries(filters).every(([column, needle]) => {
+            const $cell = $row.children().eq(Number(column));
+            const value = Number(column) === 6
+                ? String($cell.find(".bsr-match-input").val() || "")
+                : $cell.text();
+            return value.toLocaleLowerCase().includes(needle.toLocaleLowerCase());
+        });
+        $row.toggle(visible);
+    });
+}
+
+function bsr_bind_table_search(frm) {
+    const $wrapper = frm.fields_dict.workspace_html.$wrapper;
+    frm.__bsr_table_search = frm.__bsr_table_search || {bank: {}, gl: {}};
+    $wrapper.find(".bsr-column-search").each(function () {
+        const $input = $(this), side = $input.attr("data-side");
+        const column = $input.attr("data-column");
+        $input.val((frm.__bsr_table_search[side] || {})[column] || "");
+    }).on("input", function () {
+        const $input = $(this), side = $input.attr("data-side"), column = $input.attr("data-column");
+        const value = String($input.val() || "").trim();
+        const filters = frm.__bsr_table_search[side] || {};
+        if (value) filters[column] = value;
+        else delete filters[column];
+        frm.__bsr_table_search[side] = filters;
+        bsr_apply_table_search(frm, side);
+    });
+    $wrapper.find(".bsr-match-input").on("input", function () {
+        const side = $(this).closest(".bsr-config-table").attr("data-side");
+        if ((frm.__bsr_table_search[side] || {})["6"]) bsr_apply_table_search(frm, side);
+    });
+    for (const side of ["bank", "gl"]) bsr_apply_table_search(frm, side);
 }
 
 function bsr_bind(frm) {
@@ -532,7 +588,9 @@ function bsr_styles() {
         .bsr-table-wrap{overflow:auto;max-height:520px;}
         .bsr-table{margin:0;min-width:760px;}
         .bsr-table th,.bsr-table td{font-size:11px;vertical-align:middle !important;white-space:nowrap;}
-        .bsr-config-table{table-layout:fixed;min-width:0;width:max-content;}\n        .bsr-config-table th,.bsr-config-table td{box-sizing:border-box;overflow-wrap:anywhere;}\n        .bsr-config-table td.bsr-description{white-space:normal !important;overflow-wrap:anywhere;word-break:normal;line-height:1.4;}\n        .bsr-col-resize{position:absolute;right:0;top:0;bottom:0;width:8px;cursor:col-resize;z-index:2;}\n        .bsr-config-table th{position:relative;}\n        .bsr-columns-button{margin-bottom:6px;}\n        .bsr-columns-menu{display:flex;flex-wrap:wrap;gap:8px;padding:8px;margin-bottom:8px;border:1px solid var(--border-color);border-radius:5px;}
+        .bsr-config-table{table-layout:fixed;min-width:0;width:max-content;}\n        .bsr-config-table th,.bsr-config-table td{box-sizing:border-box;overflow-wrap:anywhere;}\n        .bsr-column-filter-row td{padding:3px !important;background:var(--control-bg);vertical-align:middle !important;}
+        .bsr-column-search{width:100%;min-width:0;font-size:11px !important;padding:2px 4px !important;}
+        .bsr-config-table td.bsr-description{white-space:normal !important;overflow-wrap:anywhere;word-break:normal;line-height:1.4;}\n        .bsr-col-resize{position:absolute;right:0;top:0;bottom:0;width:8px;cursor:col-resize;z-index:2;}\n        .bsr-config-table th{position:relative;}\n        .bsr-columns-button{margin-bottom:6px;}\n        .bsr-columns-menu{display:flex;flex-wrap:wrap;gap:8px;padding:8px;margin-bottom:8px;border:1px solid var(--border-color);border-radius:5px;}
         .bsr-match-cell{min-width:95px;}
         .bsr-match-input{width:100%;min-width:75px;text-align:center;}
         @media(max-width:1200px){.bsr-grid{grid-template-columns:1fr;}.bsr-filter-grid{grid-template-columns:1fr 1fr;}}
