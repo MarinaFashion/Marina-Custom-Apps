@@ -36,6 +36,6 @@ jobs:
           assert "INSTR(LOWER(CONCAT_WS" in service
           assert "COALESCE(g.description" in service
           assert "auto_matches, _used_bank" in service
-          assert "0.53.11" in Path("pyproject.toml").read_text()
+          assert "0.53.15" in Path("pyproject.toml").read_text()
           print("Static UI and matching invariants verified")
           PY
