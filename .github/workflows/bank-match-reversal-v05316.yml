@@ -1,0 +1,46 @@
+name: Bank reconciliation match reversal validation
+on:
+  push:
+    branches: [bank-match-reversal-v0.53.16, main]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate reversal code and safety invariants
+        run: |
+          python -m compileall -q marina_custom_apps/pos_reconciliation
+          node --check marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation_match/bank_statement_reconciliation_match.js
+          python - <<'PY'
+          from pathlib import Path
+          svc=Path("marina_custom_apps/pos_reconciliation/bank_match_reversal.py").read_text()
+          doc=Path("marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation_match/bank_statement_reconciliation_match.py").read_text()
+          je=Path("marina_custom_apps/pos_reconciliation/journal_entry_reconciliation_cleanup.py").read_text()
+          js=Path("marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation_match/bank_statement_reconciliation_match.js").read_text()
+          assert 'frappe.has_permission("Bank Statement Reconciliation", "write")' in svc
+          assert 'frappe.has_permission(MATCH, "read")' in svc
+          assert 'len(reason) < 5' in svc
+          assert 'FOR UPDATE' in svc
+          assert '"bank_statement_reconciliation_match": None' in svc
+          assert '"reconciliation_status": "Unreconciled"' in svc
+          assert '"remaining_amount": amount' in svc
+          assert '"doctype": "Comment"' in svc
+          assert 'frappe.delete_doc(MATCH, match_name, ignore_permissions=True)' in svc
+          assert 'finally:' in svc and 'allow_bank_reconciliation_match_delete = previous' in svc
+          assert 'if not getattr(frappe.flags, "allow_bank_reconciliation_match_delete", False)' in doc
+          assert 'allow_bank_reconciliation_match_delete = True' in je
+          assert 'Reverse Reconciliation' in js
+          assert 'reason: values.reason' in js
+          assert 'frappe.confirm(' in js
+          assert '0.53.16' in Path('pyproject.toml').read_text()
+          assert '0.53.16' in Path('marina_custom_apps/__init__.py').read_text()
+          print("Reversal and JE cancellation compatibility checks passed")
+          PY
