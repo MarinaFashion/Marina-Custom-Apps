@@ -34,6 +34,6 @@ jobs:
           assert 'word-break:break-word' in js
           assert 'overflow:hidden;line-height:1.45' in js
           assert 'bsr_apply_columns($table, side, prefs);' in js
-          assert '0.53.15' in Path("pyproject.toml").read_text()
+          assert "0.53.16" in Path("pyproject.toml").read_text()
           print("Selected totals and resizable table text containment invariants passed")
           PY
