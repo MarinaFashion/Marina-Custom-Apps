@@ -1,0 +1,39 @@
+name: Bank GL selected totals and text containment
+on:
+  push:
+    branches: [bank-selection-wrap-v0.53.15, main]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate JavaScript and UI invariants
+        run: |
+          node --check marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js
+          python - <<'PY'
+          from pathlib import Path
+          js=Path("marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js").read_text()
+          assert js.count('class="bsr-row-select"') == 2
+          assert js.count('<th>${__("Select")}</th>') == 2
+          assert 'function bsr_bind_selection(frm)' in js
+          assert '$wrapper.find(".bsr-row-select").on("change", update)' in js
+          assert 'lookup.get(key)' in js
+          assert 'bsr-selection-difference' in js
+          assert 'const BSR_COLUMN_DEFAULTS = [65, 74, 100, 165, 145, 270, 140, 105]' in js
+          assert 'saved.visible.length === 7' in js
+          assert "const $cells = $(this).children()" in js
+          assert 'if ($cells.length !== 8) return' in js
+          assert 'index === 0 || index === 6 || index === 7' in js
+          assert 'Number(column) === 7' in js
+          assert 'bsr-row-select").on("change"' in js
+          assert 'word-break:break-word' in js
+          assert 'overflow:hidden;line-height:1.45' in js
+          assert 'bsr_apply_columns($table, side, prefs);' in js
+          assert '0.53.15' in Path("pyproject.toml").read_text()
+          print("Selected totals and resizable table text containment invariants passed")
+          PY
