@@ -26,7 +26,7 @@ jobs:
           js=Path("marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js").read_text()
           service=Path("marina_custom_apps/pos_reconciliation/bank_statement_gl_reconciliation_service.py").read_text()
           assert '<th>${__("Row #")}</th>' not in js
-          assert 'colspan="7"' in js
+          assert 'colspan="8"' in js
           assert 'row.row_no' in js, "retain internal manual match row numbers"
           assert "white-space:normal !important" in js
           assert "text-overflow:ellipsis" not in js
