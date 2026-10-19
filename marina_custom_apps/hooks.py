@@ -18,8 +18,8 @@ doc_events = {
         "before_submit": "marina_custom_apps.pos_reconciliation.journal_entry_line_references.before_submit",
         "before_cancel": "marina_custom_apps.pos_reconciliation.accounting_service.validate_generated_journal_entry_before_cancel",
         "on_submit": "marina_custom_apps.pos_reconciliation.accounting_service.on_journal_entry_submit",
-        "on_cancel": "marina_custom_apps.pos_reconciliation.accounting_service.on_journal_entry_cancel",
-        "on_trash": "marina_custom_apps.pos_reconciliation.accounting_service.on_journal_entry_trash",
+        "on_cancel": "marina_custom_apps.pos_reconciliation.journal_entry_reconciliation_cleanup.on_cancel",
+        "on_trash": "marina_custom_apps.pos_reconciliation.journal_entry_reconciliation_cleanup.on_trash",
     },
     "Stock Reconciliation": {
         "on_submit": "marina_custom_apps.cycle_count.stock_reconciliation_events.on_submit",

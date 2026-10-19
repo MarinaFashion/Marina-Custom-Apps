@@ -20,10 +20,7 @@ REASONS = {
 
 
 def _assert_manager():
-    user = frappe.session.user
-    roles = set(frappe.get_roles(user))
-    if user != "Administrator" and not (roles & {"Accounts Manager", "System Manager"}):
-        frappe.throw(_("Accounts Manager permission is required to manage reconciliation exclusions."), frappe.PermissionError)
+    """Authorization comes from ERPNext DocType Write permissions."""
     if not frappe.has_permission("Bank Statement Reconciliation", "write"):
         frappe.throw(_("Write access to Bank Statement Reconciliation is required."), frappe.PermissionError)
     if not frappe.has_permission(DOCTYPE, "write"):

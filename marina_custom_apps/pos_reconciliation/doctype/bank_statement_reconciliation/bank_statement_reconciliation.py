@@ -23,7 +23,12 @@ class BankStatementReconciliation(Document):
 def get_workspace(bank_account, tolerance=None, from_date=None, to_date=None, reference=None):
     if not frappe.has_permission("Bank Statement Reconciliation", "read"):
         frappe.throw(_("You are not permitted to view Bank Statement Reconciliation."), frappe.PermissionError)
-    return get_reconciliation_workspace(bank_account, tolerance, from_date, to_date, reference)
+    result = get_reconciliation_workspace(bank_account, tolerance, from_date, to_date, reference)
+    result["can_exclude"] = (
+        frappe.has_permission("Bank Statement Reconciliation", "write")
+        and frappe.has_permission("Bank Reconciliation Exclusion", "write")
+    )
+    return result
 
 
 @frappe.whitelist()

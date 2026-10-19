@@ -47,7 +47,7 @@ function bsr_load(frm) {
 }
 
 function bsr_render(frm) {
-    const canExclude = frappe.user.has_role("Accounts Manager") || frappe.user.has_role("System Manager");
+    const canExclude = Boolean(state.can_exclude);
     const field = frm.fields_dict.workspace_html;
     if (!field || !field.$wrapper) return;
     const state = frm.__bsr || {bank_rows: [], gl_rows: [], matches: [], counts: {}};
