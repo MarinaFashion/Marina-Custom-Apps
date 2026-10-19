@@ -94,6 +94,24 @@ def _voucher_reference_map(rows):
         for row in frappe.get_all("Journal Entry", filters={"name": ["in", journal_names]}, fields=fields, limit_page_length=0):
             out[("Journal Entry", row.name)] = cstr(row.get("cheque_no")).strip()
 
+    # GL Entry.voucher_detail_no identifies the originating Journal Entry Account row.
+    # Never infer this link from an amount or account: identical amounts can repeat.
+    line_ids = list({
+        row.voucher_detail_no for row in rows
+        if row.voucher_type == "Journal Entry" and row.voucher_detail_no
+    })
+    if line_ids and frappe.get_meta("Journal Entry Account").has_field("custom_bank_reference_number"):
+        for item in frappe.get_all(
+            "Journal Entry Account",
+            filters={"name": ["in", line_ids]},
+            fields=["name", "parent", "custom_bank_reference_number"],
+            limit_page_length=0,
+        ):
+            if item.custom_bank_reference_number:
+                out[("Journal Entry Line", item.parent, item.name)] = cstr(
+                    item.custom_bank_reference_number
+                ).strip()
+
     return out
 
 
@@ -160,6 +178,7 @@ def _load_gl_rows(bank_account):
             "posting_date",
             "voucher_type",
             "voucher_no",
+            "voucher_detail_no",
             "debit",
             "credit",
             "remarks",
@@ -178,7 +197,9 @@ def _load_gl_rows(bank_account):
 
     output = []
     for row in rows:
-        reference = references.get((row.voucher_type, row.voucher_no), "")
+        reference = (references.get(("Journal Entry Line", row.voucher_no, row.voucher_detail_no))
+                     if row.voucher_type == "Journal Entry" else None)
+        reference = reference or references.get((row.voucher_type, row.voucher_no), "")
         output.append(
             frappe._dict(
                 name=row.name,
