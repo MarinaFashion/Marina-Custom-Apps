@@ -27,7 +27,14 @@ jobs:
           service=Path("marina_custom_apps/pos_reconciliation/bank_statement_gl_reconciliation_service.py").read_text()
           js=Path("marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js").read_text()
           patch=Path("marina_custom_apps/patches/v0_53_12/add_journal_entry_line_bank_reference.py").read_text()
+          hook=Path("marina_custom_apps/pos_reconciliation/journal_entry_line_references.py").read_text()
+          hooks=Path("marina_custom_apps/hooks.py").read_text()
           assert "custom_bank_reference_number" in patch
+          assert 'journal_entry_line_references.before_submit' in hooks
+          assert 'validate_generated_journal_entry_before_submit(doc, method)' in hook
+          assert 'row.reference_detail_no = row.name' in hook
+          assert 'row.get("reference_type") or row.get("reference_name")' in hook
+          assert 'row.reference_detail_no != row.name' in hook
           assert '"voucher_detail_no"' in service
           assert '"Journal Entry Account"' in service
           assert '("Journal Entry Line", item.parent, item.name)' in service
@@ -50,7 +57,9 @@ jobs:
               __getattr__=dict.__getitem__
           refs={("Journal Entry","JE-1"):"HEAD",("Journal Entry Line","JE-1","ROW-1"):"LINE",("Payment Entry","PE-1"):"PE-REF"}
           assert resolve(Row(voucher_type="Journal Entry",voucher_no="JE-1",voucher_detail_no="ROW-1"),refs)=="LINE"
-          assert resolve(Row(voucher_type="Journal Entry",voucher_no="JE-1",voucher_detail_no="ROW-2"),refs)=="HEAD"
+          refs[("Journal Entry Line","JE-1","ROW-2")]="SECOND-LINE"
+          assert resolve(Row(voucher_type="Journal Entry",voucher_no="JE-1",voucher_detail_no="ROW-2"),refs)=="SECOND-LINE"
+          assert resolve(Row(voucher_type="Journal Entry",voucher_no="JE-1",voucher_detail_no="ROW-3"),refs)=="HEAD"
           assert resolve(Row(voucher_type="Payment Entry",voucher_no="PE-1",voucher_detail_no=None),refs)=="PE-REF"
           assert "0.53.12" in Path("pyproject.toml").read_text()
           assert "0.53.12" in Path("marina_custom_apps/__init__.py").read_text()
