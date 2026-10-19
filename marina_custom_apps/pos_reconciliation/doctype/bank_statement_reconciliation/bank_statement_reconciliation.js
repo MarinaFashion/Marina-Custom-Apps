@@ -128,8 +128,9 @@ function bsr_render(frm) {
         <div class="bsr-grid">
             <div class="bsr-panel">
                 <div class="bsr-panel-title">${__("Unreconciled Bank Statement")}</div>
+                <button type="button" class="btn btn-xs btn-default bsr-columns-button" data-side="bank">${__("Columns")}</button>
                 <div class="bsr-table-wrap">
-                    <table class="table table-bordered table-hover bsr-table">
+                    <table class="table table-bordered table-hover bsr-table bsr-config-table" data-side="bank">
                         <thead><tr>
                             <th>${__("Actions")}</th>
                             <th>${__("Date")}</th>
@@ -146,8 +147,9 @@ function bsr_render(frm) {
 
             <div class="bsr-panel">
                 <div class="bsr-panel-title">${__("Unreconciled GL Entries")}</div>
+                <button type="button" class="btn btn-xs btn-default bsr-columns-button" data-side="gl">${__("Columns")}</button>
                 <div class="bsr-table-wrap">
-                    <table class="table table-bordered table-hover bsr-table">
+                    <table class="table table-bordered table-hover bsr-table bsr-config-table" data-side="gl">
                         <thead><tr>
                             <th>${__("Actions")}</th>
                             <th>${__("Date")}</th>
@@ -186,6 +188,7 @@ function bsr_render(frm) {
     `);
 
     bsr_bind(frm);
+    bsr_setup_columns(frm);
 }
 
 function bsr_bind(frm) {
@@ -529,10 +532,124 @@ function bsr_styles() {
         .bsr-table-wrap{overflow:auto;max-height:520px;}
         .bsr-table{margin:0;min-width:760px;}
         .bsr-table th,.bsr-table td{font-size:11px;vertical-align:middle !important;white-space:nowrap;}
-        .bsr-table td.bsr-description{min-width:180px;max-width:320px;white-space:normal !important;overflow-wrap:anywhere;word-break:normal;line-height:1.4;}
+        .bsr-config-table{table-layout:fixed;min-width:0;width:max-content;}\n        .bsr-config-table th,.bsr-config-table td{box-sizing:border-box;overflow-wrap:anywhere;}\n        .bsr-config-table td.bsr-description{white-space:normal !important;overflow-wrap:anywhere;word-break:normal;line-height:1.4;}\n        .bsr-col-resize{position:absolute;right:0;top:0;bottom:0;width:8px;cursor:col-resize;z-index:2;}\n        .bsr-config-table th{position:relative;}\n        .bsr-columns-button{margin-bottom:6px;}\n        .bsr-columns-menu{display:flex;flex-wrap:wrap;gap:8px;padding:8px;margin-bottom:8px;border:1px solid var(--border-color);border-radius:5px;}
         .bsr-match-cell{min-width:95px;}
         .bsr-match-input{width:100%;min-width:75px;text-align:center;}
         @media(max-width:1200px){.bsr-grid{grid-template-columns:1fr;}.bsr-filter-grid{grid-template-columns:1fr 1fr;}}
         @media(max-width:700px){.bsr-summary-row{grid-template-columns:1fr 1fr;}.bsr-filter-grid{grid-template-columns:1fr;}}
     </style>`;
+}
+
+
+const BSR_COLUMN_NAMES = ["Actions", "Date", "Transaction ID", "Reference #", "Description", "Amount", "Match #"];
+const BSR_COLUMN_DEFAULTS = [74, 100, 165, 145, 270, 112, 105];
+
+function bsr_column_key(side) {
+    const user = (frappe.session && frappe.session.user) || "unknown";
+    return "marina_bsr_columns_v1:" + user + ":" + side;
+}
+
+function bsr_column_preferences(side) {
+    const fallback = {visible: [true, true, true, true, true, true, true], widths: BSR_COLUMN_DEFAULTS.slice()};
+    try {
+        const saved = JSON.parse(localStorage.getItem(bsr_column_key(side)) || "null");
+        if (!saved || !Array.isArray(saved.visible) || !Array.isArray(saved.widths)
+            || saved.visible.length !== 7 || saved.widths.length !== 7) return fallback;
+        return {
+            visible: saved.visible.map((v, i) => i === 5 || i === 6 ? true : Boolean(v)),
+            widths: saved.widths.map((w, i) => Math.max(64, Math.min(800, Number(w) || BSR_COLUMN_DEFAULTS[i]))),
+        };
+    } catch (e) { return fallback; }
+}
+
+function bsr_save_column_preferences(side, prefs) {
+    try { localStorage.setItem(bsr_column_key(side), JSON.stringify(prefs)); }
+    catch (e) { frappe.show_alert({message: __("Could not save column settings in this browser."), indicator: "orange"}); }
+}
+
+function bsr_apply_columns($table, side, prefs) {
+    $table.find("colgroup").remove();
+    const $group = $('<colgroup></colgroup>');
+    prefs.widths.forEach((width, i) => {
+        const $col = $("<col>");
+        $col.css("width", width + "px");
+        if (!prefs.visible[i]) $col.css("visibility", "collapse");
+        $group.append($col);
+    });
+    $table.prepend($group);
+    let total = 0;
+    for (let i = 0; i < 7; i++) {
+        const show = prefs.visible[i], width = prefs.widths[i];
+        $table.find("tr").each(function () {
+            const $cells = $(this).children();
+            if ($cells.length !== 7) return; // Keep full-width empty-state messages.
+            $cells.eq(i).toggle(show).css("width", show ? width + "px" : "");
+        });
+        if (show) total += width;
+    }
+    $table.css("width", total + "px");
+    $table.find("thead th").each(function (index) {
+        const $th = $(this);
+        $th.find(".bsr-col-resize").remove();
+        if (!prefs.visible[index]) return;
+        $("<span class='bsr-col-resize' aria-label='Resize column'></span>")
+            .appendTo($th)
+            .on("pointerdown", function (event) {
+                if (event.button !== 0) return;
+                event.preventDefault();
+                const startX = event.clientX, initial = prefs.widths[index];
+                const ns = ".bsrresize" + side;
+                $(document).on("pointermove" + ns, function (moveEvent) {
+                    prefs.widths[index] = Math.max(64, Math.min(800, initial + moveEvent.clientX - startX));
+                    // Resize only table columns, not every transaction row, on pointer movement.
+                    $table.children("colgroup").children("col").eq(index)
+                        .css("width", prefs.widths[index] + "px");
+                    const visibleWidth = prefs.widths.reduce(
+                        (sum, width, i) => sum + (prefs.visible[i] ? width : 0), 0
+                    );
+                    $table.css("width", visibleWidth + "px");
+                }).one("pointerup" + ns + " pointercancel" + ns, function () {
+                    $(document).off(ns);
+                    bsr_save_column_preferences(side, prefs);
+                });
+            });
+    });
+}
+
+function bsr_setup_columns(frm) {
+    const $wrapper = frm.fields_dict.workspace_html.$wrapper;
+    $wrapper.find(".bsr-config-table").each(function () {
+        const $table = $(this), side = $table.attr("data-side");
+        bsr_apply_columns($table, side, bsr_column_preferences(side));
+    });
+    $wrapper.find(".bsr-columns-button").on("click", function () {
+        const side = $(this).attr("data-side");
+        const $table = $wrapper.find(".bsr-config-table[data-side='" + side + "']");
+        const $panel = $(this).closest(".bsr-panel");
+        $panel.find(".bsr-columns-menu").remove();
+        const prefs = bsr_column_preferences(side);
+        const $menu = $('<div class="bsr-columns-menu"></div>');
+        BSR_COLUMN_NAMES.forEach((name, index) => {
+            const $label = $('<label style="margin:0;font-weight:normal;"></label>');
+            const $check = $('<input type="checkbox" style="margin-right:4px;">')
+                .prop("checked", prefs.visible[index])
+                .prop("disabled", index === 5 || index === 6);
+            $check.on("change", function () {
+                prefs.visible[index] = $(this).prop("checked");
+                bsr_save_column_preferences(side, prefs);
+                bsr_apply_columns($table, side, prefs);
+            });
+            $label.append($check).append(document.createTextNode(__(name)));
+            $menu.append($label);
+        });
+        const $reset = $('<button type="button" class="btn btn-xs btn-default"></button>').text(__("Reset"));
+        $reset.on("click", function () {
+            const reset = {visible: [true,true,true,true,true,true,true], widths: BSR_COLUMN_DEFAULTS.slice()};
+            bsr_save_column_preferences(side, reset);
+            bsr_apply_columns($table, side, reset);
+            $menu.remove();
+        });
+        $menu.append($reset);
+        $(this).after($menu);
+    });
 }

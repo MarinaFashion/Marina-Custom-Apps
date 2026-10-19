@@ -15,7 +15,7 @@ after_migrate = "marina_custom_apps.sales_forecasting.install.app_after_migrate"
 
 doc_events = {
     "Journal Entry": {
-        "before_submit": "marina_custom_apps.pos_reconciliation.accounting_service.validate_generated_journal_entry_before_submit",
+        "before_submit": "marina_custom_apps.pos_reconciliation.journal_entry_line_references.before_submit",
         "before_cancel": "marina_custom_apps.pos_reconciliation.accounting_service.validate_generated_journal_entry_before_cancel",
         "on_submit": "marina_custom_apps.pos_reconciliation.accounting_service.on_journal_entry_submit",
         "on_cancel": "marina_custom_apps.pos_reconciliation.accounting_service.on_journal_entry_cancel",

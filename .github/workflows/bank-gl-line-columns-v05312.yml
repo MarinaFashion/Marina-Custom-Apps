@@ -1,0 +1,67 @@
+name: Bank GL line references and table customization
+on:
+  push:
+    branches: [bank-gl-line-reference-columns-v0.53.12, main]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Syntax checks
+        run: |
+          python -m compileall -q marina_custom_apps/pos_reconciliation marina_custom_apps/patches/v0_53_12
+          node --check marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js
+      - name: Validate reference mapping and UI invariants
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          service=Path("marina_custom_apps/pos_reconciliation/bank_statement_gl_reconciliation_service.py").read_text()
+          js=Path("marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js").read_text()
+          patch=Path("marina_custom_apps/patches/v0_53_12/add_journal_entry_line_bank_reference.py").read_text()
+          hook=Path("marina_custom_apps/pos_reconciliation/journal_entry_line_references.py").read_text()
+          hooks=Path("marina_custom_apps/hooks.py").read_text()
+          assert "custom_bank_reference_number" in patch
+          assert 'journal_entry_line_references.before_submit' in hooks
+          assert 'validate_generated_journal_entry_before_submit(doc, method)' in hook
+          assert 'row.reference_detail_no = row.name' in hook
+          assert 'row.get("reference_type") or row.get("reference_name")' in hook
+          assert 'row.reference_detail_no != row.name' in hook
+          assert '"voucher_detail_no"' in service
+          assert '"Journal Entry Account"' in service
+          assert '("Journal Entry Line", item.parent, item.name)' in service
+          assert '"reference_number": _gl_reference(row, ref_map)' in service
+          assert "for row in gl_rows" in service
+          assert "bsr_setup_columns(frm);" in js
+          assert "bsr-save-column" not in js
+          assert "localStorage.setItem" in js
+          assert 'prefs.visible[index]' in js
+          assert 'bsr-col-resize' in js
+          assert 'index === 5 || index === 6' in js
+          assert "bsr_apply_columns($table, side, prefs);" in js
+          assert 'bsr-config-table' in js
+          tree=ast.parse(service)
+          fn=next(node for node in tree.body if isinstance(node,ast.FunctionDef) and node.name=="_gl_reference")
+          namespace={}
+          exec(compile(ast.Module(body=[fn],type_ignores=[]),"<test>","exec"),namespace)
+          resolve=namespace["_gl_reference"]
+          class Row(dict):
+              __getattr__=dict.__getitem__
+          refs={("Journal Entry","JE-1"):"HEAD",("Journal Entry Line","JE-1","ROW-1"):"LINE",("Payment Entry","PE-1"):"PE-REF"}
+          assert resolve(Row(voucher_type="Journal Entry",voucher_no="JE-1",voucher_detail_no="ROW-1"),refs)=="LINE"
+          refs[("Journal Entry Line","JE-1","ROW-2")]="SECOND-LINE"
+          assert resolve(Row(voucher_type="Journal Entry",voucher_no="JE-1",voucher_detail_no="ROW-2"),refs)=="SECOND-LINE"
+          assert resolve(Row(voucher_type="Journal Entry",voucher_no="JE-1",voucher_detail_no="ROW-3"),refs)=="HEAD"
+          assert resolve(Row(voucher_type="Payment Entry",voucher_no="PE-1",voucher_detail_no=None),refs)=="PE-REF"
+          assert "0.53.12" in Path("pyproject.toml").read_text()
+          assert "0.53.12" in Path("marina_custom_apps/__init__.py").read_text()
+          print("GL row reference precedence, fallback and UI invariants pass")
+          PY

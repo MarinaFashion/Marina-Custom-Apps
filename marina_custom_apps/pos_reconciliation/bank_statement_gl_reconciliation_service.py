@@ -94,7 +94,36 @@ def _voucher_reference_map(rows):
         for row in frappe.get_all("Journal Entry", filters={"name": ["in", journal_names]}, fields=fields, limit_page_length=0):
             out[("Journal Entry", row.name)] = cstr(row.get("cheque_no")).strip()
 
+    # GL Entry.voucher_detail_no identifies the originating Journal Entry Account row.
+    # Never infer this link from an amount or account: identical amounts can repeat.
+    line_ids = list({
+        row.voucher_detail_no for row in rows
+        if row.voucher_type == "Journal Entry" and row.voucher_detail_no
+    })
+    if line_ids and frappe.get_meta("Journal Entry Account").has_field("custom_bank_reference_number"):
+        for item in frappe.get_all(
+            "Journal Entry Account",
+            filters={"name": ["in", line_ids]},
+            fields=["name", "parent", "custom_bank_reference_number"],
+            limit_page_length=0,
+        ):
+            if item.custom_bank_reference_number:
+                out[("Journal Entry Line", item.parent, item.name)] = cstr(
+                    item.custom_bank_reference_number
+                ).strip()
+
     return out
+
+
+def _gl_reference(row, references):
+    """Resolve JE line reference first; preserve header and Payment Entry fallback."""
+    if row.voucher_type == "Journal Entry":
+        detail = row.get("voucher_detail_no")
+        if detail:
+            line_reference = references.get(("Journal Entry Line", row.voucher_no, detail))
+            if line_reference:
+                return line_reference
+    return references.get((row.voucher_type, row.voucher_no), "")
 
 
 def _load_bank_rows(bank_account):
@@ -160,6 +189,7 @@ def _load_gl_rows(bank_account):
             "posting_date",
             "voucher_type",
             "voucher_no",
+            "voucher_detail_no",
             "debit",
             "credit",
             "remarks",
@@ -178,7 +208,7 @@ def _load_gl_rows(bank_account):
 
     output = []
     for row in rows:
-        reference = references.get((row.voucher_type, row.voucher_no), "")
+        reference = _gl_reference(row, references)
         output.append(
             frappe._dict(
                 name=row.name,
@@ -415,7 +445,7 @@ def _current_gl_rows(names, bank_account):
             "voucher_type": ["in", ["Payment Entry", "Journal Entry"]],
             "is_cancelled": 0,
         },
-        fields=["name","posting_date","voucher_type","voucher_no","debit","credit","remarks"],
+        fields=["name","posting_date","voucher_type","voucher_no","voucher_detail_no","debit","credit","remarks"],
         limit_page_length=0,
     )
     if len(rows) != len(names):
@@ -487,7 +517,7 @@ def save_matches(bank_account, matches, tolerance=None):
         if match_type == "Auto Reference":
             references = {_normalize_reference(row.reference_number) for row in bank_rows}
             references.update(
-                _normalize_reference(ref_map.get((row.voucher_type, row.voucher_no)))
+                _normalize_reference(_gl_reference(row, ref_map))
                 for row in gl_rows
             )
             if len(references) != 1 or not next(iter(references)):
@@ -535,7 +565,7 @@ def save_matches(bank_account, matches, tolerance=None):
                     "posting_date": row.posting_date,
                     "voucher_type": row.voucher_type,
                     "voucher_no": row.voucher_no,
-                    "reference_number": ref_map.get((row.voucher_type, row.voucher_no), ""),
+                    "reference_number": _gl_reference(row, ref_map),
                     "description": row.remarks,
                     "amount": _gl_signed_amount(row),
                 },
