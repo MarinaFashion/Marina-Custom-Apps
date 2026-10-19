@@ -74,8 +74,8 @@ jobs:
                   left = breaks[0]
                   right = len(seg)-breaks[0]-1
                   assert abs(left-right) <= 1, (str(path), seg, left, right)
-          assert "0.53.10" in Path("pyproject.toml").read_text()
-          assert '0.53.10' in Path("marina_custom_apps/__init__.py").read_text()
+          assert "0.53.15" in Path("pyproject.toml").read_text()
+          assert "0.53.15" in Path("marina_custom_apps/__init__.py").read_text()
           print("26 DocTypes pass layout, original field metadata, child table and version checks")
           PY
       - name: Python syntax
