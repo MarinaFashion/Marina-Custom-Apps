@@ -581,7 +581,9 @@ function bsr_apply_columns($table, side, prefs) {
     for (let i = 0; i < 7; i++) {
         const show = prefs.visible[i], width = prefs.widths[i];
         $table.find("tr").each(function () {
-            $(this).children().eq(i).toggle(show).css("width", show ? width + "px" : "");
+            const $cells = $(this).children();
+            if ($cells.length !== 7) return; // Keep full-width empty-state messages.
+            $cells.eq(i).toggle(show).css("width", show ? width + "px" : "");
         });
         if (show) total += width;
     }
@@ -599,7 +601,13 @@ function bsr_apply_columns($table, side, prefs) {
                 const ns = ".bsrresize" + side;
                 $(document).on("pointermove" + ns, function (moveEvent) {
                     prefs.widths[index] = Math.max(64, Math.min(800, initial + moveEvent.clientX - startX));
-                    bsr_apply_columns($table, side, prefs);
+                    // Resize only table columns, not every transaction row, on pointer movement.
+                    $table.children("colgroup").children("col").eq(index)
+                        .css("width", prefs.widths[index] + "px");
+                    const visibleWidth = prefs.widths.reduce(
+                        (sum, width, i) => sum + (prefs.visible[i] ? width : 0), 0
+                    );
+                    $table.css("width", visibleWidth + "px");
                 }).one("pointerup" + ns + " pointercancel" + ns, function () {
                     $(document).off(ns);
                     bsr_save_column_preferences(side, prefs);
