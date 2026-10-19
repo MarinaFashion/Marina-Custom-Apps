@@ -59,6 +59,7 @@ function bsr_render(frm) {
     const bankBody = bankRows.length
         ? bankRows.map((row) => `
             <tr data-bank-name="${bsr_escape(row.name)}">
+                <td class="bsr-select-cell"><input type="checkbox" class="bsr-row-select" aria-label="${__("Select Bank row")}"></td>
                 <td>${canExclude ? `<button class="btn btn-xs btn-default bsr-exclude-row" data-source-type="Bank Statement" data-record-name="${bsr_escape(row.name)}">${__("Exclude")}</button>` : "—"}</td>
                 <td>${bsr_escape(row.date || "")}</td>
                 <td><a href="${bsr_escape(bsr_transaction_href("Marina Bank Statement Transaction", row.name))}" target="_blank" rel="noopener noreferrer" class="bsr-open-doc">${bsr_escape(row.transaction_id || row.name)}</a></td>
@@ -68,11 +69,12 @@ function bsr_render(frm) {
                 <td class="bsr-match-cell"><input type="number" min="1" max="999999" step="1" class="form-control input-xs bsr-match-input" placeholder="${__("Match #")}" aria-label="${__("Match #")}"></td>
             </tr>
         `).join("")
-        : `<tr><td colspan="7" class="text-muted text-center">${__("No unreconciled Bank Statement rows.")}</td></tr>`;
+        : `<tr><td colspan="8" class="text-muted text-center">${__("No unreconciled Bank Statement rows.")}</td></tr>`;
 
     const glBody = glRows.length
         ? glRows.map((row) => `
             <tr data-gl-name="${bsr_escape(row.name)}">
+                <td class="bsr-select-cell"><input type="checkbox" class="bsr-row-select" aria-label="${__("Select GL row")}"></td>
                 <td>${canExclude ? `<button class="btn btn-xs btn-default bsr-exclude-row" data-source-type="GL Entry" data-record-name="${bsr_escape(row.name)}">${__("Exclude")}</button>` : "—"}</td>
                 <td>${bsr_escape(row.date || "")}</td>
                 <td><a href="${bsr_escape(bsr_transaction_href("GL Entry", row.name))}" target="_blank" rel="noopener noreferrer" class="bsr-open-doc">${bsr_escape(row.transaction_id || row.name)}</a></td>
@@ -82,7 +84,7 @@ function bsr_render(frm) {
                 <td class="bsr-match-cell"><input type="number" min="1" max="999999" step="1" class="form-control input-xs bsr-match-input" placeholder="${__("Match #")}" aria-label="${__("Match #")}"></td>
             </tr>
         `).join("")
-        : `<tr><td colspan="7" class="text-muted text-center">${__("No unreconciled GL Entries.")}</td></tr>`;
+        : `<tr><td colspan="8" class="text-muted text-center">${__("No unreconciled GL Entries.")}</td></tr>`;
 
     const matchBody = matches.length
         ? matches.map((match, idx) => `
@@ -125,13 +127,16 @@ function bsr_render(frm) {
             <span class="indicator-pill blue">${matches.length} ${__("Prepared Matches")}</span>
         </div>
 
+        <div class="bsr-selection-summary">${__("Selected Difference")}: <strong class="bsr-selection-difference">${bsr_money(0)}</strong></div>
         <div class="bsr-grid">
             <div class="bsr-panel">
                 <div class="bsr-panel-title">${__("Unreconciled Bank Statement")}</div>
                 <button type="button" class="btn btn-xs btn-default bsr-columns-button" data-side="bank">${__("Columns")}</button>
+                <div class="bsr-selected-card" data-selected-side="bank">${__("Selected Bank Amount")}: <strong class="bsr-selected-total">0.00</strong> <span class="bsr-selected-count">(0)</span></div>
                 <div class="bsr-table-wrap">
                     <table class="table table-bordered table-hover bsr-table bsr-config-table" data-side="bank">
                         <thead><tr>
+                            <th>${__("Select")}</th>
                             <th>${__("Actions")}</th>
                             <th>${__("Date")}</th>
                             <th>${__("Transaction ID")}</th>
@@ -150,9 +155,11 @@ function bsr_render(frm) {
             <div class="bsr-panel">
                 <div class="bsr-panel-title">${__("Unreconciled GL Entries")}</div>
                 <button type="button" class="btn btn-xs btn-default bsr-columns-button" data-side="gl">${__("Columns")}</button>
+                <div class="bsr-selected-card" data-selected-side="gl">${__("Selected GL Amount")}: <strong class="bsr-selected-total">0.00</strong> <span class="bsr-selected-count">(0)</span></div>
                 <div class="bsr-table-wrap">
                     <table class="table table-bordered table-hover bsr-table bsr-config-table" data-side="gl">
                         <thead><tr>
+                            <th>${__("Select")}</th>
                             <th>${__("Actions")}</th>
                             <th>${__("Date")}</th>
                             <th>${__("Transaction ID")}</th>
@@ -194,12 +201,13 @@ function bsr_render(frm) {
     bsr_bind(frm);
     bsr_setup_columns(frm);
     bsr_bind_table_search(frm);
+    bsr_bind_selection(frm);
 }
 
 // Independent, display-only column filtering for Bank and GL tables.
 function bsr_column_filter_header(side) {
     return '<tr class="bsr-column-filter-row">' + BSR_COLUMN_NAMES.map((name, i) => {
-        if (i === 0) return '<td></td>'; // Actions has no searchable value.
+        if (i < 2) return '<td></td>'; // Select and Actions are not searchable.
         return '<td><input type="text" class="form-control input-xs bsr-column-search" ' +
             'data-side="' + side + '" data-column="' + i + '" ' +
             'autocomplete="off" placeholder="' + bsr_escape(__("Search")) + '" ' +
@@ -215,7 +223,7 @@ function bsr_apply_table_search(frm, side) {
         const $row = $(this);
         const visible = Object.entries(filters).every(([column, needle]) => {
             const $cell = $row.children().eq(Number(column));
-            const value = Number(column) === 6
+            const value = Number(column) === 7
                 ? String($cell.find(".bsr-match-input").val() || "")
                 : $cell.text();
             return value.toLocaleLowerCase().includes(needle.toLocaleLowerCase());
@@ -242,7 +250,7 @@ function bsr_bind_table_search(frm) {
     });
     $wrapper.find(".bsr-match-input").on("input", function () {
         const side = $(this).closest(".bsr-config-table").attr("data-side");
-        if ((frm.__bsr_table_search[side] || {})["6"]) bsr_apply_table_search(frm, side);
+        if ((frm.__bsr_table_search[side] || {})["7"]) bsr_apply_table_search(frm, side);
     });
     for (const side of ["bank", "gl"]) bsr_apply_table_search(frm, side);
 }
@@ -588,9 +596,21 @@ function bsr_styles() {
         .bsr-table-wrap{overflow:auto;max-height:520px;}
         .bsr-table{margin:0;min-width:760px;}
         .bsr-table th,.bsr-table td{font-size:11px;vertical-align:middle !important;white-space:nowrap;}
-        .bsr-config-table{table-layout:fixed;min-width:0;width:max-content;}\n        .bsr-config-table th,.bsr-config-table td{box-sizing:border-box;overflow-wrap:anywhere;}\n        .bsr-column-filter-row td{padding:3px !important;background:var(--control-bg);vertical-align:middle !important;}
+        .bsr-config-table{table-layout:fixed;min-width:0;width:max-content;}
+        .bsr-config-table th,.bsr-config-table td{box-sizing:border-box;white-space:normal !important;overflow-wrap:anywhere;word-break:break-word;overflow:hidden;line-height:1.45;}
+        .bsr-config-table td a{white-space:normal !important;overflow-wrap:anywhere;word-break:break-word;}
+        .bsr-config-table td.text-right{overflow-wrap:anywhere;}
+        .bsr-config-table .bsr-select-cell{text-align:center;vertical-align:middle !important;}
+        .bsr-selected-card{background:var(--control-bg);border:1px solid var(--border-color);padding:8px 10px;border-radius:6px;margin:7px 0;font-size:12px;}
+        .bsr-selected-total{font-variant-numeric:tabular-nums;font-size:15px;}
+        .bsr-selected-count{color:var(--text-muted);}
+        .bsr-column-filter-row td{padding:3px !important;background:var(--control-bg);vertical-align:middle !important;}
         .bsr-column-search{width:100%;min-width:0;font-size:11px !important;padding:2px 4px !important;}
-        .bsr-config-table td.bsr-description{white-space:normal !important;overflow-wrap:anywhere;word-break:normal;line-height:1.4;}\n        .bsr-col-resize{position:absolute;right:0;top:0;bottom:0;width:8px;cursor:col-resize;z-index:2;}\n        .bsr-config-table th{position:relative;}\n        .bsr-columns-button{margin-bottom:6px;}\n        .bsr-columns-menu{display:flex;flex-wrap:wrap;gap:8px;padding:8px;margin-bottom:8px;border:1px solid var(--border-color);border-radius:5px;}
+        .bsr-config-table td.bsr-description{white-space:normal !important;overflow-wrap:anywhere;word-break:normal;line-height:1.4;}
+        .bsr-col-resize{position:absolute;right:0;top:0;bottom:0;width:8px;cursor:col-resize;z-index:2;}
+        .bsr-config-table th{position:relative;}
+        .bsr-columns-button{margin-bottom:6px;}
+        .bsr-columns-menu{display:flex;flex-wrap:wrap;gap:8px;padding:8px;margin-bottom:8px;border:1px solid var(--border-color);border-radius:5px;}
         .bsr-match-cell{min-width:95px;}
         .bsr-match-input{width:100%;min-width:75px;text-align:center;}
         @media(max-width:1200px){.bsr-grid{grid-template-columns:1fr;}.bsr-filter-grid{grid-template-columns:1fr 1fr;}}
@@ -599,8 +619,8 @@ function bsr_styles() {
 }
 
 
-const BSR_COLUMN_NAMES = ["Actions", "Date", "Transaction ID", "Reference #", "Description", "Amount", "Match #"];
-const BSR_COLUMN_DEFAULTS = [74, 100, 165, 145, 270, 112, 105];
+const BSR_COLUMN_NAMES = ["Select", "Actions", "Date", "Transaction ID", "Reference #", "Description", "Amount", "Match #"];
+const BSR_COLUMN_DEFAULTS = [65, 74, 100, 165, 145, 270, 140, 105];
 
 function bsr_column_key(side) {
     const user = (frappe.session && frappe.session.user) || "unknown";
@@ -608,13 +628,18 @@ function bsr_column_key(side) {
 }
 
 function bsr_column_preferences(side) {
-    const fallback = {visible: [true, true, true, true, true, true, true], widths: BSR_COLUMN_DEFAULTS.slice()};
+    const fallback = {visible: Array(8).fill(true), widths: BSR_COLUMN_DEFAULTS.slice()};
     try {
         const saved = JSON.parse(localStorage.getItem(bsr_column_key(side)) || "null");
-        if (!saved || !Array.isArray(saved.visible) || !Array.isArray(saved.widths)
-            || saved.visible.length !== 7 || saved.widths.length !== 7) return fallback;
+        if (!saved || !Array.isArray(saved.visible) || !Array.isArray(saved.widths)) return fallback;
+        // Preserve users\' existing seven-column preferences when adding Select.
+        if (saved.visible.length === 7 && saved.widths.length === 7) {
+            saved.visible.unshift(true);
+            saved.widths.unshift(BSR_COLUMN_DEFAULTS[0]);
+        }
+        if (saved.visible.length !== 8 || saved.widths.length !== 8) return fallback;
         return {
-            visible: saved.visible.map((v, i) => i === 5 || i === 6 ? true : Boolean(v)),
+            visible: saved.visible.map((v, i) => i === 0 || i === 6 || i === 7 ? true : Boolean(v)),
             widths: saved.widths.map((w, i) => Math.max(64, Math.min(800, Number(w) || BSR_COLUMN_DEFAULTS[i]))),
         };
     } catch (e) { return fallback; }
@@ -636,11 +661,11 @@ function bsr_apply_columns($table, side, prefs) {
     });
     $table.prepend($group);
     let total = 0;
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 8; i++) {
         const show = prefs.visible[i], width = prefs.widths[i];
         $table.find("tr").each(function () {
             const $cells = $(this).children();
-            if ($cells.length !== 7) return; // Keep full-width empty-state messages.
+            if ($cells.length !== 8) return; // Keep full-width empty-state messages.
             $cells.eq(i).toggle(show).css("width", show ? width + "px" : "");
         });
         if (show) total += width;
@@ -691,7 +716,7 @@ function bsr_setup_columns(frm) {
             const $label = $('<label style="margin:0;font-weight:normal;"></label>');
             const $check = $('<input type="checkbox" style="margin-right:4px;">')
                 .prop("checked", prefs.visible[index])
-                .prop("disabled", index === 5 || index === 6);
+                .prop("disabled", index === 0 || index === 6 || index === 7);
             $check.on("change", function () {
                 prefs.visible[index] = $(this).prop("checked");
                 bsr_save_column_preferences(side, prefs);
@@ -702,7 +727,7 @@ function bsr_setup_columns(frm) {
         });
         const $reset = $('<button type="button" class="btn btn-xs btn-default"></button>').text(__("Reset"));
         $reset.on("click", function () {
-            const reset = {visible: [true,true,true,true,true,true,true], widths: BSR_COLUMN_DEFAULTS.slice()};
+            const reset = {visible: Array(8).fill(true), widths: BSR_COLUMN_DEFAULTS.slice()};
             bsr_save_column_preferences(side, reset);
             bsr_apply_columns($table, side, reset);
             $menu.remove();
@@ -710,4 +735,34 @@ function bsr_setup_columns(frm) {
         $menu.append($reset);
         $(this).after($menu);
     });
+}
+
+
+function bsr_bind_selection(frm) {
+    const $wrapper = frm.fields_dict.workspace_html.$wrapper;
+    const update = () => {
+        const totals = {};
+        for (const side of ["bank", "gl"]) {
+            const $table = $wrapper.find('.bsr-config-table[data-side="' + side + '"]');
+            const rows = (frm.__bsr || {})[side === "bank" ? "bank_rows" : "gl_rows"] || [];
+            const lookup = new Map(rows.map(row => [String(row.name), Number(row.amount || 0)]));
+            let amount = 0, count = 0;
+            $table.find("tbody tr").each(function () {
+                const $tr = $(this);
+                if (!$tr.find(".bsr-row-select").prop("checked")) return;
+                const key = $tr.attr(side === "bank" ? "data-bank-name" : "data-gl-name");
+                if (!lookup.has(key)) return;
+                amount += lookup.get(key);
+                count++;
+            });
+            totals[side] = amount;
+            const $card = $wrapper.find('.bsr-selected-card[data-selected-side="' + side + '"]');
+            $card.find(".bsr-selected-total").text(bsr_money(Math.round(amount * 100) / 100));
+            $card.find(".bsr-selected-count").text("(" + count + " " + __("selected") + ")");
+        }
+        const difference = Math.round((totals.bank - totals.gl) * 100) / 100;
+        $wrapper.find(".bsr-selection-difference").text(bsr_money(difference));
+    };
+    $wrapper.find(".bsr-row-select").on("change", update);
+    update();
 }
