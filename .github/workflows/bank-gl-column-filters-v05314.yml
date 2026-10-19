@@ -1,0 +1,34 @@
+name: Bank GL independent column filters
+on:
+  push:
+    branches: [bank-gl-independent-column-filters-v0.53.14, main]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: JavaScript syntax
+        run: node --check marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js
+      - name: UI filtering invariants
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          js=Path('marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js').read_text()
+          assert 'bsr_column_filter_header("bank")' in js
+          assert 'bsr_column_filter_header("gl")' in js
+          assert 'function bsr_apply_table_search(frm, side)' in js
+          assert 'function bsr_bind_table_search(frm)' in js
+          assert 'bsr_bind_table_search(frm);' in js
+          assert 'tbody tr[data-bank-name], tbody tr[data-gl-name]' in js
+          assert 'frm.__bsr_table_search' in js
+          assert 'bsr_setup_columns(frm);' in js
+          assert 'bsr-apply-manual' in js and 'bsr-save' in js
+          assert '0.53.14' in Path('pyproject.toml').read_text()
+          assert '0.53.14' in Path('marina_custom_apps/__init__.py').read_text()
+          print('Independent bank/GL column-filter invariants passed')
+          PY
