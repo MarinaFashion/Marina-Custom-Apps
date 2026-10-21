@@ -597,6 +597,13 @@ function bsr_styles() {
         .bsr-table{margin:0;min-width:760px;}
         .bsr-table th,.bsr-table td{font-size:11px;vertical-align:middle !important;white-space:nowrap;}
         .bsr-config-table{table-layout:fixed;min-width:0;width:max-content;}
+        /* Pin both the column-label row and its per-column search row together
+           inside each independently scrollable Bank/GL table viewport. */
+        .bsr-config-table thead{position:sticky;top:0;z-index:5;background:var(--card-bg);}
+        .bsr-config-table thead th{background:var(--card-bg);}
+        .bsr-config-table thead .bsr-column-filter-row td{background:var(--control-bg);}
+        .bsr-config-table thead{box-shadow:0 1px 0 var(--border-color);}
+
         .bsr-config-table th,.bsr-config-table td{box-sizing:border-box;white-space:normal !important;overflow-wrap:anywhere;word-break:break-word;overflow:hidden;line-height:1.45;}
         .bsr-config-table td a{white-space:normal !important;overflow-wrap:anywhere;word-break:break-word;}
         .bsr-config-table td.text-right{overflow-wrap:anywhere;}
