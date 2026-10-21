@@ -700,19 +700,17 @@ function pos_recon_bind_pager($wrapper, start, page_length, total, callback) {
 
 
 function pos_recon_bind_doc_links($wrapper) {
-    $wrapper.find(".pos-recon-doc-link").on("click", function (event) {
-        event.preventDefault();
-        const doctype = $(this).attr("data-doctype");
-        const name = $(this).attr("data-name");
-        if (doctype && name) frappe.set_route("Form", doctype, name);
-    });
+    // Links now have real document URLs and open in another tab.
+    // Do not intercept clicks with frappe.set_route: that used to navigate
+    // the reconciliation screen instead of preserving the user's work.
 }
 
 
 function pos_recon_doc_link(doctype, name) {
-    return `<a href="#" class="pos-recon-doc-link" data-doctype="${pos_recon_escape(doctype)}" data-name="${pos_recon_escape(name)}">${pos_recon_escape(name)}</a>`;
+    const route = String(doctype).trim().toLowerCase().replace(/\\s+/g, "-");
+    const href = "/app/" + encodeURIComponent(route) + "/" + encodeURIComponent(String(name));
+    return `<a href="${pos_recon_escape(href)}" target="_blank" rel="noopener noreferrer" class="pos-recon-doc-link">${pos_recon_escape(name)}</a>`;
 }
-
 
 function pos_recon_render_loading($wrapper) {
     $wrapper.html(`<div class="text-muted small" style="padding:12px 0;">${__("Loading reconciliation data...")}</div>`);
