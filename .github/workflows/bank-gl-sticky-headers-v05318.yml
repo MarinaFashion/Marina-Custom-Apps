@@ -1,0 +1,31 @@
+name: Bank GL sticky headers v0.53.18
+on:
+  push:
+    branches: [bank-sticky-headers-v0.53.18, main]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate sticky table header implementation
+        run: |
+          node --check marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js
+          python - <<'PY'
+          from pathlib import Path
+          s=Path("marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js").read_text()
+          assert ".bsr-config-table thead tr:first-child > th{position:sticky !important;top:0;" in s
+          assert ".bsr-config-table thead tr.bsr-column-filter-row > td{position:sticky;top:var(--bsr-header-height, 33px)" in s
+          assert 'function bsr_setup_sticky_headers(frm)' in s
+          assert 'const observer = new ResizeObserver(update)' in s
+          assert 'observer.observe(header)' in s
+          assert 'bsr_setup_sticky_headers(frm);' in s
+          assert '(frm.__bsr_sticky_observers || []).forEach(observer => observer.disconnect())' in s
+          assert '.bsr-table-wrap{overflow:auto;max-height:520px;position:relative;}' in s
+          assert '0.53.18' in Path('pyproject.toml').read_text()
+          print('Sticky header static tests passed')
+          PY
