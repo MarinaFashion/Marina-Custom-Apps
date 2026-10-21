@@ -707,7 +707,7 @@ function pos_recon_bind_doc_links($wrapper) {
 
 
 function pos_recon_doc_link(doctype, name) {
-    const route = String(doctype).trim().toLowerCase().replace(/\\s+/g, "-");
+    const route = String(doctype).trim().toLowerCase().replace(/\s+/g, "-");
     const href = "/app/" + encodeURIComponent(route) + "/" + encodeURIComponent(String(name));
     return `<a href="${pos_recon_escape(href)}" target="_blank" rel="noopener noreferrer" class="pos-recon-doc-link">${pos_recon_escape(name)}</a>`;
 }
