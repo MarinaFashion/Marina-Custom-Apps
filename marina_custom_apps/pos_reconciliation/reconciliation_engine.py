@@ -376,23 +376,61 @@ def _existing_records_for_scope(bank_rows, alhamrani_rows):
     return list(found.values())
 
 
-def _material_change(current, proposed):
-    fields = (
+def _protected_change_details(current, proposed):
+    """Return changes that may affect a protected financial/source match.
+
+    Card mapping aliases and the resulting Card Type-only discrepancy are
+    descriptive, not accounting evidence. Never accept new source pairings,
+    settlement changes, amount changes, or unrelated match-state changes.
+    """
+    financial_fields = (
         "bank_transaction", "alhamrani_transaction", "bank_amount",
         "alhamrani_amount", "bank_commission_amount", "bank_commission_vat_amount",
         "settlement_number", "settlement_date", "bank_settlement_amount",
-        "card_type", "terminal_id", "discrepancy_fields",
+        "terminal_id",
     )
-    if any(not _value_equal(current.get(f), proposed.get(f)) for f in fields):
-        return True
-    # The engine's initial pass sets "Not Settled"; statement integration
-    # promotes it back to Fully Matching in the same database transaction.
+    changes = [
+        (field, current.get(field), proposed.get(field))
+        for field in financial_fields
+        if not _value_equal(current.get(field), proposed.get(field))
+    ]
+
+    def non_card_discrepancies(value):
+        return sorted(
+            part.strip() for part in cstr(value).split(",")
+            if part.strip() and part.strip() != "Card Type"
+        )
+
+    old_discrepancies = non_card_discrepancies(current.get("discrepancy_fields"))
+    new_discrepancies = non_card_discrepancies(proposed.get("discrepancy_fields"))
+    if old_discrepancies != new_discrepancies:
+        changes.append(("discrepancy_fields", current.get("discrepancy_fields"), proposed.get("discrepancy_fields")))
+
+    # The statement integration promotes Not Settled statuses after matching.
     equivalences = {
         "Fully Matching": "Matching Not Settled",
         "Bank Only - Settled": "Bank Only - Not Settled",
     }
     old_status = equivalences.get(cstr(current.match_status), cstr(current.match_status))
-    return old_status != cstr(proposed.get("match_status"))
+    new_status = cstr(proposed.get("match_status"))
+    if old_status != new_status:
+        # Only the classification transition from/to Card Type discrepancy
+        # is safe. Even then, the underlying non-card discrepancies must agree.
+        card_classification_statuses = {"Discrepancy", "Matching Not Settled"}
+        old_has_card = "Card Type" in [x.strip() for x in cstr(current.get("discrepancy_fields")).split(",")]
+        new_has_card = "Card Type" in [x.strip() for x in cstr(proposed.get("discrepancy_fields")).split(",")]
+        card_only_transition = (
+            {old_status, new_status} <= card_classification_statuses
+            and old_discrepancies == new_discrepancies == []
+            and old_has_card != new_has_card
+        )
+        if not card_only_transition:
+            changes.append(("match_status", current.match_status, proposed.get("match_status")))
+    return changes
+
+
+def _material_change(current, proposed):
+    return bool(_protected_change_details(current, proposed))
 
 
 def _protected_result(row):
@@ -443,10 +481,18 @@ def _persist_results(run, results, bank_rows, alhamrani_rows, execution_name=Non
     for result in results:
         existing_row = existing_by_key.get(result["record_key"])
         if existing_row:
-            if _protected_result(existing_row) and _material_change(existing_row, result):
-                frappe.throw(
-                    _("Result {0} has protected accounting or posting evidence and its financial match has changed. Resolve it before rerunning.").format(existing_row.name)
-                )
+            if _protected_result(existing_row):
+                protected_changes = _protected_change_details(existing_row, result)
+                if protected_changes:
+                    details = "; ".join(
+                        "{0}: {1} -> {2}".format(field, cstr(before)[:80], cstr(after)[:80])
+                        for field, before, after in protected_changes[:5]
+                    )
+                    frappe.throw(
+                        _("Result {0} has protected accounting evidence. Reconciliation cannot change: {1}. Resolve the financial or source-pairing change before rerunning.").format(
+                            existing_row.name, details
+                        )
+                    )
             updates = {}
             for fieldname in RECORD_UPDATE_FIELDS:
                 if _protected_result(existing_row) and fieldname in no_reset_if_protected:
