@@ -25,6 +25,8 @@ function bsr_load(frm) {
         return;
     }
 
+    (frm.__bsr_sticky_observers || []).forEach(observer => observer.disconnect());
+    frm.__bsr_sticky_observers = [];
     field.$wrapper.html(
         bsr_styles() +
         `<div class="bsr-loading">${__("Loading unreconciled transactions and matching by Reference #...")}</div>`
@@ -47,6 +49,8 @@ function bsr_load(frm) {
 }
 
 function bsr_render(frm) {
+    (frm.__bsr_sticky_observers || []).forEach(observer => observer.disconnect());
+    frm.__bsr_sticky_observers = [];
     const field = frm.fields_dict.workspace_html;
     if (!field || !field.$wrapper) return;
     const state = frm.__bsr || {bank_rows: [], gl_rows: [], matches: [], counts: {}};
@@ -202,6 +206,7 @@ function bsr_render(frm) {
     bsr_setup_columns(frm);
     bsr_bind_table_search(frm);
     bsr_bind_selection(frm);
+    bsr_setup_sticky_headers(frm);
 }
 
 // Independent, display-only column filtering for Bank and GL tables.
@@ -593,7 +598,11 @@ function bsr_styles() {
         .bsr-panel{border:1px solid var(--border-color);border-radius:var(--border-radius-md);background:var(--card-bg);padding:10px;min-width:0;}
         .bsr-panel-title{font-weight:600;margin-bottom:8px;}
         .bsr-results{margin-top:12px;}
-        .bsr-table-wrap{overflow:auto;max-height:520px;}
+        .bsr-table-wrap{overflow:auto;max-height:520px;position:relative;}
+        /* Both rows stay fixed inside each table's own vertical scroll area. */
+        .bsr-config-table thead tr:first-child > th{position:sticky !important;top:0;z-index:5;background:var(--card-bg);background-clip:padding-box;}
+        .bsr-config-table thead tr.bsr-column-filter-row > td{position:sticky;top:var(--bsr-header-height, 33px);z-index:4;background:var(--control-bg);background-clip:padding-box;}
+        .bsr-config-table thead tr:first-child > th .bsr-col-resize{z-index:6;}
         .bsr-table{margin:0;min-width:760px;}
         .bsr-table th,.bsr-table td{font-size:11px;vertical-align:middle !important;white-space:nowrap;}
         .bsr-config-table{table-layout:fixed;min-width:0;width:max-content;}
@@ -697,6 +706,29 @@ function bsr_apply_columns($table, side, prefs) {
                     bsr_save_column_preferences(side, prefs);
                 });
             });
+    });
+}
+
+function bsr_setup_sticky_headers(frm) {
+    const $wrapper = frm.fields_dict.workspace_html.$wrapper;
+    $wrapper.find(".bsr-config-table").each(function () {
+        const table = this;
+        const header = table.querySelector("thead tr:first-child");
+        if (!header) return;
+        const update = () => {
+            const height = header.getBoundingClientRect().height;
+            if (height > 0) table.style.setProperty("--bsr-header-height", height + "px");
+        };
+        update();
+        // Column resizing and viewport changes can wrap header labels differently.
+        if (typeof ResizeObserver !== "undefined") {
+            const observer = new ResizeObserver(update);
+            observer.observe(header);
+            // Avoid leaking observers when the workspace is re-rendered.
+            const previous = frm.__bsr_sticky_observers || [];
+            previous.push(observer);
+            frm.__bsr_sticky_observers = previous;
+        }
     });
 }
 
