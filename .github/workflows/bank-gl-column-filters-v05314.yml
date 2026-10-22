@@ -28,7 +28,7 @@ jobs:
           assert 'frm.__bsr_table_search' in js
           assert 'bsr_setup_columns(frm);' in js
           assert 'bsr-apply-manual' in js and 'bsr-save' in js
-          assert "0.53.19" in Path("pyproject.toml").read_text()
-          assert "0.53.19" in Path("marina_custom_apps/__init__.py").read_text()
+          assert "0.53.20" in Path("pyproject.toml").read_text()
+          assert "0.53.20" in Path("marina_custom_apps/__init__.py").read_text()
           print('Independent bank/GL column-filter invariants passed')
           PY
