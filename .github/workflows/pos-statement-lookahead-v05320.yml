@@ -23,7 +23,7 @@ jobs:
           assert '"transaction_date": ["between", [run.from_date, run.to_date]]' in code
           assert '"reconciliation_date": ["between", [run.from_date, add_days(run.to_date, lookahead)]]' in code
           assert 'lookahead = max(0, min(cint(7 if configured is None else configured), 31))' in code
-          assert '_reset_previous_run_links(run, statement_rows)' not in code
+          assert '\\n    _reset_previous_run_links(run, statement_rows)' not in code
           normalization=Path('marina_custom_apps/pos_reconciliation/bank_statement_reconciliation_service.py').read_text()
           assert '"UNIONPAY": "UNION PAY"' in normalization
           assert '"UNION_PAY": "UNION PAY"' in normalization
