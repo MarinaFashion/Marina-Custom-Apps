@@ -36,6 +36,8 @@ def normalize_terminal_reference(value):
 def normalize_statement_card_type(value):
     value = cstr(value).strip().upper()
     aliases = {
+        "UNIONPAY": "UNION PAY",
+        "UNION_PAY": "UNION PAY",
         "GCC CARD": "GCCCARD",
         "GCC_CARD": "GCCCARD",
         "AMERICAN EXPRESS": "AMEX",
