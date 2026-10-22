@@ -143,7 +143,8 @@ def _statement_rows(run):
     if not run.bank_account:
         return []
     settings = frappe.get_single(SETTINGS_DOCTYPE)
-    lookahead = max(0, min(cint(settings.get("bank_statement_settlement_lookahead_days") or 7), 31))
+    configured = settings.get("bank_statement_settlement_lookahead_days")
+    lookahead = max(0, min(cint(7 if configured is None else configured), 31))
     filters = {
         "bank_account": run.bank_account,
         "is_pos_statement_line": 1,
