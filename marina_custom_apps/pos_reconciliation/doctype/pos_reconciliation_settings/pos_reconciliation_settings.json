@@ -24,6 +24,7 @@
   "bank_statement_section",
   "bank_statement_terminal_reference_length",
   "bank_statement_reconciliation_lookback_days",
+  "bank_statement_settlement_lookahead_days",
   "bank_statement_code_mappings"
  ],
  "fields": [
@@ -142,6 +143,13 @@
    "fieldname": "bank_statement_reconciliation_lookback_days",
    "fieldtype": "Int",
    "label": "POS Reconciliation Lookback Days"
+  },
+  {
+   "default": "7",
+   "description": "Days after the POS transaction period to search for bank settlement evidence. Does not extend the POS transaction period; maximum 31.",
+   "fieldname": "bank_statement_settlement_lookahead_days",
+   "fieldtype": "Int",
+   "label": "Bank Statement Settlement Lookahead Days"
   },
   {
    "description": "Map SNB codes to card types and components.",
