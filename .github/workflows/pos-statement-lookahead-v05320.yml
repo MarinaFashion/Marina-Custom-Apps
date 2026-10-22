@@ -1,0 +1,34 @@
+name: POS statement lookahead v0.53.20
+on:
+  push:
+    branches: [fix-pos-settlement-lookahead-v05320, main]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify POS scope and delayed statement evidence
+        run: |
+          python -m compileall -q marina_custom_apps/pos_reconciliation/unified_statement_reconciliation.py marina_custom_apps/pos_reconciliation/bank_statement_reconciliation_service.py
+          python - <<'PY'
+          import ast, json
+          from pathlib import Path
+          p=Path('marina_custom_apps/pos_reconciliation/unified_statement_reconciliation.py')
+          code=p.read_text()
+          assert '"transaction_date": ["between", [run.from_date, run.to_date]]' in code
+          assert '"reconciliation_date": ["between", [run.from_date, add_days(run.to_date, lookahead)]]' in code
+          assert 'lookahead = max(0, min(cint(7 if configured is None else configured), 31))' in code
+          assert '\\n    _reset_previous_run_links(run, statement_rows)' not in code
+          normalization=Path('marina_custom_apps/pos_reconciliation/bank_statement_reconciliation_service.py').read_text()
+          assert '"UNIONPAY": "UNION PAY"' in normalization
+          assert '"UNION_PAY": "UNION PAY"' in normalization
+          settings=json.loads(Path('marina_custom_apps/pos_reconciliation/doctype/pos_reconciliation_settings/pos_reconciliation_settings.json').read_text())
+          assert 'bank_statement_settlement_lookahead_days' in settings['field_order']
+          assert any(f.get('fieldname')=='bank_statement_settlement_lookahead_days' and f.get('default')=='7' for f in settings['fields'])
+          print('POS transaction scope, lookahead, and UnionPay rules passed')
+          PY

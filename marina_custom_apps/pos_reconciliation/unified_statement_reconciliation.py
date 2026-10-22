@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 
 import frappe
-from frappe.utils import cstr, flt, getdate, now_datetime
+from frappe.utils import add_days, cint, cstr, flt, getdate, now_datetime
 
 from marina_custom_apps.pos_reconciliation.bank_statement_reconciliation_service import (
     _finalize_settlement,
@@ -142,10 +142,13 @@ def _record_groups(run, records):
 def _statement_rows(run):
     if not run.bank_account:
         return []
+    settings = frappe.get_single(SETTINGS_DOCTYPE)
+    configured = settings.get("bank_statement_settlement_lookahead_days")
+    lookahead = max(0, min(cint(7 if configured is None else configured), 31))
     filters = {
         "bank_account": run.bank_account,
         "is_pos_statement_line": 1,
-        "reconciliation_date": ["between", [run.from_date, run.to_date]],
+        "reconciliation_date": ["between", [run.from_date, add_days(run.to_date, lookahead)]],
     }
     return frappe.get_all(
         STATEMENT_DOCTYPE,
@@ -341,7 +344,8 @@ def reconcile_run_statement(run):
     all_statement_rows = _statement_rows(run)
     # Do not touch rows belonging to other POS profiles/card types/groups.
     statement_rows = [row for row in all_statement_rows if _statement_key(row) in groups]
-    _reset_previous_run_links(run, statement_rows)
+    # Do not clear old statement links before evidence is validated.
+    # _mark_statement_rows rewrites only rows successfully matched to this run.
 
     settlements = {}
     for key, rows in groups.items():
