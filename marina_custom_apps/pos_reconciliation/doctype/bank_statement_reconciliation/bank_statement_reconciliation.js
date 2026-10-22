@@ -70,7 +70,7 @@ function bsr_render(frm) {
                 <td>${bsr_escape(row.reference_number || "—")}</td>
                 <td class="bsr-description">${bsr_escape(row.description || "—")}</td>
                 <td class="text-right">${bsr_money(row.amount)}</td>
-                <td class="bsr-match-cell"><input type="number" min="1" max="999999" step="1" class="form-control input-xs bsr-match-input" placeholder="${__("Match #")}" aria-label="${__("Match #")}"></td>
+                <td class="bsr-match-cell"><input type="text" inputmode="numeric" pattern="[1-9][0-9]{0,5}" maxlength="6" autocomplete="off" class="form-control input-xs bsr-match-input" placeholder="${__("Match #")}" aria-label="${__("Match #")}"></td>
             </tr>
         `).join("")
         : `<tr><td colspan="8" class="text-muted text-center">${__("No unreconciled Bank Statement rows.")}</td></tr>`;
@@ -85,7 +85,7 @@ function bsr_render(frm) {
                 <td>${bsr_escape(row.reference_number || "—")}</td>
                 <td class="bsr-description">${bsr_escape(row.description || "—")}</td>
                 <td class="text-right">${bsr_money(row.amount)}</td>
-                <td class="bsr-match-cell"><input type="number" min="1" max="999999" step="1" class="form-control input-xs bsr-match-input" placeholder="${__("Match #")}" aria-label="${__("Match #")}"></td>
+                <td class="bsr-match-cell"><input type="text" inputmode="numeric" pattern="[1-9][0-9]{0,5}" maxlength="6" autocomplete="off" class="form-control input-xs bsr-match-input" placeholder="${__("Match #")}" aria-label="${__("Match #")}"></td>
             </tr>
         `).join("")
         : `<tr><td colspan="8" class="text-muted text-center">${__("No unreconciled GL Entries.")}</td></tr>`;
@@ -254,6 +254,11 @@ function bsr_bind_table_search(frm) {
         bsr_apply_table_search(frm, side);
     });
     $wrapper.find(".bsr-match-input").on("input", function () {
+        // Typing/paste only; strip non-digits and enforce the existing six-digit limit.
+        const input = this;
+        const raw = String(input.value || "");
+        const clean = raw.replace(/\\D/g, "").slice(0, 6);
+        if (clean !== raw) input.value = clean;
         const side = $(this).closest(".bsr-config-table").attr("data-side");
         if ((frm.__bsr_table_search[side] || {})["7"]) bsr_apply_table_search(frm, side);
     });
