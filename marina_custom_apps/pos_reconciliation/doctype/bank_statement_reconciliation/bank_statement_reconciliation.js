@@ -257,7 +257,7 @@ function bsr_bind_table_search(frm) {
         // Typing/paste only; strip non-digits and enforce the existing six-digit limit.
         const input = this;
         const raw = String(input.value || "");
-        const clean = raw.replace(/\\D/g, "").slice(0, 6);
+        const clean = raw.replace(/\D/g, "").slice(0, 6);
         if (clean !== raw) input.value = clean;
         const side = $(this).closest(".bsr-config-table").attr("data-side");
         if ((frm.__bsr_table_search[side] || {})["7"]) bsr_apply_table_search(frm, side);
