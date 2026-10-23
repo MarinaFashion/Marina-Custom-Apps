@@ -448,7 +448,6 @@ def _current_gl_rows(names, bank_account):
             "account": account,
             "voucher_type": ["in", ["Payment Entry", "Journal Entry"]],
             "is_cancelled": 0,
-            "name": ["in", names],
         },
         fields=["name","posting_date","voucher_type","voucher_no","voucher_detail_no","debit","credit","remarks"],
         limit_page_length=0,
