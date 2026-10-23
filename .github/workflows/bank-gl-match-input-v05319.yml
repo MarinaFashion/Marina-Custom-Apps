@@ -24,7 +24,7 @@ jobs:
           assert 'const pattern = /^[1-9][0-9]{0,5}$/;' in s
           assert 'bsr_collect_match_inputs(frm)' in s
           assert 'bsr_build_manual_matches(bankRows, glRows' in s
-          assert "0.53.20" in Path("pyproject.toml").read_text()
-          assert "0.53.20" in Path("marina_custom_apps/__init__.py").read_text()
+          assert "0.53.21" in Path("pyproject.toml").read_text()
+          assert "0.53.21" in Path("marina_custom_apps/__init__.py").read_text()
           print("Typing-only Match # fields and manual matching validations passed")
           PY

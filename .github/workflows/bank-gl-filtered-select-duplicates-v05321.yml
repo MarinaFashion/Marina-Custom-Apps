@@ -1,0 +1,37 @@
+name: Bank GL filtered select and duplicate preflight v0.53.21
+on:
+  push:
+    branches: [bank-gl-select-and-duplicate-v05321, main]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify syntax and selection and duplicate protection
+        run: |
+          node --check marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js
+          python -m compileall -q marina_custom_apps/pos_reconciliation/marina_bank_statement_import_service.py
+          python - <<'PY'
+          from pathlib import Path
+          js=Path("marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js").read_text()
+          py=Path("marina_custom_apps/pos_reconciliation/marina_bank_statement_import_service.py").read_text()
+          assert js.count('class="bsr-select-visible"') == 2
+          assert 'tbody tr:visible .bsr-row-select' in js
+          assert 'header.indeterminate = selected > 0 && selected < $visible.length' in js
+          assert 'bsr_update_header_selection($table)' in js
+          assert 'function bsr_bind_selection(frm)' in js
+          assert 'def _financial_identity(row):' in py
+          assert 'def _prior_financial_duplicates(import_doc, rows):' in py
+          assert '"reference_number": ["in", refs[start:start + CHUNK]]' in py
+          assert py.count('row.get("category") == "Potential Duplicate"') == 2
+          assert '0.53.21' in Path('pyproject.toml').read_text()
+          print('Filtered selection and duplicate preflight regression checks passed')
+          PY

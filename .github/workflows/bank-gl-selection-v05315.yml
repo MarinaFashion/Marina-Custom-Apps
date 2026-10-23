@@ -19,7 +19,7 @@ jobs:
           from pathlib import Path
           js=Path("marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js").read_text()
           assert js.count('class="bsr-row-select"') == 2
-          assert js.count('<th>${__("Select")}</th>') == 2
+          assert js.count('class="bsr-select-visible"') == 2
           assert 'function bsr_bind_selection(frm)' in js
           assert '$wrapper.find(".bsr-row-select").on("change", update)' in js
           assert 'lookup.get(key)' in js
@@ -34,6 +34,6 @@ jobs:
           assert 'word-break:break-word' in js
           assert 'overflow:hidden;line-height:1.45' in js
           assert 'bsr_apply_columns($table, side, prefs);' in js
-          assert "0.53.20" in Path("pyproject.toml").read_text()
+          assert "0.53.21" in Path("pyproject.toml").read_text()
           print("Selected totals and resizable table text containment invariants passed")
           PY

@@ -140,7 +140,7 @@ function bsr_render(frm) {
                 <div class="bsr-table-wrap">
                     <table class="table table-bordered table-hover bsr-table bsr-config-table" data-side="bank">
                         <thead><tr>
-                            <th>${__("Select")}</th>
+                            <th class="bsr-select-cell"><input type="checkbox" class="bsr-select-visible" aria-label="${__("Select all filtered rows")}" title="${__("Select all filtered rows")}"></th>
                             <th>${__("Actions")}</th>
                             <th>${__("Date")}</th>
                             <th>${__("Transaction ID")}</th>
@@ -163,7 +163,7 @@ function bsr_render(frm) {
                 <div class="bsr-table-wrap">
                     <table class="table table-bordered table-hover bsr-table bsr-config-table" data-side="gl">
                         <thead><tr>
-                            <th>${__("Select")}</th>
+                            <th class="bsr-select-cell"><input type="checkbox" class="bsr-select-visible" aria-label="${__("Select all filtered rows")}" title="${__("Select all filtered rows")}"></th>
                             <th>${__("Actions")}</th>
                             <th>${__("Date")}</th>
                             <th>${__("Transaction ID")}</th>
@@ -235,6 +235,7 @@ function bsr_apply_table_search(frm, side) {
         });
         $row.toggle(visible);
     });
+    bsr_update_header_selection($table);
 }
 
 function bsr_bind_table_search(frm) {
@@ -776,6 +777,16 @@ function bsr_setup_columns(frm) {
 }
 
 
+function bsr_update_header_selection($table) {
+    const $visible = $table.find("tbody tr:visible .bsr-row-select");
+    const header = $table.find("thead .bsr-select-visible").get(0);
+    if (!header) return;
+    const selected = $visible.filter(":checked").length;
+    header.checked = $visible.length > 0 && selected === $visible.length;
+    header.indeterminate = selected > 0 && selected < $visible.length;
+    header.disabled = $visible.length === 0;
+}
+
 function bsr_bind_selection(frm) {
     const $wrapper = frm.fields_dict.workspace_html.$wrapper;
     const update = () => {
@@ -802,5 +813,17 @@ function bsr_bind_selection(frm) {
         $wrapper.find(".bsr-selection-difference").text(bsr_money(difference));
     };
     $wrapper.find(".bsr-row-select").on("change", update);
+    $wrapper.find(".bsr-select-visible").on("change", function () {
+        const $table = $(this).closest(".bsr-config-table");
+        $table.find("tbody tr:visible .bsr-row-select").prop("checked", this.checked);
+        update();
+    });
+    const updateWithHeaders = () => {
+        $wrapper.find(".bsr-config-table").each(function () {
+            bsr_update_header_selection($(this));
+        });
+    };
+    $wrapper.find(".bsr-row-select").on("change", updateWithHeaders);
     update();
+    updateWithHeaders();
 }
