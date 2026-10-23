@@ -61,7 +61,7 @@ jobs:
           assert resolve(Row(voucher_type="Journal Entry",voucher_no="JE-1",voucher_detail_no="ROW-2"),refs)=="SECOND-LINE"
           assert resolve(Row(voucher_type="Journal Entry",voucher_no="JE-1",voucher_detail_no="ROW-3"),refs)=="HEAD"
           assert resolve(Row(voucher_type="Payment Entry",voucher_no="PE-1",voucher_detail_no=None),refs)=="PE-REF"
-          assert "0.53.21" in Path("pyproject.toml").read_text()
-          assert "0.53.21" in Path("marina_custom_apps/__init__.py").read_text()
+          assert "0.53.22" in Path("pyproject.toml").read_text()
+          assert "0.53.22" in Path("marina_custom_apps/__init__.py").read_text()
           print("GL row reference precedence, fallback and UI invariants pass")
           PY
