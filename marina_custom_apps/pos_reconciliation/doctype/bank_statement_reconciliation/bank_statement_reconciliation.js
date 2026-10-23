@@ -1,5 +1,6 @@
 frappe.ui.form.on("Bank Statement Reconciliation", {
     refresh(frm) {
+        bsr_setup_header_actions(frm);
         bsr_load(frm);
     },
     bank_account(frm) {
@@ -9,6 +10,16 @@ frappe.ui.form.on("Bank Statement Reconciliation", {
         bsr_load(frm);
     },
 });
+
+function bsr_setup_header_actions(frm) {
+    frm.add_custom_button(__("Refresh"), () => bsr_reload_confirm(frm, () => bsr_load(frm)), __("Actions"));
+    frm.add_custom_button(__("View Excluded Transactions"), () => {
+        frappe.set_route("List", "Bank Reconciliation Exclusion", {
+            bank_account: frm.doc.bank_account,
+            status: "Excluded",
+        });
+    }, __("Actions"));
+}
 
 function bsr_load(frm) {
     const filters = frm.__bsr_filters || {};
@@ -115,10 +126,7 @@ function bsr_render(frm) {
                 <div class="text-muted small">${__("Reference # is matched first by grouped totals, regardless of date. Enter the same Match # against one or more Bank and GL rows to match them manually.")}</div>
             </div>
             <div class="bsr-actions">
-                <button class="btn btn-xs btn-default bsr-refresh">${__("Refresh")}</button>
-                <button class="btn btn-xs btn-default bsr-view-excluded">${__("View Excluded Transactions")}</button>
-                <button class="btn btn-xs btn-default bsr-apply-manual">${__("Apply Manual Matches")}</button>
-                <button class="btn btn-xs btn-primary bsr-save" ${matches.length ? "" : "disabled"}>${__("Save Reconciliation")}</button>
+                <button class="btn btn-xs btn-primary bsr-save">${__("Save Reconciliation")}</button>
             </div>
         </div>
 
@@ -269,7 +277,6 @@ function bsr_bind_table_search(frm) {
 function bsr_bind(frm) {
     const $w = frm.fields_dict.workspace_html.$wrapper;
 
-    $w.find(".bsr-refresh").on("click", () => bsr_reload_confirm(frm, () => bsr_load(frm)));
     $w.find(".bsr-apply-filters").on("click", () => {
         const fromDate = String($w.find(".bsr-from-date").val() || "");
         const toDate = String($w.find(".bsr-to-date").val() || "");
@@ -287,17 +294,10 @@ function bsr_bind(frm) {
     $w.find(".bsr-clear-filters").on("click", () => {
         bsr_reload_confirm(frm, () => { frm.__bsr_filters = {}; bsr_load(frm); });
     });
-    $w.find(".bsr-view-excluded").on("click", () => {
-        frappe.set_route("List", "Bank Reconciliation Exclusion", {
-            bank_account: frm.doc.bank_account,
-            status: "Excluded",
-        });
-    });
     $w.find(".bsr-exclude-row").on("click", function () {
         bsr_exclude_row(frm, $(this).attr("data-source-type"), $(this).attr("data-record-name"));
     });
 
-    $w.find(".bsr-apply-manual").on("click", () => bsr_apply_manual(frm));
     $w.find(".bsr-save").on("click", () => bsr_save(frm));
 }
 
@@ -406,45 +406,28 @@ function bsr_build_manual_matches(bankRows, glRows, tolerance) {
     return { matches, errors };
 }
 
-function bsr_apply_manual(frm) {
-    const { bankRows, glRows } = bsr_collect_match_inputs(frm);
-    const result = bsr_build_manual_matches(bankRows, glRows, frm.doc.tolerance || 0.01);
-    if (result.errors.length) {
-        frappe.msgprint({
-            title: __("Manual Match Groups Not Valid"),
-            indicator: "orange",
-            message: result.errors.map((message) => bsr_escape(message)).join("<br>"),
-        });
-        return;
-    }
-    if (!result.matches.length) {
-        frappe.msgprint(__("Enter the same Match # on Bank and GL rows to prepare manual reconciliation."));
-        return;
-    }
-    const state = frm.__bsr || {};
-    const bankIds = new Set(result.matches.flatMap((m) => m.bank_rows.map((row) => row.name)));
-    const glIds = new Set(result.matches.flatMap((m) => m.gl_rows.map((row) => row.name)));
-    state.matches = (state.matches || []).concat(result.matches);
-    state.bank_rows = bankRows.filter((row) => !bankIds.has(row.name));
-    state.gl_rows = glRows.filter((row) => !glIds.has(row.name));
-    state.bank_rows.forEach((row, idx) => { row.row_no = idx + 1; });
-    state.gl_rows.forEach((row, idx) => { row.row_no = idx + 1; });
-    bsr_render(frm);
-}
-
 function bsr_save(frm) {
-    const $w = frm.fields_dict.workspace_html.$wrapper;
-    const unapplied = $w.find(".bsr-match-input").toArray().some(
-        (input) => String($(input).val() || "").trim()
-    );
-    if (unapplied) {
-        frappe.msgprint(__("Some rows still have unapplied Match # values. Apply Manual Matches before saving reconciliation."));
-        return;
-    }
     const state = frm.__bsr || {};
-    const matches = state.matches || [];
+    const prepared = state.matches || [];
+    const hasManualInputs = frm.fields_dict.workspace_html.$wrapper
+        .find(".bsr-match-input").toArray().some(input => String($(input).val() || "").trim());
+    let manual = [];
+    if (hasManualInputs) {
+        const { bankRows, glRows } = bsr_collect_match_inputs(frm);
+        const validation = bsr_build_manual_matches(bankRows, glRows, frm.doc.tolerance || 0.01);
+        if (validation.errors.length) {
+            frappe.msgprint({
+                title: __("Manual Match Groups Not Valid"),
+                indicator: "orange",
+                message: validation.errors.map(message => bsr_escape(message)).join("<br>"),
+            });
+            return;
+        }
+        manual = validation.matches;
+    }
+    const matches = prepared.concat(manual);
     if (!matches.length) {
-        frappe.msgprint(__("There are no prepared matches to save."));
+        frappe.msgprint(__("There are no matches to save. Enter matching Match # values on Bank and GL rows."));
         return;
     }
 
