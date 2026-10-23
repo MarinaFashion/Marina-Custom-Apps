@@ -44,7 +44,7 @@ jobs:
           assert 'result["can_exclude"]' in ws
           assert 'const canExclude = Boolean(state.can_exclude)' in ui
           assert ui.index('const state = frm.__bsr ||') < ui.index('const canExclude =')
-          assert "0.53.21" in Path("pyproject.toml").read_text()
-          assert "0.53.21" in Path("marina_custom_apps/__init__.py").read_text()
+          assert "0.53.22" in Path("pyproject.toml").read_text()
+          assert "0.53.22" in Path("marina_custom_apps/__init__.py").read_text()
           print("Cleanup and permission regression invariants passed")
           PY

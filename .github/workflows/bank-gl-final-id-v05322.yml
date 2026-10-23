@@ -1,0 +1,28 @@
+name: GL finalized ID guard v0.53.22
+on:
+  push:
+    branches: [guard-final-gl-ids-v05322, main]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check final GL ID guard and syntax
+        run: |
+          python -m compileall -q marina_custom_apps/pos_reconciliation/bank_statement_gl_reconciliation_service.py
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('marina_custom_apps/pos_reconciliation/bank_statement_gl_reconciliation_service.py').read_text()
+          assert 'FINAL_GL_PREFIX = "ACC-GLE-"' in s
+          assert '"name": ["like", FINAL_GL_PREFIX + "%"]' in s
+          assert 'if any(not cstr(name).startswith(FINAL_GL_PREFIX) for name in names):' in s
+          assert '"is_cancelled": 0' in s
+          assert 'if row.name not in excluded_gl' in s
+          assert '0.53.22' in Path('pyproject.toml').read_text()
+          print('Final GL ID guard passes')
+          PY
