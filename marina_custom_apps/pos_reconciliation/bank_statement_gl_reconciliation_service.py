@@ -13,6 +13,7 @@ STATEMENT_DOCTYPE = "Marina Bank Statement Transaction"
 MATCH_DOCTYPE = "Bank Statement Reconciliation Match"
 GL_CHILD_DOCTYPE = "Bank Statement Reconciliation GL Row"
 DEFAULT_TOLERANCE = 0.01
+FINAL_GL_PREFIX = "ACC-GLE-"
 
 
 def _normalize_reference(value):
@@ -177,9 +178,10 @@ def _load_gl_rows(bank_account):
         "account": account,
         "voucher_type": ["in", ["Payment Entry", "Journal Entry"]],
         "is_cancelled": 0,
+        "name": ["like", FINAL_GL_PREFIX + "%"],
     }
-    if excluded_gl:
-        gl_filters["name"] = ["not in", list(excluded_gl)]
+    # Keep the indexed name-prefix filter in SQL even when exclusions exist.
+    # Apply exclusion names below after fetching only finalized GL entries.
 
     rows = frappe.get_all(
         "GL Entry",
@@ -434,6 +436,8 @@ def _current_gl_rows(names, bank_account):
     excluded = _already_reconciled_gl_entries()
     if excluded.intersection(names):
         frappe.throw(_("One or more GL Entries were already reconciled. Refresh the screen."))
+    if any(not cstr(name).startswith(FINAL_GL_PREFIX) for name in names):
+        frappe.throw(_("Only finalized GL Entries beginning with ACC-GLE- can be reconciled. Refresh the screen."))
     if active_excluded_names(bank_account, "GL Entry").intersection(names):
         frappe.throw(_("One or more GL Entries have been excluded. Refresh the screen."))
 
@@ -444,6 +448,7 @@ def _current_gl_rows(names, bank_account):
             "account": account,
             "voucher_type": ["in", ["Payment Entry", "Journal Entry"]],
             "is_cancelled": 0,
+            "name": ["in", names],
         },
         fields=["name","posting_date","voucher_type","voucher_no","voucher_detail_no","debit","credit","remarks"],
         limit_page_length=0,
