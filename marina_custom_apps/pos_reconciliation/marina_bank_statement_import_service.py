@@ -216,6 +216,49 @@ def _normalize_row(import_doc, row_number, raw, header_map):
     return values
 
 
+def _financial_identity(row):
+    """Strong duplicate candidate: reference and bank balance must both agree."""
+    reference = cstr(row.get("reference_number")).strip()
+    if not reference or row.get("balance") is None:
+        return None
+    return (
+        cstr(row.get("processing_date")),
+        reference,
+        f'{flt(row.get("debit"), 2):.2f}',
+        f'{flt(row.get("credit"), 2):.2f}',
+        f'{flt(row.get("balance"), 2):.2f}',
+    )
+
+
+def _prior_financial_duplicates(import_doc, rows):
+    """Bounded indexed candidates, never a full historical bank-table scan."""
+    dated = {}
+    for row in rows:
+        identity = _financial_identity(row)
+        if identity:
+            dated.setdefault(identity[0], set()).add(identity[1])
+    matches = {}
+    for date_value, references in dated.items():
+        refs = sorted(references)
+        for start in range(0, len(refs), CHUNK):
+            existing = frappe.get_all(
+                TXN_DOCTYPE,
+                filters={
+                    "bank_account": import_doc.bank_account,
+                    "processing_date": date_value,
+                    "reference_number": ["in", refs[start:start + CHUNK]],
+                },
+                fields=["name", "processing_date", "reference_number",
+                        "debit", "credit", "balance"],
+                limit_page_length=0,
+            )
+            for prior in existing:
+                identity = _financial_identity(prior)
+                if identity:
+                    matches.setdefault(identity, []).append(prior.name)
+    return matches
+
+
 def _analyze(import_doc):
     parsed = []
     errors = []
@@ -266,6 +309,27 @@ def _analyze(import_doc):
 
     new_rows = [row for row in unique_rows if row["source_key"] not in existing]
     duplicate_existing = len(unique_rows) - len(new_rows)
+
+    # A description typo changes source_key; flag the same financial bank entry
+    # without silently deleting or suppressing it. Different balances are allowed.
+    prior = _prior_financial_duplicates(import_doc, new_rows)
+    seen_financial = {}
+    for row in new_rows:
+        identity = _financial_identity(row)
+        if not identity:
+            continue
+        existing_name = (prior.get(identity) or [None])[0]
+        earlier_row = seen_financial.get(identity)
+        if existing_name or earlier_row:
+            counterpart = existing_name or _("source row {0}").format(earlier_row)
+            errors.append({
+                "row_number": row["source_row_no"],
+                "category": "Potential Duplicate",
+                "reconciliation_key": cstr(row.get("reference_number")),
+                "message": _("Potential duplicate of {0}: same bank account, date, reference, debit, credit and balance. Review the bank source before importing.").format(counterpart),
+            })
+        else:
+            seen_financial[identity] = row["source_row_no"]
     summary = {
         "total_rows": len(parsed) + len(errors),
         "new_records": len(new_rows),
@@ -362,6 +426,8 @@ def process_import(name, requested_by):
     try:
         doc = frappe.get_doc(IMPORT_DOCTYPE, name)
         summary, rows, errors = _analyze(doc)
+        if any(row.get("category") == "Potential Duplicate" for row in errors):
+            frappe.throw(_("Potential duplicate transactions detected during import revalidation. No rows were imported."))
         inserted = _bulk_insert(rows, requested_by)
         summary["inserted_records"] = inserted
         status = "Completed" if not errors else "Completed with Errors"
@@ -390,6 +456,9 @@ def start_import(name):
         frappe.throw(_("This statement import is already running."))
 
     summary, _rows, errors = _analyze(doc)
+    if any(row.get("category") == "Potential Duplicate" for row in errors):
+        _save_summary(doc, summary, "Validated", errors)
+        frappe.throw(_("Potential duplicate bank transactions detected. Review the validation details before importing."))
     _save_summary(doc, summary, "Importing", errors)
     requested_by = frappe.session.user
     frappe.enqueue(
