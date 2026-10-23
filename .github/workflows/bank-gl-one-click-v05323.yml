@@ -1,0 +1,33 @@
+name: Bank one-click reconciliation v0.53.23
+on:
+  push:
+    branches: [bank-one-click-save-v05323, main]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check one-click and menu actions
+        run: |
+          node --check marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js').read_text()
+          assert 'function bsr_setup_header_actions(frm)' in s
+          assert 'frm.add_custom_button(__("Refresh")' in s
+          assert 'frm.add_custom_button(__("View Excluded Transactions")' in s
+          assert 'bsr-apply-manual' not in s
+          assert 'bsr-refresh' not in s
+          assert 'bsr-view-excluded' not in s
+          assert 'const matches = prepared.concat(manual)' in s
+          assert 'if (validation.errors.length)' in s
+          assert s.index('if (validation.errors.length)') < s.index('const payload = matches.map')
+          assert 'frappe.confirm(' in s
+          assert '0.53.23' in Path('pyproject.toml').read_text()
+          print("One click validation verified")
+          PY
