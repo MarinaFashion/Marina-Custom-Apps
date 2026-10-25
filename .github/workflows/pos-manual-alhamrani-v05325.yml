@@ -137,3 +137,6 @@ jobs:
           assert "frappe.db.commit(" not in hook
           print("Demo-only guarded unlink permission and safety checks passed")
           PY
+      - name: Audited enrichment and safe rollback tests
+        run: |
+          python marina_custom_apps/pos_reconciliation/tests/check_alhamrani_enrichment.py
