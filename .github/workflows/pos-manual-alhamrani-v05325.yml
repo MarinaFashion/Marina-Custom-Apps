@@ -107,3 +107,33 @@ jobs:
       - name: Guard manual slips from auto matching
         run: |
           python marina_custom_apps/pos_reconciliation/tests/check_manual_confirmation_guard.py
+      - name: Safe Demo link deletion checks
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          root = Path("marina_custom_apps/pos_reconciliation")
+          dtype = json.loads((root/"doctype/manual_alhamrani_pos_link/manual_alhamrani_pos_link.json").read_text())
+          perms = {p["role"]:p for p in dtype["permissions"]}
+          assert perms["Accounts Manager"]["delete"] == 1
+          assert perms["System Manager"]["delete"] == 1
+          hook = (root/"doctype/manual_alhamrani_pos_link/manual_alhamrani_pos_link.py").read_text()
+          for fragment in (
+              "def on_trash(self):",
+              'marinademo.frappe.cloud',
+              "assert_bank_transactions_open([bank_name])",
+              "PROTECTED_ACCOUNTING_STATUSES",
+              "PROTECTED_STATEMENT_STATUSES",
+              "bank.settled",
+              '"POS Bank Settlement Transaction"',
+              '"POS Accounting Posting Item"',
+              'row.bank_statement_settlement',
+              'row.journal_entry',
+              'frappe.throw(',
+              'rerun POS Reconciliation',
+          ):
+              assert fragment in hook, fragment
+          assert "frappe.db.delete(" not in hook
+          assert "frappe.db.commit(" not in hook
+          print("Demo-only guarded unlink permission and safety checks passed")
+          PY
