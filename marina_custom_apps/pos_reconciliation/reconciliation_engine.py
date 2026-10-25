@@ -298,6 +298,19 @@ def _base_result(run, bank=None, alhamrani=None, card_mapper=None):
 
 
 
+def _automatic_alhamrani_keys(alhamrani_rows):
+    """Index only real terminal responses; manual slips require an approved link.
+
+    Never auto-match a manually confirmed source even if bank-sourced enrichment
+    later completes its Terminal ID, Auth Code, PAN, or other payment fields.
+    """
+    by_key = defaultdict(list)
+    for row in alhamrani_rows:
+        if row.reconciliation_key and not row.manual_confirmation:
+            by_key[row.reconciliation_key].append(row)
+    return by_key
+
+
 def _build_results(run, bank_rows, alhamrani_rows, card_mapper, time_tolerance_seconds=60):
     from marina_custom_apps.pos_reconciliation.manual_alhamrani_link_service import active_manual_links, validate_manual_pair
     manual_links = active_manual_links()
@@ -306,10 +319,7 @@ def _build_results(run, bank_rows, alhamrani_rows, card_mapper, time_tolerance_s
         frappe.throw(_("Duplicate active manual Alhamrani source link found."))
     alh_by_name = {row.name: row for row in alhamrani_rows}
     integration_dates = _integration_dates()
-    alh_by_key = defaultdict(list)
-    for row in alhamrani_rows:
-        if row.reconciliation_key:
-            alh_by_key[row.reconciliation_key].append(row)
+    alh_by_key = _automatic_alhamrani_keys(alhamrani_rows)
 
     consumed_alh = set()
     results = []
@@ -380,11 +390,20 @@ def _build_results(run, bank_rows, alhamrani_rows, card_mapper, time_tolerance_s
         if alh.name in consumed_alh:
             continue
         result = _base_result(run, alhamrani=alh, card_mapper=card_mapper)
+        if alh.manual_confirmation:
+            # Explain why a complete/enriched key did not trigger auto-matching.
+            discrepancy = (
+                "Manual confirmation: linked Bank POS not in this run"
+                if alh.name in manual_alh
+                else "Manual confirmation: approved link required"
+            )
+        else:
+            discrepancy = alh.key_error or ""
         result.update(
             match_status="Alhamrani Only",
             resolution_status="Pending",
             before_integration=0,
-            discrepancy_fields=alh.key_error or "",
+            discrepancy_fields=discrepancy,
         )
         results.append(result)
 
