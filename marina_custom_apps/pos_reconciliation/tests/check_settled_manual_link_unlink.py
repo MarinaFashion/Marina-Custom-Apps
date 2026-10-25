@@ -84,7 +84,7 @@ def check_period(names):
 
 
 ns = {
-    "frappe": SimpleNamespace(db=data, throw=fail),
+    "frappe": SimpleNamespace(db=data, get_all=data.get_all, throw=fail),
     "_": lambda value: value,
     "cstr": lambda value: "" if value is None else str(value),
     "PROTECTED_ACCOUNTING_STATUSES": {
