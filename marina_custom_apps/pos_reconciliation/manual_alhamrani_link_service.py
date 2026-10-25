@@ -70,7 +70,18 @@ def find_manual_link_candidates(alhamrani_name):
         "pos_profile": alh.pos_profile,
         "transaction_status": ["in", ["Approved", "APPROVED", "approved"]],
     }, fields=["name", "rrn", "transaction_date", "transaction_amount", "transaction_type",
-               "transaction_status", "pos_profile", "terminal_id"], limit_page_length=100)
+               "transaction_status", "pos_profile", "terminal_id", "transaction_time"], limit_page_length=100)
+    # Keep the preview aligned with the existing reconciliation time tolerance.
+    configured_tolerance = frappe.db.get_single_value(
+        "POS Reconciliation Settings", "transaction_time_tolerance_seconds"
+    )
+    time_tolerance = max(0, min(int(60 if configured_tolerance is None else configured_tolerance), 300))
+    time_origin = (
+        "transaction" if alh.comparison_transaction_time
+        else "responded_at" if adapter.fields.get("responded_at") and source.get(adapter.fields["responded_at"])
+        else "sent_at" if adapter.fields.get("sent_at") and source.get(adapter.fields["sent_at"])
+        else "creation"
+    )
     results = []
     for bank in banks:
         if frappe.db.exists(LINK, {"bank_pos_transaction": bank.name}):
@@ -86,6 +97,8 @@ def find_manual_link_candidates(alhamrani_name):
             "name": bank.name,
             "amount": bank.transaction_amount,
             "date": cstr(bank.transaction_date),
+            "time": cstr(bank.transaction_time).strip(),
+            "time_tolerance_seconds": time_tolerance,
             "pos_profile": bank.pos_profile,
             "rrn": rrn,
             "bank_terminal_id": cstr(bank.terminal_id).strip(),
@@ -94,8 +107,8 @@ def find_manual_link_candidates(alhamrani_name):
                 "pos_profile": alh.pos_profile,
                 "amount": alh.amount,
                 "date": cstr(alh.transaction_date),
-                "device_map": cstr(source.get("device_map")).strip(),
-                "terminal_id": cstr(alh.terminal_id).strip(),
+                "time": cstr(alh.transaction_time).strip(),
+                "time_origin": time_origin,
             },
         })
     return results
