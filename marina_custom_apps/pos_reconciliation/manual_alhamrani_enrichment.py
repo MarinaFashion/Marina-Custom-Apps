@@ -24,7 +24,6 @@ FIELD_MAPPING = (
     ("masked_card_number", ("pan", "masked_pan", "masked_card_number")),
     ("terminal_id", ("tid", "terminal_id", "device_terminal_id")),
     ("auth_code", ("auth_code", "authorization_code")),
-    ("transaction_time", ("transaction_time",)),
 )
 
 
@@ -107,8 +106,6 @@ def _eligible_changes_with_reasons(meta, source, bank, previously_enriched=None)
             if source_profile and bank_profile and source_profile != bank_profile:
                 skipped.append({"field": bank_field, "reason": "Bank terminal POS Profile differs"})
                 continue
-        if bank_field == "transaction_time":
-            value = cstr(value).strip()
         changes.append({
             "bank_field": bank_field,
             "source_field": target,
