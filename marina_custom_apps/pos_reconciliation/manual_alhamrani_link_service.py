@@ -57,7 +57,9 @@ def approve_manual_link(alhamrani_name, bank_pos_name, reason):
     resolved = resolve_pos_profile(alh.terminal_id, alh.transaction_date) or alh.source_pos_profile
     if not resolved or not bank.pos_profile or resolved != bank.pos_profile:
         frappe.throw(_("A matching verified POS Profile is required."))
-    if cstr(alh.transaction_type).upper() != cstr(bank.transaction_type).upper():
+    if cstr(bank.transaction_type).upper() not in {"PURCHASE", "REFUND"}:
+        frappe.throw(_("Bank POS transaction type is not a supported purchase/refund."))
+    if cstr(alh.transaction_type).strip() and cstr(alh.transaction_type).upper() != cstr(bank.transaction_type).upper():
         frappe.throw(_("Transaction types do not match."))
     # Source rows are not mutated; the reconciliation engine consumes only approved links.
     doc = frappe.get_doc({"doctype": LINK, "alhamrani_transaction": alhamrani_name,
