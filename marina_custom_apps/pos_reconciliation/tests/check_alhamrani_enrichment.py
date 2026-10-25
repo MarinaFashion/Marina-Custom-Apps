@@ -109,7 +109,6 @@ def make_system(source, site="marinademo.frappe.cloud"):
             ("masked_card_number", ("pan", "masked_pan", "masked_card_number")),
             ("terminal_id", ("tid", "terminal_id", "device_terminal_id")),
             ("auth_code", ("auth_code", "authorization_code")),
-            ("transaction_time", ("transaction_time",)),
         ),
     )
     for name in ("_is_blank", "_safe_masked_pan", "_eligible_changes_with_reasons",
@@ -133,7 +132,7 @@ source = dict(
 ns, frappe, bank, link = make_system(source)
 result = ns["apply_enrichment"](link, bank)
 assert result["status"] == "Applied", result
-assert set(result["fields"]) == {"card_type", "pan", "tid", "auth_code", "transaction_time"}
+assert set(result["fields"]) == {"card_type", "pan", "tid", "auth_code"}
 assert frappe.db.source["card_type"] == "P1"
 assert frappe.db.source["tid"] == "TID-42"
 assert frappe.db.source["pan"] == "******1234"
@@ -141,9 +140,11 @@ assert frappe.db.source["masked_pan"] == ""
 assert frappe.db.source["response_json"] == "ORIGINAL RESPONSE"
 assert frappe.db.source["request_json"] == "ORIGINAL REQUEST"
 assert frappe.db.source["amount"] == "379.00"
+assert frappe.db.source["transaction_time"] == ""
+assert "transaction_time" not in result["fields"]
 assert frappe.db.source["response_meaning"] == "Confirmed manually from terminal slip"
 audit = json.loads(link.get("enrichment_details"))
-assert len(audit["changes"]) == 5
+assert len(audit["changes"]) == 4
 ns["rollback_enrichment"](link)
 assert frappe.db.source["card_type"] is None
 assert frappe.db.source["tid"] == ""
@@ -194,12 +195,12 @@ assert any(
     for x in first["skipped"]
 )
 first_changes = json.loads(link.get("enrichment_details"))["changes"]
-assert len(first_changes) == 4
+assert len(first_changes) == 3
 bank["masked_card_number"] = "####-####-####-1234"
 second = ns["apply_enrichment"](link, bank)
 assert second["fields"] == ["pan"], second
 audit = json.loads(link.get("enrichment_details"))
-assert len(audit["changes"]) == 5
+assert len(audit["changes"]) == 4
 assert audit["attempts"] == 2
 assert frappe.db.source["pan"] == "************1234"
 ns["rollback_enrichment"](link)
