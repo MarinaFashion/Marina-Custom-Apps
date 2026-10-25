@@ -128,6 +128,11 @@ class ManualAlhamraniPOSLink(Document):
             cstr(self.bank_pos_transaction).strip(),
             cstr(self.alhamrani_transaction).strip(),
         )
+        # Revert only bank-sourced values written by this approved link.
+        # If any was subsequently edited, block deletion rather than
+        # silently overwriting another actor's modification.
+        from marina_custom_apps.pos_reconciliation.manual_alhamrani_enrichment import rollback_enrichment
+        rollback_enrichment(self)
         # The link is removed by normal Frappe delete_doc. No reconciliation
         # or accounting rows are deleted here. Rerun reconciliation to split
         # the stale source pairing before attempting a different manual link.
