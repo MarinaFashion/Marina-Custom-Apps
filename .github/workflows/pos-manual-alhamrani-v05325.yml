@@ -1,0 +1,43 @@
+name: Manual Alhamrani POS links v0.53.25
+on:
+  push:
+    branches: [manual-alhamrani-link-v05325, main]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Syntax and manual link invariants
+        run: |
+          python -m compileall -q marina_custom_apps/pos_reconciliation
+          node --check marina_custom_apps/pos_reconciliation/doctype/pos_reconciliation_run/pos_reconciliation_run.js
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path("marina_custom_apps/pos_reconciliation")
+          service=(p/"manual_alhamrani_link_service.py").read_text()
+          engine=(p/"reconciliation_engine.py").read_text()
+          js=(p/"doctype/pos_reconciliation_run/pos_reconciliation_run.js").read_text()
+          j=json.loads((p/"doctype/manual_alhamrani_pos_link/manual_alhamrani_pos_link.json").read_text())
+          fields={x["fieldname"]:x for x in j["fields"]}
+          assert fields["bank_pos_transaction"]["unique"]==1
+          assert fields["alhamrani_transaction"]["unique"]==1
+          assert "validate_manual_pair(bank, alh)" in service
+          assert "validate_manual_pair(bank, linked)" in engine
+          assert 'active_manual_links()' in engine
+          assert "result = _base_result(run, bank=bank, alhamrani=alh" in engine
+          assert "frappe.db.delete(" not in service
+          assert "frappe.db.commit(" not in service
+          assert 'Link Manual Alhamrani Payment' in js
+          assert 'find_manual_link_candidates' in js
+          assert '"0.53.25"' in Path('pyproject.toml').read_text()
+          print("Manual link invariants passed")
+          PY
