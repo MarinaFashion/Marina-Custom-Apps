@@ -106,7 +106,7 @@ def make_system(source, site="marinademo.frappe.cloud"):
         resolve_pos_profile=lambda terminal_id, date: "POS50",
         FIELD_MAPPING=(
             ("card_type", ("card_type",)),
-            ("masked_card_number", ("masked_pan", "masked_card_number")),
+            ("masked_card_number", ("pan", "masked_pan", "masked_card_number")),
             ("terminal_id", ("tid", "terminal_id", "device_terminal_id")),
             ("auth_code", ("auth_code", "authorization_code")),
             ("transaction_time", ("transaction_time",)),
@@ -126,16 +126,18 @@ def make_system(source, site="marinademo.frappe.cloud"):
 source = dict(
     name="AUP-1", pos_profile="POS50",
     response_meaning="Confirmed manually from terminal slip",
-    card_type=None, masked_pan="", tid="", auth_code=None, transaction_time="",
+    card_type=None, pan="", masked_pan="", tid="", auth_code=None, transaction_time="",
     amount="379.00", rrn="123456789012", request_json="ORIGINAL REQUEST",
     response_json="ORIGINAL RESPONSE",
 )
 ns, frappe, bank, link = make_system(source)
 result = ns["apply_enrichment"](link, bank)
 assert result["status"] == "Applied", result
-assert set(result["fields"]) == {"card_type", "masked_pan", "tid", "auth_code", "transaction_time"}
+assert set(result["fields"]) == {"card_type", "pan", "tid", "auth_code", "transaction_time"}
 assert frappe.db.source["card_type"] == "P1"
 assert frappe.db.source["tid"] == "TID-42"
+assert frappe.db.source["pan"] == "******1234"
+assert frappe.db.source["pan"] == ""
 assert frappe.db.source["response_json"] == "ORIGINAL RESPONSE"
 assert frappe.db.source["request_json"] == "ORIGINAL REQUEST"
 assert frappe.db.source["amount"] == "379.00"
@@ -145,14 +147,15 @@ assert len(audit["changes"]) == 5
 ns["rollback_enrichment"](link)
 assert frappe.db.source["card_type"] is None
 assert frappe.db.source["tid"] == ""
+assert frappe.db.source["pan"] == ""
 assert frappe.db.source["response_meaning"] == "Confirmed manually from terminal slip"
 
 # Never overwrite nonempty source values or import unmasked bank card numbers.
-ns, frappe, bank, link = make_system(dict(source, card_type="VC", masked_pan=""))
+ns, frappe, bank, link = make_system(dict(source, card_type="VC", pan=""))
 bank["masked_card_number"] = "4111111111111111"
 result = ns["apply_enrichment"](link, bank)
 assert "card_type" not in result["fields"]
-assert "masked_pan" not in result["fields"]
+assert "pan" not in result["fields"]
 assert frappe.db.source["card_type"] == "VC"
 
 # Common bank masking characters and last-four-only references must work.
@@ -174,7 +177,7 @@ ns, frappe, bank, link = make_system(dict(source))
 bank["masked_card_number"] = "UNSUPPORTED MASK"
 first = ns["apply_enrichment"](link, bank)
 assert first["status"] == "Applied"
-assert "masked_pan" not in first["fields"]
+assert "pan" not in first["fields"]
 assert any(
     x["field"] == "masked_card_number"
     and x["reason"] == "Bank value is not a safely masked card reference"
@@ -184,25 +187,39 @@ first_changes = json.loads(link.get("enrichment_details"))["changes"]
 assert len(first_changes) == 4
 bank["masked_card_number"] = "####-####-####-1234"
 second = ns["apply_enrichment"](link, bank)
-assert second["fields"] == ["masked_pan"], second
+assert second["fields"] == ["pan"], second
 audit = json.loads(link.get("enrichment_details"))
 assert len(audit["changes"]) == 5
 assert audit["attempts"] == 2
-assert frappe.db.source["masked_pan"] == "************1234"
+assert frappe.db.source["pan"] == "************1234"
 ns["rollback_enrichment"](link)
-assert frappe.db.source["masked_pan"] == ""
+assert frappe.db.source["pan"] == ""
 assert frappe.db.source["card_type"] is None
 assert frappe.db.source["tid"] == ""
+assert frappe.db.source["pan"] == ""
 
 # Missing Alhamrani target must be explained explicitly, without creating
 # a new unverified field or storing unmasked payment card data.
 ns, frappe, bank, link = make_system(dict(source))
+del frappe.db.source["pan"]
 del frappe.db.source["masked_pan"]
 result = ns["apply_enrichment"](link, bank)
-assert "masked_pan" not in result["fields"]
+assert "pan" not in result["fields"]
 assert any(
     x["field"] == "masked_card_number"
     and x["reason"] == "Alhamrani target field unavailable"
+    for x in result["skipped"]
+)
+
+# The actual external Alhamrani DocType uses "pan" (Masked PAN).
+# Never overwrite a value already supplied by the real terminal.
+ns, frappe, bank, link = make_system(dict(source, pan="************4321"))
+result = ns["apply_enrichment"](link, bank)
+assert "pan" not in result["fields"]
+assert frappe.db.source["pan"] == "************4321"
+assert any(
+    x["field"] == "masked_card_number"
+    and x["reason"] == "Alhamrani field already populated"
     for x in result["skipped"]
 )
 
