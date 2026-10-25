@@ -1,4 +1,4 @@
-"""Demo-only guarded unlink of approved Alhamrani/Bank POS transactions.
+"""Financial dependency guard for controlled Demo-only Manual POS unlink.
 
 Bank settlement and bank statement records remain unchanged. The Bank POS
 reconciliation identity survives; the Alhamrani source is separated by a rerun.
@@ -164,20 +164,17 @@ def _assert_no_financial_dependencies(bank_name, alhamrani_name):
 
 
 class ManualAlhamraniPOSLink(Document):
-    def validate(self):
-        # Source identifiers remain mandatory for APPROVED links. They become
-        # NULL only after a controlled unlink, releasing the database's two
-        # unique constraints without deleting the historical document.
-        if self.status == "Approved" and (
-            not _has_text(self.bank_pos_transaction)
-            or not _has_text(self.alhamrani_transaction)
-        ):
-            frappe.throw(_("Approved manual links require both source transactions."))
-
     def on_trash(self):
-        # Never delete audit documents. Revoked links remain as immutable
-        # history and their original sources are stored separately.
-        frappe.throw(_(
-            "Manual POS links cannot be deleted. Use Actions > Unlink Transactions "
-            "to safely revoke an approved link and retain its history."
-        ))
+        # Direct Delete is always blocked. Only the backend's authenticated
+        # Unlink Transactions endpoint sets this request-scoped authorization
+        # for this exact link after financial dependency validation.
+        authorized = getattr(frappe.flags, "_authorized_manual_alhamrani_unlink", None)
+        if authorized != self.name:
+            frappe.throw(_(
+                "Direct deletion is not allowed. Use Actions > Unlink Transactions "
+                "to run the accounting and settlement safety checks."
+            ))
+        if cstr(getattr(frappe.local, "site", "")) != "marinademo.frappe.cloud":
+            frappe.throw(_("Controlled Unlink is currently Demo-only."))
+        if not (set(frappe.get_roles()) & {"Accounts Manager", "System Manager"}):
+            frappe.throw(_("Accounts Manager or System Manager role is required."), frappe.PermissionError)
