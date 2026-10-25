@@ -32,5 +32,6 @@ jobs:
           assert 'Confirmed manually from terminal slip' in ui
           assert 'response_meaning:v.response_meaning||""' in ui
           assert 'response_meaning:$w.find(' in ui
+          assert 'response_meaning: state.response_meaning || ""' in ui
           print("Response Meaning source-level filtering validated")
           PY
