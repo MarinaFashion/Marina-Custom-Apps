@@ -1,6 +1,7 @@
 """Controlled one-to-one manual pairing of approved Alhamrani and Bank POS transactions.
 
-Never edits source payment transactions, accounting postings, or settlements.
+Demo: audited enrichment of empty Alhamrani fields is permitted after approval.
+Original JSON terminal evidence, settlements and accounting remain unchanged.
 """
 import re
 
@@ -9,6 +10,7 @@ from frappe import _
 from frappe.utils import cstr, flt, getdate, now_datetime
 from marina_custom_apps.pos_reconciliation.alhamrani_adapter import AlhamraniAdapter, ALHAMRANI_DOCTYPE
 from marina_custom_apps.pos_reconciliation.location_service import resolve_pos_profile
+from marina_custom_apps.pos_reconciliation.manual_alhamrani_enrichment import apply_enrichment
 
 LINK = "Manual Alhamrani POS Link"
 
@@ -121,10 +123,15 @@ def approve_manual_link(alhamrani_name, bank_pos_name, reason):
     reason = cstr(reason).strip()
     if not reason or len(reason) < 10:
         frappe.throw(_("Provide a reason of at least 10 characters."))
+    # Serialize competing approvals for the same source or bank record.
+    frappe.db.sql("SELECT name FROM `tabBank POS Transaction` WHERE name=%s FOR UPDATE", (bank_pos_name,))
+    frappe.db.sql("SELECT name FROM `tabAlhamrani Transaction` WHERE name=%s FOR UPDATE", (alhamrani_name,))
     if frappe.db.exists(LINK, {"alhamrani_transaction": alhamrani_name}) or frappe.db.exists(LINK, {"bank_pos_transaction": bank_pos_name}):
         frappe.throw(_("One of these transactions already has a manual link."))
     bank = frappe.db.get_value("Bank POS Transaction", bank_pos_name,
-        ["name", "rrn", "pos_profile", "transaction_date", "transaction_amount", "transaction_status", "transaction_type"], as_dict=True)
+        ["name", "rrn", "pos_profile", "transaction_date", "transaction_time",
+         "transaction_amount", "transaction_status", "transaction_type",
+         "card_type", "masked_card_number", "terminal_id", "auth_code"], as_dict=True)
     if not bank or cstr(bank.transaction_status).upper() != "APPROVED":
         frappe.throw(_("Bank POS transaction is missing or not approved."))
     adapter = AlhamraniAdapter()
@@ -151,4 +158,8 @@ def approve_manual_link(alhamrani_name, bank_pos_name, reason):
         "status": "Approved", "reason": reason,
         "approved_by": frappe.session.user, "approved_on": now_datetime()})
     doc.insert(ignore_permissions=True)
-    return {"link": doc.name, "status": "Approved"}
+    # Same Frappe request/DB transaction: an enrichment error rolls back link
+    # creation too. Never commit here and never fabricate response_json.
+    enrichment = apply_enrichment(doc, bank)
+    return {"link": doc.name, "status": "Approved",
+            "enrichment": enrichment}
