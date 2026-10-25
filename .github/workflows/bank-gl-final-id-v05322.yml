@@ -23,6 +23,6 @@ jobs:
           assert 'if any(not cstr(name).startswith(FINAL_GL_PREFIX) for name in names):' in s
           assert '"is_cancelled": 0' in s
           assert 'if row.name not in excluded_gl' in s
-          assert '0.53.23' in Path('pyproject.toml').read_text()
+          assert '0.53.24' in Path('pyproject.toml').read_text()
           print('Final GL ID guard passes')
           PY
