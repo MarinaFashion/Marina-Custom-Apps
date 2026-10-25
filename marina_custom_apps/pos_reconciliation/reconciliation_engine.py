@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import hashlib
 from collections import defaultdict
+from datetime import datetime
 
 import frappe
 from frappe import _
-from frappe.utils import cstr, flt, getdate, now_datetime
+from frappe.utils import cint, cstr, flt, getdate, now_datetime
 
 from marina_custom_apps.pos_reconciliation.alhamrani_adapter import (
     ALHAMRANI_DOCTYPE,
@@ -97,7 +98,17 @@ def get_pan_validation_method(bank, alhamrani):
     return "Not Available"
 
 
-def compare_transactions(bank, alhamrani, card_mapper=None):
+def _time_difference_seconds(bank_date, bank_time, alh_date, alh_time):
+    """Compare actual date+time; do not wrap a real date mismatch across midnight."""
+    try:
+        left = datetime.combine(getdate(bank_date), datetime.strptime(bank_time, "%H:%M:%S").time())
+        right = datetime.combine(getdate(alh_date), datetime.strptime(alh_time, "%H:%M:%S").time())
+    except (ValueError, TypeError):
+        return None
+    return abs((left - right).total_seconds())
+
+
+def compare_transactions(bank, alhamrani, card_mapper=None, time_tolerance_seconds=60):
     card_mapper = card_mapper or CardTypeMapper()
     discrepancies = []
 
@@ -123,8 +134,10 @@ def compare_transactions(bank, alhamrani, card_mapper=None):
     bank_time = normalize_time(bank.transaction_time)
     alh_compare_time = getattr(alhamrani, "comparison_transaction_time", alhamrani.transaction_time)
     alh_time = normalize_time(alh_compare_time)
-    if bank_time and alh_time and bank_time != alh_time:
-        discrepancies.append("Transaction Time")
+    if bank_time and alh_time:
+        delta = _time_difference_seconds(bank_date, bank_time, alh_date, alh_time)
+        if delta is None or delta > max(0, min(cint(time_tolerance_seconds), 300)):
+            discrepancies.append("Transaction Time")
 
     return discrepancies
 
@@ -282,7 +295,7 @@ def _base_result(run, bank=None, alhamrani=None, card_mapper=None):
 
 
 
-def _build_results(run, bank_rows, alhamrani_rows, card_mapper):
+def _build_results(run, bank_rows, alhamrani_rows, card_mapper, time_tolerance_seconds=60):
     integration_dates = _integration_dates()
     alh_by_key = defaultdict(list)
     for row in alhamrani_rows:
@@ -322,7 +335,7 @@ def _build_results(run, bank_rows, alhamrani_rows, card_mapper):
 
         alh = candidates[0]
         consumed_alh.add(alh.name)
-        discrepancies = compare_transactions(bank, alh, card_mapper=card_mapper)
+        discrepancies = compare_transactions(bank, alh, card_mapper=card_mapper, time_tolerance_seconds=time_tolerance_seconds)
         result = _base_result(run, bank=bank, alhamrani=alh, card_mapper=card_mapper)
         result.update(
             match_status="Discrepancy" if discrepancies else "Matching Not Settled",
@@ -586,7 +599,10 @@ def execute_run(run, execution_name=None):
     card_mapper = get_card_type_mapper()
     bank_rows = _bank_rows(run, card_mapper)
     alhamrani_rows = _alhamrani_rows(run, card_mapper)
-    results = _build_results(run, bank_rows, alhamrani_rows, card_mapper)
+    settings = frappe.get_single('POS Reconciliation Settings')
+    configured = settings.get('transaction_time_tolerance_seconds')
+    time_tolerance = max(0, min(cint(60 if configured is None else configured), 300))
+    results = _build_results(run, bank_rows, alhamrani_rows, card_mapper, time_tolerance_seconds=time_tolerance)
     _persist_results(run, results, bank_rows, alhamrani_rows, execution_name)
 
     # Never carry a previous execution's statement counters into a no-bank run.
