@@ -45,6 +45,6 @@ jobs:
           assert 'href="#" class="pos-recon-doc-link"' not in js
           assert '"/app/" + encodeURIComponent(route)' in js
           assert 'frappe.set_route("Form", doctype, name)' not in js
-          assert "0.53.23" in Path("pyproject.toml").read_text()
+          assert "0.53.24" in Path("pyproject.toml").read_text()
           print('Classification safety and direct-link checks passed')
           PY
