@@ -330,6 +330,7 @@ function pos_recon_load_results(frm) {
             accounting_status: state.accounting_status,
             ledger_posting_status: state.ledger_posting_status,
             before_integration: state.before_integration,
+            response_meaning: state.response_meaning || "",
         },
     }).then((r) => {
         pos_recon_render_results(frm, field.$wrapper, r.message || {});
