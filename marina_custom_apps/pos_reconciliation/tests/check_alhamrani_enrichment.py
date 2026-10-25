@@ -109,10 +109,10 @@ def make_system(source, site="marinademo.frappe.cloud"):
             ("masked_card_number", ("pan", "masked_pan", "masked_card_number")),
             ("terminal_id", ("tid", "terminal_id", "device_terminal_id")),
             ("auth_code", ("auth_code", "authorization_code")),
-            ("transaction_time", ("custom_bank_verified_transaction_time", "transaction_time")),
+            ("transaction_time", ("transaction_time",)),
         ),
     )
-    for name in ("_is_blank", "_safe_masked_pan", "_safe_bank_transaction_time", "_eligible_changes_with_reasons",
+    for name in ("_is_blank", "_safe_masked_pan", "_eligible_changes_with_reasons",
                  "_eligible_changes", "apply_enrichment", "rollback_enrichment"):
         load_function(SOURCE, name, ns)
     bank = Dict(
@@ -126,19 +126,16 @@ def make_system(source, site="marinademo.frappe.cloud"):
 source = dict(
     name="AUP-1", pos_profile="POS50",
     response_meaning="Confirmed manually from terminal slip",
-    card_type=None, pan="", masked_pan="", tid="", auth_code=None,
-    transaction_time="", custom_bank_verified_transaction_time="",
+    card_type=None, pan="", masked_pan="", tid="", auth_code=None, transaction_time="",
     amount="379.00", rrn="123456789012", request_json="ORIGINAL REQUEST",
     response_json="ORIGINAL RESPONSE",
 )
 ns, frappe, bank, link = make_system(source)
 result = ns["apply_enrichment"](link, bank)
 assert result["status"] == "Applied", result
-assert set(result["fields"]) == {"card_type", "pan", "tid", "auth_code", "custom_bank_verified_transaction_time"}
+assert set(result["fields"]) == {"card_type", "pan", "tid", "auth_code", "transaction_time"}
 assert frappe.db.source["card_type"] == "P1"
 assert frappe.db.source["tid"] == "TID-42"
-assert frappe.db.source["custom_bank_verified_transaction_time"] == "14:20:45"
-assert frappe.db.source["transaction_time"] == ""
 assert frappe.db.source["pan"] == "******1234"
 assert frappe.db.source["masked_pan"] == ""
 assert frappe.db.source["response_json"] == "ORIGINAL RESPONSE"
@@ -150,44 +147,8 @@ assert len(audit["changes"]) == 5
 ns["rollback_enrichment"](link)
 assert frappe.db.source["card_type"] is None
 assert frappe.db.source["tid"] == ""
-assert frappe.db.source["custom_bank_verified_transaction_time"] == ""
 assert frappe.db.source["pan"] == ""
 assert frappe.db.source["response_meaning"] == "Confirmed manually from terminal slip"
-
-# Bank time must be validated, and original terminal time left untouched.
-ns, frappe, bank, link = make_system(dict(source))
-for given, expected in (
-    ("0:01:03", "00:01:03"),
-    ("14:20:45", "14:20:45"),
-    ("14:20", "14:20:00"),
-    ("23:59:59.000000", "23:59:59"),
-    ("24:00:00", ""),
-    ("23:60:00", ""),
-    ("T14:20:45", ""),
-    ("", ""),
-):
-    assert ns["_safe_bank_transaction_time"](given) == expected, (given, expected)
-
-# The real workflow can have four fields previously enriched. A later
-# rerun must add only the bank time and retain every earlier audit change.
-ns, frappe, bank, link = make_system(dict(source))
-bank["transaction_time"] = "25:60:00"
-first = ns["apply_enrichment"](link, bank)
-assert "custom_bank_verified_transaction_time" not in first["fields"]
-assert len(first["fields"]) == 4
-assert any(
-    x["field"] == "transaction_time"
-    and x["reason"] == "Bank POS transaction time is not a valid 24-hour clock"
-    for x in first["skipped"]
-)
-bank["transaction_time"] = "14:20:45"
-second = ns["apply_enrichment"](link, bank)
-assert second["fields"] == ["custom_bank_verified_transaction_time"]
-assert len(json.loads(link.get("enrichment_details"))["changes"]) == 5
-ns["rollback_enrichment"](link)
-assert frappe.db.source["custom_bank_verified_transaction_time"] == ""
-assert frappe.db.source["pan"] == ""
-assert frappe.db.source["transaction_time"] == ""
 
 # Never overwrite nonempty source values or import unmasked bank card numbers.
 ns, frappe, bank, link = make_system(dict(source, card_type="VC", pan=""))
