@@ -24,7 +24,7 @@ FIELD_MAPPING = (
     ("masked_card_number", ("pan", "masked_pan", "masked_card_number")),
     ("terminal_id", ("tid", "terminal_id", "device_terminal_id")),
     ("auth_code", ("auth_code", "authorization_code")),
-    ("transaction_time", ("custom_bank_verified_transaction_time", "transaction_time")),
+    ("transaction_time", ("transaction_time",)),
 )
 
 
@@ -59,17 +59,6 @@ def _safe_masked_pan(value):
     # significant digits or inventing an unsupported BIN/PAN length.
     return normalized
 
-
-
-def _safe_bank_transaction_time(value):
-    """Accept only a valid bank 24-hour clock, never an ECR timestamp."""
-    text = cstr(value).strip()
-    match = re.fullmatch(r"(\d{1,2}):([0-5]\d)(?::([0-5]\d))?(?:\.\d{1,6})?", text)
-    if not match or int(match.group(1)) > 23:
-        return ""
-    return "{:02d}:{}:{}".format(
-        int(match.group(1)), match.group(2), match.group(3) or "00"
-    )
 
 
 def _eligible_changes_with_reasons(meta, source, bank, previously_enriched=None):
@@ -119,13 +108,7 @@ def _eligible_changes_with_reasons(meta, source, bank, previously_enriched=None)
                 skipped.append({"field": bank_field, "reason": "Bank terminal POS Profile differs"})
                 continue
         if bank_field == "transaction_time":
-            value = _safe_bank_transaction_time(value)
-            if not value:
-                skipped.append({
-                    "field": bank_field,
-                    "reason": "Bank POS transaction time is not a valid 24-hour clock",
-                })
-                continue
+            value = cstr(value).strip()
         changes.append({
             "bank_field": bank_field,
             "source_field": target,
