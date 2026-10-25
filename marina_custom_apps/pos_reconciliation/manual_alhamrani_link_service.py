@@ -212,37 +212,35 @@ def enrich_existing_manual_link(link_name):
 
 
 @frappe.whitelist()
-def unlink_manual_link(link_name, reason):
-    """Controlled Demo unlink retaining the approval and original source history.
+def unlink_manual_link(link_name):
+    """Remove an approved manual pairing only when its finances are unaffected.
 
-    All mutations occur in the current Frappe request transaction. A failure
-    before commit rolls back BOTH source-field restoration and status change.
-    The stable BANK| reconciliation identity and all bank settlement/statement
-    data remain untouched. A subsequent reconciliation run detaches the
-    Alhamrani source and refreshes the settlement-aware match classification.
+    No Revoked document or extra unlink log is created. The original linked
+    payment rows, bank settlements, statements and JEs are never deleted.
+    The bank reconciliation keeps its stable BANK| source identity; rerun the
+    POS reconciliation after unlinking to detach the stale Alhamrani pairing.
     """
     _require_approver()
     if cstr(getattr(frappe.local, "site", "")) != "marinademo.frappe.cloud":
-        frappe.throw(_("Controlled Unlink is available on Demo only until Finance acceptance."))
+        frappe.throw(_("Controlled Unlink is enabled on Demo only until Finance acceptance."))
 
     link_name = cstr(link_name).strip()
-    reason = cstr(reason).strip()
-    if len(reason) < 10 or len(reason) > 2000:
-        frappe.throw(_("Provide an unlink reason between 10 and 2000 characters."))
+    if not link_name:
+        frappe.throw(_("Manual Link is required."))
 
-    # Serialize concurrent Unlink and Enrich Remaining Fields operations.
+    # Serialize against duplicate unlink and 'Enrich Remaining Fields'.
     frappe.db.sql(
         "SELECT name FROM `tabManual Alhamrani POS Link` WHERE name=%s FOR UPDATE",
         (link_name,),
     )
     link = frappe.get_doc(LINK, link_name)
     if link.status != "Approved":
-        frappe.throw(_("This manual link is not Approved; it may already be unlinked."))
+        frappe.throw(_("Only approved manual links can be unlinked."))
 
     bank_name = cstr(link.bank_pos_transaction).strip()
-    alhamrani_name = cstr(link.alhamrani_transaction).strip()
-    if not bank_name or not alhamrani_name:
-        frappe.throw(_("Approved link has incomplete source references. Unlink is blocked."))
+    alh_name = cstr(link.alhamrani_transaction).strip()
+    if not bank_name or not alh_name:
+        frappe.throw(_("Approved link has incomplete source references."))
 
     from marina_custom_apps.pos_reconciliation.doctype.manual_alhamrani_pos_link.manual_alhamrani_pos_link import (
         _assert_no_financial_dependencies,
@@ -251,39 +249,33 @@ def unlink_manual_link(link_name, reason):
         rollback_enrichment,
     )
 
-    # Also locks the source bank and Alhamrani rows to prevent concurrent
-    # approval or pairing changes; ensures no commission/VAT accounting
-    # posting or unsafe settlement references before altering any source.
-    _assert_no_financial_dependencies(bank_name, alhamrani_name)
+    # Preflight checks period locks, active reconciliation, source identities,
+    # linked settlement rows, posted/draft commission and VAT accounting items,
+    # and bank-statement references. It fails closed when any unsafe dependency
+    # is discovered. It locks both original source rows.
+    _assert_no_financial_dependencies(bank_name, alh_name)
 
-    # Do not keep copied bank data attached to an unlinked slip: restore ONLY
-    # original values that the current manual link actually enriched.
+    # Restore only the missing Alhamrani fields written by this link. Any
+    # manual change after enrichment blocks unlink instead of overwriting it.
     rollback_enrichment(link)
 
-    # The original approved document stays as a read-only historical record.
-    # The active source fields are cleared to release their SQL UNIQUE slots
-    # (MySQL/MariaDB accepts multiple NULL values in unique indexes), so a
-    # future approved link can use the same source after reconciliation.
-    # All previous approvals, reasons and enrichment evidence remain intact.
-    frappe.db.set_value(
-        LINK,
-        link_name,
-        {
-            "status": "Revoked",
-            "original_bank_pos_transaction": bank_name,
-            "original_alhamrani_transaction": alhamrani_name,
-            "bank_pos_transaction": None,
-            "alhamrani_transaction": None,
-            "unlink_reason": reason,
-            "unlinked_by": frappe.session.user,
-            "unlinked_on": now_datetime(),
-        },
-        update_modified=True,
-    )
+    # Standard Frappe delete invokes on_trash; a scoped, exact-name flag
+    # prevents UI Delete and direct REST deletes from bypassing the endpoint.
+    # If delete_doc fails, Frappe rolls back the complete request transaction.
+    key = "_authorized_manual_alhamrani_unlink"
+    previous = frappe.flags.get(key)
+    frappe.flags[key] = link_name
+    try:
+        frappe.delete_doc(LINK, link_name, ignore_permissions=True)
+    finally:
+        if previous is None:
+            frappe.flags.pop(key, None)
+        else:
+            frappe.flags[key] = previous
+
     return {
-        "link": link_name,
-        "status": "Revoked",
+        "unlinked": True,
         "bank_pos_transaction": bank_name,
-        "alhamrani_transaction": alhamrani_name,
+        "alhamrani_transaction": alh_name,
         "requires_reconciliation": True,
     }
