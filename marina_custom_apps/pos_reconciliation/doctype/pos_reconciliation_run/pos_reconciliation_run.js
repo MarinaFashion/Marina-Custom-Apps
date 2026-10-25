@@ -1,5 +1,45 @@
 const POS_RECON_PAGE_LENGTH = 25;
 
+function pos_recon_manual_link_preview(candidate) {
+    if (!candidate) return `<p class="text-muted">${__("Select a Bank POS transaction to review the mapping.")}</p>`;
+
+    const source = candidate.alhamrani || {};
+    const safe = (value) => pos_recon_escape(value === null || value === undefined || value === "" ? "—" : value);
+    const amount = (value) => value === null || value === undefined || value === ""
+        ? "—" : "SAR " + Number(value).toFixed(2);
+    const equalAmount = source.amount !== null && source.amount !== undefined &&
+        Math.abs(Number(source.amount) - Number(candidate.amount)) <= 0.01;
+    const deviceSource = source.device_map || source.terminal_id || "";
+    const terminalId = source.terminal_id || "";
+    const bankTerminal = candidate.bank_terminal_id || "";
+    const deviceVerified = Boolean(terminalId && bankTerminal && terminalId === bankTerminal);
+    const deviceDifferent = Boolean(terminalId && bankTerminal && terminalId !== bankTerminal);
+    const match = (ok) => ok
+        ? `<span class="text-success">${__("Match")}</span>`
+        : `<span class="text-danger">${__("Mismatch")}</span>`;
+    const deviceStatus = deviceVerified
+        ? `<span class="text-success">${__("Match")}</span>`
+        : `<span class="text-warning">${deviceDifferent ? __("Different IDs — verify slip") : __("Verify terminal slip")}</span>`;
+
+    const rows = [
+        [__("POS Profile"), source.pos_profile, candidate.pos_profile, match(Boolean(source.pos_profile && source.pos_profile === candidate.pos_profile))],
+        [__("Amount"), amount(source.amount), amount(candidate.amount), match(equalAmount)],
+        [__("Device"), deviceSource, bankTerminal, deviceStatus],
+        [__("Date"), source.date, candidate.date, match(Boolean(source.date && source.date === candidate.date))]
+    ];
+    return `<div class="alert alert-info" style="margin-top:12px;margin-bottom:8px;padding:12px">
+        <b>${__("Confirm the payment mapping")}</b>
+        <div style="margin-top:5px">${__("Review these values against the terminal slip before approving.")}</div>
+        <div class="table-responsive" style="margin-top:8px">
+            <table class="table table-bordered table-condensed" style="background:white;margin-bottom:6px">
+                <thead><tr><th></th><th>${__("Alhamrani")}</th><th>${__("Bank POS")}</th><th>${__("Check")}</th></tr></thead>
+                <tbody>${rows.map(row => `<tr><th>${safe(row[0])}</th><td>${safe(row[1])}</td><td>${safe(row[2])}</td><td>${row[3]}</td></tr>`).join("")}</tbody>
+            </table>
+        </div>
+        <small>${__("Device comparison requires manual verification when Alhamrani only provides Device Map, not Terminal ID.")}</small>
+    </div>`;
+}
+
 frappe.ui.form.on("POS Reconciliation Run", {
     refresh(frm) {
         // Singles have one fixed document, with no New document workflow.
@@ -49,24 +89,50 @@ frappe.ui.form.on("POS Reconciliation Run", {
                             return;
                         }
                         const options = candidates.map(c => c.name).join("\n");
-                        frappe.prompt([
-                            {fieldname:"bank_pos_name",fieldtype:"Select",label:__("Bank POS Transaction"),
-                             options:options,reqd:1},
-                            {fieldname:"reason",fieldtype:"Small Text",label:__("Manual Link Reason"),reqd:1,
-                             default:"Terminal approved payment but POS did not receive approval response."}
-                        ], (v) => {
-                            frappe.confirm(__("Approve the verified manual payment pairing? Bank settlement and accounting will not be modified."), () => {
-                                frappe.call({
-                                    method:"marina_custom_apps.pos_reconciliation.manual_alhamrani_link_service.approve_manual_link",
-                                    args:{alhamrani_name:first.alhamrani_name,bank_pos_name:v.bank_pos_name,reason:v.reason},
-                                    freeze:true,freeze_message:__("Validating source records...")
-                                }).then(result => {
-                                    if (result.message && result.message.status === "Approved") {
-                                        frappe.msgprint(__("Manual pairing approved. Re-run POS reconciliation to refresh the matching result."));
-                                    }
+                        let mappingDialog;
+                        const refreshMapping = () => {
+                            if (!mappingDialog) return;
+                            const chosen = mappingDialog.get_value("bank_pos_name") || candidates[0].name;
+                            const candidate = candidates.find(c => c.name === chosen);
+                            mappingDialog.fields_dict.mapping_confirmation.$wrapper.html(
+                                pos_recon_manual_link_preview(candidate)
+                            );
+                            // Changing the selected bank record requires fresh acknowledgement.
+                            mappingDialog.set_value("confirm_mapping", 0);
+                        };
+                        mappingDialog = new frappe.ui.Dialog({
+                            title: __("Approve Manual Link"),
+                            fields: [
+                                {fieldname:"bank_pos_name",fieldtype:"Select",label:__("Bank POS Transaction"),
+                                 options:options,reqd:1,default:candidates[0].name,onchange:refreshMapping},
+                                {fieldname:"mapping_confirmation",fieldtype:"HTML"},
+                                {fieldname:"confirm_mapping",fieldtype:"Check",
+                                 label:__("I reviewed POS Profile, Amount, Device and Date and confirm this mapping."),reqd:1},
+                                {fieldname:"reason",fieldtype:"Small Text",label:__("Manual Link Reason"),reqd:1,
+                                 default:"Terminal approved payment but POS did not receive approval response."}
+                            ],
+                            primary_action_label: __("Approve Link"),
+                            primary_action(v) {
+                                if (!v.confirm_mapping) {
+                                    frappe.msgprint(__("Please review and confirm the transaction mapping before approving."));
+                                    return;
+                                }
+                                frappe.confirm(__("Approve the verified manual payment pairing? Bank settlement and accounting will not be modified."), () => {
+                                    frappe.call({
+                                        method:"marina_custom_apps.pos_reconciliation.manual_alhamrani_link_service.approve_manual_link",
+                                        args:{alhamrani_name:first.alhamrani_name,bank_pos_name:v.bank_pos_name,reason:v.reason},
+                                        freeze:true,freeze_message:__("Validating source records...")
+                                    }).then(result => {
+                                        if (result.message && result.message.status === "Approved") {
+                                            mappingDialog.hide();
+                                            frappe.msgprint(__("Manual pairing approved. Re-run POS reconciliation to refresh the matching result."));
+                                        }
+                                    });
                                 });
-                            });
-                        }, __("Approve Manual Link"), __("Approve Link"));
+                            }
+                        });
+                        mappingDialog.show();
+                        refreshMapping();
                     });
                 }, __("Find Manual Payment"), __("Find Candidates"));
             }, __("Actions"));
