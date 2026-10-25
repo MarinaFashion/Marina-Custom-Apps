@@ -71,6 +71,14 @@ def approve_manual_link(alhamrani_name, bank_pos_name, reason):
         frappe.throw(_("Alhamrani transaction is not approved."))
     alh.pos_profile = resolve_pos_profile(alh.terminal_id, alh.transaction_date) or alh.source_pos_profile
     validate_manual_pair(bank, alh)
+    existing_bank = frappe.db.get_value("POS Reconciliation Record",
+        {"bank_transaction": bank_pos_name}, ["name", "alhamrani_transaction"], as_dict=True)
+    if existing_bank and existing_bank.alhamrani_transaction and existing_bank.alhamrani_transaction != alhamrani_name:
+        frappe.throw(_("Bank POS transaction is already paired with another Alhamrani record: {0}.").format(existing_bank.name))
+    existing_alh = frappe.db.get_value("POS Reconciliation Record",
+        {"alhamrani_transaction": alhamrani_name}, ["name", "bank_transaction"], as_dict=True)
+    if existing_alh and existing_alh.bank_transaction and existing_alh.bank_transaction != bank_pos_name:
+        frappe.throw(_("Alhamrani transaction is already paired with another Bank POS record: {0}.").format(existing_alh.name))
     # Source rows are not mutated; the reconciliation engine consumes only approved links.
     doc = frappe.get_doc({"doctype": LINK, "alhamrani_transaction": alhamrani_name,
         "bank_pos_transaction": bank_pos_name, "rrn": cstr(bank.rrn).strip(),
