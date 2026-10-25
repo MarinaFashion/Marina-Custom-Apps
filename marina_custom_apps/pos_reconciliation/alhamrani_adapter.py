@@ -30,7 +30,7 @@ FIELD_CANDIDATES = {
     "transaction_type": ("message_id", "transaction_type", "txn_type"),
     "amount": ("amount", "amount_echoed", "amount_sent"),
     "card_type": ("card_type",),
-    "masked_pan": ("masked_pan", "masked_card_number"),
+    "masked_pan": ("pan", "masked_pan", "masked_card_number"),
     "pos_profile": ("pos_profile",),
     "response_code": ("response_code",),
     "response_meaning": ("response_meaning",),
