@@ -26,6 +26,6 @@ jobs:
           assert 'bsr_setup_sticky_headers(frm);' in s
           assert '(frm.__bsr_sticky_observers || []).forEach(observer => observer.disconnect())' in s
           assert '.bsr-table-wrap{overflow:auto;max-height:520px;position:relative;}' in s
-          assert "0.53.23" in Path("pyproject.toml").read_text()
+          assert "0.53.24" in Path("pyproject.toml").read_text()
           print('Sticky header static tests passed')
           PY
