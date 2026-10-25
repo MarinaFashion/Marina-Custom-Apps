@@ -175,6 +175,10 @@ def enrich_existing_manual_link(link_name):
     """
     _require_approver()
     link_name = cstr(link_name).strip()
+    frappe.db.sql(
+        "SELECT name FROM `tabManual Alhamrani POS Link` WHERE name=%s FOR UPDATE",
+        (link_name,),
+    )
     link = frappe.get_doc(LINK, link_name)
     if link.status != "Approved":
         frappe.throw(_("Only approved manual links can be enriched."))
@@ -205,3 +209,81 @@ def enrich_existing_manual_link(link_name):
     validate_manual_pair(bank, alh)
     result = apply_enrichment(link, bank)
     return {"link": link.name, "status": link.status, "enrichment": result}
+
+
+@frappe.whitelist()
+def unlink_manual_link(link_name, reason):
+    """Controlled Demo unlink retaining the approval and original source history.
+
+    All mutations occur in the current Frappe request transaction. A failure
+    before commit rolls back BOTH source-field restoration and status change.
+    The stable BANK| reconciliation identity and all bank settlement/statement
+    data remain untouched. A subsequent reconciliation run detaches the
+    Alhamrani source and refreshes the settlement-aware match classification.
+    """
+    _require_approver()
+    if cstr(getattr(frappe.local, "site", "")) != "marinademo.frappe.cloud":
+        frappe.throw(_("Controlled Unlink is available on Demo only until Finance acceptance."))
+
+    link_name = cstr(link_name).strip()
+    reason = cstr(reason).strip()
+    if len(reason) < 10 or len(reason) > 2000:
+        frappe.throw(_("Provide an unlink reason between 10 and 2000 characters."))
+
+    # Serialize concurrent Unlink and Enrich Remaining Fields operations.
+    frappe.db.sql(
+        "SELECT name FROM `tabManual Alhamrani POS Link` WHERE name=%s FOR UPDATE",
+        (link_name,),
+    )
+    link = frappe.get_doc(LINK, link_name)
+    if link.status != "Approved":
+        frappe.throw(_("This manual link is not Approved; it may already be unlinked."))
+
+    bank_name = cstr(link.bank_pos_transaction).strip()
+    alhamrani_name = cstr(link.alhamrani_transaction).strip()
+    if not bank_name or not alhamrani_name:
+        frappe.throw(_("Approved link has incomplete source references. Unlink is blocked."))
+
+    from marina_custom_apps.pos_reconciliation.doctype.manual_alhamrani_pos_link.manual_alhamrani_pos_link import (
+        _assert_no_financial_dependencies,
+    )
+    from marina_custom_apps.pos_reconciliation.manual_alhamrani_enrichment import (
+        rollback_enrichment,
+    )
+
+    # Also locks the source bank and Alhamrani rows to prevent concurrent
+    # approval or pairing changes; ensures no commission/VAT accounting
+    # posting or unsafe settlement references before altering any source.
+    _assert_no_financial_dependencies(bank_name, alhamrani_name)
+
+    # Do not keep copied bank data attached to an unlinked slip: restore ONLY
+    # original values that the current manual link actually enriched.
+    rollback_enrichment(link)
+
+    # The original approved document stays as a read-only historical record.
+    # The active source fields are cleared to release their SQL UNIQUE slots
+    # (MySQL/MariaDB accepts multiple NULL values in unique indexes), so a
+    # future approved link can use the same source after reconciliation.
+    # All previous approvals, reasons and enrichment evidence remain intact.
+    frappe.db.set_value(
+        LINK,
+        link_name,
+        {
+            "status": "Revoked",
+            "original_bank_pos_transaction": bank_name,
+            "original_alhamrani_transaction": alhamrani_name,
+            "bank_pos_transaction": None,
+            "alhamrani_transaction": None,
+            "unlink_reason": reason,
+            "unlinked_by": frappe.session.user,
+            "unlinked_on": now_datetime(),
+        },
+        update_modified=True,
+    )
+    return {
+        "link": link_name,
+        "status": "Revoked",
+        "bank_pos_transaction": bank_name,
+        "alhamrani_transaction": alhamrani_name,
+        "requires_reconciliation": True,
+    }
