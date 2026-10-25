@@ -31,4 +31,3 @@ marina_custom_apps.patches.v0_53_2.retire_legacy_doctypes
 marina_custom_apps.patches.v0_53_3.finalize_legacy_cleanup
 
 marina_custom_apps.patches.v0_53_12.add_journal_entry_line_bank_reference
-marina_custom_apps.patches.v0_53_25.add_alhamrani_bank_verified_fields
