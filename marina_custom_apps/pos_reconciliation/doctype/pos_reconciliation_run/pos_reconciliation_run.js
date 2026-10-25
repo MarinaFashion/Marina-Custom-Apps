@@ -149,7 +149,11 @@ frappe.ui.form.on("POS Reconciliation Run", {
                                             const enrichmentText = enrichment.status === "Applied"
                                                 ? __("Alhamrani enriched fields: {0}.", [updatedFields.join(", ")])
                                                 : __("Enrichment: {0}.", [enrichment.status || "Not Applied"]);
-                                            frappe.msgprint(__("Manual pairing approved. {0} Re-run POS reconciliation to refresh the matching result.", [enrichmentText]));
+                                            const skippedPan = (enrichment.skipped || []).find(x => x.field === "masked_card_number");
+                                            const panHint = skippedPan
+                                                ? __(" Masked card number was not copied: {0}. Open the Manual Link and use Enrich Remaining Fields after resolving it.", [skippedPan.reason])
+                                                : "";
+                                            frappe.msgprint(__("Manual pairing approved. {0}{1} Re-run POS reconciliation to refresh the matching result.", [enrichmentText, panHint]));
                                         }
                                     });
                                 });
