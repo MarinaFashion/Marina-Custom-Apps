@@ -56,6 +56,12 @@ def _eligible_changes(meta, source, bank):
         value = bank.get(bank_field)
         if _is_blank(value):
             continue
+        # Avoid storing values invalid for a Select field in the external app.
+        df = meta.get_field(target)
+        if df and df.fieldtype == "Select" and df.options:
+            allowed = {line.strip() for line in cstr(df.options).splitlines() if line.strip()}
+            if allowed and cstr(value).strip() not in allowed:
+                continue
         if bank_field == "masked_card_number":
             value = _safe_masked_pan(value)
             if not value:
