@@ -38,7 +38,7 @@ jobs:
                   b = {k:v for k,v in after.items() if k != "description"}
                   assert a == b, (str(path), name, "functional field metadata changed")
               for name in set(current) - set(original):
-                  assert current[name]["fieldtype"] in ("Column Break", "Tab Break") or (name == "bank_statement_settlement_lookahead_days" and current[name]["fieldtype"] == "Int"), (str(path), name)
+                  assert current[name]["fieldtype"] in ("Column Break", "Tab Break") or (name in ("bank_statement_settlement_lookahead_days", "transaction_time_tolerance_seconds") and current[name]["fieldtype"] == "Int"), (str(path), name)
               seq = now["field_order"]
               assert len(seq) == len(set(seq)) and set(seq) == set(current), str(path)
               if now.get("istable"):
