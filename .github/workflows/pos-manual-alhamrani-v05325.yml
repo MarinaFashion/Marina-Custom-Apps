@@ -63,3 +63,44 @@ jobs:
           assert '"0.53.25"' in Path('pyproject.toml').read_text()
           print("Manual link invariants passed")
           PY
+      - name: Preview time check scenarios
+        run: |
+          node - <<'JS'
+          const assert = require('node:assert/strict');
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const source = fs.readFileSync(
+            'marina_custom_apps/pos_reconciliation/doctype/pos_reconciliation_run/pos_reconciliation_run.js',
+            'utf8'
+          ).split('frappe.ui.form.on(')[0];
+          const context = { __: s => s, pos_recon_escape: s => String(s) };
+          vm.createContext(context);
+          vm.runInContext(source, context);
+          const preview = context.pos_recon_manual_link_preview;
+          const candidate = {
+            amount: 379, date: '2026-10-22', pos_profile: 'POS50',
+            time: '14:20:45', time_tolerance_seconds: 60,
+            alhamrani: {
+              amount: 379, date: '2026-10-22', pos_profile: 'POS50',
+              time: '14:20:00', time_origin: 'creation'
+            }
+          };
+          let html = preview(candidate);
+          assert.match(html, /<th>Time<\/th>/);
+          assert.doesNotMatch(html, /<th>Device<\/th>/);
+          assert.match(html, /<th>Time<\/th>.*?Verify slip/);
+          assert.match(html, /manual record creation time/);
+
+          candidate.alhamrani.time_origin = 'transaction';
+          html = preview(candidate);
+          assert.match(html, /<th>Time<\/th>.*?text-success">Match/);
+
+          candidate.alhamrani.time = '14:19:00';
+          html = preview(candidate);
+          assert.match(html, /<th>Time<\/th>.*?text-danger">Mismatch/);
+
+          candidate.alhamrani.time = '';
+          html = preview(candidate);
+          assert.match(html, /<th>Time<\/th>.*?Unavailable/);
+          console.log('Manual link preview time scenarios passed');
+          JS
