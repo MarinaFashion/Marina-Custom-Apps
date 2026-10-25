@@ -1,4 +1,4 @@
-"""Financial dependency guard for controlled Demo-only Manual POS unlink.
+"""Financial dependency guard for controlled Marina Manual POS unlink.
 
 Bank settlement and bank statement records remain unchanged. The Bank POS
 reconciliation identity survives; the Alhamrani source is separated by a rerun.
@@ -174,7 +174,7 @@ class ManualAlhamraniPOSLink(Document):
                 "Direct deletion is not allowed. Use Actions > Unlink Transactions "
                 "to run the accounting and settlement safety checks."
             ))
-        if cstr(getattr(frappe.local, "site", "")) != "marinademo.frappe.cloud":
-            frappe.throw(_("Controlled Unlink is currently Demo-only."))
+        if cstr(getattr(frappe.local, "site", "")) not in {"marinademo.frappe.cloud", "marina.frappe.cloud"}:
+            frappe.throw(_("Controlled Unlink is limited to approved Marina sites."))
         if not (set(frappe.get_roles()) & {"Accounts Manager", "System Manager"}):
             frappe.throw(_("Accounts Manager or System Manager role is required."), frappe.PermissionError)
