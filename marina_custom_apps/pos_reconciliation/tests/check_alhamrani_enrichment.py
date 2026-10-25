@@ -112,8 +112,8 @@ def make_system(source, site="marinademo.frappe.cloud"):
             ("transaction_time", ("transaction_time",)),
         ),
     )
-    for name in ("_is_blank", "_safe_masked_pan", "_eligible_changes",
-                 "apply_enrichment", "rollback_enrichment"):
+    for name in ("_is_blank", "_safe_masked_pan", "_eligible_changes_with_reasons",
+                 "_eligible_changes", "apply_enrichment", "rollback_enrichment"):
         load_function(SOURCE, name, ns)
     bank = Dict(
         name="BPT-1", card_type="P1", masked_card_number="******1234",
@@ -154,6 +154,57 @@ result = ns["apply_enrichment"](link, bank)
 assert "card_type" not in result["fields"]
 assert "masked_pan" not in result["fields"]
 assert frappe.db.source["card_type"] == "VC"
+
+# Common bank masking characters and last-four-only references must work.
+ns, frappe, bank, link = make_system(dict(source))
+for sample, expected in (
+    ("XXXX XXXX XXXX 1234", "************1234"),
+    ("####-####-####-1234", "************1234"),
+    ("•••• •••• •••• 1234", "************1234"),
+    ("**** **** **** 1234", "************1234"),
+    ("1234", "****1234"),
+):
+    assert ns["_safe_masked_pan"](sample) == expected
+assert ns["_safe_masked_pan"]("4111111111111111") == ""
+assert ns["_safe_masked_pan"]("12345678") == ""
+
+# A partially enriched existing link must be able to retry; do not lose the
+# first audit entries or their reversibility when masked card is added later.
+ns, frappe, bank, link = make_system(dict(source))
+bank["masked_card_number"] = "UNSUPPORTED MASK"
+first = ns["apply_enrichment"](link, bank)
+assert first["status"] == "Applied"
+assert "masked_pan" not in first["fields"]
+assert any(
+    x["field"] == "masked_card_number"
+    and x["reason"] == "Bank value is not a safely masked card reference"
+    for x in first["skipped"]
+)
+first_changes = json.loads(link.get("enrichment_details"))["changes"]
+assert len(first_changes) == 4
+bank["masked_card_number"] = "####-####-####-1234"
+second = ns["apply_enrichment"](link, bank)
+assert second["fields"] == ["masked_pan"], second
+audit = json.loads(link.get("enrichment_details"))
+assert len(audit["changes"]) == 5
+assert audit["attempts"] == 2
+assert frappe.db.source["masked_pan"] == "************1234"
+ns["rollback_enrichment"](link)
+assert frappe.db.source["masked_pan"] == ""
+assert frappe.db.source["card_type"] is None
+assert frappe.db.source["tid"] == ""
+
+# Missing Alhamrani target must be explained explicitly, without creating
+# a new unverified field or storing unmasked payment card data.
+ns, frappe, bank, link = make_system(dict(source))
+del frappe.db.source["masked_pan"]
+result = ns["apply_enrichment"](link, bank)
+assert "masked_pan" not in result["fields"]
+assert any(
+    x["field"] == "masked_card_number"
+    and x["reason"] == "Alhamrani target field unavailable"
+    for x in result["skipped"]
+)
 
 # A changed enriched value must block unlinking instead of overwriting it.
 ns, frappe, bank, link = make_system(dict(source))
