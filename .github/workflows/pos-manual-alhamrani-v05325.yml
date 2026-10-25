@@ -107,36 +107,51 @@ jobs:
       - name: Guard manual slips from auto matching
         run: |
           python marina_custom_apps/pos_reconciliation/tests/check_manual_confirmation_guard.py
-      - name: Safe Demo link deletion checks
+      - name: Controlled manual unlink and delete prohibition
         run: |
           python - <<'PY'
           from pathlib import Path
           import json
           root = Path("marina_custom_apps/pos_reconciliation")
           dtype = json.loads((root/"doctype/manual_alhamrani_pos_link/manual_alhamrani_pos_link.json").read_text())
-          perms = {p["role"]:p for p in dtype["permissions"]}
-          assert perms["Accounts Manager"]["delete"] == 1
-          assert perms["System Manager"]["delete"] == 1
+          perms = {p["role"]: p for p in dtype["permissions"]}
+          assert perms["Accounts Manager"]["delete"] == 0
+          assert perms["System Manager"]["delete"] == 0
+          fields = {x["fieldname"]: x for x in dtype["fields"]}
+          assert fields["bank_pos_transaction"]["unique"] == 1
+          assert fields["alhamrani_transaction"]["unique"] == 1
+          assert fields["bank_pos_transaction"]["reqd"] == 0
+          assert fields["alhamrani_transaction"]["reqd"] == 0
+          for field in ("unlink_reason", "unlinked_by", "unlinked_on",
+                        "original_bank_pos_transaction", "original_alhamrani_transaction"):
+              assert fields[field]["read_only"] == 1
           hook = (root/"doctype/manual_alhamrani_pos_link/manual_alhamrani_pos_link.py").read_text()
           for fragment in (
               "def on_trash(self):",
-              'marinademo.frappe.cloud',
               "assert_bank_transactions_open([bank_name])",
               "PROTECTED_ACCOUNTING_STATUSES",
               '"BANK|" + bank_name',
-              'bank.settled',
+              "bank.settled",
               '"POS Bank Settlement Transaction"',
               '"POS Accounting Posting Item"',
-              'row.bank_statement_settlement',
-              '_is_accounting_protected(row)',
-              'frappe.throw(',
-              'Rerun POS Reconciliation',
+              "row.bank_statement_settlement",
+              "_is_accounting_protected(row)",
+              "Manual POS links cannot be deleted",
           ):
               assert fragment in hook, fragment
-          assert "frappe.db.delete(" not in hook
-          assert "frappe.db.commit(" not in hook
-          print("Demo-only guarded unlink permission and safety checks passed")
+          js = (root/"doctype/manual_alhamrani_pos_link/manual_alhamrani_pos_link.js").read_text()
+          assert 'Unlink Transactions' in js
+          assert 'unlink_manual_link' in js
+          service = (root/"manual_alhamrani_link_service.py").read_text()
+          assert "def unlink_manual_link(link_name, reason):" in service
+          assert '"status": "Revoked"' in service
+          assert '"bank_pos_transaction": None' in service
+          assert '"alhamrani_transaction": None' in service
+          assert "rollback_enrichment(link)" in service
+          assert "frappe.db.commit(" not in service
+          print("Controlled Unlink permissions, Revoked history, and immutable references passed")
           PY
+          python marina_custom_apps/pos_reconciliation/tests/check_controlled_manual_unlink.py
       - name: Audited enrichment and safe rollback tests
         run: |
           python marina_custom_apps/pos_reconciliation/tests/check_alhamrani_enrichment.py
