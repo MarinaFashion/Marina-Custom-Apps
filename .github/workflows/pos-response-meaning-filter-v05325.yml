@@ -1,0 +1,36 @@
+name: POS Response Meaning review filter
+on:
+  push:
+    branches: [manual-alhamrani-link-v05325, main]
+  pull_request:
+    branches: [main]
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Response Meaning filter checks
+        run: |
+          node --check marina_custom_apps/pos_reconciliation/doctype/pos_reconciliation_run/pos_reconciliation_run.js
+          python -m compileall -q marina_custom_apps/pos_reconciliation/review_service.py marina_custom_apps/pos_reconciliation/doctype/pos_reconciliation_run/pos_reconciliation_run.py
+          python - <<'PY'
+          from pathlib import Path
+          root=Path("marina_custom_apps/pos_reconciliation")
+          review=(root/"review_service.py").read_text()
+          api=(root/"doctype/pos_reconciliation_run/pos_reconciliation_run.py").read_text()
+          ui=(root/"doctype/pos_reconciliation_run/pos_reconciliation_run.js").read_text()
+          assert 'filters["alhamrani_transaction"] = ["in", source_names or ' in review
+          assert '_apply_response_meaning_filter(filters, response_meaning)' in review
+          assert 'response_meaning=response_meaning' in api
+          assert 'pos-recon-filter-response-meaning' in ui
+          assert 'Confirmed manually from terminal slip' in ui
+          assert 'response_meaning:v.response_meaning||""' in ui
+          assert 'response_meaning:$w.find(' in ui
+          print("Response Meaning source-level filtering validated")
+          PY
