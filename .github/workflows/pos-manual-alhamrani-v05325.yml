@@ -130,7 +130,7 @@ jobs:
               'row.bank_statement_settlement',
               '_is_accounting_protected(row)',
               'frappe.throw(',
-              'rerun POS Reconciliation',
+              'Rerun POS Reconciliation',
           ):
               assert fragment in hook, fragment
           assert "frappe.db.delete(" not in hook
