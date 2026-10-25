@@ -178,9 +178,6 @@ def enrich_existing_manual_link(link_name):
     link = frappe.get_doc(LINK, link_name)
     if link.status != "Approved":
         frappe.throw(_("Only approved manual links can be enriched."))
-    if cstr(link.get("enrichment_details")).strip():
-        frappe.throw(_("This link has already been evaluated for enrichment."))
-
     frappe.db.sql(
         "SELECT name FROM `tabBank POS Transaction` WHERE name=%s FOR UPDATE",
         (link.bank_pos_transaction,),
