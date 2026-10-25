@@ -1,6 +1,6 @@
 """Controlled one-to-one manual pairing of approved Alhamrani and Bank POS transactions.
 
-Demo: audited enrichment of empty Alhamrani fields is permitted after approval.
+Marina sites: audited enrichment of empty Alhamrani fields after approval.
 Original JSON terminal evidence, settlements and accounting remain unchanged.
 """
 import re
@@ -167,7 +167,7 @@ def approve_manual_link(alhamrani_name, bank_pos_name, reason):
 
 @frappe.whitelist()
 def enrich_existing_manual_link(link_name):
-    """Opt-in Demo backfill for previously approved links, without relinking.
+    """Opt-in backfill for previously approved links, without relinking.
 
     Revalidate the original evidence and never change accounting/settlements.
     Earlier links already have a valid one-to-one pairing: this action only
@@ -221,8 +221,8 @@ def unlink_manual_link(link_name):
     POS reconciliation after unlinking to detach the stale Alhamrani pairing.
     """
     _require_approver()
-    if cstr(getattr(frappe.local, "site", "")) != "marinademo.frappe.cloud":
-        frappe.throw(_("Controlled Unlink is enabled on Demo only until Finance acceptance."))
+    if cstr(getattr(frappe.local, "site", "")) not in {"marinademo.frappe.cloud", "marina.frappe.cloud"}:
+        frappe.throw(_("Controlled Unlink is enabled only on approved Marina sites."))
 
     link_name = cstr(link_name).strip()
     if not link_name:
