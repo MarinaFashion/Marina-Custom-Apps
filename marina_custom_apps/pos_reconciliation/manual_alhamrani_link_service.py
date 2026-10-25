@@ -28,6 +28,27 @@ def active_manual_links():
     return {row.bank_pos_transaction: row.alhamrani_transaction for row in rows}
 
 
+def validate_manual_pair(bank, alh):
+    """Validate source evidence both during approval and during reconciliation reruns."""
+    rrn = cstr(bank.rrn).strip()
+    if not re.fullmatch(r"\d{12}", rrn) or rrn != cstr(alh.rrn).strip():
+        frappe.throw(_("Invalid or mismatched manual-link RRN."))
+    if alh.amount is None or abs(flt(bank.transaction_amount, 2) - flt(alh.amount, 2)) > 0.01:
+        frappe.throw(_("Manual link payment amounts differ."))
+    if not bank.transaction_date or not alh.transaction_date or getdate(bank.transaction_date) != getdate(alh.transaction_date):
+        frappe.throw(_("Manual link dates differ."))
+    if not bank.pos_profile or not alh.pos_profile or bank.pos_profile != alh.pos_profile:
+        frappe.throw(_("Manual link POS Profiles differ."))
+    bank_type = cstr(bank.transaction_type).strip().upper()
+    source_type = cstr(alh.transaction_type).strip().upper()
+    if bank_type not in {"PURCHASE", "REFUND"} or (source_type and source_type != bank_type):
+        frappe.throw(_("Manual link transaction types differ."))
+    if cstr(bank.transaction_status).strip().upper() != "APPROVED":
+        frappe.throw(_("Bank POS transaction is not approved."))
+    if cstr(alh.status).strip().upper() not in {"APPROVED", "SUCCESS", "COMPLETED"}:
+        frappe.throw(_("Alhamrani transaction is not approved."))
+
+
 @frappe.whitelist()
 def approve_manual_link(alhamrani_name, bank_pos_name, reason):
     _require_approver()
@@ -48,19 +69,8 @@ def approve_manual_link(alhamrani_name, bank_pos_name, reason):
     alh = adapter.normalized_row(source)
     if not adapter.is_approved(source):
         frappe.throw(_("Alhamrani transaction is not approved."))
-    if not re.fullmatch(r"\d{12}", cstr(bank.rrn).strip()) or cstr(bank.rrn).strip() != cstr(alh.rrn).strip():
-        frappe.throw(_("A matching, valid 12-digit RRN is required."))
-    if alh.amount is None or abs(flt(bank.transaction_amount, 2) - flt(alh.amount, 2)) > 0.01:
-        frappe.throw(_("Payment amounts do not match."))
-    if getdate(bank.transaction_date) != getdate(alh.transaction_date):
-        frappe.throw(_("Dates do not match; investigate before linking."))
-    resolved = resolve_pos_profile(alh.terminal_id, alh.transaction_date) or alh.source_pos_profile
-    if not resolved or not bank.pos_profile or resolved != bank.pos_profile:
-        frappe.throw(_("A matching verified POS Profile is required."))
-    if cstr(bank.transaction_type).upper() not in {"PURCHASE", "REFUND"}:
-        frappe.throw(_("Bank POS transaction type is not a supported purchase/refund."))
-    if cstr(alh.transaction_type).strip() and cstr(alh.transaction_type).upper() != cstr(bank.transaction_type).upper():
-        frappe.throw(_("Transaction types do not match."))
+    alh.pos_profile = resolve_pos_profile(alh.terminal_id, alh.transaction_date) or alh.source_pos_profile
+    validate_manual_pair(bank, alh)
     # Source rows are not mutated; the reconciliation engine consumes only approved links.
     doc = frappe.get_doc({"doctype": LINK, "alhamrani_transaction": alhamrani_name,
         "bank_pos_transaction": bank_pos_name, "rrn": cstr(bank.rrn).strip(),
