@@ -1,0 +1,39 @@
+name: POS transaction time tolerance v0.53.24
+on:
+  push:
+    branches: [pos-time-tolerance-v05324, main]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Time comparison boundary tests
+        run: |
+          python -m compileall -q marina_custom_apps/pos_reconciliation/reconciliation_engine.py
+          python - <<'PY'
+          import ast, datetime, json
+          from pathlib import Path
+          src=Path("marina_custom_apps/pos_reconciliation/reconciliation_engine.py").read_text()
+          node=next(n for n in ast.parse(src).body if isinstance(n, ast.FunctionDef) and n.name=="_time_difference_seconds")
+          ctx={"datetime":datetime.datetime, "getdate": lambda x: x}
+          exec(compile(ast.Module(body=[node], type_ignores=[]), "<extracted>", "exec"),ctx)
+          diff=ctx["_time_difference_seconds"]
+          d=datetime.date(2026,10,5)
+          assert diff(d,"09:57:14",d,"09:57:19")==5
+          assert diff(d,"09:57:14",d,"09:58:13")==59
+          assert diff(d,"09:57:14",d,"09:58:14")==60
+          assert diff(d,"09:57:14",d,"09:58:15")==61
+          assert diff(d,"23:59:55",d+datetime.timedelta(days=1),"00:00:05")==10
+          assert diff(d,"23:59:55",d,"00:00:05")==86390
+          assert 'delta > max(0, min(cint(time_tolerance_seconds), 300))' in src
+          assert "settings.get('transaction_time_tolerance_seconds')" in src
+          settings=json.loads(Path("marina_custom_apps/pos_reconciliation/doctype/pos_reconciliation_settings/pos_reconciliation_settings.json").read_text())
+          assert any(x.get("fieldname")=="transaction_time_tolerance_seconds" and x.get("default")=="60" for x in settings["fields"])
+          assert '0.53.24' in Path('pyproject.toml').read_text()
+          print("POS timestamp tolerances, midnight boundary and settings checks passed")
+          PY
