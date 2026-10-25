@@ -319,7 +319,17 @@ def _build_results(run, bank_rows, alhamrani_rows, card_mapper, time_tolerance_s
         if bank.name in manual_links:
             linked = alh_by_name.get(manual_links[bank.name])
             if not linked:
-                frappe.throw(_("Approved manual link for Bank POS {0} points to an Alhamrani transaction outside this run.").format(bank.name))
+                # Scope/date/status filters can omit the linked Alhamrani row.
+                # Do not abort the entire run or falsely recognize an unavailable pair.
+                result = _base_result(run, bank=bank, card_mapper=card_mapper)
+                result.update(
+                    match_status="Bank Only - Not Settled",
+                    resolution_status="Pending",
+                    before_integration=_is_before_integration(bank, integration_dates),
+                    discrepancy_fields="Manual Link: Alhamrani transaction unavailable in this run",
+                )
+                results.append(result)
+                continue
             validate_manual_pair(bank, linked)
             candidates = [linked]
         else:
