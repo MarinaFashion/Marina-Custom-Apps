@@ -123,12 +123,12 @@ jobs:
               'marinademo.frappe.cloud',
               "assert_bank_transactions_open([bank_name])",
               "PROTECTED_ACCOUNTING_STATUSES",
-              "PROTECTED_STATEMENT_STATUSES",
-              "bank.settled",
+              '"BANK|" + bank_name',
+              'bank.settled',
               '"POS Bank Settlement Transaction"',
               '"POS Accounting Posting Item"',
               'row.bank_statement_settlement',
-              'row.journal_entry',
+              '_is_accounting_protected(row)',
               'frappe.throw(',
               'rerun POS Reconciliation',
           ):
@@ -158,3 +158,6 @@ jobs:
           assert 'rollback_enrichment(self)' in delete_hook
           print('Previously approved link enrichment and guarded rollback invariants passed')
           PY
+      - name: Settled payment unlink guard scenarios
+        run: |
+          python marina_custom_apps/pos_reconciliation/tests/check_settled_manual_link_unlink.py
