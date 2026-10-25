@@ -1,18 +1,16 @@
-"""Test the real Unlink function with mock Frappe, without a running bench.
+"""Exercise real controlled unlink, without an ERPNext site.
 
-Only Demo can revoke, original sources stay in the historical link, source
-bank accounting/settlement references are never edited, and a reason is
-mandatory. Preflight itself is exercised separately by
-check_settled_manual_link_unlink.py.
+A request-scope flag gates direct Delete; the link is removed ONLY after
+financial dependency preflight and reversible enrichment cleanup. No Revoked
+record or separate unlink record is created.
 """
 import ast
-from datetime import datetime
-from pathlib import Path
 from types import SimpleNamespace
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SERVICE = (ROOT / "manual_alhamrani_link_service.py").read_text()
-DOCHOOK = (ROOT / "doctype/manual_alhamrani_pos_link/manual_alhamrani_pos_link.py").read_text()
+HOOK = (ROOT / "doctype/manual_alhamrani_pos_link/manual_alhamrani_pos_link.py").read_text()
 
 
 class Bag(dict):
@@ -20,169 +18,190 @@ class Bag(dict):
         return self.get(key)
 
 
-class Db:
+class Database:
     def __init__(self):
-        self.writes = []
-        self.locks = []
-        self.link = Bag(
-            name="LINK-1", status="Approved", bank_pos_transaction="BPT-1",
-            alhamrani_transaction="AUP-1", rrn="123456789012", amount=379.0,
-            reason="Approved from original slip", approved_by="approver@example.org",
-            approved_on="2026-10-24 09:00:00",
-            enrichment_details='{"changes":[{"source_field":"pan"}]}',
-        )
-        self.source = Bag(pan="******1234", tid="TID-1")
-        self.bank = Bag(
-            settled=1, accounting_posting=None,
-            journal_entry=None, settlement_number="SETTLEMENT-1",
-        )
-        self.preflight_failure = False
-        self.restore_failure = False
+        self.reset()
+
+    def reset(self):
+        self.links = {
+            "LINK-1": Bag(
+                name="LINK-1", status="Approved",
+                bank_pos_transaction="BPT-1",
+                alhamrani_transaction="AUP-1",
+                enrichment_details='{"changes":[{"source_field":"pan"}]}',
+            )
+        }
+        self.settlement = Bag(bank_pos_transaction="BPT-1", settled=1,
+                              settlement_number="SET-1", journal_entry=None)
+        self.alhamrani = Bag(pan="******1234", tid="TID-1")
+        self.events = []
+        self.error = None
 
     def sql(self, query, args):
-        assert query == "SELECT name FROM `tabManual Alhamrani POS Link` WHERE name=%s FOR UPDATE"
+        assert "FOR UPDATE" in query
         assert args == ("LINK-1",)
-        self.locks.append(args)
+        self.events.append("lock")
 
-    def set_value(self, doctype, name, values, update_modified=False):
-        assert doctype == "Manual Alhamrani POS Link" and name == "LINK-1"
-        assert update_modified is True
-        assert self.locks
-        self.writes.append(values)
-        self.link.update(values)
+    def delete(self, doctype, name):
+        self.events.append("delete")
+        del self.links[name]
 
 
-db = Db()
-site = SimpleNamespace(value="marinademo.frappe.cloud")
-user = SimpleNamespace(value="manager@example.org")
-role = SimpleNamespace(value=True)
-
-
-def reject(message, *args):
-    raise ValueError(str(message))
-
-
-def validate_access():
-    if not role.value:
-        raise PermissionError("Only Accounts Manager or System Manager")
-
-
-def preflight(bank_name, alh_name):
-    assert bank_name == "BPT-1" and alh_name == "AUP-1"
-    assert db.locks, "Link lock is required"
-    if db.preflight_failure:
-        raise ValueError("commission/VAT accounting posting detected")
-
-
-def rollback(link):
-    assert link["status"] == "Approved"
-    assert not db.writes, "Restore enrichment before revoking a link"
-    if db.restore_failure:
-        raise ValueError("Pan changed after enrichment")
-    db.source["pan"] = None
-    db.source["tid"] = None
-
-
+db = Database()
+class Flags(dict):
+    __getattr__ = dict.get
 frappe = SimpleNamespace(
     local=SimpleNamespace(site="marinademo.frappe.cloud"),
-    session=SimpleNamespace(user=user.value),
+    flags=Flags(),
+    session=SimpleNamespace(user="finance@example.org"),
     db=db,
-    get_doc=lambda dt, name: db.link if dt == "Manual Alhamrani POS Link" and name == "LINK-1" else None,
-    throw=reject,
+    get_doc=lambda dt, name: db.links[name],
+    get_roles=lambda: ["Accounts Manager"],
+    PermissionError=PermissionError,
+    throw=lambda message, *args: (_ for _ in ()).throw(ValueError(str(message))),
 )
-ns = dict(
-    frappe=frappe,
-    _=lambda x: x,
-    cstr=lambda x: "" if x is None else str(x),
-    now_datetime=lambda: datetime(2026, 10, 25, 23, 20),
-    LINK="Manual Alhamrani POS Link",
-    _require_approver=validate_access,
-    _assert_no_financial_dependencies=preflight,
-    rollback_enrichment=rollback,
-)
-tree = ast.parse(SERVICE)
-node = next(n for n in tree.body if isinstance(n, ast.FunctionDef)
-            and n.name == "unlink_manual_link")
-# Import injection is only for dependency-free testing; execute the function's
-# original business instructions and database writes.
-node.decorator_list = []
-node.body = [
-    ast.Pass() if isinstance(x, ast.ImportFrom)
-    else x for x in node.body
-]
-exec(compile(ast.fix_missing_locations(ast.Module(body=[node], type_ignores=[])),
-             "<real controlled unlink>", "exec"), ns)
-unlink = ns["unlink_manual_link"]
+ns = {
+    "frappe": frappe, "_": lambda s: s,
+    "cstr": lambda value: "" if value is None else str(value),
+    "LINK": "Manual Alhamrani POS Link",
+}
 
 
-def should_reject(reason_text, reason=None):
-    try:
-        unlink("LINK-1", "Operator correction: wrong payment mapping"
-               if reason is None else reason)
-        raise AssertionError("Unsafe unlink unexpectedly succeeded")
-    except (ValueError, PermissionError) as exc:
-        assert reason_text.lower() in str(exc).lower(), str(exc)
+def protected(bank, alh):
+    assert bank == "BPT-1" and alh == "AUP-1"
+    assert db.events == ["lock"]
+    db.events.append("preflight")
+    if db.error == "posting":
+        raise ValueError("commission/VAT posting prevents unlink")
+    if db.error == "settlement":
+        raise ValueError("bank settlement references unsafe")
+    if db.error == "closed":
+        raise ValueError("Closed finance period")
 
 
-should_reject("between 10 and 2000", reason="Too short")
-assert not db.writes
-frappe.local.site = "marina.frappe.cloud"
-should_reject("Demo only")
-assert not db.writes
-frappe.local.site = "marinademo.frappe.cloud"
-role.value = False
-should_reject("Accounts Manager")
-assert not db.writes
-role.value = True
-db.preflight_failure = True
-should_reject("commission/VAT")
-assert not db.writes
-db.preflight_failure = False
-db.restore_failure = True
-should_reject("changed after enrichment")
-assert not db.writes
-db.restore_failure = False
+def restore(doc):
+    assert db.events == ["lock", "preflight"]
+    db.events.append("restore")
+    if db.error == "restore":
+        raise ValueError("Alhamrani PAN changed after enrichment")
+    db.alhamrani["pan"] = None
+    db.alhamrani["tid"] = None
 
-result = unlink("LINK-1", "Correction after examining terminal slip")
-assert result["status"] == "Revoked"
-assert result["requires_reconciliation"] is True
-assert db.link.status == "Revoked"
-assert db.link.bank_pos_transaction is None
-assert db.link.alhamrani_transaction is None
-assert db.link.original_bank_pos_transaction == "BPT-1"
-assert db.link.original_alhamrani_transaction == "AUP-1"
-assert db.link.unlink_reason == "Correction after examining terminal slip"
-assert db.link.unlinked_by == user.value
-assert db.link.unlinked_on == datetime(2026, 10, 25, 23, 20)
-assert db.link.approved_by == "approver@example.org"
-assert db.link.reason == "Approved from original slip"
-assert "pan" in db.link.enrichment_details, "Old enrichment audit must be retained"
-assert db.source["pan"] is None
-assert db.source["tid"] is None
-assert db.bank.settled == 1
-assert db.bank.settlement_number == "SETTLEMENT-1"
-assert db.bank.accounting_posting is None
-assert db.bank.journal_entry is None
-assert len(db.writes) == 1
-should_reject("already be unlinked")
-assert len(db.writes) == 1
 
-assert "frappe.db.delete(" not in SERVICE
-assert "frappe.db.commit(" not in SERVICE
-assert "frappe.delete_doc(" not in SERVICE
+def require_approver():
+    if db.error == "role":
+        raise ValueError("Accounts Manager required")
 
-hook_tree = ast.parse(DOCHOOK)
-hook_cls = next(n for n in hook_tree.body
-                if isinstance(n, ast.ClassDef) and n.name == "ManualAlhamraniPOSLink")
-trash = next(n for n in hook_cls.body if isinstance(n, ast.FunctionDef)
-             and n.name == "on_trash")
-guard_ns = {"frappe": frappe, "_": lambda x: x}
-exec(compile(ast.Module(body=[trash], type_ignores=[]),
-             "<direct delete guard>", "exec"), guard_ns)
+
+ns.update({
+    "_require_approver": require_approver,
+    "_assert_no_financial_dependencies": protected,
+    "rollback_enrichment": restore,
+})
+
+
+def install_function(source, name, class_name=None):
+    tree = ast.parse(source)
+    scope = tree.body
+    if class_name:
+        scope = next(n.body for n in tree.body
+                     if isinstance(n, ast.ClassDef) and n.name == class_name)
+    func = next(n for n in scope if isinstance(n, ast.FunctionDef) and n.name == name)
+    func.decorator_list = []
+    func.body = [
+        ast.Pass() if isinstance(x, ast.ImportFrom) else x
+        for x in func.body
+    ]
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[func], type_ignores=[])),
+                 name, "exec"), ns)
+    return ns[name]
+
+
+guard = install_function(HOOK, "on_trash", "ManualAlhamraniPOSLink")
+
+
+def perform_delete(doctype, name, ignore_permissions=False):
+    assert ignore_permissions is True
+    assert doctype == "Manual Alhamrani POS Link"
+    assert name == "LINK-1"
+    assert db.events == ["lock", "preflight", "restore"]
+    guard(Bag(name="LINK-1"))
+    db.delete(doctype, name)
+
+
+frappe.delete_doc = perform_delete
+unlink = install_function(SERVICE, "unlink_manual_link")
+
+# Direct Delete, even by a Finance Manager, is always rejected.
 try:
-    guard_ns["on_trash"](object())
-    raise AssertionError("Direct deletion should never be permitted")
+    guard(Bag(name="LINK-1"))
+    raise AssertionError("Direct Delete was permitted")
 except ValueError as exc:
-    assert "cannot be deleted" in str(exc)
+    assert "Direct deletion is not allowed" in str(exc)
+assert db.links["LINK-1"]["status"] == "Approved"
 
-print("Controlled audited unlink, direct delete prohibition, and rollback checks passed")
+def blocked(error, expected):
+    db.reset()
+    db.error = error
+    try:
+        unlink("LINK-1")
+        raise AssertionError("Unsafe unlink was permitted: " + error)
+    except ValueError as exc:
+        assert expected in str(exc), str(exc)
+    assert "delete" not in db.events
+    assert db.links["LINK-1"]["status"] == "Approved"
+    assert frappe.flags == {}, "Scoped Delete permission escaped a failing request"
+
+
+blocked("role", "Accounts Manager")
+blocked("posting", "commission/VAT")
+blocked("settlement", "bank settlement")
+blocked("closed", "Closed")
+blocked("restore", "changed after enrichment")
+
+db.reset()
+frappe.local.site = "marina.frappe.cloud"
+try:
+    unlink("LINK-1")
+    raise AssertionError("Live unlink should be disabled")
+except ValueError as exc:
+    assert "Demo only" in str(exc)
+assert db.events == []
+frappe.local.site = "marinademo.frappe.cloud"
+
+# A permitted, already-settled transaction with no accounting postings can
+# be safely unlinked; settlement/statement records remain unchanged.
+db.reset()
+result = unlink("LINK-1")
+assert result["unlinked"] is True
+assert result["requires_reconciliation"] is True
+assert result["bank_pos_transaction"] == "BPT-1"
+assert result["alhamrani_transaction"] == "AUP-1"
+assert db.events == ["lock", "preflight", "restore", "delete"]
+assert db.links == {}
+assert db.settlement.settled == 1 and db.settlement.settlement_number == "SET-1"
+assert db.alhamrani.pan is None and db.alhamrani.tid is None
+assert frappe.flags == {}, "Unlink privilege must not survive its own request"
+
+# A failed second unlink cannot remove any other payment.
+try:
+    unlink("LINK-1")
+    raise AssertionError("Duplicate unlink unexpectedly succeeded")
+except KeyError:
+    pass
+
+# Direct deletion cannot be granted for a different record by the flag.
+frappe.flags["_authorized_manual_alhamrani_unlink"] = "LINK-2"
+try:
+    guard(Bag(name="LINK-1"))
+    raise AssertionError("Wrong flag could delete another Manual Link")
+except ValueError as exc:
+    assert "Direct deletion is not allowed" in str(exc)
+frappe.flags.pop("_authorized_manual_alhamrani_unlink")
+
+assert "frappe.db.commit(" not in SERVICE
+assert "frappe.db.delete(" not in SERVICE
+assert "frappe.delete_doc(LINK, link_name, ignore_permissions=True)" in SERVICE
+assert "original_bank_pos_transaction" not in SERVICE
+assert '"status": "Revoked"' not in SERVICE
+print("Controlled unlink, protected accounting, and direct Delete prevention passed")
