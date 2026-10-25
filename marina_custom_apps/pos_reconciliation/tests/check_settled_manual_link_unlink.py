@@ -154,5 +154,7 @@ data.closed = False
 run("BPT-1", "AUP-1")
 assert "frappe.db.delete(" not in SOURCE
 assert "frappe.db.commit(" not in SOURCE
-assert "rollback_enrichment(self)" in SOURCE
+assert "Manual POS links cannot be deleted" in SOURCE
+assert "def validate(self):" in SOURCE
+assert "Approved manual links require both source transactions" in SOURCE
 print("Settled/no-posting unlink guard and financial reference protection passed")
