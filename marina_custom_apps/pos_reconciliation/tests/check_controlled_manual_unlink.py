@@ -33,7 +33,7 @@ class Database:
         }
         self.settlement = Bag(bank_pos_transaction="BPT-1", settled=1,
                               settlement_number="SET-1", journal_entry=None)
-        self.alhamrani = Bag(pan="******1234", tid="TID-1")
+        self.alhamrani = Bag(pan="*" * 6 + "1234", tid="TID-1")
         self.events = []
         self.error = None
 
@@ -53,7 +53,7 @@ class Flags(dict):
 frappe = SimpleNamespace(
     local=SimpleNamespace(site="marinademo.frappe.cloud"),
     flags=Flags(),
-    session=SimpleNamespace(user="finance@example.org"),
+    session=SimpleNamespace(user="test-finance-user"),
     db=db,
     get_doc=lambda dt, name: db.links[name],
     get_roles=lambda: ["Accounts Manager"],
@@ -161,11 +161,18 @@ blocked("restore", "changed after enrichment")
 
 db.reset()
 frappe.local.site = "marina.frappe.cloud"
+result_live = unlink("LINK-1")
+assert result_live["unlinked"] is True
+assert db.events == ["lock", "preflight", "restore", "delete"]
+assert db.links == {}
+assert frappe.flags == {}
+frappe.local.site = "other.frappe.cloud"
+db.reset()
 try:
     unlink("LINK-1")
-    raise AssertionError("Live unlink should be disabled")
+    raise AssertionError("Unknown site should be blocked")
 except ValueError as exc:
-    assert "Demo only" in str(exc)
+    assert "approved Marina sites" in str(exc)
 assert db.events == []
 frappe.local.site = "marinademo.frappe.cloud"
 
