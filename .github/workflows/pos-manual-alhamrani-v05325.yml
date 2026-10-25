@@ -32,6 +32,8 @@ jobs:
           assert fields["alhamrani_transaction"]["unique"]==1
           assert "validate_manual_pair(bank, alh)" in service
           assert "validate_manual_pair(bank, linked)" in engine
+          assert "Manual Link: Alhamrani transaction unavailable in this run" in engine
+          assert "Approved manual link for Bank POS" not in engine
           assert 'active_manual_links()' in engine
           assert "result = _base_result(run, bank=bank, alhamrani=alh" in engine
           assert "frappe.db.delete(" not in service
