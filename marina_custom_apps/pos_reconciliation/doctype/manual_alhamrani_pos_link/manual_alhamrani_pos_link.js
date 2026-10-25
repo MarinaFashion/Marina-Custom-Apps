@@ -25,8 +25,7 @@ frappe.ui.form.on("Manual Alhamrani POS Link", {
                         masked_card_number: __("Masked Card Number"),
                         card_type: __("Card Type"),
                         terminal_id: __("Terminal ID"),
-                        auth_code: __("Auth Code"),
-                        transaction_time: __("Transaction Time")
+                        auth_code: __("Auth Code")
                     };
                     const details = skipped.map(row =>
                         "<li>" + frappe.utils.escape_html(fieldNames[row.field] || row.field || "") +
