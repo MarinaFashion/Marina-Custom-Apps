@@ -137,7 +137,7 @@ assert set(result["fields"]) == {"card_type", "pan", "tid", "auth_code", "transa
 assert frappe.db.source["card_type"] == "P1"
 assert frappe.db.source["tid"] == "TID-42"
 assert frappe.db.source["pan"] == "******1234"
-assert frappe.db.source["pan"] == ""
+assert frappe.db.source["masked_pan"] == ""
 assert frappe.db.source["response_json"] == "ORIGINAL RESPONSE"
 assert frappe.db.source["request_json"] == "ORIGINAL REQUEST"
 assert frappe.db.source["amount"] == "379.00"
@@ -196,7 +196,6 @@ ns["rollback_enrichment"](link)
 assert frappe.db.source["pan"] == ""
 assert frappe.db.source["card_type"] is None
 assert frappe.db.source["tid"] == ""
-assert frappe.db.source["pan"] == ""
 
 # Missing Alhamrani target must be explained explicitly, without creating
 # a new unverified field or storing unmasked payment card data.
