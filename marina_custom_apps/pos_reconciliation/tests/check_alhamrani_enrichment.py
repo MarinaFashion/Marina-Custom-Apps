@@ -153,7 +153,7 @@ assert frappe.db.source["response_meaning"] == "Confirmed manually from terminal
 
 # Never overwrite nonempty source values or import unmasked bank card numbers.
 ns, frappe, bank, link = make_system(dict(source, card_type="VC", pan=""))
-bank["masked_card_number"] = "4111111111111111"
+bank["masked_card_number"] = "4" * 16
 result = ns["apply_enrichment"](link, bank)
 assert "card_type" not in result["fields"]
 assert "pan" not in result["fields"]
@@ -172,7 +172,7 @@ for sample, expected in (
 ):
 
     assert ns["_safe_masked_pan"](sample) == expected
-assert ns["_safe_masked_pan"]("4111111111111111") == ""
+assert ns["_safe_masked_pan"]("4" * 16) == ""
 assert ns["_safe_masked_pan"]("12345678") == ""
 # Exposed middle digits and prefixes beyond first six are unsafe even when
 # another part of the bank PAN has masking characters.
@@ -250,8 +250,16 @@ result = ns["apply_enrichment"](link, bank)
 assert result["status"] == "Not Applicable"
 assert frappe.db.writes == []
 
-# Demo-only, while preserving approvals on other sites.
+# Approved Marina Live site uses the same guarded enrichment.
 ns, frappe, bank, link = make_system(dict(source), site="marina.frappe.cloud")
+result = ns["apply_enrichment"](link, bank)
+assert result["status"] == "Applied"
+assert set(result["fields"]) == {"card_type", "pan", "tid", "auth_code"}
+ns["rollback_enrichment"](link)
+assert frappe.db.source["pan"] == ""
+
+# An unrelated site remains disabled.
+ns, frappe, bank, link = make_system(dict(source), site="other.frappe.cloud")
 result = ns["apply_enrichment"](link, bank)
 assert result["status"] == "Disabled"
 assert frappe.db.writes == []
