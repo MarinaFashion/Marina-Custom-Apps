@@ -140,3 +140,21 @@ jobs:
       - name: Audited enrichment and safe rollback tests
         run: |
           python marina_custom_apps/pos_reconciliation/tests/check_alhamrani_enrichment.py
+      - name: Backfill UI and approval integration syntax
+        run: |
+          node --check marina_custom_apps/pos_reconciliation/doctype/manual_alhamrani_pos_link/manual_alhamrani_pos_link.js
+          node --check marina_custom_apps/pos_reconciliation/doctype/pos_reconciliation_run/pos_reconciliation_run.js
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('marina_custom_apps/pos_reconciliation')
+          link = (p/'manual_alhamrani_link_service.py').read_text()
+          ui = (p/'doctype/manual_alhamrani_pos_link/manual_alhamrani_pos_link.js').read_text()
+          delete_hook = (p/'doctype/manual_alhamrani_pos_link/manual_alhamrani_pos_link.py').read_text()
+          assert 'def enrich_existing_manual_link(link_name)' in link
+          assert 'enrichment = apply_enrichment(doc, bank)' in link
+          assert 'validate_manual_pair(bank, alh)' in link
+          assert 'enrich_existing_manual_link' in ui
+          assert 'Enrich Missing Fields' in ui
+          assert 'rollback_enrichment(self)' in delete_hook
+          print('Previously approved link enrichment and guarded rollback invariants passed')
+          PY
