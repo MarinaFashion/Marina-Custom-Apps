@@ -21,20 +21,14 @@
   "enrichment_status",
   "enrichment_details",
   "enriched_by",
-  "enriched_on",
-  "unlink_section",
-  "unlink_reason",
-  "unlinked_by",
-  "unlinked_on",
-  "original_bank_pos_transaction",
-  "original_alhamrani_transaction"
+  "enriched_on"
  ],
  "fields": [
   {
    "fieldname": "alhamrani_transaction",
    "fieldtype": "Data",
    "label": "Alhamrani Transaction",
-   "reqd": 0,
+   "reqd": 1,
    "in_list_view": 1,
    "read_only": 1,
    "unique": 1
@@ -44,7 +38,7 @@
    "fieldtype": "Link",
    "options": "Bank POS Transaction",
    "label": "Bank POS Transaction",
-   "reqd": 0,
+   "reqd": 1,
    "in_list_view": 1,
    "read_only": 1,
    "unique": 1
@@ -128,49 +122,6 @@
    "fieldtype": "Datetime",
    "label": "Enriched On",
    "read_only": 1
-  },
-  {
-   "fieldname": "unlink_section",
-   "fieldtype": "Section Break",
-   "label": "Unlink History",
-   "depends_on": "eval:doc.status=='Revoked'"
-  },
-  {
-   "fieldname": "unlink_reason",
-   "fieldtype": "Small Text",
-   "label": "Unlink Reason",
-   "read_only": 1,
-   "depends_on": "eval:doc.status=='Revoked'"
-  },
-  {
-   "fieldname": "unlinked_by",
-   "fieldtype": "Link",
-   "label": "Unlinked By",
-   "options": "User",
-   "read_only": 1,
-   "depends_on": "eval:doc.status=='Revoked'"
-  },
-  {
-   "fieldname": "unlinked_on",
-   "fieldtype": "Datetime",
-   "label": "Unlinked On",
-   "read_only": 1,
-   "depends_on": "eval:doc.status=='Revoked'"
-  },
-  {
-   "fieldname": "original_bank_pos_transaction",
-   "fieldtype": "Link",
-   "label": "Original Bank POS Transaction",
-   "options": "Bank POS Transaction",
-   "read_only": 1,
-   "depends_on": "eval:doc.status=='Revoked'"
-  },
-  {
-   "fieldname": "original_alhamrani_transaction",
-   "fieldtype": "Data",
-   "label": "Original Alhamrani Transaction",
-   "read_only": 1,
-   "depends_on": "eval:doc.status=='Revoked'"
   }
  ],
  "permissions": [
