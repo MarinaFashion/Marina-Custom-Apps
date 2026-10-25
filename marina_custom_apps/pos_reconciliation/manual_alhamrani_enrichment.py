@@ -1,9 +1,9 @@
-"""Audited Demo-only enrichment of Alhamrani slip payments from Bank POS.
+"""Audited Marina-site enrichment of Alhamrani slip payments from Bank POS.
 
 Original terminal/request payloads remain unchanged. Only empty source fields
 are populated; changes are recorded in the Manual Alhamrani POS Link itself.
 A guarded unlink restores ONLY values this module wrote, and only when they
-have not changed independently. Do not deploy to Live without acceptance.
+have not changed independently. Production activation requires Finance acceptance.
 """
 import json
 import re
@@ -128,9 +128,8 @@ def apply_enrichment(link, bank):
     rolls back both creation and enrichment. Locks prevent concurrent edits to
     the source row between validation, audit capture, and write.
     """
-    if cstr(getattr(frappe.local, "site", "")) != "marinademo.frappe.cloud":
-        # Never break the approved-link workflow on another site simply
-        # because Demo-only enrichment is intentionally disabled there.
+    if cstr(getattr(frappe.local, "site", "")) not in {"marinademo.frappe.cloud", "marina.frappe.cloud"}:
+        # Do not change records on unapproved/non-Marina sites.
         link.db_set("enrichment_status", "Disabled", update_modified=False)
         return {"status": "Disabled", "fields": []}
 
@@ -199,7 +198,7 @@ def apply_enrichment(link, bank):
 def rollback_enrichment(link):
     """Undo exclusively the fields written by this link; fail on any conflict.
 
-    This is called from the guarded Demo Delete hook only AFTER checking
+    This is called from controlled unlink ONLY AFTER checking
     accounting and settlement dependencies. The caller's delete transaction
     atomically rolls back these changes if the document delete fails.
     """
