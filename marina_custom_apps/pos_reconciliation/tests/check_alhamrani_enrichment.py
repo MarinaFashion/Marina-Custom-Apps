@@ -257,8 +257,9 @@ assert result["status"] == "Disabled"
 assert frappe.db.writes == []
 
 assert "enrichment = apply_enrichment(doc, bank)" in SERVICE
-assert "rollback_enrichment(self)" in DELETE_HOOK
-assert DELETE_HOOK.index("_assert_no_financial_dependencies(") < DELETE_HOOK.index("rollback_enrichment(self)")
+assert "rollback_enrichment(link)" in SERVICE
+assert SERVICE.index("_assert_no_financial_dependencies(bank_name, alh_name)") < SERVICE.index("rollback_enrichment(link)")
+assert "Direct deletion is not allowed" in DELETE_HOOK
 assert "frappe.db.commit(" not in SERVICE
 assert "frappe.db.commit(" not in SOURCE
 assert "frappe.db.delete(" not in SOURCE
