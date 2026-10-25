@@ -144,7 +144,12 @@ frappe.ui.form.on("POS Reconciliation Run", {
                                     }).then(result => {
                                         if (result.message && result.message.status === "Approved") {
                                             mappingDialog.hide();
-                                            frappe.msgprint(__("Manual pairing approved. Re-run POS reconciliation to refresh the matching result."));
+                                            const enrichment = result.message.enrichment || {};
+                                            const updatedFields = enrichment.fields || [];
+                                            const enrichmentText = enrichment.status === "Applied"
+                                                ? __("Alhamrani enriched fields: {0}.", [updatedFields.join(", ")])
+                                                : __("Enrichment: {0}.", [enrichment.status || "Not Applied"]);
+                                            frappe.msgprint(__("Manual pairing approved. {0} Re-run POS reconciliation to refresh the matching result.", [enrichmentText]));
                                         }
                                     });
                                 });
