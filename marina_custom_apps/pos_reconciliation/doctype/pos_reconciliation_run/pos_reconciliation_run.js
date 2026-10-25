@@ -36,6 +36,30 @@ frappe.ui.form.on("POS Reconciliation Run", {
         }
 
         if (!execution_active) {
+            frm.add_custom_button(__("Link Manual Alhamrani Payment"), () => {
+                frappe.prompt([
+                    {fieldname:"alhamrani_name", fieldtype:"Data", label:__("Alhamrani Transaction ID"), reqd:1},
+                    {fieldname:"bank_pos_name", fieldtype:"Link", options:"Bank POS Transaction", label:__("Bank POS Transaction"), reqd:1},
+                    {fieldname:"reason", fieldtype:"Small Text", label:__("Manual Link Reason"), reqd:1,
+                     default:"Terminal approved payment but POS did not receive approval response."}
+                ], (v) => {
+                    frappe.confirm(__("Approve this manual link? Exact RRN, amount, date, store, transaction type, and duplicate checks will be enforced."), () => {
+                        frappe.call({
+                            method:"marina_custom_apps.pos_reconciliation.manual_alhamrani_link_service.approve_manual_link",
+                            args:{alhamrani_name:v.alhamrani_name,bank_pos_name:v.bank_pos_name,reason:v.reason},
+                            freeze:true,
+                            freeze_message:__("Validating payment evidence...")
+                        }).then(r => {
+                            if (r.message && r.message.status === "Approved") {
+                                frappe.msgprint(__("Manual link approved. Re-run POS reconciliation to update the matching result; settlements are not changed by this action."));
+                            }
+                        });
+                    });
+                }, __("Link Manual Alhamrani Payment"), __("Validate and Approve"));
+            }, __("Actions"));
+        }
+
+        if (!execution_active) {
             const label = has_results ? __("Re-run Reconciliation") : __("Run Reconciliation");
             const btn = frm.add_custom_button(label, () => {
                 frappe.confirm(
