@@ -8,24 +8,43 @@ function pos_recon_manual_link_preview(candidate) {
     const amount = (value) => value === null || value === undefined || value === ""
         ? "—" : "SAR " + Number(value).toFixed(2);
     const equalAmount = source.amount !== null && source.amount !== undefined &&
+        candidate.amount !== null && candidate.amount !== undefined &&
         Math.abs(Number(source.amount) - Number(candidate.amount)) <= 0.01;
-    const deviceSource = source.device_map || source.terminal_id || "";
-    const terminalId = source.terminal_id || "";
-    const bankTerminal = candidate.bank_terminal_id || "";
-    const deviceVerified = Boolean(terminalId && bankTerminal && terminalId === bankTerminal);
-    const deviceDifferent = Boolean(terminalId && bankTerminal && terminalId !== bankTerminal);
     const match = (ok) => ok
         ? `<span class="text-success">${__("Match")}</span>`
         : `<span class="text-danger">${__("Mismatch")}</span>`;
-    const deviceStatus = deviceVerified
-        ? `<span class="text-success">${__("Match")}</span>`
-        : `<span class="text-warning">${deviceDifferent ? __("Different IDs — verify slip") : __("Verify terminal slip")}</span>`;
+
+    // A manual slip can be recorded after the purchase. ERP creation time
+    // is useful to review, but is not proof of the terminal transaction time.
+    const timeSeconds = (value) => {
+        const found = String(value || "").trim().split(".", 1)[0].match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+        if (!found) return null;
+        const h = Number(found[1]), m = Number(found[2]), sec = Number(found[3] || 0);
+        return h < 24 && m < 60 && sec < 60 ? h * 3600 + m * 60 + sec : null;
+    };
+    const alhamraniSeconds = timeSeconds(source.time);
+    const bankSeconds = timeSeconds(candidate.time);
+    const configuredTolerance = Number(candidate.time_tolerance_seconds);
+    const tolerance = Number.isFinite(configuredTolerance)
+        ? Math.max(0, Math.min(configuredTolerance, 300)) : 60;
+    const timeStatus = alhamraniSeconds === null || bankSeconds === null
+        ? `<span class="text-muted">${__("Unavailable")}</span>`
+        : source.time_origin !== "transaction"
+        ? `<span class="text-warning">${__("Verify slip")}</span>`
+        : match(Math.abs(alhamraniSeconds - bankSeconds) <= tolerance);
+    const timeNote = source.time_origin === "creation"
+        ? __("Alhamrani time is the manual record creation time, not a verified terminal time. Check the physical terminal slip.")
+        : source.time_origin === "sent_at"
+        ? __("Alhamrani time is the POS request time; verify it against the terminal slip.")
+        : source.time_origin === "responded_at"
+        ? __("Alhamrani time is the POS response time; verify it against the terminal slip.")
+        : __("Time comparison uses the configured transaction time tolerance. Check the slip before approval.");
 
     const rows = [
         [__("POS Profile"), source.pos_profile, candidate.pos_profile, match(Boolean(source.pos_profile && source.pos_profile === candidate.pos_profile))],
         [__("Amount"), amount(source.amount), amount(candidate.amount), match(equalAmount)],
-        [__("Device"), deviceSource, bankTerminal, deviceStatus],
-        [__("Date"), source.date, candidate.date, match(Boolean(source.date && source.date === candidate.date))]
+        [__("Date"), source.date, candidate.date, match(Boolean(source.date && source.date === candidate.date))],
+        [__("Time"), source.time, candidate.time, timeStatus]
     ];
     return `<div class="alert alert-info" style="margin-top:12px;margin-bottom:8px;padding:12px">
         <b>${__("Confirm the payment mapping")}</b>
@@ -36,7 +55,7 @@ function pos_recon_manual_link_preview(candidate) {
                 <tbody>${rows.map(row => `<tr><th>${safe(row[0])}</th><td>${safe(row[1])}</td><td>${safe(row[2])}</td><td>${row[3]}</td></tr>`).join("")}</tbody>
             </table>
         </div>
-        <small>${__("Device comparison requires manual verification when Alhamrani only provides Device Map, not Terminal ID.")}</small>
+        <small>${pos_recon_escape(timeNote)}</small>
     </div>`;
 }
 
@@ -107,7 +126,7 @@ frappe.ui.form.on("POS Reconciliation Run", {
                                  options:options,reqd:1,default:candidates[0].name,onchange:refreshMapping},
                                 {fieldname:"mapping_confirmation",fieldtype:"HTML"},
                                 {fieldname:"confirm_mapping",fieldtype:"Check",
-                                 label:__("I reviewed POS Profile, Amount, Device and Date and confirm this mapping."),reqd:1},
+                                 label:__("I reviewed POS Profile, Amount, Date and Time and confirm this mapping."),reqd:1},
                                 {fieldname:"reason",fieldtype:"Small Text",label:__("Manual Link Reason"),reqd:1,
                                  default:"Terminal approved payment but POS did not receive approval response."}
                             ],
