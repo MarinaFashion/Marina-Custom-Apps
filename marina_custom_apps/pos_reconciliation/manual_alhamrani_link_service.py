@@ -163,3 +163,48 @@ def approve_manual_link(alhamrani_name, bank_pos_name, reason):
     enrichment = apply_enrichment(doc, bank)
     return {"link": doc.name, "status": "Approved",
             "enrichment": enrichment}
+
+
+@frappe.whitelist()
+def enrich_existing_manual_link(link_name):
+    """Opt-in Demo backfill for previously approved links, without relinking.
+
+    Revalidate the original evidence and never change accounting/settlements.
+    Earlier links already have a valid one-to-one pairing: this action only
+    populates empty external Alhamrani fields with an audit snapshot.
+    """
+    _require_approver()
+    link_name = cstr(link_name).strip()
+    link = frappe.get_doc(LINK, link_name)
+    if link.status != "Approved":
+        frappe.throw(_("Only approved manual links can be enriched."))
+    if cstr(link.get("enrichment_details")).strip():
+        frappe.throw(_("This link has already been evaluated for enrichment."))
+
+    frappe.db.sql(
+        "SELECT name FROM `tabBank POS Transaction` WHERE name=%s FOR UPDATE",
+        (link.bank_pos_transaction,),
+    )
+    frappe.db.sql(
+        "SELECT name FROM `tabAlhamrani Transaction` WHERE name=%s FOR UPDATE",
+        (link.alhamrani_transaction,),
+    )
+    fields = [
+        "name", "rrn", "pos_profile", "transaction_date", "transaction_time",
+        "transaction_amount", "transaction_status", "transaction_type",
+        "card_type", "masked_card_number", "terminal_id", "auth_code",
+    ]
+    bank = frappe.db.get_value(
+        "Bank POS Transaction", link.bank_pos_transaction, fields, as_dict=True
+    )
+    if not bank:
+        frappe.throw(_("Linked Bank POS transaction no longer exists."))
+    adapter = AlhamraniAdapter()
+    source = frappe.get_doc(ALHAMRANI_DOCTYPE, link.alhamrani_transaction).as_dict()
+    alh = adapter.normalized_row(source)
+    if not adapter.is_approved(source):
+        frappe.throw(_("Alhamrani source approval is no longer valid."))
+    alh.pos_profile = resolve_pos_profile(alh.terminal_id, alh.transaction_date) or alh.source_pos_profile
+    validate_manual_pair(bank, alh)
+    result = apply_enrichment(link, bank)
+    return {"link": link.name, "status": link.status, "enrichment": result}
