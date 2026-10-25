@@ -33,48 +33,79 @@ def _is_blank(value):
 
 
 def _safe_masked_pan(value):
-    """Never store a full PAN, even if an import accidentally contains one."""
-    value = cstr(value).strip()
-    if not value:
+    """Normalize only demonstrably masked or last-four bank card references.
+
+    Accept common masked patterns including #, X, *, and bullet masking.
+    Never import a full PAN or an unmasked fragment longer than four digits.
+    """
+    raw = cstr(value).strip()
+    if not raw or len(raw) > 64:
         return ""
-    digits = sum(ch.isdigit() for ch in value)
-    masked = any(ch in "*Xx•" for ch in value)
-    if digits > 10 or (not masked and digits > 4):
+    if not re.fullmatch(r"[0-9*Xx#•●\\s\\-]+", raw):
         return ""
-    if not re.fullmatch(r"[0-9*Xx•\s-]+", value):
+    cleaned = re.sub(r"[\\s-]", "", raw)
+    normalized = re.sub(r"[Xx#•●]", "*", cleaned)
+    digit_count = sum(ch.isdigit() for ch in normalized)
+    if not digit_count:
         return ""
-    return value
+    if "*" not in normalized:
+        # Only a last-four reference is safe without an explicit mask.
+        return "****" + normalized if digit_count == 4 else ""
+    if digit_count > 10:
+        # Do not copy excessive visible digits, even if some positions
+        # elsewhere in the input are masked.
+        last4 = "".join(ch for ch in normalized if ch.isdigit())[-4:]
+        return "****" + last4
+    return normalized
 
 
-def _eligible_changes(meta, source, bank):
-    """Produce the narrowly scoped before/after audit for genuinely empty fields."""
-    changes = []
+def _eligible_changes_with_reasons(meta, source, bank, previously_enriched=None):
+    """Decide what to fill, with safe explanations for skipped fields.
+
+    Diagnostic reasons never expose card numbers, auth codes, or other source
+    values. Only the audited changes contain copied masked values.
+    """
+    previous = set(previously_enriched or ())
+    changes, skipped = [], []
     for bank_field, source_candidates in FIELD_MAPPING:
         target = next((name for name in source_candidates if meta.has_field(name)), None)
-        if not target or not _is_blank(source.get(target)):
+        if not target:
+            skipped.append({"field": bank_field, "reason": "Alhamrani target field unavailable"})
+            continue
+        if not _is_blank(source.get(target)):
+            skipped.append({
+                "field": bank_field,
+                "reason": (
+                    "Already enriched by this Manual Link"
+                    if target in previous else "Alhamrani field already populated"
+                ),
+            })
             continue
         value = bank.get(bank_field)
         if _is_blank(value):
+            skipped.append({"field": bank_field, "reason": "Bank POS value missing"})
             continue
-        # Avoid storing values invalid for a Select field in the external app.
+        if bank_field == "masked_card_number":
+            value = _safe_masked_pan(value)
+            if not value:
+                skipped.append({
+                    "field": bank_field,
+                    "reason": "Bank value is not a safely masked card reference",
+                })
+                continue
         df = meta.get_field(target)
         if df and df.fieldtype == "Select" and df.options:
             allowed = {line.strip() for line in cstr(df.options).splitlines() if line.strip()}
             if allowed and cstr(value).strip() not in allowed:
-                continue
-        if bank_field == "masked_card_number":
-            value = _safe_masked_pan(value)
-            if not value:
+                skipped.append({"field": bank_field, "reason": "Value not allowed by Alhamrani field options"})
                 continue
         if bank_field == "terminal_id":
-            # Never change the POS Profile implied by the original transaction.
             bank_profile = resolve_pos_profile(value, bank.transaction_date)
             source_profile = source.get("pos_profile")
             if source_profile and bank_profile and source_profile != bank_profile:
+                skipped.append({"field": bank_field, "reason": "Bank terminal POS Profile differs"})
                 continue
         if bank_field == "transaction_time":
-            # A transaction clock must not overwrite POS send/response timestamps.
-            # Only a separate optional source field is eligible.
             value = cstr(value).strip()
         changes.append({
             "bank_field": bank_field,
@@ -82,7 +113,13 @@ def _eligible_changes(meta, source, bank):
             "original_value": source.get(target),
             "enriched_value": value,
         })
-    return changes
+    return changes, skipped
+
+
+def _eligible_changes(meta, source, bank):
+    """Backwards-compatible helper for existing callers and tests."""
+    return _eligible_changes_with_reasons(meta, source, bank)[0]
+
 
 
 def apply_enrichment(link, bank):
@@ -109,15 +146,36 @@ def apply_enrichment(link, bank):
         link.db_set("enrichment_status", "Not Applicable", update_modified=False)
         return {"status": "Not Applicable", "fields": []}
 
+    existing_audit = {}
+    if cstr(link.get("enrichment_details")).strip():
+        try:
+            existing_audit = json.loads(link.get("enrichment_details"))
+        except (TypeError, ValueError, AttributeError):
+            frappe.throw(_("Existing enrichment audit is invalid. No changes were made."))
+        if not isinstance(existing_audit, dict) or (
+            existing_audit.get("bank_pos_transaction") != bank.name
+            or existing_audit.get("alhamrani_transaction") != link.alhamrani_transaction
+        ):
+            frappe.throw(_("Previous enrichment audit belongs to different transactions."))
+    previous_changes = existing_audit.get("changes") or []
+    if not isinstance(previous_changes, list):
+        frappe.throw(_("Existing enrichment change history is invalid."))
+    prior_fields = {item.get("source_field") for item in previous_changes if isinstance(item, dict)}
+
     meta = frappe.get_meta(ALHAMRANI_DOCTYPE)
-    changes = _eligible_changes(meta, source, bank)
-    # Persist provenance even when no eligible field was available.
+    changes, skipped = _eligible_changes_with_reasons(meta, source, bank, prior_fields)
+    if any(item["source_field"] in prior_fields for item in changes):
+        frappe.throw(_("Enrichment change history conflicts with current source fields."))
+
+    # Keep ALL original changes to support rollback after subsequent retries.
     audit = {
         "source": "Bank POS Transaction",
         "bank_pos_transaction": bank.name,
         "alhamrani_transaction": link.alhamrani_transaction,
         "response_meaning": source.get("response_meaning"),
-        "changes": changes,
+        "changes": previous_changes + changes,
+        "skipped": skipped,
+        "attempts": int(existing_audit.get("attempts") or 0) + 1,
     }
     if changes:
         updates = {entry["source_field"]: entry["enriched_value"] for entry in changes}
@@ -125,14 +183,18 @@ def apply_enrichment(link, bank):
             ALHAMRANI_DOCTYPE, link.alhamrani_transaction, updates,
             update_modified=True,
         )
+    status = "Applied" if audit["changes"] else "No Eligible Fields"
     link.db_set({
-        "enrichment_status": "Applied" if changes else "No Eligible Fields",
+        "enrichment_status": status,
         "enrichment_details": json.dumps(audit, ensure_ascii=False, default=cstr),
         "enriched_by": frappe.session.user,
         "enriched_on": now_datetime(),
     }, update_modified=False)
-    return {"status": "Applied" if changes else "No Eligible Fields",
-            "fields": [entry["source_field"] for entry in changes]}
+    return {
+        "status": status,
+        "fields": [entry["source_field"] for entry in changes],
+        "skipped": skipped,
+    }
 
 
 def rollback_enrichment(link):
