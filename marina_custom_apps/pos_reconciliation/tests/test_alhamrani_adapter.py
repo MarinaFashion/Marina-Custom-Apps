@@ -27,6 +27,36 @@ class TestAlhamraniAdapterParsing(TestCase):
         self.assertEqual(_parse_time("224904"), "22:49:04")
 
 
+class TestAlhamraniNativePanMapping(TestCase):
+    def test_native_masked_pan_has_priority_over_json_response(self):
+        adapter = AlhamraniAdapter.__new__(AlhamraniAdapter)
+        adapter.fields = {
+            "masked_pan": "pan",
+            "response_json": "response_json",
+            "request_json": "request_json",
+        }
+        row = {
+            "pan": "************1234",
+            "response_json": '{"pan":"************4321"}',
+            "request_json": None,
+        }
+        self.assertEqual(adapter._value(row, "masked_pan"), "************1234")
+
+    def test_terminal_json_pan_still_supported_if_native_field_is_blank(self):
+        adapter = AlhamraniAdapter.__new__(AlhamraniAdapter)
+        adapter.fields = {
+            "masked_pan": "pan",
+            "response_json": "response_json",
+            "request_json": "request_json",
+        }
+        row = {
+            "pan": "",
+            "response_json": '{"pan":"************4321"}',
+            "request_json": None,
+        }
+        self.assertEqual(adapter._value(row, "masked_pan"), "************4321")
+
+
 class TestAlhamraniSourceLoading(TestCase):
     def _adapter(self, responded_at="responded_at", sent_at="sent_at"):
         # Exercise get_rows without requiring a configured source DocType.
