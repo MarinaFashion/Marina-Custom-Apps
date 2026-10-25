@@ -149,6 +149,23 @@ def get_source_page(run_name, source, start=0, page_length=DEFAULT_PAGE_LENGTH, 
     return {"source": source, "rows": rows, "total": total, "start": start, "page_length": page_length}
 
 
+def _apply_response_meaning_filter(filters, response_meaning):
+    """Filter existing reconciliation rows by their original Alhamrani response meaning.
+
+    No rerun or mutation of reconciled/posted records is needed.
+    """
+    value = cstr(response_meaning).strip()
+    if not value:
+        return
+    from marina_custom_apps.pos_reconciliation.alhamrani_adapter import ALHAMRANI_DOCTYPE
+    if not frappe.get_meta(ALHAMRANI_DOCTYPE).has_field("response_meaning"):
+        frappe.throw(_("Alhamrani Transaction does not expose Response Meaning."))
+    source_names = frappe.get_all(ALHAMRANI_DOCTYPE,
+        filters={"response_meaning": value}, pluck="name", limit_page_length=0)
+    # Frappe's in-filter cannot be empty; an impossible name gives zero results.
+    filters["alhamrani_transaction"] = ["in", source_names or ["__NO_ALHAMRANI_RESPONSE_MATCH__"]]
+
+
 def get_results_page(
     run_name,
     status="All",
@@ -167,6 +184,7 @@ def get_results_page(
     accounting_status=None,
     ledger_posting_status=None,
     before_integration=None,
+    response_meaning=None,
 ):
     run = _get_run(run_name)
     start, page_length = _page_args(start, page_length)
@@ -209,6 +227,7 @@ def get_results_page(
     if before_integration not in (None, "", "All"):
         filters["before_integration"] = cint(before_integration)
 
+    _apply_response_meaning_filter(filters, response_meaning)
     or_filters = _result_search_filters(search)
     fields = [
         "name", "transaction_date", "pos_profile", "terminal_id", "card_type",
@@ -248,7 +267,7 @@ def get_results_page(
 def _facet_filters(
     run,status="All",from_date=None,to_date=None,settlement_number=None,settlement_date=None,
     pos_profile=None,terminal_id=None,card_type=None,bank_statement_status=None,
-    accounting_status=None,ledger_posting_status=None,before_integration=None,exclude=None,
+    accounting_status=None,ledger_posting_status=None,before_integration=None,response_meaning=None,exclude=None,
 ):
     exclude=set(exclude or [])
     filters={"run":run.name}
@@ -283,6 +302,8 @@ def _facet_filters(
     )
     if "before_integration" not in exclude and before_integration not in (None,"","All"):
         filters["before_integration"]=cint(before_integration)
+    if "response_meaning" not in exclude:
+        _apply_response_meaning_filter(filters, response_meaning)
     return filters
 
 
@@ -326,14 +347,14 @@ def _facet_status_counts(filters):
 def get_result_filter_options(
     run_name,status="All",from_date=None,to_date=None,settlement_number=None,settlement_date=None,
     pos_profile=None,terminal_id=None,card_type=None,bank_statement_status=None,
-    accounting_status=None,ledger_posting_status=None,before_integration=None,
+    accounting_status=None,ledger_posting_status=None,before_integration=None,response_meaning=None,
 ):
     run=_get_run(run_name)
     values=dict(
         status=status,from_date=from_date,to_date=to_date,settlement_number=settlement_number,
         settlement_date=settlement_date,pos_profile=pos_profile,terminal_id=terminal_id,card_type=card_type,
         bank_statement_status=bank_statement_status,accounting_status=accounting_status,
-        ledger_posting_status=ledger_posting_status,before_integration=before_integration,
+        ledger_posting_status=ledger_posting_status,before_integration=before_integration,response_meaning=response_meaning,
     )
     def f(*excluded): return _facet_filters(run,exclude=set(excluded),**values)
 
