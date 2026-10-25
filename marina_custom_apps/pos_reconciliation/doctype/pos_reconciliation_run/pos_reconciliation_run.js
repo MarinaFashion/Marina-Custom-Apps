@@ -187,6 +187,7 @@ function pos_recon_setup_review(frm) {
                 accounting_status: "",
                 ledger_posting_status: "",
                 before_integration: "All",
+                response_meaning: "",
                 status_counts: {},
                 options: { settlement_numbers: [], pos_profiles: [], terminal_ids: [], card_types: [],
                     accounting_statuses: [], ledger_posting_statuses: [], before_integration_values: [] },
@@ -205,7 +206,8 @@ function pos_recon_filter_args(frm, values) {
         settlement_number:v.settlement_number||[],settlement_date:v.settlement_date||"",pos_profile:v.pos_profile||[],
         terminal_id:v.terminal_id||[],card_type:v.card_type||"",
         accounting_status:v.accounting_status||"",ledger_posting_status:v.ledger_posting_status||"",
-        before_integration:v.before_integration===undefined?"All":v.before_integration
+        before_integration:v.before_integration===undefined?"All":v.before_integration,
+        response_meaning:v.response_meaning||""
     };
 }
 
@@ -599,6 +601,10 @@ function pos_recon_result_filters(state, options, is_bank_only, summary, can_rev
         <div><label>${__("POS Profile")}</label><div class="pos-recon-searchable-filter pos-recon-filter-profile"></div></div>
         <div><label>${__("Terminal ID")}</label><div class="pos-recon-searchable-filter pos-recon-filter-terminal"></div></div>
         <div><label>${__("Card Type")}</label><select class="form-control input-xs pos-recon-filter-card">${pos_recon_select_options(options.card_types||[],state.card_type,__("All"))}</select></div>
+        <div><label>${__("Response Meaning")}</label><select class="form-control input-xs pos-recon-filter-response-meaning">
+          <option value="">${__("All")}</option>
+          <option value="Confirmed manually from terminal slip" ${state.response_meaning==="Confirmed manually from terminal slip"?"selected":""}>${__("Confirmed manually from terminal slip")}</option>
+        </select></div>
         ${ledger_fields}${finance_fields}
         <div class="pos-recon-filter-actions"><button class="btn btn-xs btn-primary pos-recon-apply-bank-filters">${__("Apply Filters")}</button><button class="btn btn-xs btn-default pos-recon-clear-bank-filters">${__("Clear")}</button></div>
       </div>${summary_html}${actions}</div>`;
@@ -670,6 +676,7 @@ function pos_recon_read_controls($w,is_bank,state){
       to_date:$w.find(".pos-recon-filter-to-date").val()||"",settlement_number:pos_recon_searchable_value($w,".pos-recon-filter-settlement"),
       settlement_date:state.settlement_date||"",pos_profile:pos_recon_searchable_value($w,".pos-recon-filter-profile"),
       terminal_id:pos_recon_searchable_value($w,".pos-recon-filter-terminal"),card_type:$w.find(".pos-recon-filter-card").val()||"",
+       response_meaning:$w.find(".pos-recon-filter-response-meaning").val()||"",
 
       ledger_posting_status:$w.find(".pos-recon-filter-ledger").val()||"",accounting_status:$w.find(".pos-recon-filter-accounting").val()||"",
       before_integration:is_bank?($w.find(".pos-recon-filter-before").val()||"All"):"All"};
