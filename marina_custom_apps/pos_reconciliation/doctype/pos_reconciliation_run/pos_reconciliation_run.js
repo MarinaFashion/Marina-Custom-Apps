@@ -48,7 +48,7 @@ frappe.ui.form.on("POS Reconciliation Run", {
                             frappe.msgprint(__("No verified unique Bank POS candidates found. Check the 12-digit RRN, amount, date and POS Profile."));
                             return;
                         }
-                        const options = candidates.map(c => c.name).join("\\n");
+                        const options = candidates.map(c => c.name).join("\n");
                         frappe.prompt([
                             {fieldname:"bank_pos_name",fieldtype:"Select",label:__("Bank POS Transaction"),
                              options:options,reqd:1},
