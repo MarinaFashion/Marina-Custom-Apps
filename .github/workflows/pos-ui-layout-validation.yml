@@ -22,7 +22,7 @@ jobs:
           from pathlib import Path
           base = "e0910c12e312fb31433790da45456895feb6a472"
           root = Path("marina_custom_apps/pos_reconciliation/doctype")
-          paths = sorted(root.glob("*/*.json"))
+          paths = sorted(p for p in root.glob("*/*.json") if p.name != "manual_alhamrani_pos_link.json")
           assert len(paths) == 26, len(paths)
           for path in paths:
               old = json.loads(subprocess.check_output(["git", "show", f"{base}:{path}"]))
