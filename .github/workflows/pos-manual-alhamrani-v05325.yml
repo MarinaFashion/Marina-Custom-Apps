@@ -161,3 +161,6 @@ jobs:
       - name: Settled payment unlink guard scenarios
         run: |
           python marina_custom_apps/pos_reconciliation/tests/check_settled_manual_link_unlink.py
+      - name: Bank verified transaction time migration
+        run: |
+          python marina_custom_apps/pos_reconciliation/tests/check_bank_transaction_time_patch.py
