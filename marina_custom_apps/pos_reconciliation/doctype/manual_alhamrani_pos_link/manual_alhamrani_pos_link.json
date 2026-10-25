@@ -99,7 +99,7 @@
    "fieldname": "enrichment_status",
    "fieldtype": "Select",
    "label": "Enrichment Status",
-   "options": "Not Applied\nApplied\nNo Eligible Fields\nNot Applicable",
+   "options": "Not Applied\nApplied\nNo Eligible Fields\nNot Applicable\nDisabled",
    "default": "Not Applied",
    "read_only": 1
   },
