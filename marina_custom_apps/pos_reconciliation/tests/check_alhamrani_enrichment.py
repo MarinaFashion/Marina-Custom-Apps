@@ -63,11 +63,11 @@ class Link:
         self.alhamrani_transaction = "AUP-1"
         self.fields = {}
 
-    def db_set(self, values, update_modified):
+    def db_set(self, values, value=None, update_modified=True):
         if isinstance(values, dict):
             self.fields.update(values)
         else:
-            self.fields[values] = update_modified
+            self.fields[values] = value
 
     def get(self, name):
         return self.fields.get(name)
