@@ -128,8 +128,10 @@ jobs:
           assert 'validate_manual_pair(bank, alh)' in link
           assert 'enrich_existing_manual_link' in ui
           assert 'Enrich Missing Fields' in ui
-          assert 'rollback_enrichment(self)' in delete_hook
-          print('Previously approved link enrichment and guarded rollback invariants passed')
+          assert 'rollback_enrichment(link)' in link
+          assert 'Direct deletion is not allowed' in delete_hook
+          assert 'unlink_manual_link' in ui
+          print('Backfill and controlled unlink UI safety checks passed')
           PY
       - name: Settled payment unlink guard scenarios
         run: |
