@@ -7,7 +7,7 @@ import re
 import frappe
 from frappe import _
 from frappe.utils import cstr, flt, getdate, now_datetime
-from marina_custom_apps.pos_reconciliation.alhamrani_adapter import AlhamraniAdapter
+from marina_custom_apps.pos_reconciliation.alhamrani_adapter import AlhamraniAdapter, ALHAMRANI_DOCTYPE
 from marina_custom_apps.pos_reconciliation.location_service import resolve_pos_profile
 
 LINK = "Manual Alhamrani POS Link"
@@ -42,11 +42,11 @@ def approve_manual_link(alhamrani_name, bank_pos_name, reason):
     if not bank or cstr(bank.transaction_status).upper() != "APPROVED":
         frappe.throw(_("Bank POS transaction is missing or not approved."))
     adapter = AlhamraniAdapter()
-    alh_doc = frappe.db.get_value(adapter.doctype, alhamrani_name, ["name"], as_dict=True)
-    if not alh_doc:
+    if not frappe.db.exists(ALHAMRANI_DOCTYPE, alhamrani_name):
         frappe.throw(_("Alhamrani transaction does not exist."))
-    alh = adapter.normalized_row(frappe.get_doc(adapter.doctype, alhamrani_name).as_dict())
-    if not adapter.is_approved(frappe.get_doc(adapter.doctype, alhamrani_name).as_dict()):
+    source = frappe.get_doc(ALHAMRANI_DOCTYPE, alhamrani_name).as_dict()
+    alh = adapter.normalized_row(source)
+    if not adapter.is_approved(source):
         frappe.throw(_("Alhamrani transaction is not approved."))
     if not re.fullmatch(r"\d{12}", cstr(bank.rrn).strip()) or cstr(bank.rrn).strip() != cstr(alh.rrn).strip():
         frappe.throw(_("A matching, valid 12-digit RRN is required."))
