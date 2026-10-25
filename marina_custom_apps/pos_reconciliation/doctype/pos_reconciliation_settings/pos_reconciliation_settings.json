@@ -20,6 +20,7 @@
   "ui_tab_pos_reconciliation_setti_3",
   "card_type_mapping_section",
   "card_type_mappings",
+  "transaction_time_tolerance_seconds",
   "ui_tab_pos_reconciliation_setti_4",
   "bank_statement_section",
   "bank_statement_terminal_reference_length",
@@ -119,6 +120,13 @@
    "fieldtype": "Table",
    "label": "Card Type Mappings",
    "options": "POS Card Type Mapping"
+  },
+  {
+   "default": "60",
+   "description": "Maximum permitted absolute difference between Bank POS and Alhamrani transaction timestamps, in seconds (0–300). All other comparison checks remain unchanged.",
+   "fieldname": "transaction_time_tolerance_seconds",
+   "fieldtype": "Int",
+   "label": "Transaction Time Tolerance (Seconds)"
   },
   {
    "fieldname": "ui_tab_pos_reconciliation_setti_4",
