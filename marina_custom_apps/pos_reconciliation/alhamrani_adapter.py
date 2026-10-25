@@ -231,17 +231,43 @@ class AlhamraniAdapter:
         return self.fields.get("responded_at") or self.fields.get("sent_at") or "creation"
 
     def get_rows(self, from_date, to_date):
+        """Read source transactions by their best available timestamp.
+
+        Normal terminal responses have responded_at; manual slip confirmations
+        typically have neither responded_at nor sent_at. A query on responded_at
+        alone silently excluded those source documents from reconciliation.
+        Use bounded, mutually exclusive indexed timestamp queries instead of a
+        full table scan. The reconciliation engine separately validates the
+        normalized transaction date, approval, profile, and card type.
+        """
         start = f"{add_days(getdate(from_date), -1)} 00:00:00"
         end = f"{add_days(getdate(to_date), 1)} 23:59:59"
-        dt_field = self.preferred_datetime_field()
-        filters = {dt_field: ["between", [start, end]]}
-        return frappe.get_all(
-            ALHAMRANI_DOCTYPE,
-            filters=filters,
-            fields=self.query_fields(),
-            order_by=f"{dt_field} asc",
-            limit_page_length=0,
-        )
+        date_fields = []
+        for fieldname in (
+            self.fields.get("responded_at"),
+            self.fields.get("sent_at"),
+            "creation",
+        ):
+            if fieldname and fieldname not in date_fields:
+                date_fields.append(fieldname)
+
+        fields = self.query_fields()
+        rows = []
+        for index, date_field in enumerate(date_fields):
+            filters = {date_field: ["between", [start, end]]}
+            for preferred_field in date_fields[:index]:
+                # Only fall back where a better timestamp is genuinely absent.
+                filters[preferred_field] = ["is", "not set"]
+            rows.extend(
+                frappe.get_all(
+                    ALHAMRANI_DOCTYPE,
+                    filters=filters,
+                    fields=fields,
+                    order_by=f"{date_field} asc",
+                    limit_page_length=0,
+                )
+            )
+        return rows
 
     def get_rows_by_names(self, names):
         names = [name for name in names if name]
