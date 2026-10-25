@@ -40,7 +40,7 @@ jobs:
           assert 'Reverse Reconciliation' in js
           assert 'reason: values.reason' in js
           assert 'frappe.confirm(' in js
-          assert "0.53.23" in Path("pyproject.toml").read_text()
-          assert "0.53.23" in Path("marina_custom_apps/__init__.py").read_text()
+          assert "0.53.24" in Path("pyproject.toml").read_text()
+          assert "0.53.24" in Path("marina_custom_apps/__init__.py").read_text()
           print("Reversal and JE cancellation compatibility checks passed")
           PY
