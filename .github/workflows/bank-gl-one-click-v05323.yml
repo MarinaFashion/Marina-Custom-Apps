@@ -28,6 +28,6 @@ jobs:
           assert 'if (validation.errors.length)' in s
           assert s.index('if (validation.errors.length)') < s.index('const payload = matches.map')
           assert 'frappe.confirm(' in s
-          assert '0.53.24' in Path('pyproject.toml').read_text()
+          assert '0.53.25' in Path('pyproject.toml').read_text()
           print("One click validation verified")
           PY

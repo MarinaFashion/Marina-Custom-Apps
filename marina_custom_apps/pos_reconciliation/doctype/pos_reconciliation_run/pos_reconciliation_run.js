@@ -1,5 +1,64 @@
 const POS_RECON_PAGE_LENGTH = 25;
 
+function pos_recon_manual_link_preview(candidate) {
+    if (!candidate) return `<p class="text-muted">${__("Select a Bank POS transaction to review the mapping.")}</p>`;
+
+    const source = candidate.alhamrani || {};
+    const safe = (value) => pos_recon_escape(value === null || value === undefined || value === "" ? "—" : value);
+    const amount = (value) => value === null || value === undefined || value === ""
+        ? "—" : "SAR " + Number(value).toFixed(2);
+    const equalAmount = source.amount !== null && source.amount !== undefined &&
+        candidate.amount !== null && candidate.amount !== undefined &&
+        Math.abs(Number(source.amount) - Number(candidate.amount)) <= 0.01;
+    const match = (ok) => ok
+        ? `<span class="text-success">${__("Match")}</span>`
+        : `<span class="text-danger">${__("Mismatch")}</span>`;
+
+    // A manual slip can be recorded after the purchase. ERP creation time
+    // is useful to review, but is not proof of the terminal transaction time.
+    const timeSeconds = (value) => {
+        const found = String(value || "").trim().split(".", 1)[0].match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+        if (!found) return null;
+        const h = Number(found[1]), m = Number(found[2]), sec = Number(found[3] || 0);
+        return h < 24 && m < 60 && sec < 60 ? h * 3600 + m * 60 + sec : null;
+    };
+    const alhamraniSeconds = timeSeconds(source.time);
+    const bankSeconds = timeSeconds(candidate.time);
+    const configuredTolerance = Number(candidate.time_tolerance_seconds);
+    const tolerance = Number.isFinite(configuredTolerance)
+        ? Math.max(0, Math.min(configuredTolerance, 300)) : 60;
+    const timeStatus = alhamraniSeconds === null || bankSeconds === null
+        ? `<span class="text-muted">${__("Unavailable")}</span>`
+        : source.time_origin !== "transaction"
+        ? `<span class="text-warning">${__("Verify slip")}</span>`
+        : match(Math.abs(alhamraniSeconds - bankSeconds) <= tolerance);
+    const timeNote = source.time_origin === "creation"
+        ? __("Alhamrani time is the manual record creation time, not a verified terminal time. Check the physical terminal slip.")
+        : source.time_origin === "sent_at"
+        ? __("Alhamrani time is the POS request time; verify it against the terminal slip.")
+        : source.time_origin === "responded_at"
+        ? __("Alhamrani time is the POS response time; verify it against the terminal slip.")
+        : __("Time comparison uses the configured transaction time tolerance. Check the slip before approval.");
+
+    const rows = [
+        [__("POS Profile"), source.pos_profile, candidate.pos_profile, match(Boolean(source.pos_profile && source.pos_profile === candidate.pos_profile))],
+        [__("Amount"), amount(source.amount), amount(candidate.amount), match(equalAmount)],
+        [__("Date"), source.date, candidate.date, match(Boolean(source.date && source.date === candidate.date))],
+        [__("Time"), source.time, candidate.time, timeStatus]
+    ];
+    return `<div class="alert alert-info" style="margin-top:12px;margin-bottom:8px;padding:12px">
+        <b>${__("Confirm the payment mapping")}</b>
+        <div style="margin-top:5px">${__("Review these values against the terminal slip before approving.")}</div>
+        <div class="table-responsive" style="margin-top:8px">
+            <table class="table table-bordered table-condensed" style="background:white;margin-bottom:6px">
+                <thead><tr><th></th><th>${__("Alhamrani")}</th><th>${__("Bank POS")}</th><th>${__("Check")}</th></tr></thead>
+                <tbody>${rows.map(row => `<tr><th>${safe(row[0])}</th><td>${safe(row[1])}</td><td>${safe(row[2])}</td><td>${row[3]}</td></tr>`).join("")}</tbody>
+            </table>
+        </div>
+        <small>${pos_recon_escape(timeNote)}</small>
+    </div>`;
+}
+
 frappe.ui.form.on("POS Reconciliation Run", {
     refresh(frm) {
         // Singles have one fixed document, with no New document workflow.
@@ -33,6 +92,78 @@ frappe.ui.form.on("POS Reconciliation Run", {
 
         if (execution_active) {
             frm.__pos_recon_execution_timer = setTimeout(() => frm.reload_doc(), 5000);
+        }
+
+        if (!execution_active && (frappe.user_roles.includes("Accounts Manager") || frappe.user_roles.includes("System Manager"))) {
+            frm.add_custom_button(__("Link Manual Alhamrani Payment"), () => {
+                frappe.prompt([{fieldname:"alhamrani_name",fieldtype:"Data",label:__("Alhamrani Transaction ID"),reqd:1}], (first) => {
+                    frappe.call({
+                        method:"marina_custom_apps.pos_reconciliation.manual_alhamrani_link_service.find_manual_link_candidates",
+                        args:{alhamrani_name:first.alhamrani_name},
+                        freeze:true
+                    }).then(response => {
+                        const candidates = response.message || [];
+                        if (!candidates.length) {
+                            frappe.msgprint(__("No verified unique Bank POS candidates found. Check the 12-digit RRN, amount, date and POS Profile."));
+                            return;
+                        }
+                        const options = candidates.map(c => c.name).join("\n");
+                        let mappingDialog;
+                        const refreshMapping = () => {
+                            if (!mappingDialog) return;
+                            const chosen = mappingDialog.get_value("bank_pos_name") || candidates[0].name;
+                            const candidate = candidates.find(c => c.name === chosen);
+                            mappingDialog.fields_dict.mapping_confirmation.$wrapper.html(
+                                pos_recon_manual_link_preview(candidate)
+                            );
+                            // Changing the selected bank record requires fresh acknowledgement.
+                            mappingDialog.set_value("confirm_mapping", 0);
+                        };
+                        mappingDialog = new frappe.ui.Dialog({
+                            title: __("Approve Manual Link"),
+                            fields: [
+                                {fieldname:"bank_pos_name",fieldtype:"Select",label:__("Bank POS Transaction"),
+                                 options:options,reqd:1,default:candidates[0].name,onchange:refreshMapping},
+                                {fieldname:"mapping_confirmation",fieldtype:"HTML"},
+                                {fieldname:"confirm_mapping",fieldtype:"Check",
+                                 label:__("I reviewed POS Profile, Amount, Date and Time and confirm this mapping."),reqd:1},
+                                {fieldname:"reason",fieldtype:"Small Text",label:__("Manual Link Reason"),reqd:1,
+                                 default:"Terminal approved payment but POS did not receive approval response."}
+                            ],
+                            primary_action_label: __("Approve Link"),
+                            primary_action(v) {
+                                if (!v.confirm_mapping) {
+                                    frappe.msgprint(__("Please review and confirm the transaction mapping before approving."));
+                                    return;
+                                }
+                                frappe.confirm(__("Approve the verified manual payment pairing? Bank settlement and accounting will not be modified."), () => {
+                                    frappe.call({
+                                        method:"marina_custom_apps.pos_reconciliation.manual_alhamrani_link_service.approve_manual_link",
+                                        args:{alhamrani_name:first.alhamrani_name,bank_pos_name:v.bank_pos_name,reason:v.reason},
+                                        freeze:true,freeze_message:__("Validating source records...")
+                                    }).then(result => {
+                                        if (result.message && result.message.status === "Approved") {
+                                            mappingDialog.hide();
+                                            const enrichment = result.message.enrichment || {};
+                                            const updatedFields = enrichment.fields || [];
+                                            const enrichmentText = enrichment.status === "Applied"
+                                                ? __("Alhamrani enriched fields: {0}.", [updatedFields.join(", ")])
+                                                : __("Enrichment: {0}.", [enrichment.status || "Not Applied"]);
+                                            const skippedPan = (enrichment.skipped || []).find(x => x.field === "masked_card_number");
+                                            const panHint = skippedPan
+                                                ? __(" Masked card number was not copied: {0}. Open the Manual Link and use Enrich Remaining Fields after resolving it.", [skippedPan.reason])
+                                                : "";
+                                            frappe.msgprint(__("Manual pairing approved. {0}{1} Re-run POS reconciliation to refresh the matching result.", [enrichmentText, panHint]));
+                                        }
+                                    });
+                                });
+                            }
+                        });
+                        mappingDialog.show();
+                        refreshMapping();
+                    });
+                }, __("Find Manual Payment"), __("Find Candidates"));
+            }, __("Actions"));
         }
 
         if (!execution_active) {
@@ -150,6 +281,7 @@ function pos_recon_setup_review(frm) {
                 accounting_status: "",
                 ledger_posting_status: "",
                 before_integration: "All",
+                response_meaning: "",
                 status_counts: {},
                 options: { settlement_numbers: [], pos_profiles: [], terminal_ids: [], card_types: [],
                     accounting_statuses: [], ledger_posting_statuses: [], before_integration_values: [] },
@@ -168,7 +300,8 @@ function pos_recon_filter_args(frm, values) {
         settlement_number:v.settlement_number||[],settlement_date:v.settlement_date||"",pos_profile:v.pos_profile||[],
         terminal_id:v.terminal_id||[],card_type:v.card_type||"",
         accounting_status:v.accounting_status||"",ledger_posting_status:v.ledger_posting_status||"",
-        before_integration:v.before_integration===undefined?"All":v.before_integration
+        before_integration:v.before_integration===undefined?"All":v.before_integration,
+        response_meaning:v.response_meaning||""
     };
 }
 
@@ -291,6 +424,7 @@ function pos_recon_load_results(frm) {
             accounting_status: state.accounting_status,
             ledger_posting_status: state.ledger_posting_status,
             before_integration: state.before_integration,
+            response_meaning: state.response_meaning || "",
         },
     }).then((r) => {
         pos_recon_render_results(frm, field.$wrapper, r.message || {});
@@ -562,6 +696,10 @@ function pos_recon_result_filters(state, options, is_bank_only, summary, can_rev
         <div><label>${__("POS Profile")}</label><div class="pos-recon-searchable-filter pos-recon-filter-profile"></div></div>
         <div><label>${__("Terminal ID")}</label><div class="pos-recon-searchable-filter pos-recon-filter-terminal"></div></div>
         <div><label>${__("Card Type")}</label><select class="form-control input-xs pos-recon-filter-card">${pos_recon_select_options(options.card_types||[],state.card_type,__("All"))}</select></div>
+        <div><label>${__("Response Meaning")}</label><select class="form-control input-xs pos-recon-filter-response-meaning">
+          <option value="">${__("All")}</option>
+          <option value="Confirmed manually from terminal slip" ${state.response_meaning==="Confirmed manually from terminal slip"?"selected":""}>${__("Confirmed manually from terminal slip")}</option>
+        </select></div>
         ${ledger_fields}${finance_fields}
         <div class="pos-recon-filter-actions"><button class="btn btn-xs btn-primary pos-recon-apply-bank-filters">${__("Apply Filters")}</button><button class="btn btn-xs btn-default pos-recon-clear-bank-filters">${__("Clear")}</button></div>
       </div>${summary_html}${actions}</div>`;
@@ -633,6 +771,7 @@ function pos_recon_read_controls($w,is_bank,state){
       to_date:$w.find(".pos-recon-filter-to-date").val()||"",settlement_number:pos_recon_searchable_value($w,".pos-recon-filter-settlement"),
       settlement_date:state.settlement_date||"",pos_profile:pos_recon_searchable_value($w,".pos-recon-filter-profile"),
       terminal_id:pos_recon_searchable_value($w,".pos-recon-filter-terminal"),card_type:$w.find(".pos-recon-filter-card").val()||"",
+       response_meaning:$w.find(".pos-recon-filter-response-meaning").val()||"",
 
       ledger_posting_status:$w.find(".pos-recon-filter-ledger").val()||"",accounting_status:$w.find(".pos-recon-filter-accounting").val()||"",
       before_integration:is_bank?($w.find(".pos-recon-filter-before").val()||"All"):"All"};

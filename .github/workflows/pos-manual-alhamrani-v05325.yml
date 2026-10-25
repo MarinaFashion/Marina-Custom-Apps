@@ -1,0 +1,138 @@
+name: Manual Alhamrani POS links v0.53.25
+on:
+  push:
+    branches: [manual-alhamrani-link-v05325, main]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Syntax and manual link invariants
+        run: |
+          python -m compileall -q marina_custom_apps/pos_reconciliation
+          node --check marina_custom_apps/pos_reconciliation/doctype/pos_reconciliation_run/pos_reconciliation_run.js
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path("marina_custom_apps/pos_reconciliation")
+          service=(p/"manual_alhamrani_link_service.py").read_text()
+          engine=(p/"reconciliation_engine.py").read_text()
+          adapter=(p/"alhamrani_adapter.py").read_text()
+          source_tests=(p/"tests/test_alhamrani_adapter.py").read_text()
+          js=(p/"doctype/pos_reconciliation_run/pos_reconciliation_run.js").read_text()
+          j=json.loads((p/"doctype/manual_alhamrani_pos_link/manual_alhamrani_pos_link.json").read_text())
+          fields={x["fieldname"]:x for x in j["fields"]}
+          assert fields["bank_pos_transaction"]["unique"]==1
+          assert fields["alhamrani_transaction"]["unique"]==1
+          assert "validate_manual_pair(bank, alh)" in service
+          assert "validate_manual_pair(bank, linked)" in engine
+          assert "date_fields[:index]" in adapter
+          assert 'filters[preferred_field] = ["is", "not set"]' in adapter
+          assert "test_manual_slip_uses_creation_when_response_timestamps_missing" in source_tests
+          assert "Manual Link: Alhamrani transaction unavailable in this run" in engine
+          assert "Approved manual link for Bank POS" not in engine
+          assert 'active_manual_links()' in engine
+          assert "result = _base_result(run, bank=bank, alhamrani=alh" in engine
+          assert "frappe.db.delete(" not in service
+          assert "frappe.db.commit(" not in service
+          assert 'Link Manual Alhamrani Payment' in js
+          assert 'find_manual_link_candidates' in js
+          assert 'pos_recon_manual_link_preview(candidate)' in js
+          assert '"transaction_time"], limit_page_length=100)' in service
+          assert '"time": cstr(bank.transaction_time).strip()' in service
+          assert '"time": cstr(alh.transaction_time).strip()' in service
+          assert '"time_origin": time_origin' in service
+          assert 'time_tolerance_seconds' in service
+          assert js.index('fieldname:"mapping_confirmation"') < js.index('fieldname:"reason",fieldtype:"Small Text"')
+          assert 'I reviewed POS Profile, Amount, Date and Time and confirm this mapping.' in js
+          assert '[__("Time"), source.time, candidate.time, timeStatus]' in js
+          assert '[__("Device")' not in js
+          assert 'source.time_origin !== "transaction"' in js
+          assert 'Math.abs(alhamraniSeconds - bankSeconds) <= tolerance' in js
+          assert 'manual record creation time, not a verified terminal time' in js
+          assert 'Verify slip' in js
+          assert 'mappingDialog.set_value("confirm_mapping", 0)' in js
+          assert '"0.53.25"' in Path('pyproject.toml').read_text()
+          print("Manual link invariants passed")
+          PY
+      - name: Preview time check scenarios
+        run: |
+          node - <<'JS'
+          const assert = require('node:assert/strict');
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const source = fs.readFileSync(
+            'marina_custom_apps/pos_reconciliation/doctype/pos_reconciliation_run/pos_reconciliation_run.js',
+            'utf8'
+          ).split('frappe.ui.form.on(')[0];
+          const context = { __: s => s, pos_recon_escape: s => String(s) };
+          vm.createContext(context);
+          vm.runInContext(source, context);
+          const preview = context.pos_recon_manual_link_preview;
+          const candidate = {
+            amount: 379, date: '2026-10-22', pos_profile: 'POS50',
+            time: '14:20:45', time_tolerance_seconds: 60,
+            alhamrani: {
+              amount: 379, date: '2026-10-22', pos_profile: 'POS50',
+              time: '14:20:00', time_origin: 'creation'
+            }
+          };
+          let html = preview(candidate);
+          assert.match(html, /<th>Time<\/th>/);
+          assert.doesNotMatch(html, /<th>Device<\/th>/);
+          assert.match(html, /<th>Time<\/th>.*?Verify slip/);
+          assert.match(html, /manual record creation time/);
+
+          candidate.alhamrani.time_origin = 'transaction';
+          html = preview(candidate);
+          assert.match(html, /<th>Time<\/th>.*?text-success">Match/);
+
+          candidate.alhamrani.time = '14:19:00';
+          html = preview(candidate);
+          assert.match(html, /<th>Time<\/th>.*?text-danger">Mismatch/);
+
+          candidate.alhamrani.time = '';
+          html = preview(candidate);
+          assert.match(html, /<th>Time<\/th>.*?Unavailable/);
+          console.log('Manual link preview time scenarios passed');
+          JS
+      - name: Guard manual slips from auto matching
+        run: |
+          python marina_custom_apps/pos_reconciliation/tests/check_manual_confirmation_guard.py
+      - name: Controlled Manual Link Unlink
+        run: |
+          python marina_custom_apps/pos_reconciliation/tests/check_controlled_manual_unlink.py
+      - name: Audited enrichment and safe rollback tests
+        run: |
+          python marina_custom_apps/pos_reconciliation/tests/check_alhamrani_enrichment.py
+      - name: Backfill UI and approval integration syntax
+        run: |
+          node --check marina_custom_apps/pos_reconciliation/doctype/manual_alhamrani_pos_link/manual_alhamrani_pos_link.js
+          node --check marina_custom_apps/pos_reconciliation/doctype/pos_reconciliation_run/pos_reconciliation_run.js
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('marina_custom_apps/pos_reconciliation')
+          link = (p/'manual_alhamrani_link_service.py').read_text()
+          ui = (p/'doctype/manual_alhamrani_pos_link/manual_alhamrani_pos_link.js').read_text()
+          delete_hook = (p/'doctype/manual_alhamrani_pos_link/manual_alhamrani_pos_link.py').read_text()
+          assert 'def enrich_existing_manual_link(link_name)' in link
+          assert 'enrichment = apply_enrichment(doc, bank)' in link
+          assert 'validate_manual_pair(bank, alh)' in link
+          assert 'enrich_existing_manual_link' in ui
+          assert 'Enrich Missing Fields' in ui
+          assert 'rollback_enrichment(link)' in link
+          assert 'Direct deletion is not allowed' in delete_hook
+          assert 'unlink_manual_link' in ui
+          print('Backfill and controlled unlink UI safety checks passed')
+          PY
+      - name: Settled payment unlink guard scenarios
+        run: |
+          python marina_custom_apps/pos_reconciliation/tests/check_settled_manual_link_unlink.py

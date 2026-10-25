@@ -22,7 +22,7 @@ jobs:
           from pathlib import Path
           base = "e0910c12e312fb31433790da45456895feb6a472"
           root = Path("marina_custom_apps/pos_reconciliation/doctype")
-          paths = sorted(root.glob("*/*.json"))
+          paths = sorted(p for p in root.glob("*/*.json") if p.name != "manual_alhamrani_pos_link.json")
           assert len(paths) == 26, len(paths)
           for path in paths:
               old = json.loads(subprocess.check_output(["git", "show", f"{base}:{path}"]))
@@ -74,8 +74,8 @@ jobs:
                   left = breaks[0]
                   right = len(seg)-breaks[0]-1
                   assert abs(left-right) <= 1, (str(path), seg, left, right)
-          assert "0.53.24" in Path("pyproject.toml").read_text()
-          assert "0.53.24" in Path("marina_custom_apps/__init__.py").read_text()
+          assert "0.53.25" in Path("pyproject.toml").read_text()
+          assert "0.53.25" in Path("marina_custom_apps/__init__.py").read_text()
           print("26 DocTypes pass layout, original field metadata, child table and version checks")
           PY
       - name: Python syntax

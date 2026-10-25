@@ -191,6 +191,9 @@ def _bank_rows(run, card_mapper):
         fields=[
             "name",
             "reconciliation_key",
+            "rrn",
+            "transaction_type",
+            "transaction_status",
             "pos_profile",
             "terminal_id",
             "card_type",
@@ -295,19 +298,52 @@ def _base_result(run, bank=None, alhamrani=None, card_mapper=None):
 
 
 
-def _build_results(run, bank_rows, alhamrani_rows, card_mapper, time_tolerance_seconds=60):
-    integration_dates = _integration_dates()
-    alh_by_key = defaultdict(list)
+def _automatic_alhamrani_keys(alhamrani_rows):
+    """Index only real terminal responses; manual slips require an approved link.
+
+    Never auto-match a manually confirmed source even if bank-sourced enrichment
+    later completes its Terminal ID, Auth Code, PAN, or other payment fields.
+    """
+    by_key = defaultdict(list)
     for row in alhamrani_rows:
-        if row.reconciliation_key:
-            alh_by_key[row.reconciliation_key].append(row)
+        if row.reconciliation_key and not row.manual_confirmation:
+            by_key[row.reconciliation_key].append(row)
+    return by_key
+
+
+def _build_results(run, bank_rows, alhamrani_rows, card_mapper, time_tolerance_seconds=60):
+    from marina_custom_apps.pos_reconciliation.manual_alhamrani_link_service import active_manual_links, validate_manual_pair
+    manual_links = active_manual_links()
+    manual_alh = {alh for alh in manual_links.values()}
+    if len(manual_alh) != len(manual_links):
+        frappe.throw(_("Duplicate active manual Alhamrani source link found."))
+    alh_by_name = {row.name: row for row in alhamrani_rows}
+    integration_dates = _integration_dates()
+    alh_by_key = _automatic_alhamrani_keys(alhamrani_rows)
 
     consumed_alh = set()
     results = []
     now = now_datetime()
 
     for bank in bank_rows:
-        candidates = alh_by_key.get(bank.reconciliation_key) or []
+        if bank.name in manual_links:
+            linked = alh_by_name.get(manual_links[bank.name])
+            if not linked:
+                # Scope/date/status filters can omit the linked Alhamrani row.
+                # Do not abort the entire run or falsely recognize an unavailable pair.
+                result = _base_result(run, bank=bank, card_mapper=card_mapper)
+                result.update(
+                    match_status="Bank Only - Not Settled",
+                    resolution_status="Pending",
+                    before_integration=_is_before_integration(bank, integration_dates),
+                    discrepancy_fields="Manual Link: Alhamrani transaction unavailable in this run",
+                )
+                results.append(result)
+                continue
+            validate_manual_pair(bank, linked)
+            candidates = [linked]
+        else:
+            candidates = [r for r in (alh_by_key.get(bank.reconciliation_key) or []) if r.name not in manual_alh]
         if not candidates:
             result = _base_result(run, bank=bank, card_mapper=card_mapper)
             result.update(
@@ -335,7 +371,12 @@ def _build_results(run, bank_rows, alhamrani_rows, card_mapper, time_tolerance_s
 
         alh = candidates[0]
         consumed_alh.add(alh.name)
-        discrepancies = compare_transactions(bank, alh, card_mapper=card_mapper, time_tolerance_seconds=time_tolerance_seconds)
+        if bank.name in manual_links:
+            # The terminal response was lost. Manual approval already verifies RRN,
+            # amount, date, store, and transaction type. Do not infer missing PAN/card/time.
+            discrepancies = []
+        else:
+            discrepancies = compare_transactions(bank, alh, card_mapper=card_mapper, time_tolerance_seconds=time_tolerance_seconds)
         result = _base_result(run, bank=bank, alhamrani=alh, card_mapper=card_mapper)
         result.update(
             match_status="Discrepancy" if discrepancies else "Matching Not Settled",
@@ -349,11 +390,20 @@ def _build_results(run, bank_rows, alhamrani_rows, card_mapper, time_tolerance_s
         if alh.name in consumed_alh:
             continue
         result = _base_result(run, alhamrani=alh, card_mapper=card_mapper)
+        if alh.manual_confirmation:
+            # Explain why a complete/enriched key did not trigger auto-matching.
+            discrepancy = (
+                "Manual confirmation: linked Bank POS not in this run"
+                if alh.name in manual_alh
+                else "Manual confirmation: approved link required"
+            )
+        else:
+            discrepancy = alh.key_error or ""
         result.update(
             match_status="Alhamrani Only",
             resolution_status="Pending",
             before_integration=0,
-            discrepancy_fields=alh.key_error or "",
+            discrepancy_fields=discrepancy,
         )
         results.append(result)
 
