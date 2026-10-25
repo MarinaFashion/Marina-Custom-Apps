@@ -191,6 +191,9 @@ def _bank_rows(run, card_mapper):
         fields=[
             "name",
             "reconciliation_key",
+            "rrn",
+            "transaction_type",
+            "transaction_status",
             "pos_profile",
             "terminal_id",
             "card_type",
@@ -296,7 +299,7 @@ def _base_result(run, bank=None, alhamrani=None, card_mapper=None):
 
 
 def _build_results(run, bank_rows, alhamrani_rows, card_mapper, time_tolerance_seconds=60):
-    from marina_custom_apps.pos_reconciliation.manual_alhamrani_link_service import active_manual_links
+    from marina_custom_apps.pos_reconciliation.manual_alhamrani_link_service import active_manual_links, validate_manual_pair
     manual_links = active_manual_links()
     manual_alh = {alh for alh in manual_links.values()}
     if len(manual_alh) != len(manual_links):
@@ -317,6 +320,7 @@ def _build_results(run, bank_rows, alhamrani_rows, card_mapper, time_tolerance_s
             linked = alh_by_name.get(manual_links[bank.name])
             if not linked:
                 frappe.throw(_("Approved manual link for Bank POS {0} points to an Alhamrani transaction outside this run.").format(bank.name))
+            validate_manual_pair(bank, linked)
             candidates = [linked]
         else:
             candidates = [r for r in (alh_by_key.get(bank.reconciliation_key) or []) if r.name not in manual_alh]
