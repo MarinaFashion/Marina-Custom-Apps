@@ -33,30 +33,32 @@ def _is_blank(value):
 
 
 def _safe_masked_pan(value):
-    """Normalize only demonstrably masked or last-four bank card references.
+    """Preserve safe PAN layout without inventing card digits or card length.
 
-    Accept common masked patterns including #, X, *, and bullet masking.
-    Never import a full PAN or an unmasked fragment longer than four digits.
+    Alhamrani's native "pan" is Masked PAN. Keep the actual visible
+    leading digits (at most six) and trailing four digits; convert ordinary
+    mask glyphs to "*" for consistent ERP display. Separator characters
+    are presentation only. Never copy a clear-text PAN or any exposed
+    middle digits.
     """
     raw = cstr(value).strip()
     if not raw or len(raw) > 64:
         return ""
     if not re.fullmatch(r"[0-9*Xx#•●\s-]+", raw):
         return ""
-    cleaned = re.sub(r"[\s-]", "", raw)
-    normalized = re.sub(r"[Xx#•●]", "*", cleaned)
-    digit_count = sum(ch.isdigit() for ch in normalized)
-    if not digit_count:
+    normalized = re.sub(r"[Xx#•●]", "*", re.sub(r"[\s-]", "", raw))
+    if re.fullmatch(r"\d{4}", normalized):
+        # Last-four-only reference. Length of the physical PAN is unknown.
+        # Do not manufacture a presumed 15/16-digit PAN layout.
+        return "****" + normalized
+
+    match = re.fullmatch(r"(\d{0,6})(\*+)(\d{4})", normalized)
+    if not match:
         return ""
-    if "*" not in normalized:
-        # Only a last-four reference is safe without an explicit mask.
-        return "****" + normalized if digit_count == 4 else ""
-    if digit_count > 10:
-        # Do not copy excessive visible digits, even if some positions
-        # elsewhere in the input are masked.
-        last4 = "".join(ch for ch in normalized if ch.isdigit())[-4:]
-        return "****" + last4
+    # Re-use the actual mask length given by the bank, without altering
+    # significant digits or inventing an unsupported BIN/PAN length.
     return normalized
+
 
 
 def _eligible_changes_with_reasons(meta, source, bank, previously_enriched=None):
