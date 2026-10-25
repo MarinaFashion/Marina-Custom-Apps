@@ -80,6 +80,9 @@ class Meta:
     def has_field(self, name):
         return name in self.source
 
+    def get_field(self, name):
+        return SimpleNamespace(fieldtype="Data", options=None)
+
 
 def make_system(source, site="marinademo.frappe.cloud"):
     db = Db(source)
