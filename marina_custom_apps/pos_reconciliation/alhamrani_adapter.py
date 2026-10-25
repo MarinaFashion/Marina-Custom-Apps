@@ -14,6 +14,13 @@ from marina_custom_apps.pos_reconciliation.doctype.bank_pos_transaction.bank_pos
 )
 
 ALHAMRANI_DOCTYPE = "Alhamrani Transaction"
+MANUAL_SLIP_RESPONSE_MEANING = "Confirmed manually from terminal slip"
+
+
+def is_manual_slip_confirmation(value):
+    """A manually approved slip remains manual even if its missing bank fields are enriched."""
+    return " ".join(cstr(value).split()).casefold() == MANUAL_SLIP_RESPONSE_MEANING.casefold()
+
 
 FIELD_CANDIDATES = {
     "status": ("status",),
@@ -26,6 +33,7 @@ FIELD_CANDIDATES = {
     "masked_pan": ("masked_pan", "masked_card_number"),
     "pos_profile": ("pos_profile",),
     "response_code": ("response_code",),
+    "response_meaning": ("response_meaning",),
     "sent_at": ("sent_at",),
     "responded_at": ("responded_at",),
     "request_json": ("request_json",),
@@ -207,6 +215,10 @@ class AlhamraniAdapter:
             missing.append("amount")
         if not self.fields.get("status") and not self.fields.get("response_code"):
             missing.append("status/response_code")
+        # Fail closed if the source schema cannot identify manual slip confirmations.
+        # Otherwise enriched terminal fields could accidentally activate auto-matching.
+        if not self.fields.get("response_meaning"):
+            missing.append("response_meaning")
 
         if missing:
             frappe.throw(
@@ -362,6 +374,8 @@ class AlhamraniAdapter:
             _json_value(payloads, JSON_KEY_CANDIDATES["ecr_emv_data"])
         )
 
+        response_meaning = cstr(self._value(row, "response_meaning")).strip()
+
         key, key_error = try_build_reconciliation_key(
             terminal_id,
             rrn,
@@ -386,6 +400,8 @@ class AlhamraniAdapter:
             source_pos_profile=cstr(self._value(row, "pos_profile")).strip(),
             status=cstr(self._value(row, "status")).strip(),
             response_code=cstr(self._value(row, "response_code")).strip(),
+            response_meaning=response_meaning,
+            manual_confirmation=is_manual_slip_confirmation(response_meaning),
             reconciliation_key=key,
             key_error=key_error,
         )
