@@ -45,6 +45,13 @@ jobs:
           assert "frappe.db.commit(" not in service
           assert 'Link Manual Alhamrani Payment' in js
           assert 'find_manual_link_candidates' in js
+          assert 'pos_recon_manual_link_preview(candidate)' in js
+          assert 'bank_terminal_id' in service
+          assert '"device_map": cstr(source.get("device_map")).strip()' in service
+          assert js.indexOf('fieldname:"mapping_confirmation"') < js.indexOf('fieldname:"reason",fieldtype:"Small Text"')
+          assert 'I reviewed POS Profile, Amount, Device and Date and confirm this mapping.' in js
+          assert 'Verify terminal slip' in js
+          assert 'mappingDialog.set_value("confirm_mapping", 0)' in js
           assert '"0.53.25"' in Path('pyproject.toml').read_text()
           print("Manual link invariants passed")
           PY
