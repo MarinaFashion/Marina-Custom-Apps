@@ -16,7 +16,12 @@
   "status",
   "reason",
   "approved_by",
-  "approved_on"
+  "approved_on",
+  "enrichment_section",
+  "enrichment_status",
+  "enrichment_details",
+  "enriched_by",
+  "enriched_on"
  ],
  "fields": [
   {
@@ -83,6 +88,39 @@
    "fieldname": "approved_on",
    "fieldtype": "Datetime",
    "label": "Approved On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "enrichment_section",
+   "fieldtype": "Section Break",
+   "label": "Bank Data Enrichment"
+  },
+  {
+   "fieldname": "enrichment_status",
+   "fieldtype": "Select",
+   "label": "Enrichment Status",
+   "options": "Not Applied\nApplied\nNo Eligible Fields\nNot Applicable",
+   "default": "Not Applied",
+   "read_only": 1
+  },
+  {
+   "fieldname": "enrichment_details",
+   "fieldtype": "Code",
+   "label": "Enrichment Audit (JSON)",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "enriched_by",
+   "fieldtype": "Link",
+   "label": "Enriched By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "enriched_on",
+   "fieldtype": "Datetime",
+   "label": "Enriched On",
    "read_only": 1
   }
  ],
