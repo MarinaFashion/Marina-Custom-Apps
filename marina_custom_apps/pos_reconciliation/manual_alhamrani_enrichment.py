@@ -21,7 +21,7 @@ from marina_custom_apps.pos_reconciliation.location_service import resolve_pos_p
 # approval status, request_json or response_json.
 FIELD_MAPPING = (
     ("card_type", ("card_type",)),
-    ("masked_card_number", ("masked_pan", "masked_card_number")),
+    ("masked_card_number", ("pan", "masked_pan", "masked_card_number")),
     ("terminal_id", ("tid", "terminal_id", "device_terminal_id")),
     ("auth_code", ("auth_code", "authorization_code")),
     ("transaction_time", ("transaction_time",)),
