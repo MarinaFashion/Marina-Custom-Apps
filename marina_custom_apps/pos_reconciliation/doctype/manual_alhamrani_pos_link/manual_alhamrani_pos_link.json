@@ -1,0 +1,103 @@
+{
+ "doctype": "DocType",
+ "name": "Manual Alhamrani POS Link",
+ "module": "POS Reconciliation",
+ "custom": 0,
+ "istable": 0,
+ "issingle": 0,
+ "track_changes": 1,
+ "autoname": "hash",
+ "field_order": [
+  "alhamrani_transaction",
+  "bank_pos_transaction",
+  "rrn",
+  "amount",
+  "pos_profile",
+  "status",
+  "reason",
+  "approved_by",
+  "approved_on"
+ ],
+ "fields": [
+  {
+   "fieldname": "alhamrani_transaction",
+   "fieldtype": "Data",
+   "label": "Alhamrani Transaction",
+   "reqd": 1,
+   "in_list_view": 1,
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "bank_pos_transaction",
+   "fieldtype": "Link",
+   "options": "Bank POS Transaction",
+   "label": "Bank POS Transaction",
+   "reqd": 1,
+   "in_list_view": 1,
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "rrn",
+   "fieldtype": "Data",
+   "label": "Verified RRN",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Verified Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pos_profile",
+   "fieldtype": "Link",
+   "options": "POS Profile",
+   "label": "POS Profile",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "options": "Approved\nRevoked",
+   "default": "Approved",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Small Text",
+   "label": "Reason",
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "options": "User",
+   "label": "Approved By",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_on",
+   "fieldtype": "Datetime",
+   "label": "Approved On",
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "Accounts Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  },
+  {
+   "role": "System Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  }
+ ]
+}
