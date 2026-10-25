@@ -48,7 +48,7 @@ jobs:
           assert 'pos_recon_manual_link_preview(candidate)' in js
           assert 'bank_terminal_id' in service
           assert '"device_map": cstr(source.get("device_map")).strip()' in service
-          assert js.indexOf('fieldname:"mapping_confirmation"') < js.indexOf('fieldname:"reason",fieldtype:"Small Text"')
+          assert js.index('fieldname:"mapping_confirmation"') < js.index('fieldname:"reason",fieldtype:"Small Text"')
           assert 'I reviewed POS Profile, Amount, Device and Date and confirm this mapping.' in js
           assert 'Verify terminal slip' in js
           assert 'mappingDialog.set_value("confirm_mapping", 0)' in js
