@@ -166,10 +166,20 @@ for sample, expected in (
     ("•••• •••• •••• 1234", "************1234"),
     ("**** **** **** 1234", "************1234"),
     ("1234", "****1234"),
+    ("541234******8976", "541234******8976"),
+    ("************8976", "************8976"),
 ):
+
     assert ns["_safe_masked_pan"](sample) == expected
 assert ns["_safe_masked_pan"]("4111111111111111") == ""
 assert ns["_safe_masked_pan"]("12345678") == ""
+# Exposed middle digits and prefixes beyond first six are unsafe even when
+# another part of the bank PAN has masking characters.
+assert ns["_safe_masked_pan"]("5412341234****8976") == ""
+assert ns["_safe_masked_pan"]("541234****12348976") == ""
+assert ns["_safe_masked_pan"]("12345678****9876") == ""
+assert ns["_safe_masked_pan"]("************987") == ""
+
 
 # A partially enriched existing link must be able to retry; do not lose the
 # first audit entries or their reversibility when masked card is added later.
