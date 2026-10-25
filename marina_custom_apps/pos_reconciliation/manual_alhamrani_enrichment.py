@@ -41,9 +41,9 @@ def _safe_masked_pan(value):
     raw = cstr(value).strip()
     if not raw or len(raw) > 64:
         return ""
-    if not re.fullmatch(r"[0-9*Xx#•●\\s\\-]+", raw):
+    if not re.fullmatch(r"[0-9*Xx#•●\s-]+", raw):
         return ""
-    cleaned = re.sub(r"[\\s-]", "", raw)
+    cleaned = re.sub(r"[\s-]", "", raw)
     normalized = re.sub(r"[Xx#•●]", "*", cleaned)
     digit_count = sum(ch.isdigit() for ch in normalized)
     if not digit_count:
