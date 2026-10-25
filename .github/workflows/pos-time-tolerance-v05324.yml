@@ -34,6 +34,6 @@ jobs:
           assert "settings.get('transaction_time_tolerance_seconds')" in src
           settings=json.loads(Path("marina_custom_apps/pos_reconciliation/doctype/pos_reconciliation_settings/pos_reconciliation_settings.json").read_text())
           assert any(x.get("fieldname")=="transaction_time_tolerance_seconds" and x.get("default")=="60" for x in settings["fields"])
-          assert '0.53.24' in Path('pyproject.toml').read_text()
+          assert '0.53.25' in Path('pyproject.toml').read_text()
           print("POS timestamp tolerances, midnight boundary and settings checks passed")
           PY
