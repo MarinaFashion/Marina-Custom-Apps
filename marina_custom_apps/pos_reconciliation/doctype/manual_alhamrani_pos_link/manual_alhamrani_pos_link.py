@@ -164,26 +164,20 @@ def _assert_no_financial_dependencies(bank_name, alhamrani_name):
 
 
 class ManualAlhamraniPOSLink(Document):
+    def validate(self):
+        # Source identifiers remain mandatory for APPROVED links. They become
+        # NULL only after a controlled unlink, releasing the database's two
+        # unique constraints without deleting the historical document.
+        if self.status == "Approved" and (
+            not _has_text(self.bank_pos_transaction)
+            or not _has_text(self.alhamrani_transaction)
+        ):
+            frappe.throw(_("Approved manual links require both source transactions."))
+
     def on_trash(self):
-        # This is a temporary test-only capability, not a Live reversal feature.
-        if cstr(getattr(frappe.local, "site", "")) != "marinademo.frappe.cloud":
-            frappe.throw(_("Deleting approved manual POS links is permitted on Demo only."))
-        if not (set(frappe.get_roles()) & {"Accounts Manager", "System Manager"}):
-            frappe.throw(_("Accounts Manager or System Manager role is required."), frappe.PermissionError)
-        _assert_no_financial_dependencies(
-            cstr(self.bank_pos_transaction).strip(),
-            cstr(self.alhamrani_transaction).strip(),
-        )
-        # Revert only bank-sourced values written by this approved link.
-        # If any was subsequently edited, block deletion rather than
-        # silently overwriting another actor's modification.
-        from marina_custom_apps.pos_reconciliation.manual_alhamrani_enrichment import rollback_enrichment
-        rollback_enrichment(self)
-        # The link is removed by normal Frappe delete_doc. No reconciliation
-        # or accounting rows are deleted here. Rerun reconciliation to split
-        # the stale source pairing before attempting a different manual link.
-        frappe.msgprint(_(
-            "Manual link deleted without changing bank settlements, statements or "
-            "accounting records. Rerun POS Reconciliation for the same period "
-            "and Bank Account to refresh the two unlinked results before relinking."
+        # Never delete audit documents. Revoked links remain as immutable
+        # history and their original sources are stored separately.
+        frappe.throw(_(
+            "Manual POS links cannot be deleted. Use Actions > Unlink Transactions "
+            "to safely revoke an approved link and retain its history."
         ))
