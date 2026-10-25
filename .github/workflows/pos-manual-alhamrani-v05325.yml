@@ -25,6 +25,8 @@ jobs:
           p=Path("marina_custom_apps/pos_reconciliation")
           service=(p/"manual_alhamrani_link_service.py").read_text()
           engine=(p/"reconciliation_engine.py").read_text()
+          adapter=(p/"alhamrani_adapter.py").read_text()
+          source_tests=(p/"tests/test_alhamrani_adapter.py").read_text()
           js=(p/"doctype/pos_reconciliation_run/pos_reconciliation_run.js").read_text()
           j=json.loads((p/"doctype/manual_alhamrani_pos_link/manual_alhamrani_pos_link.json").read_text())
           fields={x["fieldname"]:x for x in j["fields"]}
@@ -32,6 +34,9 @@ jobs:
           assert fields["alhamrani_transaction"]["unique"]==1
           assert "validate_manual_pair(bank, alh)" in service
           assert "validate_manual_pair(bank, linked)" in engine
+          assert "date_fields[:index]" in adapter
+          assert 'filters[preferred_field] = ["is", "not set"]' in adapter
+          assert "test_manual_slip_uses_creation_when_response_timestamps_missing" in source_tests
           assert "Manual Link: Alhamrani transaction unavailable in this run" in engine
           assert "Approved manual link for Bank POS" not in engine
           assert 'active_manual_links()' in engine
