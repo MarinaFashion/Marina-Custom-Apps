@@ -64,7 +64,7 @@ def _safe_masked_pan(value):
 def _safe_bank_transaction_time(value):
     """Accept only a valid bank 24-hour clock, never an ECR timestamp."""
     text = cstr(value).strip()
-    match = re.fullmatch(r"(\\d{1,2}):([0-5]\\d)(?::([0-5]\\d))?(?:\\.\\d{1,6})?", text)
+    match = re.fullmatch(r"(\d{1,2}):([0-5]\d)(?::([0-5]\d))?(?:\.\d{1,6})?", text)
     if not match or int(match.group(1)) > 23:
         return ""
     return "{:02d}:{}:{}".format(
