@@ -50,6 +50,41 @@ def validate_manual_pair(bank, alh):
 
 
 @frappe.whitelist()
+def find_manual_link_candidates(alhamrani_name):
+    """Offer only evidenced candidates; the user must explicitly approve a link."""
+    _require_approver()
+    if not frappe.db.exists(ALHAMRANI_DOCTYPE, alhamrani_name):
+        frappe.throw(_("Alhamrani transaction does not exist."))
+    adapter = AlhamraniAdapter()
+    source = frappe.get_doc(ALHAMRANI_DOCTYPE, alhamrani_name).as_dict()
+    if not adapter.is_approved(source):
+        frappe.throw(_("Alhamrani transaction is not approved."))
+    alh = adapter.normalized_row(source)
+    alh.pos_profile = resolve_pos_profile(alh.terminal_id, alh.transaction_date) or alh.source_pos_profile
+    rrn = cstr(alh.rrn).strip()
+    if not re.fullmatch(r"\d{12}", rrn) or not alh.transaction_date or not alh.pos_profile:
+        return []
+    banks = frappe.get_all("Bank POS Transaction", filters={
+        "rrn": rrn,
+        "transaction_date": alh.transaction_date,
+        "pos_profile": alh.pos_profile,
+        "transaction_status": ["in", ["Approved", "APPROVED", "approved"]],
+    }, fields=["name", "rrn", "transaction_date", "transaction_amount", "transaction_type",
+               "transaction_status", "pos_profile"], limit_page_length=100)
+    results = []
+    for bank in banks:
+        if frappe.db.exists(LINK, {"bank_pos_transaction": bank.name}):
+            continue
+        try:
+            validate_manual_pair(bank, alh)
+        except frappe.ValidationError:
+            continue
+        results.append({"name":bank.name,"amount":bank.transaction_amount,"date":cstr(bank.transaction_date),
+                        "pos_profile":bank.pos_profile,"rrn":rrn})
+    return results
+
+
+@frappe.whitelist()
 def approve_manual_link(alhamrani_name, bank_pos_name, reason):
     _require_approver()
     alhamrani_name, bank_pos_name = cstr(alhamrani_name).strip(), cstr(bank_pos_name).strip()
