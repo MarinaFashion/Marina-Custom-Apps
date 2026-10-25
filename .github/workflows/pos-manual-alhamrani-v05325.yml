@@ -46,11 +46,19 @@ jobs:
           assert 'Link Manual Alhamrani Payment' in js
           assert 'find_manual_link_candidates' in js
           assert 'pos_recon_manual_link_preview(candidate)' in js
-          assert 'bank_terminal_id' in service
-          assert '"device_map": cstr(source.get("device_map")).strip()' in service
+          assert '"transaction_time"], limit_page_length=100)' in service
+          assert '"time": cstr(bank.transaction_time).strip()' in service
+          assert '"time": cstr(alh.transaction_time).strip()' in service
+          assert '"time_origin": time_origin' in service
+          assert 'time_tolerance_seconds' in service
           assert js.index('fieldname:"mapping_confirmation"') < js.index('fieldname:"reason",fieldtype:"Small Text"')
-          assert 'I reviewed POS Profile, Amount, Device and Date and confirm this mapping.' in js
-          assert 'Verify terminal slip' in js
+          assert 'I reviewed POS Profile, Amount, Date and Time and confirm this mapping.' in js
+          assert '[__("Time"), source.time, candidate.time, timeStatus]' in js
+          assert '[__("Device")' not in js
+          assert 'source.time_origin !== "transaction"' in js
+          assert 'Math.abs(alhamraniSeconds - bankSeconds) <= tolerance' in js
+          assert 'manual record creation time, not a verified terminal time' in js
+          assert 'Verify slip' in js
           assert 'mappingDialog.set_value("confirm_mapping", 0)' in js
           assert '"0.53.25"' in Path('pyproject.toml').read_text()
           print("Manual link invariants passed")
