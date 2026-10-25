@@ -87,7 +87,10 @@ def apply_enrichment(link, bank):
     the source row between validation, audit capture, and write.
     """
     if cstr(getattr(frappe.local, "site", "")) != "marinademo.frappe.cloud":
-        frappe.throw(_("Bank-to-Alhamrani enrichment is enabled on Demo only."))
+        # Never break the approved-link workflow on another site simply
+        # because Demo-only enrichment is intentionally disabled there.
+        link.db_set("enrichment_status", "Disabled", update_modified=False)
+        return {"status": "Disabled", "fields": []}
 
     frappe.db.sql(
         "SELECT name FROM `tabAlhamrani Transaction` WHERE name=%s FOR UPDATE",
