@@ -35,27 +35,40 @@ frappe.ui.form.on("POS Reconciliation Run", {
             frm.__pos_recon_execution_timer = setTimeout(() => frm.reload_doc(), 5000);
         }
 
-        if (!execution_active) {
+        if (!execution_active && (frappe.user_roles.includes("Accounts Manager") || frappe.user_roles.includes("System Manager"))) {
             frm.add_custom_button(__("Link Manual Alhamrani Payment"), () => {
-                frappe.prompt([
-                    {fieldname:"alhamrani_name", fieldtype:"Data", label:__("Alhamrani Transaction ID"), reqd:1},
-                    {fieldname:"bank_pos_name", fieldtype:"Link", options:"Bank POS Transaction", label:__("Bank POS Transaction"), reqd:1},
-                    {fieldname:"reason", fieldtype:"Small Text", label:__("Manual Link Reason"), reqd:1,
-                     default:"Terminal approved payment but POS did not receive approval response."}
-                ], (v) => {
-                    frappe.confirm(__("Approve this manual link? Exact RRN, amount, date, store, transaction type, and duplicate checks will be enforced."), () => {
-                        frappe.call({
-                            method:"marina_custom_apps.pos_reconciliation.manual_alhamrani_link_service.approve_manual_link",
-                            args:{alhamrani_name:v.alhamrani_name,bank_pos_name:v.bank_pos_name,reason:v.reason},
-                            freeze:true,
-                            freeze_message:__("Validating payment evidence...")
-                        }).then(r => {
-                            if (r.message && r.message.status === "Approved") {
-                                frappe.msgprint(__("Manual link approved. Re-run POS reconciliation to update the matching result; settlements are not changed by this action."));
-                            }
-                        });
+                frappe.prompt([{fieldname:"alhamrani_name",fieldtype:"Data",label:__("Alhamrani Transaction ID"),reqd:1}], (first) => {
+                    frappe.call({
+                        method:"marina_custom_apps.pos_reconciliation.manual_alhamrani_link_service.find_manual_link_candidates",
+                        args:{alhamrani_name:first.alhamrani_name},
+                        freeze:true
+                    }).then(response => {
+                        const candidates = response.message || [];
+                        if (!candidates.length) {
+                            frappe.msgprint(__("No verified unique Bank POS candidates found. Check the 12-digit RRN, amount, date and POS Profile."));
+                            return;
+                        }
+                        const options = candidates.map(c => c.name).join("\\n");
+                        frappe.prompt([
+                            {fieldname:"bank_pos_name",fieldtype:"Select",label:__("Bank POS Transaction"),
+                             options:options,reqd:1},
+                            {fieldname:"reason",fieldtype:"Small Text",label:__("Manual Link Reason"),reqd:1,
+                             default:"Terminal approved payment but POS did not receive approval response."}
+                        ], (v) => {
+                            frappe.confirm(__("Approve the verified manual payment pairing? Bank settlement and accounting will not be modified."), () => {
+                                frappe.call({
+                                    method:"marina_custom_apps.pos_reconciliation.manual_alhamrani_link_service.approve_manual_link",
+                                    args:{alhamrani_name:first.alhamrani_name,bank_pos_name:v.bank_pos_name,reason:v.reason},
+                                    freeze:true,freeze_message:__("Validating source records...")
+                                }).then(result => {
+                                    if (result.message && result.message.status === "Approved") {
+                                        frappe.msgprint(__("Manual pairing approved. Re-run POS reconciliation to refresh the matching result."));
+                                    }
+                                });
+                            });
+                        }, __("Approve Manual Link"), __("Approve Link"));
                     });
-                }, __("Link Manual Alhamrani Payment"), __("Validate and Approve"));
+                }, __("Find Manual Payment"), __("Find Candidates"));
             }, __("Actions"));
         }
 
