@@ -44,5 +44,69 @@ frappe.ui.form.on("Manual Alhamrani POS Link", {
                 })
             );
         }, __("Actions"));
+
+        frm.add_custom_button(__("Unlink Transactions"), () => {
+            const dialog = new frappe.ui.Dialog({
+                title: __("Unlink Alhamrani and Bank POS Transactions"),
+                fields: [
+                    {
+                        fieldtype: "HTML",
+                        fieldname: "unlink_warning",
+                        options: "<p>" + __(
+                            "This will revoke the approved manual link, retain the unlink history, " +
+                            "and restore only fields previously copied from the Bank POS transaction."
+                        ) + "</p><p><b>" + __(
+                            "Bank settlements and statement reconciliations will not be deleted. " +
+                            "You must rerun POS Reconciliation before creating a new manual link."
+                        ) + "</b></p>"
+                    },
+                    {
+                        fieldtype: "Small Text",
+                        fieldname: "unlink_reason",
+                        label: __("Reason for Unlinking"),
+                        reqd: 1,
+                        description: __("At least 10 characters. This reason becomes part of the permanent audit history.")
+                    }
+                ],
+                primary_action_label: __("Review Unlink"),
+                primary_action(values) {
+                    const reason = (values.unlink_reason || "").trim();
+                    if (reason.length < 10 || reason.length > 2000) {
+                        frappe.msgprint(__("Enter a reason between 10 and 2000 characters."));
+                        return;
+                    }
+                    frappe.confirm(
+                        __("Confirm unlink of Alhamrani {0} and Bank POS {1}? " +
+                           "This action will retain the audit history and require a reconciliation rerun.", [
+                            frappe.utils.escape_html(frm.doc.alhamrani_transaction || ""),
+                            frappe.utils.escape_html(frm.doc.bank_pos_transaction || "")
+                        ]),
+                        () => {
+                            frappe.call({
+                                method: "marina_custom_apps.pos_reconciliation.manual_alhamrani_link_service.unlink_manual_link",
+                                args: {
+                                    link_name: frm.doc.name,
+                                    reason: reason
+                                },
+                                freeze: true,
+                                freeze_message: __("Validating accounting and settlement references...")
+                            }).then(result => {
+                                if (!result.message || result.message.status !== "Revoked") return;
+                                dialog.hide();
+                                frappe.msgprint({
+                                    title: __("Transactions Unlinked"),
+                                    message: __("Manual link revoked; its original pairing and reason were retained. " +
+                                        "No bank settlement or statement was deleted. Rerun POS Reconciliation " +
+                                        "for the relevant date, POS Profile and Bank Account before relinking."),
+                                    indicator: "green"
+                                });
+                                frm.reload_doc();
+                            });
+                        }
+                    );
+                }
+            });
+            dialog.show();
+        }, __("Actions"));
     }
 });
