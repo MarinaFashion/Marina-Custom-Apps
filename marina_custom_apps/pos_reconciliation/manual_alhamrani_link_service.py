@@ -70,7 +70,7 @@ def find_manual_link_candidates(alhamrani_name):
         "pos_profile": alh.pos_profile,
         "transaction_status": ["in", ["Approved", "APPROVED", "approved"]],
     }, fields=["name", "rrn", "transaction_date", "transaction_amount", "transaction_type",
-               "transaction_status", "pos_profile"], limit_page_length=100)
+               "transaction_status", "pos_profile", "terminal_id"], limit_page_length=100)
     results = []
     for bank in banks:
         if frappe.db.exists(LINK, {"bank_pos_transaction": bank.name}):
@@ -79,8 +79,25 @@ def find_manual_link_candidates(alhamrani_name):
             validate_manual_pair(bank, alh)
         except frappe.ValidationError:
             continue
-        results.append({"name":bank.name,"amount":bank.transaction_amount,"date":cstr(bank.transaction_date),
-                        "pos_profile":bank.pos_profile,"rrn":rrn})
+        # Read-only evidence for the user's final mapping confirmation.
+        # A source Device Map is not equivalent to a bank Terminal ID and must
+        # never be described as an automatically verified device match.
+        results.append({
+            "name": bank.name,
+            "amount": bank.transaction_amount,
+            "date": cstr(bank.transaction_date),
+            "pos_profile": bank.pos_profile,
+            "rrn": rrn,
+            "bank_terminal_id": cstr(bank.terminal_id).strip(),
+            "alhamrani": {
+                "name": alhamrani_name,
+                "pos_profile": alh.pos_profile,
+                "amount": alh.amount,
+                "date": cstr(alh.transaction_date),
+                "device_map": cstr(source.get("device_map")).strip(),
+                "terminal_id": cstr(alh.terminal_id).strip(),
+            },
+        })
     return results
 
 
