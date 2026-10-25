@@ -32,6 +32,6 @@ jobs:
           assert 'def _prior_financial_duplicates(import_doc, rows):' in py
           assert '"reference_number": ["in", refs[start:start + CHUNK]]' in py
           assert py.count('row.get("category") == "Potential Duplicate"') == 2
-          assert "0.53.24" in Path("pyproject.toml").read_text()
+          assert "0.53.25" in Path("pyproject.toml").read_text()
           print('Filtered selection and duplicate preflight regression checks passed')
           PY
