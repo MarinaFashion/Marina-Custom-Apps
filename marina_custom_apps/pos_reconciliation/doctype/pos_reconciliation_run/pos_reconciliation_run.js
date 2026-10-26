@@ -675,7 +675,7 @@ function pos_recon_result_filters(state, options, is_bank_only, summary, can_rev
           <div><b>${__("Commission")}</b><span>${pos_recon_money(summary.commission)}</span></div>
           <div><b>${__("Commission %")}</b><span>${Number(summary.commission_pct||0).toFixed(2)}%</span></div>
           <div><b>${__("VAT")}</b><span>${pos_recon_money(summary.vat)}</span></div>
-          <div><b>${__("VAT %")}</b><span>${Number(summary.vat_pct||0).toFixed(2)}%</span></div>
+          <div title="${pos_recon_escape(__("Indicative gross receipts: Matching Not Settled (Bank Amount) + Bank Only - Not Settled (Bank Amount) + Alhamrani Only (Alhamrani Amount). Not proof of an outstanding bank deposit; verify against settlements and bank statements."))}"><b>${__("Pending Bank Receipts")}</b><span>${pos_recon_money(summary.pending_bank_receipts)}</span></div>
         </div>
         <div class="pos-recon-summary-group-label">${__("Finance & Accounting Status")}</div>
         <div class="pos-recon-settlement-summary">
