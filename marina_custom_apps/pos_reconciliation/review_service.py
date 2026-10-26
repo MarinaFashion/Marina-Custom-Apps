@@ -441,10 +441,12 @@ def _filtered_summary(filters, or_filters=None):
             "sum(bank_settlement_amount) as bank_settlement_amount",
             # Compute the outstanding-receipt proxy in the SAME aggregate
             # query as the other financial cards (no per-row Python scans).
-            # A matched receipt already has both sources; count bank gross
-            # once. Alhamrani-only has no bank row, so count its own amount.
+            # Matching Not Settled and Bank Only - Not Settled contribute
+            # Bank POS gross once; Alhamrani Only contributes Alhamrani gross.
+            # This is an indicative receipt exposure, not bank deposit proof.
             "sum(CASE "
-            "WHEN match_status = 'Matching Not Settled' THEN COALESCE(bank_amount, 0) "
+            "WHEN match_status IN ('Matching Not Settled', 'Bank Only - Not Settled') "
+            "THEN COALESCE(bank_amount, 0) "
             "WHEN match_status = 'Alhamrani Only' THEN COALESCE(alhamrani_amount, 0) "
             "ELSE 0 END) as pending_bank_receipts",
         ],
