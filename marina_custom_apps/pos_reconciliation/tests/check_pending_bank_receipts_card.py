@@ -22,7 +22,8 @@ source = next(
 
 # Independently ensure the SQL aggregates with the exact status/source mapping.
 assert SERVICE.count("as pending_bank_receipts") == 1
-assert 'WHEN match_status = \'Matching Not Settled\' THEN COALESCE(bank_amount, 0)' in SERVICE
+assert '"WHEN match_status IN (\'Matching Not Settled\', \'Bank Only - Not Settled\') "' in SERVICE
+assert '"THEN COALESCE(bank_amount, 0) "' in SERVICE
 assert 'WHEN match_status = \'Alhamrani Only\' THEN COALESCE(alhamrani_amount, 0)' in SERVICE
 assert 'ELSE 0 END) as pending_bank_receipts' in SERVICE
 assert 'pending_bank_receipts = flt(total.get("pending_bank_receipts"), 2)' in SERVICE
@@ -62,6 +63,7 @@ def fake_get_all(doctype, filters=None, or_filters=None, fields=None, limit_page
     assert len(queries) == 1
     expression = queries[0]
     assert "Matching Not Settled" in expression
+    assert "Bank Only - Not Settled" in expression
     assert "Alhamrani Only" in expression
     assert "COALESCE(bank_amount, 0)" in expression
     assert "COALESCE(alhamrani_amount, 0)" in expression
@@ -71,7 +73,7 @@ def fake_get_all(doctype, filters=None, or_filters=None, fields=None, limit_page
     # assertions below enforce that matching is counted ONCE and other
     # statuses are explicitly excluded.
     pending = sum(
-        row["bank"] if row["status"] == "Matching Not Settled"
+        row["bank"] if row["status"] in {"Matching Not Settled", "Bank Only - Not Settled"}
         else row["alhamrani"] if row["status"] == "Alhamrani Only"
         else 0 for row in source_rows
     )
@@ -115,13 +117,13 @@ def check(filters, expected):
     assert calls[-1][0] is filters and calls[-1][1] is opts
     assert calls[-1][2] == 7, "Keep all financial sums in ONE query"
 
-check({"run": "POS Reconciliation Run"}, 480.00)
-check({"run": "POS Reconciliation Run", "pos_profile": "POS01"}, 350.00)
+check({"run": "POS Reconciliation Run"}, 980.00)
+check({"run": "POS Reconciliation Run", "pos_profile": "POS01"}, 850.00)
 check({"run": "POS Reconciliation Run", "pos_profile": "POS02"}, 130.00)
 check({"run": "POS Reconciliation Run", "match_status": "Matching Not Settled"}, 160.00)
 check({"run": "POS Reconciliation Run", "match_status": "Alhamrani Only"}, 320.00)
 check({"run": "POS Reconciliation Run", "match_status": "Fully Matching"}, 0.00)
-check({"run": "POS Reconciliation Run", "match_status": "Bank Only - Not Settled"}, 0.00)
+check({"run": "POS Reconciliation Run", "match_status": "Bank Only - Not Settled"}, 500.00)
 check({"run": "POS Reconciliation Run", "match_status": "Discrepancy"}, 0.00)
 
 # The dashboard financial totals must stay 2x4 on desktop.
