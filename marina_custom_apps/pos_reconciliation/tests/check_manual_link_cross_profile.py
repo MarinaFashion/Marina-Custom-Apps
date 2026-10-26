@@ -99,6 +99,7 @@ alh = Bag(
 
 
 class Adapter:
+    fields = {}
     def is_approved(self, raw):
         return True
 
