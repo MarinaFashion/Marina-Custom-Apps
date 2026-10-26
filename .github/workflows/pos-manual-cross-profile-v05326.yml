@@ -1,0 +1,25 @@
+name: POS manual link cross-profile validation
+on:
+  push:
+    branches: [pos-manual-cross-profile-v05326]
+  pull_request:
+    branches: [main]
+jobs:
+  cross-profile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Python syntax
+        run: python -m compileall -q marina_custom_apps/pos_reconciliation
+      - name: JavaScript syntax
+        run: node --check marina_custom_apps/pos_reconciliation/doctype/pos_reconciliation_run/pos_reconciliation_run.js
+      - name: Cross-profile candidate selection and reconciliation tests
+        run: python marina_custom_apps/pos_reconciliation/tests/check_manual_link_cross_profile.py
+      - name: Manual slip auto-match exclusion regression
+        run: python marina_custom_apps/pos_reconciliation/tests/check_manual_confirmation_guard.py
