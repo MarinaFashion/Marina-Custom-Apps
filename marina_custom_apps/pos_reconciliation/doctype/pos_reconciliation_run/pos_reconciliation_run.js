@@ -41,7 +41,10 @@ function pos_recon_manual_link_preview(candidate) {
         : __("Time comparison uses the configured transaction time tolerance. Check the slip before approval.");
 
     const rows = [
-        [__("POS Profile"), source.pos_profile, candidate.pos_profile, match(Boolean(source.pos_profile && source.pos_profile === candidate.pos_profile))],
+        [__("POS Profile"), source.pos_profile, candidate.pos_profile,
+            source.pos_profile && candidate.pos_profile && source.pos_profile === candidate.pos_profile
+                ? `<span class="text-success">${__("Same")}</span>`
+                : `<span class="text-warning">${__("Review only")}</span>`],
         [__("Amount"), amount(source.amount), amount(candidate.amount), match(equalAmount)],
         [__("Date"), source.date, candidate.date, match(Boolean(source.date && source.date === candidate.date))],
         [__("Time"), source.time, candidate.time, timeStatus]
@@ -49,6 +52,7 @@ function pos_recon_manual_link_preview(candidate) {
     return `<div class="alert alert-info" style="margin-top:12px;margin-bottom:8px;padding:12px">
         <b>${__("Confirm the payment mapping")}</b>
         <div style="margin-top:5px">${__("Review these values against the terminal slip before approving.")}</div>
+        <div class="text-warning small" style="margin-top:4px">${__("Both POS Profiles are shown for your confirmation; a difference does not block manual linking.")}</div>
         <div class="table-responsive" style="margin-top:8px">
             <table class="table table-bordered table-condensed" style="background:white;margin-bottom:6px">
                 <thead><tr><th></th><th>${__("Alhamrani")}</th><th>${__("Bank POS")}</th><th>${__("Check")}</th></tr></thead>
@@ -104,7 +108,7 @@ frappe.ui.form.on("POS Reconciliation Run", {
                     }).then(response => {
                         const candidates = response.message || [];
                         if (!candidates.length) {
-                            frappe.msgprint(__("No verified unique Bank POS candidates found. Check the 12-digit RRN, amount, date and POS Profile."));
+                            frappe.msgprint(__("No eligible Bank POS candidates found. Check the 12-digit RRN, amount, date, transaction type and approval status."));
                             return;
                         }
                         const options = candidates.map(c => c.name).join("\n");
@@ -126,7 +130,7 @@ frappe.ui.form.on("POS Reconciliation Run", {
                                  options:options,reqd:1,default:candidates[0].name,onchange:refreshMapping},
                                 {fieldname:"mapping_confirmation",fieldtype:"HTML"},
                                 {fieldname:"confirm_mapping",fieldtype:"Check",
-                                 label:__("I reviewed POS Profile, Amount, Date and Time and confirm this mapping."),reqd:1},
+                                 label:__("I reviewed both POS Profiles, Amount, Date and Time and confirm this mapping."),reqd:1},
                                 {fieldname:"reason",fieldtype:"Small Text",label:__("Manual Link Reason"),reqd:1,
                                  default:"Terminal approved payment but POS did not receive approval response."}
                             ],
@@ -136,7 +140,17 @@ frappe.ui.form.on("POS Reconciliation Run", {
                                     frappe.msgprint(__("Please review and confirm the transaction mapping before approving."));
                                     return;
                                 }
-                                frappe.confirm(__("Approve the verified manual payment pairing? Bank settlement and accounting will not be modified."), () => {
+                                const candidate = candidates.find(c => c.name === v.bank_pos_name);
+                                const sourceProfile = String(candidate?.alhamrani?.pos_profile || "");
+                                const bankProfile = String(candidate?.pos_profile || "");
+                                const profilesDiffer = sourceProfile !== bankProfile;
+                                frappe.confirm(
+                                    profilesDiffer
+                                        ? __("POS Profiles differ (Alhamrani: {0}, Bank POS: {1}). Confirm this manual link after verifying the terminal slip? Bank settlement and accounting will not be modified.", [
+                                            pos_recon_escape(sourceProfile || "—"), pos_recon_escape(bankProfile || "—")
+                                          ])
+                                        : __("Approve the verified manual payment pairing? Bank settlement and accounting will not be modified."),
+                                    () => {
                                     frappe.call({
                                         method:"marina_custom_apps.pos_reconciliation.manual_alhamrani_link_service.approve_manual_link",
                                         args:{alhamrani_name:first.alhamrani_name,bank_pos_name:v.bank_pos_name,reason:v.reason},
