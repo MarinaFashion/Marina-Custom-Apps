@@ -64,7 +64,7 @@ jobs:
           assert 'manual record creation time, not a verified terminal time' in js
           assert 'Verify slip' in js
           assert 'mappingDialog.set_value("confirm_mapping", 0)' in js
-          assert '"0.53.25"' in Path('pyproject.toml').read_text()
+          assert '"0.53.26"' in Path('pyproject.toml').read_text()
           print("Manual link invariants passed")
           PY
       - name: Preview time check scenarios
