@@ -52,7 +52,11 @@ jobs:
           assert '"time_origin": time_origin' in service
           assert 'time_tolerance_seconds' in service
           assert js.index('fieldname:"mapping_confirmation"') < js.index('fieldname:"reason",fieldtype:"Small Text"')
-          assert 'I reviewed POS Profile, Amount, Date and Time and confirm this mapping.' in js
+          assert 'I reviewed both POS Profiles, Amount, Date and Time and confirm this mapping.' in js
+          assert 'source.pos_profile, candidate.pos_profile' in js
+          assert 'POS Profiles differ (Alhamrani:' in js
+          assert 'if not bank.pos_profile or not alh.pos_profile' not in service
+          assert '"pos_profile": alh.pos_profile,' not in service.split('banks = frappe.get_all(', 1)[1].split('}, fields=', 1)[0]
           assert '[__("Time"), source.time, candidate.time, timeStatus]' in js
           assert '[__("Device")' not in js
           assert 'source.time_origin !== "transaction"' in js
