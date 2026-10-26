@@ -218,10 +218,23 @@ def _bank_rows(run, card_mapper):
     return rows
 
 
-def _alhamrani_rows(run, card_mapper):
+def _alhamrani_rows(run, card_mapper, bank_rows=None, manual_links=None):
+    """Load run-scoped Alhamrani rows and explicitly linked counterparts.
+
+    A bank transaction within a filtered run can have a deliberately approved
+    manual link to an Alhamrani row with a different POS Profile (or Card
+    Type). Include only THAT linked source outside the normal filters so the
+    approved pair is reconciled rather than incorrectly shown as Bank Only.
+    """
     adapter = AlhamraniAdapter()
     normalized = []
     wanted_card = card_mapper.resolve(run.card_type) if run.card_type else None
+    manual_links = manual_links or {}
+    linked_source_names = {
+        manual_links[bank.name]
+        for bank in (bank_rows or [])
+        if bank.name in manual_links
+    }
 
     for raw in adapter.get_rows(run.from_date, run.to_date):
         if not adapter.is_approved(raw):
@@ -233,9 +246,10 @@ def _alhamrani_rows(run, card_mapper):
             continue
 
         row.pos_profile = resolve_pos_profile(row.terminal_id, row.transaction_date) or row.source_pos_profile or None
-        if run.pos_profile and row.pos_profile != run.pos_profile:
+        explicitly_linked = row.name in linked_source_names
+        if run.pos_profile and row.pos_profile != run.pos_profile and not explicitly_linked:
             continue
-        if wanted_card and card_mapper.alhamrani(row.card_type) != wanted_card:
+        if wanted_card and card_mapper.alhamrani(row.card_type) != wanted_card and not explicitly_linked:
             continue
         normalized.append(row)
 
@@ -311,9 +325,10 @@ def _automatic_alhamrani_keys(alhamrani_rows):
     return by_key
 
 
-def _build_results(run, bank_rows, alhamrani_rows, card_mapper, time_tolerance_seconds=60):
+def _build_results(run, bank_rows, alhamrani_rows, card_mapper, time_tolerance_seconds=60, manual_links=None):
     from marina_custom_apps.pos_reconciliation.manual_alhamrani_link_service import active_manual_links, validate_manual_pair
-    manual_links = active_manual_links()
+    if manual_links is None:
+        manual_links = active_manual_links()
     manual_alh = {alh for alh in manual_links.values()}
     if len(manual_alh) != len(manual_links):
         frappe.throw(_("Duplicate active manual Alhamrani source link found."))
@@ -647,12 +662,19 @@ def execute_run(run, execution_name=None):
     assert_scope_open(run.from_date, run.to_date)
 
     card_mapper = get_card_type_mapper()
+    from marina_custom_apps.pos_reconciliation.manual_alhamrani_link_service import active_manual_links
+    # Fetch the approved manual links just once per execution, and use the
+    # same immutable view for source selection and the reconciliation matcher.
+    manual_links = active_manual_links()
     bank_rows = _bank_rows(run, card_mapper)
-    alhamrani_rows = _alhamrani_rows(run, card_mapper)
+    alhamrani_rows = _alhamrani_rows(run, card_mapper, bank_rows=bank_rows, manual_links=manual_links)
     settings = frappe.get_single('POS Reconciliation Settings')
     configured = settings.get('transaction_time_tolerance_seconds')
     time_tolerance = max(0, min(cint(60 if configured is None else configured), 300))
-    results = _build_results(run, bank_rows, alhamrani_rows, card_mapper, time_tolerance_seconds=time_tolerance)
+    results = _build_results(
+        run, bank_rows, alhamrani_rows, card_mapper,
+        time_tolerance_seconds=time_tolerance, manual_links=manual_links,
+    )
     _persist_results(run, results, bank_rows, alhamrani_rows, execution_name)
 
     # Never carry a previous execution's statement counters into a no-bank run.
