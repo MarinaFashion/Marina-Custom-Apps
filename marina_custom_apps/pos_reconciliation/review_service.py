@@ -439,16 +439,6 @@ def _filtered_summary(filters, or_filters=None):
             "sum(bank_commission_amount) as commission",
             "sum(bank_commission_vat_amount) as vat",
             "sum(bank_settlement_amount) as bank_settlement_amount",
-            # Compute the outstanding-receipt proxy in the SAME aggregate
-            # query as the other financial cards (no per-row Python scans).
-            # Matching Not Settled and Bank Only - Not Settled contribute
-            # Bank POS gross once; Alhamrani Only contributes Alhamrani gross.
-            # This is an indicative receipt exposure, not bank deposit proof.
-            "sum(CASE "
-            "WHEN match_status IN ('Matching Not Settled', 'Bank Only - Not Settled') "
-            "THEN COALESCE(bank_amount, 0) "
-            "WHEN match_status = 'Alhamrani Only' THEN COALESCE(alhamrani_amount, 0) "
-            "ELSE 0 END) as pending_bank_receipts",
         ],
         limit_page_length=1,
     )
@@ -460,7 +450,33 @@ def _filtered_summary(filters, or_filters=None):
     commission = flt(total.get("commission"), 2)
     vat = flt(total.get("vat"), 2)
     bank_settlement = flt(total.get("bank_settlement_amount"), 2)
-    pending_bank_receipts = flt(total.get("pending_bank_receipts"), 2)
+
+    # Frappe get_all blocks SQL CASE expressions in selected fields.
+    # Use a supported GROUP BY aggregate instead, with the SAME filters
+    # and search conditions as the other summary cards. This fetches at
+    # most one aggregated row per match status, never payment-level rows.
+    # Note: the existing summary's bank_amount and alhamrani_amount are
+    # GROSS source amounts, not amounts verified as bank deposits.
+    grouped = frappe.get_all(
+        RECONCILIATION_RECORD,
+        filters=filters,
+        or_filters=or_filters,
+        fields=[
+            "match_status",
+            "sum(bank_amount) as bank_gross",
+            "sum(alhamrani_amount) as alhamrani_gross",
+        ],
+        group_by="match_status",
+        limit_page_length=0,
+    )
+    pending_bank_receipts = flt(sum(
+        flt(row.get("bank_gross"), 2)
+        if row.get("match_status") in {"Matching Not Settled", "Bank Only - Not Settled"}
+        else flt(row.get("alhamrani_gross"), 2)
+        if row.get("match_status") == "Alhamrani Only"
+        else 0
+        for row in grouped
+    ), 2)
     commission_pct = flt((commission / gross) * 100, 2) if gross else 0
     vat_pct = flt((vat / commission) * 100, 2) if commission else 0
 
