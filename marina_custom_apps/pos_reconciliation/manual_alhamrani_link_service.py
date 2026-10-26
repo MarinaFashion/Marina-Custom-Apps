@@ -31,7 +31,11 @@ def active_manual_links():
 
 
 def validate_manual_pair(bank, alh):
-    """Validate source evidence both during approval and during reconciliation reruns."""
+    """Validate payment evidence, regardless of source POS Profile.
+
+    Profiles are advisory and must remain visible in the confirmation; they
+    are not a prerequisite for the approved pairing.
+    """
     rrn = cstr(bank.rrn).strip()
     if not re.fullmatch(r"\d{12}", rrn) or rrn != cstr(alh.rrn).strip():
         frappe.throw(_("Invalid or mismatched manual-link RRN."))
@@ -39,8 +43,6 @@ def validate_manual_pair(bank, alh):
         frappe.throw(_("Manual link payment amounts differ."))
     if not bank.transaction_date or not alh.transaction_date or getdate(bank.transaction_date) != getdate(alh.transaction_date):
         frappe.throw(_("Manual link dates differ."))
-    if not bank.pos_profile or not alh.pos_profile or bank.pos_profile != alh.pos_profile:
-        frappe.throw(_("Manual link POS Profiles differ."))
     bank_type = cstr(bank.transaction_type).strip().upper()
     source_type = cstr(alh.transaction_type).strip().upper()
     if bank_type not in {"PURCHASE", "REFUND"} or (source_type and source_type != bank_type):
@@ -64,12 +66,11 @@ def find_manual_link_candidates(alhamrani_name):
     alh = adapter.normalized_row(source)
     alh.pos_profile = resolve_pos_profile(alh.terminal_id, alh.transaction_date) or alh.source_pos_profile
     rrn = cstr(alh.rrn).strip()
-    if not re.fullmatch(r"\d{12}", rrn) or not alh.transaction_date or not alh.pos_profile:
+    if not re.fullmatch(r"\d{12}", rrn) or not alh.transaction_date:
         return []
     banks = frappe.get_all("Bank POS Transaction", filters={
         "rrn": rrn,
         "transaction_date": alh.transaction_date,
-        "pos_profile": alh.pos_profile,
         "transaction_status": ["in", ["Approved", "APPROVED", "approved"]],
     }, fields=["name", "rrn", "transaction_date", "transaction_amount", "transaction_type",
                "transaction_status", "pos_profile", "terminal_id", "transaction_time"], limit_page_length=100)
@@ -92,6 +93,8 @@ def find_manual_link_candidates(alhamrani_name):
             validate_manual_pair(bank, alh)
         except frappe.ValidationError:
             continue
+        # Keep BOTH POS Profiles for explicit user confirmation even when
+        # they differ or either source has no mapped profile.
         # Read-only evidence for the user's final mapping confirmation.
         # A source Device Map is not equivalent to a bank Terminal ID and must
         # never be described as an automatically verified device match.
