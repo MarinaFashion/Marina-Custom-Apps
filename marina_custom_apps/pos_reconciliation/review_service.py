@@ -439,6 +439,14 @@ def _filtered_summary(filters, or_filters=None):
             "sum(bank_commission_amount) as commission",
             "sum(bank_commission_vat_amount) as vat",
             "sum(bank_settlement_amount) as bank_settlement_amount",
+            # Compute the outstanding-receipt proxy in the SAME aggregate
+            # query as the other financial cards (no per-row Python scans).
+            # A matched receipt already has both sources; count bank gross
+            # once. Alhamrani-only has no bank row, so count its own amount.
+            "sum(CASE "
+            "WHEN match_status = 'Matching Not Settled' THEN COALESCE(bank_amount, 0) "
+            "WHEN match_status = 'Alhamrani Only' THEN COALESCE(alhamrani_amount, 0) "
+            "ELSE 0 END) as pending_bank_receipts",
         ],
         limit_page_length=1,
     )
@@ -450,6 +458,7 @@ def _filtered_summary(filters, or_filters=None):
     commission = flt(total.get("commission"), 2)
     vat = flt(total.get("vat"), 2)
     bank_settlement = flt(total.get("bank_settlement_amount"), 2)
+    pending_bank_receipts = flt(total.get("pending_bank_receipts"), 2)
     commission_pct = flt((commission / gross) * 100, 2) if gross else 0
     vat_pct = flt((vat / commission) * 100, 2) if commission else 0
 
@@ -479,6 +488,7 @@ def _filtered_summary(filters, or_filters=None):
         "vat_pct": vat_pct,
         "expected_net": flt(gross - commission - vat, 2),
         "bank_settlement_amount": bank_settlement,
+        "pending_bank_receipts": pending_bank_receipts,
         "bank_statement_fully_reconciled_count": bank_statement.get("Fully Reconciled", 0),
         "bank_statement_found_count": bank_statement.get("Statement Found", 0),
         "bank_statement_exception_count": bank_statement.get("Exception", 0),
