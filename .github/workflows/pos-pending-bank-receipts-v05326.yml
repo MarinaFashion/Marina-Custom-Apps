@@ -1,0 +1,23 @@
+name: POS pending bank receipts financial card
+on:
+  push:
+    branches: [pos-pending-bank-receipts-card-v05326]
+  pull_request:
+    branches: [main]
+jobs:
+  pending-bank-receipts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate Python syntax
+        run: python -m compileall -q marina_custom_apps/pos_reconciliation/review_service.py marina_custom_apps/pos_reconciliation/tests/check_pending_bank_receipts_card.py
+      - name: Validate dashboard JavaScript syntax
+        run: node --check marina_custom_apps/pos_reconciliation/doctype/pos_reconciliation_run/pos_reconciliation_run.js
+      - name: Verify source-wise gross pending totals and 2x4 layout
+        run: python marina_custom_apps/pos_reconciliation/tests/check_pending_bank_receipts_card.py
