@@ -417,7 +417,6 @@ def _save_summary(doc, summary, status, errors=None):
         "total_rows": cint(summary.get("total_rows")),
         "duplicate_records": cint(summary.get("duplicate_records")),
         "error_records": cint(summary.get("error_records")),
-        "review_warning_records": cint(summary.get("review_warning_records")),
         "pos_statement_lines": cint(summary.get("pos_statement_lines")),
         "other_statement_lines": cint(summary.get("other_statement_lines")),
     }
@@ -512,8 +511,19 @@ def process_import(name, requested_by, acknowledge_possible_duplicates=False, ex
         doc.db_set("imported_on", now_datetime(), update_modified=False)
         doc.db_set("imported_by", requested_by, update_modified=False)
         if summary.get("review_warning_records"):
-            doc.db_set("duplicate_reviewed_by", requested_by, update_modified=False)
-            doc.db_set("duplicate_reviewed_on", now_datetime(), update_modified=False)
+            doc.add_comment(
+                "Info",
+                _(
+                    "Possible bank-statement duplicates reviewed and explicitly "
+                    "approved by {0} on {1}. Candidates: {2}. "
+                    "Reviewed XLSX SHA-256: {3}"
+                ).format(
+                    requested_by,
+                    now_datetime(),
+                    summary["review_warning_records"],
+                    expected_file_digest,
+                ),
+            )
         frappe.db.commit()
     except Exception:
         frappe.log_error(frappe.get_traceback(), "Marina Bank Statement Import")
