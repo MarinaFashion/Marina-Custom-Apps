@@ -20,8 +20,8 @@ def validate_statement(name):
 
 
 @frappe.whitelist()
-def start_statement_import(name):
-    return start_import(name)
+def start_statement_import(name, acknowledge_possible_duplicates=0):
+    return start_import(name, acknowledge_possible_duplicates=acknowledge_possible_duplicates)
 
 
 @frappe.whitelist()
