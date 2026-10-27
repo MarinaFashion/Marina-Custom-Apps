@@ -85,6 +85,7 @@ env = {
     "cint": lambda value: int(value or 0),
     "re": re,
     "TXN_DOCTYPE": "Marina Bank Statement Transaction",
+    "IMPORT_DOCTYPE": "Marina Bank Statement Import",
     "HEADER_LOOKUP": headers,
     "CHUNK": 500,
     "read_xlsx_file_from_attached_file": lambda **kwargs: sheet["rows"],
@@ -199,10 +200,12 @@ assert fake.enqueued[0]["acknowledge_possible_duplicates"] == 1
 assert fake.enqueued[0]["expected_file_digest"] == "SOURCE-DIGEST"
 
 fields = {x["fieldname"] for x in SCHEMA["fields"]}
-assert {"review_warning_records", "duplicate_reviewed_by", "duplicate_reviewed_on"} <= fields
+assert "errors" in fields  # Warnings are shown in the existing validation child table.
+assert "duplicate_reviewed_by" not in fields  # No schema migration needed.
 assert "acknowledge_possible_duplicates" in WRAPPER
 assert "acknowledge_possible_duplicates: acknowledged ? 1 : 0" in UI
 assert "review_warning_records" in UI
 assert "_file_digest(doc.import_file) != expected_file_digest" in SOURCE
+assert "doc.add_comment(" in SOURCE
 assert SOURCE.count('row.get("category") == "Potential Duplicate"') == 2
 print("SNB statement header, blank balance, candidate warnings, review and audit safeguards passed.")
