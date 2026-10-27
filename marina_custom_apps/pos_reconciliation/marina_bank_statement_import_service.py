@@ -392,10 +392,10 @@ def _analyze(import_doc):
             secondary, (f'{flt(row.get("balance"), 2):.2f}', row["source_row_no"])
         )
     summary = {
-        "total_rows": len(parsed) + len(errors),
+        "total_rows": len(parsed) + sum(1 for e in errors if e["category"] == "Error"),
         "new_records": len(new_rows),
         "duplicate_records": duplicate_in_file + duplicate_existing,
-        "error_records": len(errors),
+        "error_records": sum(1 for e in errors if e["category"] != "Review Warning"),
         "review_warning_records": sum(1 for e in errors if e["category"] == "Review Warning"),
         "pos_statement_lines": sum(1 for row in parsed if row["is_pos_statement_line"]),
         "other_statement_lines": sum(1 for row in parsed if not row["is_pos_statement_line"]),
