@@ -1,0 +1,28 @@
+name: Bank statement import Balance and duplicate safeguards
+on:
+  pull_request:
+    paths:
+      - "marina_custom_apps/pos_reconciliation/marina_bank_statement_import_service.py"
+      - "marina_custom_apps/pos_reconciliation/doctype/marina_bank_statement_import/**"
+      - "marina_custom_apps/pos_reconciliation/tests/check_statement_import_balance_safeguards.py"
+      - ".github/workflows/bank-statement-import-safeguards.yml"
+  push:
+    branches: [main]
+    paths:
+      - "marina_custom_apps/pos_reconciliation/marina_bank_statement_import_service.py"
+      - "marina_custom_apps/pos_reconciliation/doctype/marina_bank_statement_import/**"
+      - "marina_custom_apps/pos_reconciliation/tests/check_statement_import_balance_safeguards.py"
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check Python syntax
+        run: |
+          python -m py_compile marina_custom_apps/pos_reconciliation/marina_bank_statement_import_service.py
+          python -m py_compile marina_custom_apps/pos_reconciliation/doctype/marina_bank_statement_import/marina_bank_statement_import.py
+      - name: Run dependency-free regression tests
+        run: python marina_custom_apps/pos_reconciliation/tests/check_statement_import_balance_safeguards.py

@@ -32,7 +32,7 @@ HEADER_ALIASES = {
     "balance": ["Balance"],
 }
 
-REQUIRED = ("processing_date", "description", "debit", "credit")
+REQUIRED = ("processing_date", "description", "debit", "credit", "balance")
 
 
 def _normalize_header(value):
@@ -92,9 +92,22 @@ def _read_rows(file_url):
             )
         )
 
+    # Reject missing Balance at the document level, before any rows can import.
+    # Without it the old source fingerprint silently treated Balance as zero.
+    if "balance" not in header_map:
+        frappe.throw(_(
+            "Missing required Balance column. Export the original bank statement "
+            "with its Balance column; no transactions have been imported."
+        ))
+
     rows = []
     for excel_row, raw in enumerate(data[header_index + 1 :], start=header_index + 2):
         if any(cell not in (None, "") for cell in raw):
+            if not cstr(_cell(raw, header_map, "balance")).strip():
+                frappe.throw(_(
+                    "Missing Balance value in Excel row {0}. "
+                    "Every statement transaction must include its bank balance."
+                ).format(excel_row))
             rows.append((excel_row, raw, header_map))
     return rows
 
@@ -230,6 +243,23 @@ def _financial_identity(row):
     )
 
 
+def _secondary_financial_identity(row):
+    """Candidate identity without Balance; not proof of a duplicate.
+
+    Banks can legitimately reuse a reference and amount, with different running
+    balances. Such matches require explicit user review instead of auto-deletion.
+    """
+    reference = cstr(row.get("reference_number")).strip()
+    if not reference:
+        return None
+    return (
+        cstr(row.get("processing_date")),
+        reference,
+        f'{flt(row.get("debit"), 2):.2f}',
+        f'{flt(row.get("credit"), 2):.2f}',
+    )
+
+
 def _prior_financial_duplicates(import_doc, rows):
     """Bounded indexed candidates, never a full historical bank-table scan."""
     dated = {}
@@ -238,6 +268,7 @@ def _prior_financial_duplicates(import_doc, rows):
         if identity:
             dated.setdefault(identity[0], set()).add(identity[1])
     matches = {}
+    secondary_matches = {}
     for date_value, references in dated.items():
         refs = sorted(references)
         for start in range(0, len(refs), CHUNK):
@@ -256,7 +287,10 @@ def _prior_financial_duplicates(import_doc, rows):
                 identity = _financial_identity(prior)
                 if identity:
                     matches.setdefault(identity, []).append(prior.name)
-    return matches
+                secondary = _secondary_financial_identity(prior)
+                if secondary:
+                    secondary_matches.setdefault(secondary, []).append(prior)
+    return matches, secondary_matches
 
 
 def _analyze(import_doc):
@@ -310,15 +344,18 @@ def _analyze(import_doc):
     new_rows = [row for row in unique_rows if row["source_key"] not in existing]
     duplicate_existing = len(unique_rows) - len(new_rows)
 
-    # A description typo changes source_key; flag the same financial bank entry
-    # without silently deleting or suppressing it. Different balances are allowed.
-    prior = _prior_financial_duplicates(import_doc, new_rows)
+    # Strong identity (including Balance) blocks a duplicate, as before.
+    # Secondary identity without Balance flags a possible duplicate for review,
+    # even if a description or running balance has changed.
+    prior_exact, prior_secondary = _prior_financial_duplicates(import_doc, new_rows)
     seen_financial = {}
+    seen_secondary = {}
     for row in new_rows:
         identity = _financial_identity(row)
-        if not identity:
+        secondary = _secondary_financial_identity(row)
+        if not secondary:
             continue
-        existing_name = (prior.get(identity) or [None])[0]
+        existing_name = (prior_exact.get(identity) or [None])[0]
         earlier_row = seen_financial.get(identity)
         if existing_name or earlier_row:
             counterpart = existing_name or _("source row {0}").format(earlier_row)
@@ -329,12 +366,37 @@ def _analyze(import_doc):
                 "message": _("Potential duplicate of {0}: same bank account, date, reference, debit, credit and balance. Review the bank source before importing.").format(counterpart),
             })
         else:
+            prior_candidates = prior_secondary.get(secondary) or []
+            prior_weak = next((
+                item.name for item in prior_candidates
+                if f'{flt(item.balance, 2):.2f}' != f'{flt(row.get("balance"), 2):.2f}'
+            ), None)
+            earlier_weak = seen_secondary.get(secondary)
+            if prior_weak or (
+                earlier_weak and earlier_weak[0] != f'{flt(row.get("balance"), 2):.2f}'
+            ):
+                counterpart = prior_weak or _("source row {0}").format(earlier_weak[1])
+                errors.append({
+                    "row_number": row["source_row_no"],
+                    "category": "Review Warning",
+                    "reconciliation_key": cstr(row.get("reference_number")),
+                    "message": _(
+                        "Possible duplicate of {0}: bank account, date, reference, "
+                        "debit and credit match but Balance differs. Verify these are "
+                        "separate bank transactions before approving the import."
+                    ).format(counterpart),
+                })
+        if identity:
             seen_financial[identity] = row["source_row_no"]
+        seen_secondary.setdefault(
+            secondary, (f'{flt(row.get("balance"), 2):.2f}', row["source_row_no"])
+        )
     summary = {
-        "total_rows": len(parsed) + len(errors),
+        "total_rows": len(parsed) + sum(1 for e in errors if e["category"] == "Error"),
         "new_records": len(new_rows),
         "duplicate_records": duplicate_in_file + duplicate_existing,
-        "error_records": len(errors),
+        "error_records": sum(1 for e in errors if e["category"] != "Review Warning"),
+        "review_warning_records": sum(1 for e in errors if e["category"] == "Review Warning"),
         "pos_statement_lines": sum(1 for row in parsed if row["is_pos_statement_line"]),
         "other_statement_lines": sum(1 for row in parsed if not row["is_pos_statement_line"]),
         "statement_from_date": min(dates) if dates else None,
@@ -422,12 +484,23 @@ def _bulk_insert(rows, requested_by):
     return len(rows)
 
 
-def process_import(name, requested_by):
+def _file_digest(file_url):
+    content = _file_content(file_url)
+    if isinstance(content, str):
+        content = content.encode("utf-8")
+    return hashlib.sha256(content).hexdigest()
+
+
+def process_import(name, requested_by, acknowledge_possible_duplicates=False, expected_file_digest=None):
     try:
         doc = frappe.get_doc(IMPORT_DOCTYPE, name)
+        if not expected_file_digest or _file_digest(doc.import_file) != expected_file_digest:
+            frappe.throw(_("The bank statement file changed after review. Validate it again."))
         summary, rows, errors = _analyze(doc)
         if any(row.get("category") == "Potential Duplicate" for row in errors):
             frappe.throw(_("Potential duplicate transactions detected during import revalidation. No rows were imported."))
+        if summary.get("review_warning_records") and not cint(acknowledge_possible_duplicates):
+            frappe.throw(_("Possible duplicates must be reviewed and explicitly acknowledged before importing."))
         inserted = _bulk_insert(rows, requested_by)
         summary["inserted_records"] = inserted
         status = "Completed" if not errors else "Completed with Errors"
@@ -437,6 +510,20 @@ def process_import(name, requested_by):
         doc.db_set("inserted_records", inserted, update_modified=False)
         doc.db_set("imported_on", now_datetime(), update_modified=False)
         doc.db_set("imported_by", requested_by, update_modified=False)
+        if summary.get("review_warning_records"):
+            doc.add_comment(
+                "Info",
+                _(
+                    "Possible bank-statement duplicates reviewed and explicitly "
+                    "approved by {0} on {1}. Candidates: {2}. "
+                    "Reviewed XLSX SHA-256: {3}"
+                ).format(
+                    requested_by,
+                    now_datetime(),
+                    summary["review_warning_records"],
+                    expected_file_digest,
+                ),
+            )
         frappe.db.commit()
     except Exception:
         frappe.log_error(frappe.get_traceback(), "Marina Bank Statement Import")
@@ -449,7 +536,7 @@ def process_import(name, requested_by):
         frappe.db.commit()
 
 
-def start_import(name):
+def start_import(name, acknowledge_possible_duplicates=False):
     doc = frappe.get_doc(IMPORT_DOCTYPE, name)
     doc.check_permission("write")
     if doc.status == "Importing":
@@ -459,6 +546,9 @@ def start_import(name):
     if any(row.get("category") == "Potential Duplicate" for row in errors):
         _save_summary(doc, summary, "Validated", errors)
         frappe.throw(_("Potential duplicate bank transactions detected. Review the validation details before importing."))
+    if summary.get("review_warning_records") and not cint(acknowledge_possible_duplicates):
+        frappe.throw(_("Possible duplicates require review and explicit confirmation before importing."))
+    expected_file_digest = _file_digest(doc.import_file)
     _save_summary(doc, summary, "Importing", errors)
     requested_by = frappe.session.user
     frappe.enqueue(
@@ -468,6 +558,8 @@ def start_import(name):
         job_name=f"Marina Bank Statement Import {name}",
         name=name,
         requested_by=requested_by,
+        acknowledge_possible_duplicates=cint(acknowledge_possible_duplicates),
+        expected_file_digest=expected_file_digest,
         enqueue_after_commit=True,
     )
     return {"queued": 1, **summary}
