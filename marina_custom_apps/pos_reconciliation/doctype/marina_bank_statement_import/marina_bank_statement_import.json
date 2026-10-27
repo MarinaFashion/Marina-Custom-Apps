@@ -26,11 +26,14 @@
   "inserted_records",
   "duplicate_records",
   "error_records",
+  "review_warning_records",
   "result_column_break",
   "pos_statement_lines",
   "other_statement_lines",
   "imported_on",
   "imported_by",
+  "duplicate_reviewed_by",
+  "duplicate_reviewed_on",
   "ui_tab_marina_bank_statement_im_3",
   "errors_section",
   "errors",
@@ -163,6 +166,12 @@
    "read_only": 1
   },
   {
+   "fieldname": "review_warning_records",
+   "fieldtype": "Int",
+   "label": "Possible Duplicates Requiring Review",
+   "read_only": 1
+  },
+  {
    "fieldname": "result_column_break",
    "fieldtype": "Column Break"
   },
@@ -192,6 +201,19 @@
    "read_only": 1
   },
   {
+   "fieldname": "duplicate_reviewed_by",
+   "fieldtype": "Link",
+   "label": "Potential Duplicates Reviewed By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "duplicate_reviewed_on",
+   "fieldtype": "Datetime",
+   "label": "Potential Duplicates Reviewed On",
+   "read_only": 1
+  },
+  {
    "fieldname": "ui_tab_marina_bank_statement_im_3",
    "fieldtype": "Tab Break",
    "label": "Errors & Notes"
@@ -205,7 +227,7 @@
   {
    "fieldname": "errors",
    "fieldtype": "Table",
-   "label": "Import Errors",
+   "label": "Validation Errors & Review Warnings",
    "options": "POS Bank Import Error",
    "read_only": 1
   },
@@ -219,7 +241,7 @@
    "fieldname": "notes",
    "fieldtype": "HTML",
    "label": "Notes",
-   "options": "<div class=\"text-muted\">Imports the raw SNB XLSX statement into Marina Bank Statement Transaction. Debit values are stored as positive withdrawals. POS settlement metadata is parsed automatically from RECON NO / REFERENCE / statement codes. Duplicate source lines are skipped.</div>"
+   "options": "<div class=\"text-muted\">SNB XLSX must include a Balance column with a value on every transaction row. Identical source rows are skipped; exact financial duplicates are blocked. Transactions sharing bank account, date, reference, debit and credit but showing different balances require explicit review and confirmation. All review acknowledgements are recorded.</div>"
   }
  ],
  "permissions": [
