@@ -35,3 +35,5 @@ jobs:
           assert 'response_meaning: state.response_meaning || ""' in ui
           print("Response Meaning source-level filtering validated")
           PY
+      - name: Results header and Clear filter regression
+        run: node marina_custom_apps/pos_reconciliation/tests/check_results_clear_filters.js

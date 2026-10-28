@@ -598,12 +598,7 @@ function pos_recon_render_results(frm, $wrapper, data) {
         ${pos_recon_styles()}
         <div class="pos-recon-panel">
             <div class="pos-recon-panel-head">
-                <div>
-                    <div class="pos-recon-title">${__("Reconciliation Results")}</div>
-                    <div class="text-muted small">
-                        ${__("Primary match remains Terminal ID + RRN + Auth Code + Transaction Type. PAN validates directly first; if different, Bank PAN last 4 is checked against Alhamrani ECR_EMVData last 4.")}
-                    </div>
-                </div>
+                <div class="pos-recon-title">${__("Reconciliation Results")}</div>
                 <button class="btn btn-xs btn-default pos-recon-open-results">${__("Open Full List")}</button>
             </div>
             <div class="pos-recon-result-filters">${filter_buttons}</div>
@@ -826,8 +821,10 @@ function pos_recon_bind_result_filters(frm,$wrapper,data,is_bank_only,can_review
         pos_recon_load_filter_options(frm).then(()=>pos_recon_load_results(frm));
     });
     $wrapper.find(".pos-recon-clear-bank-filters").on("click",()=>{
+        // A pending filter-option refresh must not restore stale selections after Clear.
+        clearTimeout(timer);
         Object.assign(state,{from_date:frm.doc.from_date||"",to_date:frm.doc.to_date||"",settlement_number:[],
-          settlement_date:"",pos_profile:[],terminal_id:[],card_type:"",
+          settlement_date:"",pos_profile:[],terminal_id:[],card_type:"",response_meaning:"",
           accounting_status:"",ledger_posting_status:"",before_integration:"All",start:0});
         pos_recon_load_filter_options(frm).then(()=>pos_recon_load_results(frm));
     });
