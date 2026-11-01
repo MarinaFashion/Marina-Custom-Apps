@@ -1,0 +1,194 @@
+{
+  "doctype": "DocType",
+  "name": "Design Document",
+  "module": "Marina Design Management",
+  "custom": 0,
+  "istable": 0,
+  "is_submittable": 0,
+  "track_changes": 1,
+  "engine": "InnoDB",
+  "fields": [
+    {
+      "fieldname": "sb_document",
+      "label": "Document Details",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "document_title",
+      "label": "Document Title",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "document_type",
+      "label": "Document Type",
+      "fieldtype": "Link",
+      "options": "Design Document Type",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "related_milestone_type",
+      "label": "Related Milestone Type",
+      "fieldtype": "Link",
+      "options": "Design Milestone Type",
+      "description": "Select the milestone this document supports; assignments may override it."
+    },
+    {
+      "fieldname": "publication_status",
+      "label": "Publication Status",
+      "fieldtype": "Select",
+      "options": "Draft\nPublished",
+      "default": "Draft",
+      "read_only": 1
+    },
+    {
+      "fieldname": "published_by",
+      "label": "Published By",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "published_on",
+      "label": "Published On",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "cb_document",
+      "label": "",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "attachment",
+      "label": "File",
+      "fieldtype": "Attach",
+      "reqd": 0,
+      "description": "Optional while Draft. A valid ERPNext File attachment is mandatory when publishing."
+    },
+    {
+      "fieldname": "added_by",
+      "label": "Added By",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "added_on",
+      "label": "Added On",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "sb_description",
+      "label": "Description",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "description",
+      "label": "Description",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "sb_filters",
+      "label": "Assignment Filters (Preview Only)",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "filter_mood_board",
+      "label": "Mood Board",
+      "fieldtype": "Link",
+      "options": "Mood Board"
+    },
+    {
+      "fieldname": "filter_category",
+      "label": "Fashion Category",
+      "fieldtype": "Link",
+      "options": "Marina Fashion Category"
+    },
+    {
+      "fieldname": "filter_subcategory",
+      "label": "Subcategory",
+      "fieldtype": "Link",
+      "options": "Marina Fashion Category"
+    },
+    {
+      "fieldname": "cb_filters",
+      "label": "",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "filter_year",
+      "label": "Year",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "filter_season",
+      "label": "Season",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "filter_collection",
+      "label": "Collection",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "filter_merchandiser",
+      "label": "Assigned Merchandiser",
+      "fieldtype": "Link",
+      "options": "User"
+    },
+    {
+      "fieldname": "sb_assignments",
+      "label": "Selected Design Codes — Static Assignments",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "assignment_count",
+      "label": "Number of Designs",
+      "fieldtype": "Int",
+      "read_only": 1
+    },
+    {
+      "fieldname": "assignments",
+      "label": "Selected Designs",
+      "fieldtype": "Table",
+      "options": "Design Document Assignment"
+    }
+  ],
+  "field_order": [
+    "sb_document",
+    "document_title",
+    "document_type",
+    "related_milestone_type",
+    "publication_status",
+    "published_by",
+    "published_on",
+    "cb_document",
+    "attachment",
+    "added_by",
+    "added_on",
+    "sb_description",
+    "description",
+    "sb_filters",
+    "filter_mood_board",
+    "filter_category",
+    "filter_subcategory",
+    "cb_filters",
+    "filter_year",
+    "filter_season",
+    "filter_collection",
+    "filter_merchandiser",
+    "sb_assignments",
+    "assignment_count",
+    "assignments"
+  ],
+  "permissions": [],
+  "autoname": "format:DDOC-{#####}",
+  "title_field": "document_title",
+  "search_fields": "document_title,document_type",
+  "sort_field": "creation",
+  "sort_order": "DESC"
+}
