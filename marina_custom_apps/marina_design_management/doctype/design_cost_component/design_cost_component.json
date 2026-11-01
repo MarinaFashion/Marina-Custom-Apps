@@ -1,0 +1,110 @@
+{
+  "doctype": "DocType",
+  "name": "Design Cost Component",
+  "module": "Marina Design Management",
+  "custom": 0,
+  "is_submittable": 0,
+  "istable": 1,
+  "editable_grid": 1,
+  "track_changes": 0,
+  "autoname": "hash",
+  "field_order": [
+    "cost_category",
+    "description",
+    "applies_to",
+    "variant_code",
+    "cost_basis",
+    "consumption",
+    "uom",
+    "unit_rate",
+    "wastage_percent",
+    "component_amount",
+    "remarks"
+  ],
+  "fields": [
+    {
+      "fieldname": "cost_category",
+      "label": "Category",
+      "fieldtype": "Select",
+      "options": "Main Fabric\nLining\nAccessories & Trims\nCMT / Making\nEmbroidery / Printing\nWashing / Finishing\nPackaging\nOther Manufacturing Cost",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "description",
+      "label": "Component Description",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "applies_to",
+      "label": "Applies To",
+      "fieldtype": "Select",
+      "options": "All Variants\nSpecific Variant",
+      "default": "All Variants",
+      "reqd": 1
+    },
+    {
+      "fieldname": "variant_code",
+      "label": "Variant Code",
+      "fieldtype": "Data",
+      "description": "Required for a Specific Variant; must match a Price and Qty line."
+    },
+    {
+      "fieldname": "cost_basis",
+      "label": "Cost Basis",
+      "fieldtype": "Select",
+      "options": "Per Piece\nPer Order",
+      "default": "Per Piece",
+      "reqd": 1
+    },
+    {
+      "fieldname": "consumption",
+      "label": "Consumption / Quantity",
+      "fieldtype": "Float",
+      "reqd": 1,
+      "default": "1",
+      "precision": "6",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "uom",
+      "label": "UOM",
+      "fieldtype": "Link",
+      "options": "UOM"
+    },
+    {
+      "fieldname": "unit_rate",
+      "label": "Unit Rate",
+      "fieldtype": "Currency",
+      "options": "currency",
+      "reqd": 1,
+      "in_list_view": 1,
+      "precision": "4"
+    },
+    {
+      "fieldname": "wastage_percent",
+      "label": "Wastage %",
+      "fieldtype": "Percent",
+      "default": "0"
+    },
+    {
+      "fieldname": "component_amount",
+      "label": "Component Amount Before Allocation",
+      "fieldtype": "Currency",
+      "options": "currency",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "remarks",
+      "label": "Remarks",
+      "fieldtype": "Small Text"
+    }
+  ],
+  "permissions": [],
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "engine": "InnoDB"
+}

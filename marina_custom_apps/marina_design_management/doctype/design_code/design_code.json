@@ -1,0 +1,380 @@
+{
+  "doctype": "DocType",
+  "name": "Design Code",
+  "module": "Marina Design Management",
+  "custom": 0,
+  "istable": 0,
+  "is_submittable": 0,
+  "track_changes": 1,
+  "engine": "InnoDB",
+  "fields": [
+    {
+      "fieldname": "tab_overview",
+      "label": "Overview",
+      "fieldtype": "Tab Break"
+    },
+    {
+      "fieldname": "overview_summary",
+      "label": "Design Summary",
+      "fieldtype": "HTML",
+      "description": "Compact read-only overview of current milestones and production."
+    },
+    {
+      "fieldname": "sb_identity",
+      "label": "Design Identification",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "design_number",
+      "label": "Design Number",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "mood_board",
+      "label": "Mood Board",
+      "fieldtype": "Link",
+      "options": "Mood Board",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "assigned_merchandiser",
+      "label": "Assigned Merchandiser",
+      "fieldtype": "Link",
+      "options": "User",
+      "reqd": 0,
+      "in_list_view": 1,
+      "hidden": 1,
+      "read_only": 1,
+      "description": "Compatibility field; synchronized from Design Team Snapshot. Do not edit directly."
+    },
+    {
+      "fieldname": "cb_identity",
+      "label": "",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "creation_date",
+      "label": "Creation Date",
+      "fieldtype": "Date",
+      "read_only": 0,
+      "reqd": 1,
+      "default": "Today",
+      "description": "Planning start date for initial milestones. Editable until a milestone plan is created; then locked."
+    },
+    {
+      "fieldname": "designer",
+      "label": "Designer",
+      "fieldtype": "Link",
+      "options": "User",
+      "reqd": 0,
+      "description": "Read-only Designer from Team Assignments. Select in Team Assignments or use Design Code List > Actions > Assign Designer. Required before first milestone creation.",
+      "hidden": 0,
+      "read_only": 1
+    },
+    {
+      "fieldname": "technical_fitting_responsible",
+      "label": "Technical Fitting Responsible",
+      "fieldtype": "Link",
+      "options": "User",
+      "description": "Compatibility field; synchronized from Design Team Snapshot. Do not edit directly.",
+      "hidden": 1,
+      "read_only": 1,
+      "reqd": 0
+    },
+    {
+      "fieldname": "factory",
+      "label": "Factory",
+      "fieldtype": "Link",
+      "options": "Factory List",
+      "description": "Select an active factory from Factory List."
+    },
+    {
+      "fieldname": "image",
+      "label": "Main Image",
+      "fieldtype": "Attach Image",
+      "reqd": 0,
+      "description": "Optional while drafting Design Code; a Main Image is required before creating the milestone plan."
+    },
+    {
+      "fieldname": "sb_classification",
+      "label": "Classification",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "category",
+      "label": "Fashion Category",
+      "fieldtype": "Link",
+      "options": "Marina Fashion Category",
+      "reqd": 1
+    },
+    {
+      "fieldname": "subcategory",
+      "label": "Fashion Subcategory",
+      "fieldtype": "Link",
+      "options": "Marina Fashion Category",
+      "reqd": 1
+    },
+    {
+      "fieldname": "cb_classification",
+      "label": "",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "year",
+      "label": "Year",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "season",
+      "label": "Season",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "collection",
+      "label": "Collection",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "drop",
+      "label": "Drop",
+      "fieldtype": "Data",
+      "read_only": 1,
+      "fetch_from": "mood_board.drop",
+      "description": "Inherited from Mood Board. Change Drop on Mood Board."
+    },
+    {
+      "fieldname": "sb_planning",
+      "label": "Planning & Development",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "display_date",
+      "label": "Display Date",
+      "fieldtype": "Date"
+    },
+    {
+      "fieldname": "report_position",
+      "label": "Report Position",
+      "fieldtype": "Int",
+      "non_negative": 1,
+      "description": "Optional order within this Mood Board (1, 2, 3 or 10, 20, 30). Blank or zero uses dresses first, then Design Code."
+    },
+    {
+      "fieldname": "development_stage",
+      "label": "Development Stage",
+      "fieldtype": "Select",
+      "options": "Tech Pack Received\nMaterial Sourcing\nSample 1\nSample 2\nPPS Pending\nPPS Approved\nIn Production",
+      "default": "Tech Pack Received"
+    },
+    {
+      "fieldname": "cb_planning",
+      "label": "",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "condition",
+      "label": "Condition",
+      "fieldtype": "Select",
+      "options": "On Track\nOn Hold\nBlocked\nDelayed",
+      "default": "On Track"
+    },
+    {
+      "fieldname": "operational_remarks",
+      "label": "Operational Remarks",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "r22_team_section",
+      "label": "Design Team Snapshot",
+      "fieldtype": "Section Break",
+      "collapsible": 1,
+      "description": "One active employee per Module Role for milestone custody. The selected team is copied once from the Mood Board pool. Managers may update assignments."
+    },
+    {
+      "fieldname": "r22_team_assignments",
+      "label": "Team Assignments",
+      "fieldtype": "Table",
+      "options": "Design Team Assignment"
+    },
+    {
+      "fieldname": "r22_team_snapshot_applied",
+      "label": "Team Snapshot Applied",
+      "fieldtype": "Check",
+      "default": 0,
+      "hidden": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "sb_pantones",
+      "label": "Design Pantones",
+      "fieldtype": "Section Break",
+      "collapsible": 1
+    },
+    {
+      "fieldname": "pantone_components",
+      "label": "Pantone Components",
+      "fieldtype": "Table",
+      "options": "Marina Design Pantone"
+    },
+    {
+      "fieldname": "tab_production",
+      "label": "Production",
+      "fieldtype": "Tab Break"
+    },
+    {
+      "fieldname": "sb_production",
+      "label": "Production Planning",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "production_currency",
+      "label": "Production Currency",
+      "fieldtype": "Link",
+      "options": "Currency",
+      "default": "CNY"
+    },
+    {
+      "fieldname": "production_total_qty",
+      "label": "Total Production Qty",
+      "fieldtype": "Int",
+      "read_only": 1
+    },
+    {
+      "fieldname": "production_total_cost",
+      "label": "Total Direct Cost",
+      "fieldtype": "Currency",
+      "options": "production_currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "sb_items",
+      "label": "Production Items",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "production_items",
+      "label": "Production Items",
+      "fieldtype": "Table",
+      "options": "Design Production Item",
+      "description": "One Item Code represents a color / production item, with a size breakdown."
+    },
+    {
+      "fieldname": "production_size_breakdown",
+      "label": "Production Size Breakdown",
+      "fieldtype": "Table",
+      "options": "Design Production Size",
+      "hidden": 1
+    },
+    {
+      "fieldname": "production_size_overview",
+      "label": "Production Size Breakdown Overview",
+      "fieldtype": "HTML"
+    },
+    {
+      "fieldname": "sb_sizes",
+      "label": "Sizes",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "sizes",
+      "label": "Sizes",
+      "fieldtype": "Table",
+      "options": "Marina Design Size"
+    },
+    {
+      "fieldname": "tab_followup",
+      "label": "Follow-Up",
+      "fieldtype": "Tab Break"
+    },
+    {
+      "fieldname": "sb_milestones",
+      "label": "Dynamic Milestone Follow-Up",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "milestone_overview",
+      "label": "Current Milestones & Custody",
+      "fieldtype": "HTML"
+    },
+    {
+      "fieldname": "tab_history",
+      "label": "History & Files",
+      "fieldtype": "Tab Break"
+    },
+    {
+      "fieldname": "sb_docs",
+      "label": "Related Documents",
+      "fieldtype": "Section Break",
+      "collapsible": 1
+    },
+    {
+      "fieldname": "related_documents",
+      "label": "Related Documents",
+      "fieldtype": "HTML"
+    }
+  ],
+  "field_order": [
+    "tab_overview",
+    "overview_summary",
+    "sb_identity",
+    "design_number",
+    "mood_board",
+    "assigned_merchandiser",
+    "cb_identity",
+    "creation_date",
+    "designer",
+    "technical_fitting_responsible",
+    "factory",
+    "image",
+    "sb_classification",
+    "category",
+    "subcategory",
+    "cb_classification",
+    "year",
+    "season",
+    "collection",
+    "drop",
+    "sb_planning",
+    "display_date",
+    "report_position",
+    "development_stage",
+    "cb_planning",
+    "condition",
+    "operational_remarks",
+    "r22_team_section",
+    "r22_team_assignments",
+    "r22_team_snapshot_applied",
+    "sb_pantones",
+    "pantone_components",
+    "tab_production",
+    "sb_production",
+    "production_currency",
+    "production_total_qty",
+    "production_total_cost",
+    "sb_items",
+    "production_items",
+    "production_size_breakdown",
+    "production_size_overview",
+    "sb_sizes",
+    "sizes",
+    "tab_followup",
+    "sb_milestones",
+    "milestone_overview",
+    "tab_history",
+    "sb_docs",
+    "related_documents"
+  ],
+  "permissions": [],
+  "autoname": "field:design_number",
+  "title_field": "design_number",
+  "search_fields": "design_number,assigned_merchandiser,mood_board",
+  "image_field": "image",
+  "default_print_format": "Design Code Production Brief"
+}

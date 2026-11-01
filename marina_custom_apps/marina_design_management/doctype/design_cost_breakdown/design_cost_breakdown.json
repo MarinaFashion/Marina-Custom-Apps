@@ -1,0 +1,384 @@
+{
+  "doctype": "DocType",
+  "name": "Design Cost Breakdown",
+  "module": "Marina Design Management",
+  "custom": 0,
+  "is_submittable": 0,
+  "istable": 0,
+  "editable_grid": 1,
+  "track_changes": 1,
+  "autoname": "format:DCB-{#####}",
+  "field_order": [
+    "sec_identity",
+    "design_code",
+    "revision_no",
+    "status",
+    "costing_method",
+    "quotation_date",
+    "quotation_reference",
+    "quotation_attachment",
+    "col_identity",
+    "design_image",
+    "mood_board",
+    "factory",
+    "merchandiser",
+    "currency",
+    "incoterm",
+    "exchange_rate_sar",
+    "sec_costs",
+    "cost_components",
+    "sec_price",
+    "price_qty_lines",
+    "sec_totals",
+    "total_qty",
+    "total_quoted_value",
+    "total_purchase_value",
+    "savings_value",
+    "savings_percent",
+    "col_totals",
+    "weighted_unit_price",
+    "estimated_component_value",
+    "estimated_sar_value",
+    "sec_approval",
+    "prepared_by",
+    "submitted_by",
+    "submitted_on",
+    "approved_by",
+    "approved_on",
+    "returned_by",
+    "returned_on",
+    "return_reason",
+    "cancelled_by",
+    "cancelled_on",
+    "cancellation_reason",
+    "source_revision",
+    "superseded_by",
+    "sec_notes",
+    "commercial_remarks"
+  ],
+  "fields": [
+    {
+      "fieldname": "sec_identity",
+      "label": "Design & Quotation",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "design_code",
+      "label": "Design Code",
+      "fieldtype": "Link",
+      "options": "Design Code",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "revision_no",
+      "label": "Revision",
+      "fieldtype": "Int",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "status",
+      "label": "Status",
+      "fieldtype": "Select",
+      "options": "Draft\nPending Approval\nReturned\nApproved\nSuperseded\nCancelled",
+      "read_only": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "default": "Draft"
+    },
+    {
+      "fieldname": "costing_method",
+      "label": "Costing Method",
+      "fieldtype": "Select",
+      "options": "Detailed\nQuotation Only\nHybrid",
+      "default": "Quotation Only",
+      "reqd": 1
+    },
+    {
+      "fieldname": "quotation_date",
+      "label": "Quotation Date",
+      "fieldtype": "Date",
+      "reqd": 1
+    },
+    {
+      "fieldname": "quotation_reference",
+      "label": "Factory Quotation Reference",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "quotation_attachment",
+      "label": "Quotation Attachment",
+      "fieldtype": "Attach"
+    },
+    {
+      "fieldname": "col_identity",
+      "label": "",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "design_image",
+      "label": "Design Image",
+      "fieldtype": "Attach Image",
+      "read_only": 1
+    },
+    {
+      "fieldname": "mood_board",
+      "label": "Mood Board",
+      "fieldtype": "Link",
+      "options": "Mood Board",
+      "read_only": 1
+    },
+    {
+      "fieldname": "factory",
+      "label": "Factory",
+      "fieldtype": "Link",
+      "options": "Factory List",
+      "reqd": 0
+    },
+    {
+      "fieldname": "merchandiser",
+      "label": "Assigned Merchandiser",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "currency",
+      "label": "Currency",
+      "fieldtype": "Link",
+      "options": "Currency",
+      "reqd": 1
+    },
+    {
+      "fieldname": "incoterm",
+      "label": "Incoterm",
+      "fieldtype": "Select",
+      "options": "EXW\nFOB\nFCA\nCIF\nCFR\nDAP\nDDP"
+    },
+    {
+      "fieldname": "exchange_rate_sar",
+      "label": "SAR per Quotation Currency",
+      "fieldtype": "Float",
+      "precision": "6",
+      "description": "Optional fixed exchange rate for this quotation. No automatic currency conversions or accounting entries."
+    },
+    {
+      "fieldname": "sec_costs",
+      "label": "Factory Cost Components",
+      "fieldtype": "Section Break",
+      "description": "Optional for Quotation Only and Hybrid. Lines may apply to the whole Design or a specific color/variant."
+    },
+    {
+      "fieldname": "cost_components",
+      "label": "Cost Component Lines",
+      "fieldtype": "Table",
+      "options": "Design Cost Component"
+    },
+    {
+      "fieldname": "sec_price",
+      "label": "Proposed Price & Quantity",
+      "fieldtype": "Section Break",
+      "description": "Mandatory for approval. Commercial pricing only; it does not change Design Production Items or size allocations."
+    },
+    {
+      "fieldname": "price_qty_lines",
+      "label": "Price and Quantity Lines",
+      "fieldtype": "Table",
+      "options": "Design Cost Price Qty",
+      "reqd": 0
+    },
+    {
+      "fieldname": "sec_totals",
+      "label": "Commercial Totals",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "total_qty",
+      "label": "Total Proposed Quantity",
+      "fieldtype": "Int",
+      "read_only": 1
+    },
+    {
+      "fieldname": "total_quoted_value",
+      "label": "Total Quoted Value",
+      "fieldtype": "Currency",
+      "options": "currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "total_purchase_value",
+      "label": "Total Negotiated Purchase Value",
+      "fieldtype": "Currency",
+      "options": "currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "savings_value",
+      "label": "Total Negotiated Savings",
+      "fieldtype": "Currency",
+      "options": "currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "savings_percent",
+      "label": "Negotiated Savings %",
+      "fieldtype": "Percent",
+      "read_only": 1
+    },
+    {
+      "fieldname": "col_totals",
+      "label": "",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "weighted_unit_price",
+      "label": "Weighted Average Unit Price",
+      "fieldtype": "Currency",
+      "options": "currency",
+      "read_only": 1,
+      "precision": "4"
+    },
+    {
+      "fieldname": "estimated_component_value",
+      "label": "Estimated Component Cost (Order)",
+      "fieldtype": "Currency",
+      "options": "currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "estimated_sar_value",
+      "label": "Estimated Purchase Value (SAR)",
+      "fieldtype": "Currency",
+      "options": "SAR",
+      "read_only": 1
+    },
+    {
+      "fieldname": "sec_approval",
+      "label": "Approval & Revision Audit",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "prepared_by",
+      "label": "Prepared By",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "submitted_by",
+      "label": "Submitted By",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "submitted_on",
+      "label": "Submitted On",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "approved_by",
+      "label": "Approved By",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "approved_on",
+      "label": "Approved On",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "returned_by",
+      "label": "Returned By",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "returned_on",
+      "label": "Returned On",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "return_reason",
+      "label": "Return Reason",
+      "fieldtype": "Small Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "cancelled_by",
+      "label": "Cancelled By",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "cancelled_on",
+      "label": "Cancelled On",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "cancellation_reason",
+      "label": "Cancellation Reason",
+      "fieldtype": "Small Text",
+      "read_only": 1,
+      "description": "Mandatory audit reason (10–500 characters). A cancelled approval is never reactivated."
+    },
+    {
+      "fieldname": "source_revision",
+      "label": "Based On Version",
+      "fieldtype": "Link",
+      "options": "Design Cost Breakdown",
+      "read_only": 1
+    },
+    {
+      "fieldname": "superseded_by",
+      "label": "Superseded By",
+      "fieldtype": "Link",
+      "options": "Design Cost Breakdown",
+      "read_only": 1
+    },
+    {
+      "fieldname": "sec_notes",
+      "label": "Commercial Remarks",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "commercial_remarks",
+      "label": "Commercial Remarks",
+      "fieldtype": "Text"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "select": 1,
+      "export": 1,
+      "print": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1
+    },
+    {
+      "role": "Marina Design Participant",
+      "read": 1,
+      "select": 1,
+      "export": 1,
+      "print": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 0
+    }
+  ],
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "engine": "InnoDB"
+}
