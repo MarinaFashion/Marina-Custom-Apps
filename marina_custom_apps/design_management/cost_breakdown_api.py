@@ -2,7 +2,7 @@
 import frappe
 from frappe.utils import now_datetime, nowdate
 
-from marina_custom_apps.marina_custom_apps.design_management.doctype.design_cost_breakdown.design_cost_breakdown import (
+from marina_custom_apps.marina_design_management.doctype.design_cost_breakdown.design_cost_breakdown import (
     _allowed_design, _buyer, _preparer,
 )
 

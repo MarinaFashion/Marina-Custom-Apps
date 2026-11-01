@@ -35,7 +35,7 @@ class IndependentWorkspaceTests(unittest.TestCase):
         self.assertNotIn('frappe.db.commit(', source)
         hooks = (ROOT / "marina_custom_apps/sales_forecasting/install.py").read_text()
         self.assertIn('ensure_independent_workspaces()', hooks)
-        self.assertIn('    after_migrate()\\n    from marina_custom_apps.workspace_layout', hooks)
+        self.assertIn('    design_after_migrate()\\n    from marina_custom_apps.workspace_layout', hooks)
         ast.parse(source)
         ast.parse(hooks)
 

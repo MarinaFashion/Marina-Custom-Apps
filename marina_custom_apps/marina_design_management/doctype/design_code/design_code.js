@@ -69,7 +69,7 @@ function marina_refresh_creation_date(frm) {
     const design = frm.doc.name;
     frm.set_df_property("creation_date", "read_only", 1);
     frappe.call({
-        method: "marina_custom_apps.marina_custom_apps.design_management.doctype.design_code.design_code.can_edit_creation_date",
+        method: "marina_custom_apps.marina_design_management.doctype.design_code.design_code.can_edit_creation_date",
         args: {design_code: design}
     }).then(({message}) => {
         if (frm.is_new() || frm.doc.name !== design ||
@@ -294,7 +294,7 @@ frappe.ui.form.on("Design Code", {
         if(!frm.is_new()){
             const currentDesign=frm.doc.name;
             frappe.call({
-                method:"marina_custom_apps.marina_custom_apps.design_management.doctype.design_cost_breakdown.design_cost_breakdown.accessible_design_cost",
+                method:"marina_custom_apps.marina_design_management.doctype.design_cost_breakdown.design_cost_breakdown.accessible_design_cost",
                 args:{design_code:currentDesign}
             }).then(({message:allowed})=>{
                 if(!allowed || frm.doc.name!==currentDesign)return;

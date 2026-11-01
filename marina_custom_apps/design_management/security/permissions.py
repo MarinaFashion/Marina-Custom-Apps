@@ -189,7 +189,7 @@ def design_module_role_query(user=None):
 def cost_breakdown_query(user=None):
     """Never expose factory prices through unrestricted List queries."""
     user = user or frappe.session.user
-    from marina_custom_apps.marina_custom_apps.design_management.doctype.design_cost_breakdown.design_cost_breakdown import (
+    from marina_custom_apps.marina_design_management.doctype.design_cost_breakdown.design_cost_breakdown import (
         _admin, _buyer, _module_roles, _commercial_all_scope,
     )
     if can_doctype("Design Cost Breakdown", "read", user) is False:
@@ -212,7 +212,7 @@ def cost_breakdown_query(user=None):
 
 def cost_breakdown_permission(doc, ptype=None, user=None):
     user = user or frappe.session.user
-    from marina_custom_apps.marina_custom_apps.design_management.doctype.design_cost_breakdown.design_cost_breakdown import (
+    from marina_custom_apps.marina_design_management.doctype.design_cost_breakdown.design_cost_breakdown import (
         _admin, _buyer, _preparer, _allowed_design,
     )
     op = _op(ptype)
