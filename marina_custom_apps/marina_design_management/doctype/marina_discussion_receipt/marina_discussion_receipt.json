@@ -1,0 +1,49 @@
+{
+  "doctype": "DocType",
+  "name": "Marina Discussion Receipt",
+  "module": "Marina Design Management",
+  "autoname": "hash",
+  "engine": "InnoDB",
+  "fields": [
+    {
+      "fieldname": "message",
+      "label": "Message",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "user",
+      "label": "User",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "is_read",
+      "label": "Read",
+      "fieldtype": "Check",
+      "read_only": 1,
+      "default": "0"
+    },
+    {
+      "fieldname": "is_mention",
+      "label": "Mention",
+      "fieldtype": "Check",
+      "read_only": 1,
+      "default": "0"
+    },
+    {
+      "fieldname": "notification",
+      "label": "Notification",
+      "fieldtype": "Data",
+      "read_only": 1
+    }
+  ],
+  "field_order": [
+    "message",
+    "user",
+    "is_read",
+    "is_mention",
+    "notification"
+  ],
+  "permissions": []
+}
