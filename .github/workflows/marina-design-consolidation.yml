@@ -30,3 +30,6 @@ jobs:
         run: |
           python -m unittest discover -s tests -p 'test_design_consolidation.py'
           python -m unittest discover -s tests -p 'test_independent_workspaces.py'
+          python -m unittest discover -s tests/design_management -p 'test_design_cost_breakdown.py'
+          python -m unittest discover -s tests/design_management -p 'test_cost_approval_cancellation.py'
+          python -m unittest discover -s tests/design_management -p 'test_cost_breakdown_role_migration.py'
