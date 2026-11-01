@@ -1,0 +1,73 @@
+{
+  "doctype": "DocType",
+  "name": "Design Milestone Type",
+  "module": "Marina Design Management",
+  "custom": 0,
+  "istable": 0,
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "milestone_type",
+      "label": "Milestone",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "is_active",
+      "label": "Enabled",
+      "fieldtype": "Check",
+      "default": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "sequence",
+      "label": "Display Sequence",
+      "fieldtype": "Int",
+      "default": 10,
+      "in_list_view": 1,
+      "description": "Display order only; workflow activation follows configured trigger events."
+    },
+    {
+      "fieldname": "start_with_design_creation",
+      "label": "Start with Design Creation",
+      "fieldtype": "Check",
+      "default": 0
+    },
+    {
+      "fieldname": "depends_on_type",
+      "label": "Start After Milestone",
+      "fieldtype": "Link",
+      "options": "Design Milestone Type",
+      "depends_on": "eval:!doc.start_with_design_creation"
+    },
+    {
+      "fieldname": "r22_trigger_status",
+      "label": "Start after Milestone Step",
+      "fieldtype": "Select",
+      "options": "Ready to Start\nIn Progress\nReady\nRework\nCompleted",
+      "default": "Completed",
+      "depends_on": "eval:!doc.start_with_design_creation"
+    },
+    {
+      "fieldname": "workflow_steps",
+      "label": "Milestone Workflow Steps",
+      "fieldtype": "Table",
+      "options": "Design Milestone Step Template",
+      "reqd": 1
+    }
+  ],
+  "field_order": [
+    "milestone_type",
+    "is_active",
+    "sequence",
+    "start_with_design_creation",
+    "depends_on_type",
+    "r22_trigger_status",
+    "workflow_steps"
+  ],
+  "permissions": [],
+  "autoname": "field:milestone_type",
+  "title_field": "milestone_type"
+}
