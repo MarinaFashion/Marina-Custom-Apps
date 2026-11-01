@@ -9,7 +9,7 @@
  "hide_custom": 0,
  "icon": "organization",
  "idx": 0,
- "is_hidden": 0,
+ "is_hidden": 1,
  "label": "Marina Custom Apps",
  "links": [],
  "modified": "2026-09-12 00:00:00.000000",
@@ -21,16 +21,56 @@
  "public": 1,
  "quick_lists": [],
  "roles": [],
- "sequence_id": 1.0,
+ "sequence_id": 1,
  "shortcuts": [
-  {"color":"Blue","label":"Marina Calendar","type":"URL","url":"/app/marina-calendar"},
-  {"color":"Blue","label":"Sales Forecasting","type":"URL","url":"/app/sales-forecasting"},
-  {"color":"Blue","label":"DC Dispatch","type":"URL","url":"/app/dc-dispatch"},
-  {"color":"Green","label":"Stock Auto Allocation","type":"URL","url":"/app/stock-auto-allocation"},
-  {"color":"Orange","label":"Stock Transfer Audit","type":"URL","url":"/app/stock-transfer-audit"},
-  {"color":"Green","label":"Cycle Count","type":"URL","url":"/app/cycle-count"},
-  {"color":"Purple","label":"SOP Management","type":"URL","url":"/app/sop-management"},
-  {"color":"Grey","label":"Permission Manager","link_to":"marina-permission-manager","type":"Page"}
+  {
+   "color": "Blue",
+   "label": "Marina Calendar",
+   "type": "URL",
+   "url": "/app/marina-calendar"
+  },
+  {
+   "color": "Blue",
+   "label": "Sales Forecasting",
+   "type": "URL",
+   "url": "/app/sales-forecasting"
+  },
+  {
+   "color": "Blue",
+   "label": "DC Dispatch",
+   "type": "URL",
+   "url": "/app/dc-dispatch"
+  },
+  {
+   "color": "Green",
+   "label": "Stock Auto Allocation",
+   "type": "URL",
+   "url": "/app/stock-auto-allocation"
+  },
+  {
+   "color": "Orange",
+   "label": "Stock Transfer Audit",
+   "type": "URL",
+   "url": "/app/stock-transfer-audit"
+  },
+  {
+   "color": "Green",
+   "label": "Cycle Count",
+   "type": "URL",
+   "url": "/app/cycle-count"
+  },
+  {
+   "color": "Purple",
+   "label": "SOP Management",
+   "type": "URL",
+   "url": "/app/sop-management"
+  },
+  {
+   "color": "Grey",
+   "label": "Permission Manager",
+   "link_to": "marina-permission-manager",
+   "type": "Page"
+  }
  ],
  "title": "Marina Custom Apps"
 }
