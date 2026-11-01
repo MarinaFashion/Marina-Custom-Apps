@@ -167,45 +167,146 @@ sheet["rows"] = [base_header, base_row,
                  ["2026-10-21", "POS transaction", 100, 0, 300, "R1"]]
 fake.prior = []
 summary, rows, errors = env["_analyze"](doc)
-assert summary["review_warning_records"] == 1
+assert summary["review_warning_records"] == 2
 assert summary["new_records"] == 2
 assert summary["total_rows"] == 2
 
-# Warning acknowledgement must be checked by the server, not just the UI.
+# Review identities bind to bank, XLSX fingerprint, DB duplicate evidence and rows.
 class FakeDoc:
     name = "MBS-IMP-TEST"
+    company = "Marina"
+    bank_account = "SNB"
     status = "Draft"
     import_file = "/statement.xlsx"
+    inserted_records = 0
     def check_permission(self, operation):
         assert operation == "write"
+    def db_set(self, field, value, **kwargs):
+        setattr(self, field, value)
+    def add_comment(self, kind, text):
+        assert kind == "Info"
+        audit_comments.append(text)
 
 
 fake.doc = FakeDoc()
 fake.enqueued.clear()
-env["_analyze"] = lambda _: ({"review_warning_records": 1}, [], [{"category": "Review Warning"}])
-env["_save_summary"] = lambda *args: None
 env["_file_digest"] = lambda _: "SOURCE-DIGEST"
-extracted("start_import", env=env)
+env["_save_summary"] = lambda *args: None
+env["json"] = json
+env["hashlib"] = __import__("hashlib")
+extracted("_review_plan", "_validated_review_decisions", "_reviewed_rows", "start_import",
+          "get_duplicate_review", "process_import", env=env)
+summary, rows, errors = env["_analyze"](fake.doc)
+token, review, blocked = env["_review_plan"](fake.doc, rows, errors)
+assert len(review) == 2, "Both in-file ambiguous rows must be reviewable"
+assert not blocked
+assert [x["row_number"] for x in review] == [2, 3]
+decisions = {"2": "skip", "3": "import"}
+eligible, reviewed, excluded_exact, approved, skipped = env["_reviewed_rows"](
+    fake.doc, rows, errors, decisions, token,
+)
+assert [x["source_row_no"] for x in eligible] == [3], eligible
+assert approved == {3} and skipped == {2}
+assert len(reviewed) == 2 and not excluded_exact
+for invalid in (
+    {}, {"2": "import"}, {"2": "skip", "3": "wrong"},
+    {"2": "skip", "3": "skip", "4": "import"},
+):
+    try:
+        env["_validated_review_decisions"](review, blocked, invalid)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError(f"Accepted unsafe row review: {invalid}")
 try:
-    env["start_import"]("MBS-IMP-TEST", acknowledge_possible_duplicates=0)
+    env["_reviewed_rows"](fake.doc, rows, errors, decisions, "outdated-token")
 except ValueError as exc:
-    assert "explicit confirmation" in str(exc)
+    assert "changed since review" in str(exc)
 else:
-    raise AssertionError("Unreviewed possible duplicates were accepted")
+    raise AssertionError("Outdated review was accepted")
 
-queued = env["start_import"]("MBS-IMP-TEST", acknowledge_possible_duplicates=1)
+try:
+    env["start_import"]("MBS-IMP-TEST", review_decisions={}, expected_review_token=token)
+except ValueError:
+    pass
+else:
+    raise AssertionError("Server accepted unresolved duplicate candidates")
+
+queued = env["start_import"](
+    "MBS-IMP-TEST", review_decisions=json.dumps(decisions), expected_review_token=token
+)
 assert queued["queued"] == 1
-assert len(fake.enqueued) == 1
-assert fake.enqueued[0]["acknowledge_possible_duplicates"] == 1
-assert fake.enqueued[0]["expected_file_digest"] == "SOURCE-DIGEST"
+assert queued["review_import"] == 1 and queued["review_skip"] == 1
+assert queued["ready_to_import"] == 1
+assert fake.enqueued[-1]["review_decisions"] == json.dumps(decisions)
+assert fake.enqueued[-1]["expected_file_digest"] == "SOURCE-DIGEST"
+
+# The long worker independently validates and inserts ONLY approved candidates.
+class FakeDB:
+    def __init__(self):
+        self.commits = 0
+        self.rollbacks = 0
+        self.failures = []
+    def commit(self):
+        self.commits += 1
+    def rollback(self):
+        self.rollbacks += 1
+    def set_value(self, *args, **kwargs):
+        self.failures.append((args, kwargs))
+
+
+fake.db = FakeDB()
+fake.log_error = lambda *args: None
+fake.get_traceback = lambda: "traceback"
+audit_comments = []
+audit_files = []
+captured = []
+env["now_datetime"] = lambda: "2026-11-01 10:00:00"
+env["save_file"] = lambda filename, content, doctype, name, is_private: (
+    audit_files.append((filename, json.loads(content), doctype, name, is_private))
+    or SimpleNamespace(file_url="/private/files/audit.json")
+)
+env["_bulk_insert"] = lambda rows, user: (
+    captured.extend((r["source_row_no"], user) for r in rows) or len(rows)
+)
+fake.doc.status = "Importing"
+env["process_import"](
+    "MBS-IMP-TEST", requested_by="accounts@example.com",
+    review_decisions=json.dumps(decisions),
+    expected_review_token=token, expected_file_digest="SOURCE-DIGEST",
+)
+assert captured == [(3, "accounts@example.com")], captured
+assert fake.doc.status == "Importing"  # document status updated through stubbed _save_summary
+assert fake.doc.inserted_records == 1
+assert fake.db.commits == 1 and fake.db.rollbacks == 0 and not fake.db.failures
+assert len(audit_files) == 1 and audit_files[0][-1] == 1
+assert audit_files[0][1]["decisions"][0]["action"] == "skip"
+assert audit_files[0][1]["decisions"][1]["action"] == "import"
+assert audit_comments and "imported: 1, skipped: 1" in audit_comments[0]
+
+# Changed review token must not result in even a partial insert.
+captured.clear()
+fake.db.commits = 0
+fake.db.rollbacks = 0
+env["process_import"](
+    "MBS-IMP-TEST", requested_by="accounts@example.com",
+    review_decisions=json.dumps(decisions),
+    expected_review_token="stale", expected_file_digest="SOURCE-DIGEST",
+)
+assert not captured
+assert fake.db.rollbacks == 1
+assert fake.db.failures
 
 fields = {x["fieldname"] for x in SCHEMA["fields"]}
-assert "errors" in fields  # Warnings are shown in the existing validation child table.
-assert "duplicate_reviewed_by" not in fields  # No schema migration needed.
-assert "acknowledge_possible_duplicates" in WRAPPER
-assert "acknowledge_possible_duplicates: acknowledged ? 1 : 0" in UI
-assert "review_warning_records" in UI
+assert "errors" in fields  # Existing validation table retained.
+assert "duplicate_reviewed_by" not in fields  # No new database columns.
+assert "get_statement_duplicate_review" in WRAPPER
+assert "review_decisions=review_decisions" in WRAPPER
+assert 'action: "skip"' in UI
+assert 'marina-review-select-all' in UI
+assert 'marina-review-bulk-import' in UI
+assert "expected_review_token" in SOURCE
 assert "_file_digest(doc.import_file) != expected_file_digest" in SOURCE
 assert "doc.add_comment(" in SOURCE
-assert SOURCE.count('row.get("category") == "Potential Duplicate"') == 2
-print("SNB statement header, blank balance, candidate warnings, review and audit safeguards passed.")
+assert 'frappe.db.rollback()' in SOURCE
+print("SNB headers, duplicate detection, row choices, bulk-safe worker and private audit passed.")
