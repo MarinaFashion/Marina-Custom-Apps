@@ -1,0 +1,20 @@
+{
+  "doctype": "Report",
+  "name": "Mood Board Overview",
+  "report_name": "Mood Board Overview",
+  "ref_doctype": "Design Code",
+  "report_type": "Script Report",
+  "is_standard": "Yes",
+  "module": "Marina Design Management",
+  "disabled": 0,
+  "prepared_report": 0,
+  "add_total_row": 0,
+  "roles": [
+    {
+      "role": "System Manager"
+    },
+    {
+      "role": "Marina Design Participant"
+    }
+  ]
+}

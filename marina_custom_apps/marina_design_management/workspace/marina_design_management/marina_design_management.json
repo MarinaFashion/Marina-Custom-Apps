@@ -1,0 +1,276 @@
+{
+  "doctype": "Workspace",
+  "name": "Marina Design Management",
+  "label": "Marina Design Management",
+  "title": "Marina Design Management",
+  "module": "Marina Design Management",
+  "icon": "palette",
+  "public": 1,
+  "is_hidden": 0,
+  "hide_custom": 0,
+  "for_user": "",
+  "parent_page": "",
+  "sequence_id": 50,
+  "content": "[{\"id\":\"mdmnewhdr01\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Design, Production &amp; Documents</b></span>\",\"col\":12}},{\"id\":\"mdm_r4_management_dashboard\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Management Dashboard\",\"col\":3}},{\"id\":\"mdmnewsc001\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Mood Boards\",\"col\":3}},{\"id\":\"mdmnewsc002\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Design Codes\",\"col\":3}},{\"id\":\"mdmnewsc003\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Design Documents\",\"col\":3}},{\"id\":\"mdm_followup_section\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Follow-Up &amp; Custody</b></span>\",\"col\":12}},{\"id\":\"mdm_followup_excel_grid\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Production Follow-Up Grid\",\"col\":3}},{\"id\":\"mdm_design_discussions\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Design Discussions\",\"col\":3}},{\"id\":\"mdmnewspacer\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"mdmnewhdr02\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>References &amp; Settings</b></span>\",\"col\":12}},{\"id\":\"mdmnewsc004\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Pantone Library\",\"col\":3}},{\"id\":\"mdmnewsc005\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Fashion Categories\",\"col\":3}},{\"id\":\"mdmrefdoc\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Document Types\",\"col\":3}},{\"id\":\"mdmrefms\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Milestone Types\",\"col\":3}},{\"id\":\"mdmnewsc006\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Design Management Settings\",\"col\":3}},{\"id\":\"mdmrbacpage\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Security & Permissions\",\"col\":3}},{\"id\":\"mdmrolehierarchy\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Role Hierarchy\",\"col\":3}},{\"id\":\"mdm_factory_list\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Factory List\",\"col\":3}},{\"id\":\"mdm_reports_heading\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Reports</b></span>\",\"col\":12}},{\"id\":\"mdm_mood_board_overview\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Mood Board Overview\",\"col\":3}}]",
+  "links": [
+    {
+      "hidden": 0,
+      "link_count": 0,
+      "onboard": 0,
+      "is_query_report": 0,
+      "label": "Design Workspace",
+      "type": "Card Break"
+    },
+    {
+      "label": "Management Dashboard",
+      "type": "Link",
+      "link_type": "Page",
+      "link_to": "design-management-dashboard"
+    },
+    {
+      "label": "Design Discussions",
+      "type": "Link",
+      "link_type": "Page",
+      "link_to": "design-discussions"
+    },
+    {
+      "hidden": 0,
+      "link_count": 0,
+      "onboard": 0,
+      "is_query_report": 0,
+      "label": "Mood Boards",
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Mood Board"
+    },
+    {
+      "hidden": 0,
+      "link_count": 0,
+      "onboard": 0,
+      "is_query_report": 0,
+      "label": "Design Codes",
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Design Code"
+    },
+    {
+      "hidden": 0,
+      "link_count": 0,
+      "onboard": 0,
+      "is_query_report": 0,
+      "label": "Design Documents",
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Design Document"
+    },
+    {
+      "hidden": 0,
+      "link_count": 0,
+      "onboard": 0,
+      "is_query_report": 0,
+      "label": "Reference Libraries & Settings",
+      "type": "Card Break"
+    },
+    {
+      "hidden": 0,
+      "link_count": 0,
+      "onboard": 0,
+      "is_query_report": 0,
+      "label": "Pantone Library",
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Marina Pantone"
+    },
+    {
+      "hidden": 0,
+      "link_count": 0,
+      "onboard": 0,
+      "is_query_report": 0,
+      "label": "Fashion Categories",
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Marina Fashion Category"
+    },
+    {
+      "hidden": 0,
+      "link_count": 0,
+      "onboard": 0,
+      "is_query_report": 0,
+      "label": "Document Types",
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Design Document Type"
+    },
+    {
+      "hidden": 0,
+      "link_count": 0,
+      "onboard": 0,
+      "is_query_report": 0,
+      "label": "Milestone Types",
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Design Milestone Type"
+    },
+    {
+      "hidden": 0,
+      "link_count": 0,
+      "onboard": 0,
+      "is_query_report": 0,
+      "label": "Design Management Settings",
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Design Management Settings"
+    },
+    {
+      "label": "Security & Permissions",
+      "type": "Link",
+      "link_type": "Page",
+      "link_to": "design-security-permissions"
+    },
+    {
+      "label": "Role Hierarchy",
+      "type": "Link",
+      "link_type": "Page",
+      "link_to": "design-role-hierarchy"
+    },
+    {
+      "label": "Production Follow-Up Grid",
+      "type": "Link",
+      "link_type": "Page",
+      "link_to": "design-followup-grid"
+    },
+    {
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Factory List",
+      "label": "Factory List"
+    },
+    {
+      "type": "Card Break",
+      "label": "Reports",
+      "link_count": 1
+    },
+    {
+      "type": "Link",
+      "link_type": "Report",
+      "link_to": "Mood Board Overview",
+      "label": "Mood Board Overview",
+      "is_query_report": 1,
+      "report_ref_doctype": "Design Code"
+    }
+  ],
+  "shortcuts": [
+    {
+      "label": "Management Dashboard",
+      "link_to": "design-management-dashboard",
+      "type": "Page",
+      "color": "Blue"
+    },
+    {
+      "label": "Mood Boards",
+      "link_to": "Mood Board",
+      "type": "DocType",
+      "doc_view": "List",
+      "color": "Blue"
+    },
+    {
+      "label": "Design Codes",
+      "link_to": "Design Code",
+      "type": "DocType",
+      "doc_view": "List",
+      "color": "Blue"
+    },
+    {
+      "label": "Design Documents",
+      "link_to": "Design Document",
+      "type": "DocType",
+      "doc_view": "List",
+      "color": "Blue"
+    },
+    {
+      "label": "Pantone Library",
+      "link_to": "Marina Pantone",
+      "type": "DocType",
+      "doc_view": "List",
+      "color": "Green"
+    },
+    {
+      "label": "Fashion Categories",
+      "link_to": "Marina Fashion Category",
+      "type": "DocType",
+      "doc_view": "List",
+      "color": "Green"
+    },
+    {
+      "label": "Document Types",
+      "link_to": "Design Document Type",
+      "type": "DocType",
+      "doc_view": "List",
+      "color": "Green"
+    },
+    {
+      "label": "Milestone Types",
+      "link_to": "Design Milestone Type",
+      "type": "DocType",
+      "doc_view": "List",
+      "color": "Green"
+    },
+    {
+      "label": "Design Management Settings",
+      "link_to": "Design Management Settings",
+      "type": "DocType",
+      "doc_view": "List",
+      "color": "Grey"
+    },
+    {
+      "label": "Security & Permissions",
+      "link_to": "design-security-permissions",
+      "type": "Page",
+      "color": "Grey"
+    },
+    {
+      "label": "Role Hierarchy",
+      "link_to": "design-role-hierarchy",
+      "type": "Page",
+      "color": "Grey"
+    },
+    {
+      "label": "Production Follow-Up Grid",
+      "link_to": "design-followup-grid",
+      "type": "Page",
+      "color": "Blue"
+    },
+    {
+      "label": "Factory List",
+      "link_to": "Factory List",
+      "type": "DocType",
+      "color": "Grey"
+    },
+    {
+      "label": "Mood Board Overview",
+      "link_to": "Mood Board Overview",
+      "type": "Report",
+      "doc_view": "Report",
+      "color": "Grey"
+    },
+    {
+      "label": "Design Discussions",
+      "type": "Page",
+      "link_to": "design-discussions",
+      "color": "Burgundy"
+    }
+  ],
+  "charts": [],
+  "number_cards": [],
+  "custom_blocks": [],
+  "quick_lists": [],
+  "roles": [
+    {
+      "role": "System Manager"
+    },
+    {
+      "role": "Marina Design Participant"
+    }
+  ],
+  "docstatus": 0
+}
