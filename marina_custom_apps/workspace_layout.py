@@ -28,7 +28,22 @@ def ensure_independent_workspaces():
     if not frappe.db.exists("DocType", "Workspace"):
         return
     changed = False
-    for name in INDEPENDENT_WORKSPACES:
+    # Also account for older/dynamically generated Marina workspaces that
+    # might not have a standard JSON definition (e.g. reconciliation tools).
+    # Restrict to public workspaces owned by this installed application's
+    # business modules; never flatten another app's or private workspace.
+    owned_modules = frappe.get_module_list("marina_custom_apps")
+    dynamic = frappe.get_all(
+        "Workspace",
+        filters={
+            "parent_page": "Marina Custom Apps",
+            "public": 1,
+            "module": ["in", owned_modules],
+        },
+        pluck="name",
+        limit_page_length=100,
+    ) if owned_modules else []
+    for name in sorted(set(INDEPENDENT_WORKSPACES).union(dynamic)):
         if not frappe.db.exists("Workspace", name):
             continue
         if frappe.db.get_value("Workspace", name, "parent_page"):
