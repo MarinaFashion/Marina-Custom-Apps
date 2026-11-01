@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 import re
 from datetime import date, datetime
@@ -10,6 +11,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, cstr, flt, getdate, now_datetime
 from frappe.utils.xlsxutils import read_xlsx_file_from_attached_file
+from frappe.utils.file_manager import save_file
 
 from marina_custom_apps.pos_reconciliation.bank_statement_reconciliation_service import (
     parse_pos_statement_text,
@@ -491,41 +493,175 @@ def _file_digest(file_url):
     return hashlib.sha256(content).hexdigest()
 
 
-def process_import(name, requested_by, acknowledge_possible_duplicates=False, expected_file_digest=None):
+def _review_plan(import_doc, rows, errors):
+    """Bind decisions to a specific XLSX, bank account and live duplicate analysis.
+
+    Excel row numbers are UI identifiers only. Recomputed source keys and candidate
+    evidence prevent a row number from authorizing a different bank transaction.
+    """
+    by_row = {row["source_row_no"]: row for row in rows}
+    review = []
+    for error in errors:
+        if error["category"] != "Review Warning":
+            continue
+        row = by_row[error["row_number"]]
+        review.append({
+            "row_number": row["source_row_no"],
+            "source_key": row["source_key"],
+            "processing_date": cstr(row["processing_date"]),
+            "reference_number": cstr(row.get("reference_number")),
+            "debit": flt(row.get("debit"), 2),
+            "credit": flt(row.get("credit"), 2),
+            "balance": flt(row.get("balance"), 2),
+            "message": error["message"],
+        })
+    blocked = sorted(
+        error["row_number"] for error in errors
+        if error["category"] == "Potential Duplicate"
+    )
+    evidence = {
+        "import_file": import_doc.import_file,
+        "file_sha256": _file_digest(import_doc.import_file),
+        "bank_account": import_doc.bank_account,
+        "company": import_doc.company,
+        "candidate_rows": [
+            [row["source_row_no"], row["source_key"]]
+            for row in rows
+        ],
+        "warnings": [[x["row_number"], x["source_key"], x["message"]] for x in review],
+        "blocked_rows": blocked,
+    }
+    token = hashlib.sha256(
+        json.dumps(evidence, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return token, review, blocked
+
+
+def get_duplicate_review(name):
+    doc = frappe.get_doc(IMPORT_DOCTYPE, name)
+    doc.check_permission("write")
+    if doc.status == "Importing":
+        frappe.throw(_("This bank statement is being imported."))
+    if doc.status in ("Completed", "Completed with Errors") and cint(doc.inserted_records):
+        frappe.throw(_("Create a new import record to review another statement."))
+    summary, rows, errors = _analyze(doc)
+    token, review, blocked = _review_plan(doc, rows, errors)
+    _save_summary(doc, summary, "Validated", errors)
+    return {
+        "review_token": token,
+        "candidates": review,
+        "exact_duplicate_rows": blocked,
+        "summary": summary,
+    }
+
+
+def _validated_review_decisions(review, blocked, decisions):
+    """All warning rows must have an explicit, independently chosen action."""
+    if isinstance(decisions, str):
+        try:
+            decisions = json.loads(decisions)
+        except (TypeError, ValueError):
+            frappe.throw(_("Invalid duplicate review decisions. Reopen the review."))
+    if decisions is None:
+        decisions = {}
+    if not isinstance(decisions, dict):
+        frappe.throw(_("Duplicate review decisions must be a row-to-action mapping."))
+    if len(decisions) > 50000:
+        frappe.throw(_("Too many duplicate review decisions."))
+    expected = {str(item["row_number"]) for item in review}
+    if set(decisions) != expected:
+        frappe.throw(_(
+            "Every possible duplicate must be marked Import or Skip. "
+            "Refresh duplicate review to resolve missing or outdated decisions."
+        ))
+    if any(value not in ("import", "skip") for value in decisions.values()):
+        frappe.throw(_("Invalid duplicate decision. Choose Import or Skip."))
+    skipped = {int(key) for key, value in decisions.items() if value == "skip"}
+    approved = {int(key) for key, value in decisions.items() if value == "import"}
+    return approved, skipped | set(blocked)
+
+
+def _reviewed_rows(import_doc, rows, errors, decisions, expected_review_token):
+    current_token, review, blocked = _review_plan(import_doc, rows, errors)
+    if not expected_review_token or current_token != expected_review_token:
+        frappe.throw(_(
+            "Bank statement or duplicate evidence changed since review. "
+            "Refresh the duplicate review before importing. No rows were imported."
+        ))
+    approved, excluded = _validated_review_decisions(review, blocked, decisions)
+    eligible = [row for row in rows if row["source_row_no"] not in excluded]
+    return eligible, review, blocked, approved, excluded
+
+
+def process_import(name, requested_by, review_decisions=None,
+                   expected_review_token=None, expected_file_digest=None):
     try:
         doc = frappe.get_doc(IMPORT_DOCTYPE, name)
+        if doc.status != "Importing":
+            frappe.throw(_("Statement import was not queued correctly."))
         if not expected_file_digest or _file_digest(doc.import_file) != expected_file_digest:
-            frappe.throw(_("The bank statement file changed after review. Validate it again."))
+            frappe.throw(_("Bank statement XLSX changed after review. Validate it again."))
         summary, rows, errors = _analyze(doc)
-        if any(row.get("category") == "Potential Duplicate" for row in errors):
-            frappe.throw(_("Potential duplicate transactions detected during import revalidation. No rows were imported."))
-        if summary.get("review_warning_records") and not cint(acknowledge_possible_duplicates):
-            frappe.throw(_("Possible duplicates must be reviewed and explicitly acknowledged before importing."))
-        inserted = _bulk_insert(rows, requested_by)
+        eligible, review, blocked, approved, excluded = _reviewed_rows(
+            doc, rows, errors, review_decisions, expected_review_token
+        )
+        inserted = _bulk_insert(eligible, requested_by)
+        skip_ambiguous = sum(1 for x in review if x["row_number"] in excluded)
+        summary["duplicate_records"] += len(blocked) + skip_ambiguous
         summary["inserted_records"] = inserted
-        status = "Completed" if not errors else "Completed with Errors"
+        status = "Completed with Errors" if any(
+            e["category"] == "Error" for e in errors
+        ) else "Completed"
 
         doc = frappe.get_doc(IMPORT_DOCTYPE, name)
         _save_summary(doc, summary, status, errors)
         doc.db_set("inserted_records", inserted, update_modified=False)
         doc.db_set("imported_on", now_datetime(), update_modified=False)
         doc.db_set("imported_by", requested_by, update_modified=False)
-        if summary.get("review_warning_records"):
+
+        if review or blocked:
+            # Store the complete immutable decision list as a PRIVATE File. A
+            # document Comment contains a concise, searchable audit summary.
+            decisions = json.loads(review_decisions) if isinstance(review_decisions, str) else (review_decisions or {})
+            audit = {
+                "import": name,
+                "bank_account": doc.bank_account,
+                "file_sha256": expected_file_digest,
+                "review_token": expected_review_token,
+                "reviewed_by": requested_by,
+                "reviewed_on": cstr(now_datetime()),
+                "decisions": [
+                    {**item, "action": decisions[str(item["row_number"])]}
+                    for item in review
+                ],
+                "exact_duplicate_rows_skipped": blocked,
+                "inserted": inserted,
+            }
+            filename = "bank_statement_duplicate_review_{}_{}.json".format(
+                name, expected_review_token[:12]
+            )
+            attachment = save_file(
+                filename,
+                json.dumps(audit, sort_keys=True, indent=2).encode("utf-8"),
+                IMPORT_DOCTYPE, name, is_private=1
+            )
             doc.add_comment(
                 "Info",
                 _(
-                    "Possible bank-statement duplicates reviewed and explicitly "
-                    "approved by {0} on {1}. Candidates: {2}. "
-                    "Reviewed XLSX SHA-256: {3}"
+                    "Bank statement duplicate review by {0}. "
+                    "Possible duplicates imported: {1}, skipped: {2}; "
+                    "exact duplicates automatically skipped: {3}. "
+                    "Detailed private audit: {4}. Statement SHA-256: {5}"
                 ).format(
-                    requested_by,
-                    now_datetime(),
-                    summary["review_warning_records"],
-                    expected_file_digest,
+                    requested_by, len(approved), skip_ambiguous,
+                    len(blocked), attachment.file_url, expected_file_digest
                 ),
             )
         frappe.db.commit()
     except Exception:
+        # A failure after bulk_insert must not leave partially imported bank
+        # transactions, matches or a partially saved review/audit.
+        frappe.db.rollback()
         frappe.log_error(frappe.get_traceback(), "Marina Bank Statement Import")
         frappe.db.set_value(
             IMPORT_DOCTYPE,
@@ -536,18 +672,17 @@ def process_import(name, requested_by, acknowledge_possible_duplicates=False, ex
         frappe.db.commit()
 
 
-def start_import(name, acknowledge_possible_duplicates=False):
+def start_import(name, review_decisions=None, expected_review_token=None):
     doc = frappe.get_doc(IMPORT_DOCTYPE, name)
     doc.check_permission("write")
     if doc.status == "Importing":
         frappe.throw(_("This statement import is already running."))
-
-    summary, _rows, errors = _analyze(doc)
-    if any(row.get("category") == "Potential Duplicate" for row in errors):
-        _save_summary(doc, summary, "Validated", errors)
-        frappe.throw(_("Potential duplicate bank transactions detected. Review the validation details before importing."))
-    if summary.get("review_warning_records") and not cint(acknowledge_possible_duplicates):
-        frappe.throw(_("Possible duplicates require review and explicit confirmation before importing."))
+    if doc.status in ("Completed", "Completed with Errors") and cint(doc.inserted_records):
+        frappe.throw(_("This statement already imported transactions. Create a new import."))
+    summary, rows, errors = _analyze(doc)
+    eligible, review, blocked, approved, excluded = _reviewed_rows(
+        doc, rows, errors, review_decisions, expected_review_token
+    )
     expected_file_digest = _file_digest(doc.import_file)
     _save_summary(doc, summary, "Importing", errors)
     requested_by = frappe.session.user
@@ -558,11 +693,19 @@ def start_import(name, acknowledge_possible_duplicates=False):
         job_name=f"Marina Bank Statement Import {name}",
         name=name,
         requested_by=requested_by,
-        acknowledge_possible_duplicates=cint(acknowledge_possible_duplicates),
+        review_decisions=review_decisions,
+        expected_review_token=expected_review_token,
         expected_file_digest=expected_file_digest,
         enqueue_after_commit=True,
     )
-    return {"queued": 1, **summary}
+    return {
+        "queued": 1,
+        "review_import": len(approved),
+        "review_skip": len(excluded) - len(blocked),
+        "exact_skip": len(blocked),
+        "ready_to_import": len(eligible),
+        **summary,
+    }
 
 
 def get_import_status(name):
