@@ -44,6 +44,26 @@ class ConsolidationContracts(unittest.TestCase):
             self.assertTrue(match, ws)
             self.assertEqual(json.loads(match[0].read_text())["parent_page"],"")
 
+    def test_module_ownership_and_packaging(self):
+        owner = DESIGN / "setup" / "module_ownership.py"
+        self.assertTrue(owner.is_file())
+        content = owner.read_text()
+        self.assertIn('Module Def', content)
+        self.assertIn('marina_custom_apps', content)
+        self.assertIn('before_migrate', (APP / "hooks.py").read_text())
+        from setuptools import find_packages
+        packages = set(find_packages(where=str(ROOT)))
+        for pkg in (
+            "marina_custom_apps.design_management",
+            "marina_custom_apps.design_management.security",
+            "marina_custom_apps.design_management.setup",
+            "marina_custom_apps.marina_design_management",
+            "marina_custom_apps.marina_design_management.doctype",
+            "marina_custom_apps.marina_design_management.doctype.design_code",
+        ):
+            self.assertIn(pkg, packages)
+        self.assertTrue((ROOT / "MANIFEST.in").is_file())
+
     def test_no_old_imports_or_wrong_namespace(self):
         bad=[]
         for root in (DESIGN,MODULE):

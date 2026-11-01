@@ -26,6 +26,9 @@ jobs:
         run: python -m compileall -q marina_custom_apps
       - name: JavaScript syntax
         run: find marina_custom_apps/marina_design_management marina_custom_apps/public/js -name '*.js' -print0 | xargs -0 -r -n1 node --check
+      - name: Packaging validation
+        run: |
+          python -c "from setuptools import find_packages; assert 'marina_custom_apps.marina_design_management.doctype.design_code' in find_packages()"
       - name: Consolidation / workspace contracts
         run: |
           python -m unittest discover -s tests -p 'test_design_consolidation.py'

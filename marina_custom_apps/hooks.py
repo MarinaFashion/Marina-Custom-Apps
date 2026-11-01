@@ -137,3 +137,7 @@ for _mdm_parent in ("Design Code", "Mood Board"):
         "marina_custom_apps.design_management.discussions.archive_on_parent_delete"
     )
 del _mdm_parent
+
+# On an already-installed app, migration does not run bench install-app's
+# add_module_defs(). Create the module identity BEFORE schema sync.
+before_migrate = "marina_custom_apps.design_management.setup.module_ownership.ensure_design_module"
