@@ -5,6 +5,7 @@ from frappe.model.document import Document
 
 from marina_custom_apps.pos_reconciliation.marina_bank_statement_import_service import (
     get_import_status,
+    get_duplicate_review,
     start_import,
     validate_import,
 )
@@ -20,8 +21,17 @@ def validate_statement(name):
 
 
 @frappe.whitelist()
-def start_statement_import(name, acknowledge_possible_duplicates=0):
-    return start_import(name, acknowledge_possible_duplicates=acknowledge_possible_duplicates)
+def get_statement_duplicate_review(name):
+    return get_duplicate_review(name)
+
+
+@frappe.whitelist()
+def start_statement_import(name, review_decisions=None, expected_review_token=None):
+    return start_import(
+        name,
+        review_decisions=review_decisions,
+        expected_review_token=expected_review_token,
+    )
 
 
 @frappe.whitelist()
