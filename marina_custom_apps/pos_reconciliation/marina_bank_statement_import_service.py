@@ -531,9 +531,10 @@ def _review_plan(import_doc, rows, errors):
     """
     by_row = {row["source_row_no"]: row for row in rows}
     review = []
-    for error in errors:
-        if error["category"] != "Review Warning":
-            continue
+    for error in sorted(
+        (e for e in errors if e["category"] == "Review Warning"),
+        key=lambda e: e["row_number"],
+    ):
         row = by_row[error["row_number"]]
         review.append({
             "row_number": row["source_row_no"],
