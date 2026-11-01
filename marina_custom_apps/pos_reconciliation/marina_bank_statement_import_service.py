@@ -393,6 +393,36 @@ def _analyze(import_doc):
         seen_secondary.setdefault(
             secondary, (f'{flt(row.get("balance"), 2):.2f}', row["source_row_no"])
         )
+    # A repeated reference/amount with different running balances inside the
+    # SAME spreadsheet is ambiguous for *every* row in that group, not just
+    # the second row encountered. Finance must be able to choose either row.
+    groups = {}
+    for row in new_rows:
+        secondary = _secondary_financial_identity(row)
+        if secondary:
+            groups.setdefault(secondary, []).append(row)
+    warned = {e["row_number"] for e in errors if e["category"] == "Review Warning"}
+    blocked = {e["row_number"] for e in errors if e["category"] == "Potential Duplicate"}
+    for rows_in_group in groups.values():
+        balances = {f'{flt(x.get("balance"), 2):.2f}' for x in rows_in_group}
+        if len(balances) <= 1:
+            continue
+        for row in rows_in_group:
+            number = row["source_row_no"]
+            if number in warned or number in blocked:
+                continue
+            errors.append({
+                "row_number": number,
+                "category": "Review Warning",
+                "reconciliation_key": cstr(row.get("reference_number")),
+                "message": _(
+                    "Possible duplicate among spreadsheet rows: matching bank, "
+                    "date, reference, debit and credit with differing balances. "
+                    "Review this row independently before importing."
+                ),
+            })
+            warned.add(number)
+
     summary = {
         "total_rows": len(parsed) + sum(1 for e in errors if e["category"] == "Error"),
         "new_records": len(new_rows),
