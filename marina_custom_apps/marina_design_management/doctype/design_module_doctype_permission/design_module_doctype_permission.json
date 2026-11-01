@@ -1,0 +1,49 @@
+{
+  "doctype": "DocType",
+  "name": "Design Module DocType Permission",
+  "module": "Marina Design Management",
+  "istable": 1,
+  "track_changes": 0,
+  "fields": [
+    {
+      "fieldname": "resource_doctype",
+      "label": "DocType",
+      "fieldtype": "Link",
+      "options": "DocType",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "read",
+      "label": "Read",
+      "fieldtype": "Check",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "create",
+      "label": "Create",
+      "fieldtype": "Check",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "write",
+      "label": "Write",
+      "fieldtype": "Check",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "delete",
+      "label": "Delete",
+      "fieldtype": "Check",
+      "in_list_view": 1
+    }
+  ],
+  "field_order": [
+    "resource_doctype",
+    "read",
+    "create",
+    "write",
+    "delete"
+  ],
+  "permissions": []
+}

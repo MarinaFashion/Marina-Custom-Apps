@@ -1,0 +1,108 @@
+{
+  "doctype": "DocType",
+  "name": "Design Module Role",
+  "module": "Marina Design Management",
+  "autoname": "field:role_name",
+  "istable": 0,
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "role_name",
+      "label": "Role Name",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "frappe_role",
+      "label": "ERPNext Role",
+      "fieldtype": "Link",
+      "options": "Role",
+      "reqd": 1,
+      "description": "Fixed ERPNext technical role for all business roles. Manage business permissions in DocType Permissions and Action Permissions.",
+      "default": "Marina Design Participant",
+      "read_only": 1
+    },
+    {
+      "fieldname": "enabled",
+      "label": "Enabled",
+      "fieldtype": "Check",
+      "default": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "role_type",
+      "label": "Role Type",
+      "fieldtype": "Select",
+      "options": "Manager\nIndividual Contributor",
+      "default": "Individual Contributor",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "scope",
+      "label": "Record Access Scope",
+      "fieldtype": "Select",
+      "options": "Assigned\nAll",
+      "default": "Assigned",
+      "description": "All designs or only designs assigned to this user's role-related tasks/owners. Does not grant edit or approval permissions."
+    },
+    {
+      "fieldname": "reports_to_role",
+      "label": "Reports To Role",
+      "fieldtype": "Link",
+      "options": "Design Module Role",
+      "description": "Manager role in the reporting hierarchy. Only the root Administrator role can have no parent."
+    },
+    {
+      "fieldname": "responsibility_group",
+      "label": "Responsibility Group",
+      "fieldtype": "Select",
+      "options": "Design\nMerchandising\nTechnical Fitting\nQC\nShipping\nOther\\nBuying",
+      "default": "Other",
+      "reqd": 1,
+      "description": "Controls which design owner and milestone assignment selectors can include users of this role. Role permissions still govern the actions."
+    },
+    {
+      "fieldname": "description",
+      "label": "Description",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "doctype_permissions",
+      "label": "DocType Permissions",
+      "fieldtype": "Table",
+      "options": "Design Module DocType Permission"
+    },
+    {
+      "fieldname": "action_permissions",
+      "label": "Action Permissions",
+      "fieldtype": "Table",
+      "options": "Design Module Action Permission"
+    }
+  ],
+  "field_order": [
+    "role_name",
+    "frappe_role",
+    "enabled",
+    "role_type",
+    "scope",
+    "reports_to_role",
+    "responsibility_group",
+    "description",
+    "doctype_permissions",
+    "action_permissions"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "export": 1
+    }
+  ],
+  "title_field": "role_name"
+}

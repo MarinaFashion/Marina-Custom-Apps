@@ -1,0 +1,29 @@
+{
+  "doctype": "DocType",
+  "name": "Design Module Action Permission",
+  "module": "Marina Design Management",
+  "istable": 1,
+  "track_changes": 0,
+  "fields": [
+    {
+      "fieldname": "action_key",
+      "label": "Workflow Action",
+      "fieldtype": "Select",
+      "options": "Assign Milestones\nAdvance Milestone Step\nPublish Document\nRemove Published Assignment\nCreate ERPNext Items\nDelete Design Code\nReturn to Milestone\nClear Related Milestones\nManage Role Permissions\nAssign Team Tasks\nReassign Team Tasks\nApprove Design Cost Breakdown",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "allowed",
+      "label": "Allowed",
+      "fieldtype": "Check",
+      "default": 0,
+      "in_list_view": 1
+    }
+  ],
+  "field_order": [
+    "action_key",
+    "allowed"
+  ],
+  "permissions": []
+}
