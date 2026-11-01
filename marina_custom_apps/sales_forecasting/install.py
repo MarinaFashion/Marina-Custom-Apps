@@ -87,6 +87,8 @@ def app_after_install():
 
     calendar_after_install()
     after_install()
+    from marina_custom_apps.design_management.setup.install import after_install as design_after_install
+    design_after_install()
     from marina_custom_apps.workspace_layout import ensure_independent_workspaces
     ensure_independent_workspaces()
 
@@ -99,6 +101,8 @@ def app_after_migrate():
 
     calendar_after_migrate()
     after_migrate()
+    from marina_custom_apps.design_management.setup.install import after_migrate as design_after_migrate
+    design_after_migrate()
     from marina_custom_apps.workspace_layout import ensure_independent_workspaces
     ensure_independent_workspaces()
 
