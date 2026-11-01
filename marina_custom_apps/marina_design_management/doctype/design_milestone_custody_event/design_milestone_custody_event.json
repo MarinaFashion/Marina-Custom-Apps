@@ -1,0 +1,123 @@
+{
+  "doctype": "DocType",
+  "name": "Design Milestone Custody Event",
+  "module": "Marina Design Management",
+  "custom": 0,
+  "istable": 0,
+  "autoname": "hash",
+  "fields": [
+    {
+      "fieldname": "design_code",
+      "label": "Design Code",
+      "fieldtype": "Link",
+      "options": "Design Code",
+      "reqd": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "plan_entry",
+      "label": "Plan Entry",
+      "fieldtype": "Link",
+      "options": "Design Milestone Plan Entry",
+      "reqd": 1
+    },
+    {
+      "fieldname": "execution",
+      "label": "Execution",
+      "fieldtype": "Link",
+      "options": "Design Milestone Execution",
+      "reqd": 1
+    },
+    {
+      "fieldname": "action",
+      "label": "Action",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "from_status",
+      "label": "From Status",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "to_status",
+      "label": "To Status",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "from_user",
+      "label": "From User",
+      "fieldtype": "Link",
+      "options": "User"
+    },
+    {
+      "fieldname": "to_user",
+      "label": "To User",
+      "fieldtype": "Link",
+      "options": "User"
+    },
+    {
+      "fieldname": "performed_by",
+      "label": "Performed By",
+      "fieldtype": "Link",
+      "options": "User",
+      "reqd": 1
+    },
+    {
+      "fieldname": "performed_on",
+      "label": "Performed On",
+      "fieldtype": "Datetime",
+      "reqd": 1
+    },
+    {
+      "fieldname": "reason",
+      "label": "Reason",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "evidence_document",
+      "label": "Evidence Document",
+      "fieldtype": "Link",
+      "options": "Design Document"
+    },
+    {
+      "fieldname": "request_id",
+      "label": "Request Id",
+      "fieldtype": "Data",
+      "unique": 1
+    },
+    {
+      "fieldname": "effective_date",
+      "label": "Effective Step Date",
+      "fieldtype": "Date",
+      "read_only": 1,
+      "description": "User-selected effective date; performed_on remains the actual submission timestamp."
+    }
+  ],
+  "field_order": [
+    "design_code",
+    "plan_entry",
+    "execution",
+    "action",
+    "from_status",
+    "to_status",
+    "from_user",
+    "to_user",
+    "performed_by",
+    "performed_on",
+    "effective_date",
+    "reason",
+    "evidence_document",
+    "request_id"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "export": 1,
+      "create": 0,
+      "write": 0,
+      "delete": 0
+    }
+  ]
+}
