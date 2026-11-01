@@ -167,9 +167,9 @@ class MetadataAndSecurityContracts(unittest.TestCase):
 
     def test_action_and_permission_wiring(self):
         hooks = (ROOT/"hooks.py").read_text()
-        perms = (ROOT/"security"/"permissions.py").read_text()
-        roles = (ROOT/"security"/"role_access.py").read_text()
-        seeds = (ROOT/"setup"/"module_role_defaults.py").read_text()
+        perms = (ROOT/"design_management"/"security"/"permissions.py").read_text()
+        roles = (ROOT/"design_management"/"security"/"role_access.py").read_text()
+        seeds = (ROOT/"design_management"/"setup"/"module_role_defaults.py").read_text()
         self.assertIn('"Design Cost Breakdown": "marina_design_management.security.permissions.cost_breakdown_query"', hooks)
         self.assertIn("def cost_breakdown_permission", perms)
         self.assertIn("Approve Design Cost Breakdown", roles)

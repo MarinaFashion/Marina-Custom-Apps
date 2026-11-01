@@ -55,6 +55,9 @@ class ConsolidationContracts(unittest.TestCase):
                 raw=path.read_text(encoding="utf8")
                 if "marina_custom_apps.marina_custom_apps." in raw:
                     bad.append(str(path.relative_to(ROOT))+": doubled package namespace")
+                if "marina_custom_apps/marina_custom_apps/" in raw:
+                    bad.append(str(path.relative_to(ROOT))+": doubled file-path namespace")
+
                 if "marina_design_management.marina_design_management." in raw:
                     bad.append(str(path.relative_to(ROOT))+": old app namespace")
                 if "/assets/marina_design_management/" in raw:
