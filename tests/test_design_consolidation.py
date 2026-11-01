@@ -1,0 +1,69 @@
+"""Static architecture contracts for Design Management consolidation."""
+import ast
+import json
+import pathlib
+import unittest
+
+ROOT=pathlib.Path(__file__).resolve().parents[1]
+APP=ROOT/"marina_custom_apps"
+DESIGN=APP/"design_management"
+MODULE=APP/"marina_design_management"
+
+class ConsolidationContracts(unittest.TestCase):
+    def test_all_packages_and_doctypes_present(self):
+        self.assertTrue((DESIGN/"setup"/"install.py").exists())
+        self.assertTrue((MODULE/"__init__.py").exists())
+        for dt in ["Design Code","Mood Board","Design Document","Design Cost Breakdown","Design Milestone Execution","Marina Discussion Message"]:
+            name=dt.lower().replace(" ","_")
+            path=MODULE/"doctype"/name/(name+".json")
+            self.assertTrue(path.exists(), str(path))
+            definition=json.loads(path.read_text())
+            self.assertEqual(definition["name"],dt)
+            self.assertEqual(definition["module"],"Marina Design Management")
+
+    def test_integrated_hooks_and_bootstrap(self):
+        hooks=(APP/"hooks.py").read_text()
+        for value in ("cost_breakdown_permission", "discussion_retention.expire_large_attachments",
+                      "app_include_js", "Marina Discussion Message", "discussion_activity"):
+            if value=="discussion_activity":
+                continue
+            self.assertIn(value,hooks)
+        self.assertIn("Marina Design Management", (APP/"modules.txt").read_text().splitlines())
+        install=(APP/"sales_forecasting"/"install.py").read_text()
+        self.assertIn("design_after_migrate()",install)
+        self.assertIn("design_after_install()",install)
+        self.assertLess(install.index("design_after_migrate()"),
+                        install.index("ensure_independent_workspaces()",
+                                     install.index("def app_after_migrate")))
+    
+    def test_top_level_workspaces(self):
+        for ws in ["Marina Design Management","DC Dispatch","POS Reconciliation",
+                   "Sales Forecasting","Marina Calendar","Cycle Count",
+                   "Stock Auto Allocation","Stock Transfer Audit","SOP Management"]:
+            match=list(APP.rglob("workspace/"+ws.lower().replace(" ","_")+"/*.json"))
+            self.assertTrue(match, ws)
+            self.assertEqual(json.loads(match[0].read_text())["parent_page"],"")
+
+    def test_no_old_imports_or_wrong_namespace(self):
+        bad=[]
+        for root in (DESIGN,MODULE):
+            for path in root.rglob("*"):
+                if not path.is_file() or path.suffix not in (".py",".js",".json",".html"):
+                    continue
+                if path.name=="legacy_hooks.py":
+                    continue
+                raw=path.read_text(encoding="utf8")
+                if "marina_custom_apps.marina_custom_apps." in raw:
+                    bad.append(str(path.relative_to(ROOT))+": doubled package namespace")
+                if "marina_design_management.marina_design_management." in raw:
+                    bad.append(str(path.relative_to(ROOT))+": old app namespace")
+                if "/assets/marina_design_management/" in raw:
+                    bad.append(str(path.relative_to(ROOT))+": old asset namespace")
+                if path.suffix==".py":
+                    try: ast.parse(raw)
+                    except SyntaxError as e:
+                        bad.append(str(path.relative_to(ROOT))+f": {e}")
+        self.assertFalse(bad, "\\n".join(bad))
+ 
+if __name__ == "__main__":
+    unittest.main()
