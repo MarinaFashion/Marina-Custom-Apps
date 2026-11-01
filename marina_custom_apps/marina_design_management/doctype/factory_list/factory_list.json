@@ -1,0 +1,120 @@
+{
+  "doctype": "DocType",
+  "name": "Factory List",
+  "module": "Marina Design Management",
+  "custom": 0,
+  "istable": 0,
+  "engine": "InnoDB",
+  "fields": [
+    {
+      "fieldname": "factory_name",
+      "label": "Factory Name",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "is_active",
+      "label": "Active",
+      "fieldtype": "Check",
+      "default": "1",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "country",
+      "label": "Country",
+      "fieldtype": "Link",
+      "options": "Country",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "website",
+      "label": "Website",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "email",
+      "label": "General Email",
+      "fieldtype": "Data",
+      "options": "Email"
+    },
+    {
+      "fieldname": "phone",
+      "label": "General Phone",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "address",
+      "label": "Head Office Address",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "notes",
+      "label": "Notes",
+      "fieldtype": "Small Text"
+    },
+    {
+      "fieldname": "facilities_section",
+      "label": "Facilities",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "facilities",
+      "label": "Facilities",
+      "fieldtype": "Table",
+      "options": "Factory Facility"
+    },
+    {
+      "fieldname": "contacts_section",
+      "label": "Contacts",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "contacts",
+      "label": "Contacts",
+      "fieldtype": "Table",
+      "options": "Factory Contact"
+    }
+  ],
+  "field_order": [
+    "factory_name",
+    "is_active",
+    "country",
+    "website",
+    "email",
+    "phone",
+    "address",
+    "notes",
+    "facilities_section",
+    "facilities",
+    "contacts_section",
+    "contacts"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1,
+      "share": 1
+    },
+    {
+      "role": "Marina Design Participant",
+      "read": 1,
+      "select": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ],
+  "autoname": "field:factory_name",
+  "title_field": "factory_name",
+  "search_fields": "factory_name,country,email,phone",
+  "track_changes": 1,
+  "allow_rename": 1
+}
