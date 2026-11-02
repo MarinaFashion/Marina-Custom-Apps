@@ -59,7 +59,7 @@
       "fieldname": "responsibility_group",
       "label": "Responsibility Group",
       "fieldtype": "Select",
-      "options": "Design\nMerchandising\nTechnical Fitting\nQC\nShipping\nOther\\nBuying",
+      "options": "Design\nMerchandising\nTechnical Fitting\nQC\nShipping\nOther\nBuying",
       "default": "Other",
       "reqd": 1,
       "description": "Controls which design owner and milestone assignment selectors can include users of this role. Role permissions still govern the actions."
