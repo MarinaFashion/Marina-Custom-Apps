@@ -21,15 +21,27 @@ def _op(ptype):
     return "read" if ptype in (None,"select","print","export") else ptype
 
 
+def _design_system_admin(user):
+    """An ERPNext System Manager must never be hidden by Marina assignment scope."""
+    return user == "Administrator" or "System Manager" in frappe.get_roles(user)
+
+
 def mood_board_query(user=None):
     user=user or frappe.session.user
     if can_doctype("Mood Board","read",user) is False:
         return "1=0"
-    if has_overall_visibility(user):
+    if _design_system_admin(user) or has_overall_visibility(user):
         return ""
     esc=frappe.db.escape(user)
+    # An authorized creator must be able to see an imported/new board before
+    # the team pool has been assigned. Once an active team is assigned, the
+    # record is governed by team/design custody rather than its old creator.
     return (
-        "(EXISTS (SELECT 1 FROM `tabDesign Team Assignment` a "
+        "((`tabMood Board`.owner="+esc+" AND NOT EXISTS ("
+        "SELECT 1 FROM `tabDesign Team Assignment` own "
+        "WHERE own.parent=`tabMood Board`.name AND own.parenttype='Mood Board' "
+        "AND own.parentfield='r22_team_assignments' AND own.active=1))"
+        " OR EXISTS (SELECT 1 FROM `tabDesign Team Assignment` a "
         "WHERE a.parent=`tabMood Board`.name AND a.parenttype='Mood Board' "
         "AND a.parentfield='r22_team_assignments' AND a.active=1 "
         "AND a.user="+esc+") OR EXISTS (SELECT 1 FROM `tabDesign Code` d "
@@ -42,19 +54,29 @@ def mood_board_permission(doc,ptype=None,user=None):
     user=user or frappe.session.user
     if can_doctype("Mood Board",_op(ptype),user) is False:
         return False
-    if has_overall_visibility(user) or ptype=="create":
+    if _design_system_admin(user) or has_overall_visibility(user) or ptype=="create":
         return True
     if ptype not in (None,"read","select","print","export","write"):
         return False
     if not doc.name:
         return False
-    return bool(frappe.db.exists("Design Team Assignment",{
-        "parent":doc.name,"parenttype":"Mood Board","active":1,"user":user,
-    }) or frappe.db.exists("Design Code",{
-        "mood_board":doc.name,"assigned_merchandiser":user,
-    }) or frappe.db.exists("Design Code",{
-        "mood_board":doc.name,"designer":user,
-    }))
+    if doc.owner == user and not any(
+        row.active for row in (doc.get("r22_team_assignments") or [])
+    ):
+        return True
+    if frappe.db.exists("Design Team Assignment",{
+        "parent":doc.name,"parenttype":"Mood Board",
+        "parentfield":"r22_team_assignments","active":1,"user":user,
+    }):
+        return True
+    # Match the same full Design Code scope used by the list filter:
+    # Designer, Merchandiser, Technical Fitting, team and current custody.
+    # A limited existence query avoids loading any linked Design Codes.
+    return bool(frappe.db.sql(
+        "SELECT 1 FROM `tabDesign Code` d WHERE d.mood_board=%s AND "
+        + assigned_scope_sql(user,"d") + " LIMIT 1",
+        (doc.name,),
+    ))
 
 
 def design_code_query(user=None):
