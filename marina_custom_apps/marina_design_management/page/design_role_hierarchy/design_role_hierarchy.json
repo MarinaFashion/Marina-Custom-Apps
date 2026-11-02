@@ -1,0 +1,17 @@
+{
+  "doctype": "Page",
+  "name": "design-role-hierarchy",
+  "page_name": "design-role-hierarchy",
+  "module": "Marina Design Management",
+  "title": "Role Hierarchy",
+  "standard": "Yes",
+  "system_page": 0,
+  "roles": [
+    {
+      "role": "System Manager"
+    },
+    {
+      "role": "Marina Design Management"
+    }
+  ]
+}

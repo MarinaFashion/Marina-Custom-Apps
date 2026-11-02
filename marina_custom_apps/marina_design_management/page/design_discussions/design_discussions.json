@@ -1,0 +1,17 @@
+{
+  "doctype": "Page",
+  "name": "design-discussions",
+  "page_name": "design-discussions",
+  "module": "Marina Design Management",
+  "title": "Design Discussions",
+  "standard": "Yes",
+  "system_page": 0,
+  "roles": [
+    {
+      "role": "System Manager"
+    },
+    {
+      "role": "Marina Design Participant"
+    }
+  ]
+}

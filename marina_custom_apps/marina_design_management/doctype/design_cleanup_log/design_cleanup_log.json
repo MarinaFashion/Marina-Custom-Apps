@@ -1,0 +1,71 @@
+{
+  "doctype": "DocType",
+  "name": "Design Cleanup Log",
+  "module": "Marina Design Management",
+  "istable": 0,
+  "track_changes": 0,
+  "autoname": "hash",
+  "fields": [
+    {
+      "fieldname": "design_code_ref",
+      "label": "Design Code Reference",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "operation",
+      "label": "Operation",
+      "fieldtype": "Select",
+      "options": "Delete Design Code\nClear Related Milestones",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "performed_by",
+      "label": "Performed By",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "performed_on",
+      "label": "Performed On",
+      "fieldtype": "Datetime",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "reason",
+      "label": "Reason",
+      "fieldtype": "Small Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "snapshot",
+      "label": "Pre-deletion Snapshot",
+      "fieldtype": "Long Text",
+      "read_only": 1
+    }
+  ],
+  "field_order": [
+    "design_code_ref",
+    "operation",
+    "performed_by",
+    "performed_on",
+    "reason",
+    "snapshot"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "select": 1,
+      "export": 1,
+      "create": 0,
+      "write": 0,
+      "delete": 0
+    }
+  ]
+}

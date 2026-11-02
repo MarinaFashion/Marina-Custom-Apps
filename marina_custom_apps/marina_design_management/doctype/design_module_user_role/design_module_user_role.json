@@ -1,0 +1,48 @@
+{
+  "doctype": "DocType",
+  "name": "Design Module User Role",
+  "module": "Marina Design Management",
+  "istable": 1,
+  "track_changes": 0,
+  "fields": [
+    {
+      "fieldname": "user",
+      "label": "User",
+      "fieldtype": "Link",
+      "options": "User",
+      "reqd": 1,
+      "in_list_view": 0,
+      "description": "ERPNext User ID is stored internally; the grid displays User Name."
+    },
+    {
+      "fieldname": "user_name",
+      "label": "User Name",
+      "fieldtype": "Data",
+      "read_only": 1,
+      "in_list_view": 1,
+      "fetch_from": "user.username"
+    },
+    {
+      "fieldname": "module_role",
+      "label": "Module Role",
+      "fieldtype": "Link",
+      "options": "Design Module Role",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "active",
+      "label": "Active",
+      "fieldtype": "Check",
+      "default": 1,
+      "in_list_view": 1
+    }
+  ],
+  "field_order": [
+    "user",
+    "user_name",
+    "module_role",
+    "active"
+  ],
+  "permissions": []
+}

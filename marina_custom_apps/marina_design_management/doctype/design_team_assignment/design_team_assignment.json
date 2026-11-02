@@ -1,0 +1,53 @@
+{
+  "doctype": "DocType",
+  "name": "Design Team Assignment",
+  "module": "Marina Design Management",
+  "custom": 0,
+  "istable": 1,
+  "autoname": "hash",
+  "fields": [
+    {
+      "fieldname": "module_role",
+      "label": "Module Role",
+      "fieldtype": "Link",
+      "options": "Design Module Role",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "user",
+      "label": "User",
+      "fieldtype": "Link",
+      "options": "User",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "default_for_design",
+      "label": "Default for New Designs",
+      "fieldtype": "Check",
+      "default": 0,
+      "in_list_view": 1,
+      "description": "If a Mood Board has multiple users with this role, select one default. Design Code owner selection takes precedence."
+    },
+    {
+      "fieldname": "active",
+      "label": "Active",
+      "fieldtype": "Check",
+      "default": 1
+    },
+    {
+      "fieldname": "assignment_note",
+      "label": "Assignment Note",
+      "fieldtype": "Small Text"
+    }
+  ],
+  "field_order": [
+    "module_role",
+    "user",
+    "default_for_design",
+    "active",
+    "assignment_note"
+  ],
+  "permissions": []
+}

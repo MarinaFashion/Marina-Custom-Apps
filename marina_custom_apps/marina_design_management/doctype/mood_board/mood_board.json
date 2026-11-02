@@ -1,0 +1,122 @@
+{
+  "doctype": "DocType",
+  "name": "Mood Board",
+  "module": "Marina Design Management",
+  "custom": 0,
+  "istable": 0,
+  "is_submittable": 0,
+  "track_changes": 1,
+  "engine": "InnoDB",
+  "fields": [
+    {
+      "fieldname": "sb_identity",
+      "label": "Mood Board Identification",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "mood_board_name",
+      "label": "Mood Board Name",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "year",
+      "label": "Year",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "season",
+      "label": "Season",
+      "fieldtype": "Select",
+      "options": "Spring\nSummer\nAutumn\nWinter\nHajj\nRamadan\nOther",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "cb_identity",
+      "label": "",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "image",
+      "label": "Mood Board Image",
+      "fieldtype": "Attach Image",
+      "reqd": 1
+    },
+    {
+      "fieldname": "collection",
+      "label": "Collection",
+      "fieldtype": "Data",
+      "reqd": 1
+    },
+    {
+      "fieldname": "sb_planning",
+      "label": "Planning",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "drop",
+      "label": "Drop",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "cb_planning",
+      "label": "",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "display_date",
+      "label": "Display Date",
+      "fieldtype": "Date"
+    },
+    {
+      "fieldname": "r22_team_section",
+      "label": "Mood Board Team Pool",
+      "fieldtype": "Section Break",
+      "collapsible": 1,
+      "description": "You may add multiple users per Module Role. Select one Default for New Designs per role when needed. New Design Codes receive one responsible user per role."
+    },
+    {
+      "fieldname": "r22_team_assignments",
+      "label": "Team Assignments",
+      "fieldtype": "Table",
+      "options": "Design Team Assignment"
+    },
+    {
+      "fieldname": "discussion_tab",
+      "label": "Discussion",
+      "fieldtype": "Tab Break"
+    },
+    {
+      "fieldname": "discussion_panel",
+      "label": "Discussion",
+      "fieldtype": "HTML"
+    }
+  ],
+  "field_order": [
+    "sb_identity",
+    "mood_board_name",
+    "year",
+    "season",
+    "cb_identity",
+    "image",
+    "collection",
+    "sb_planning",
+    "drop",
+    "cb_planning",
+    "display_date",
+    "r22_team_section",
+    "r22_team_assignments",
+    "discussion_tab",
+    "discussion_panel"
+  ],
+  "permissions": [],
+  "autoname": "field:mood_board_name",
+  "title_field": "mood_board_name",
+  "search_fields": "mood_board_name",
+  "image_field": "image"
+}

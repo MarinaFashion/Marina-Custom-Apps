@@ -1,0 +1,75 @@
+{
+  "doctype": "DocType",
+  "name": "Marina Pantone",
+  "module": "Marina Design Management",
+  "custom": 0,
+  "istable": 0,
+  "is_submittable": 0,
+  "track_changes": 1,
+  "engine": "InnoDB",
+  "autoname": "field:pantone_code",
+  "fields": [
+    {
+      "fieldname": "sb_color_details",
+      "label": "Pantone Identification",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "pantone_code",
+      "label": "Pantone Code",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "color_name",
+      "label": "Color Name",
+      "fieldtype": "Data"
+    },
+    {
+      "fieldname": "cb_color_details",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "color_system",
+      "label": "Color System",
+      "fieldtype": "Select",
+      "reqd": 1,
+      "options": "TCX\nTPG\nC\nU\nOther"
+    },
+    {
+      "fieldname": "is_active",
+      "label": "Active",
+      "fieldtype": "Check",
+      "default": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "sb_color_image",
+      "label": "Pantone Swatch",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "color_image",
+      "label": "Color Image",
+      "fieldtype": "Attach Image",
+      "in_list_view": 0
+    }
+  ],
+  "field_order": [
+    "sb_color_details",
+    "pantone_code",
+    "color_name",
+    "cb_color_details",
+    "color_system",
+    "is_active",
+    "sb_color_image",
+    "color_image"
+  ],
+  "permissions": [],
+  "title_field": "pantone_code",
+  "search_fields": "pantone_code",
+  "image_field": "color_image",
+  "allow_import": 1
+}

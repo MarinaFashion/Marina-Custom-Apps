@@ -1,0 +1,23 @@
+{
+  "doctype": "DocType",
+  "name": "Marina Mood Board Tech Pack Link",
+  "module": "Marina Design Management",
+  "custom": 0,
+  "istable": 1,
+  "is_submittable": 0,
+  "track_changes": 1,
+  "engine": "InnoDB",
+  "autoname": "hash",
+  "fields": [
+    {
+      "fieldname": "tech_pack",
+      "label": "Tech Pack",
+      "fieldtype": "Link",
+      "reqd": 1,
+      "options": "Marina Mood Board Tech Pack"
+    }
+  ],
+  "field_order": [
+    "tech_pack"
+  ]
+}

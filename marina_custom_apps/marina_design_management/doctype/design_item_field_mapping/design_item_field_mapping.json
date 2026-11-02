@@ -1,0 +1,68 @@
+{
+  "doctype": "DocType",
+  "name": "Design Item Field Mapping",
+  "module": "Marina Design Management",
+  "custom": 0,
+  "istable": 1,
+  "editable_grid": 1,
+  "track_changes": 0,
+  "fields": [
+    {
+      "fieldname": "source_doctype",
+      "label": "Source DocType",
+      "fieldtype": "Select",
+      "options": "Design Code\nDesign Production Item",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "source_field",
+      "label": "Source Field",
+      "fieldtype": "Autocomplete",
+      "reqd": 1,
+      "in_list_view": 1,
+      "options": "",
+      "description": "Choose from the selected source DocType's supported fields. Select a suggested technical field name; invalid mappings are rejected on Save."
+    },
+    {
+      "fieldname": "target_field",
+      "label": "Target Item Field",
+      "fieldtype": "Autocomplete",
+      "reqd": 1,
+      "in_list_view": 1,
+      "options": "",
+      "description": "Choose from ERPNext Item fields (including installed Custom Fields); protected fields are excluded. Select a suggested technical field name; invalid mappings are rejected on Save."
+    },
+    {
+      "fieldname": "apply_to",
+      "label": "Apply To",
+      "fieldtype": "Select",
+      "options": "Template\nVariant\nBoth",
+      "default": "Both",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "required_for_creation",
+      "label": "Required For Creation",
+      "fieldtype": "Check",
+      "default": 0
+    },
+    {
+      "fieldname": "is_active",
+      "label": "Active",
+      "fieldtype": "Check",
+      "default": 1,
+      "in_list_view": 1
+    }
+  ],
+  "field_order": [
+    "source_doctype",
+    "source_field",
+    "target_field",
+    "apply_to",
+    "required_for_creation",
+    "is_active"
+  ],
+  "permissions": []
+}

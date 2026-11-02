@@ -1,0 +1,24 @@
+name: Marina independent workspace validation
+on:
+  push:
+    branches:
+      - integration/design-into-custom-apps-20261102
+    paths:
+      - "marina_custom_apps/**/workspace/**"
+      - "marina_custom_apps/workspace_layout.py"
+      - "marina_custom_apps/sales_forecasting/install.py"
+      - "tests/test_independent_workspaces.py"
+      - ".github/workflows/marina-independent-workspaces.yml"
+  pull_request:
+    paths:
+      - "marina_custom_apps/**"
+      - "tests/test_independent_workspaces.py"
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m unittest discover -s tests -p 'test_independent_workspaces.py'

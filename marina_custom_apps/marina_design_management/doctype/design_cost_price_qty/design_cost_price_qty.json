@@ -1,0 +1,129 @@
+{
+  "doctype": "DocType",
+  "name": "Design Cost Price Qty",
+  "module": "Marina Design Management",
+  "custom": 0,
+  "is_submittable": 0,
+  "istable": 1,
+  "editable_grid": 1,
+  "track_changes": 0,
+  "autoname": "hash",
+  "field_order": [
+    "variant_code",
+    "production_key",
+    "planned_item_code",
+    "proposed_qty",
+    "moq",
+    "supplier_quoted_price",
+    "negotiated_unit_price",
+    "discount_percent",
+    "estimated_component_cost",
+    "cost_difference",
+    "quoted_value",
+    "purchase_value",
+    "moq_exception_reason",
+    "remarks"
+  ],
+  "fields": [
+    {
+      "fieldname": "variant_code",
+      "label": "Color / Variant",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "production_key",
+      "label": "Production Reference",
+      "fieldtype": "Data",
+      "read_only": 1,
+      "hidden": 1,
+      "description": "Stable internal reference to Design Production Item when available."
+    },
+    {
+      "fieldname": "planned_item_code",
+      "label": "Planned Item Code",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "proposed_qty",
+      "label": "Proposed Qty",
+      "fieldtype": "Int",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "moq",
+      "label": "Factory MOQ",
+      "fieldtype": "Int"
+    },
+    {
+      "fieldname": "supplier_quoted_price",
+      "label": "Supplier Quoted Unit Price",
+      "fieldtype": "Currency",
+      "options": "currency",
+      "in_list_view": 1,
+      "precision": "4"
+    },
+    {
+      "fieldname": "negotiated_unit_price",
+      "label": "Negotiated Unit Price",
+      "fieldtype": "Currency",
+      "options": "currency",
+      "in_list_view": 1,
+      "precision": "4"
+    },
+    {
+      "fieldname": "discount_percent",
+      "label": "Negotiated Discount %",
+      "fieldtype": "Percent",
+      "read_only": 1
+    },
+    {
+      "fieldname": "estimated_component_cost",
+      "label": "Estimated Component Cost / Piece",
+      "fieldtype": "Currency",
+      "options": "currency",
+      "read_only": 1,
+      "precision": "4"
+    },
+    {
+      "fieldname": "cost_difference",
+      "label": "Negotiated Price Less Component Cost",
+      "fieldtype": "Currency",
+      "options": "currency",
+      "read_only": 1,
+      "precision": "4"
+    },
+    {
+      "fieldname": "quoted_value",
+      "label": "Quoted Purchase Value",
+      "fieldtype": "Currency",
+      "options": "currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "purchase_value",
+      "label": "Negotiated Purchase Value",
+      "fieldtype": "Currency",
+      "options": "currency",
+      "read_only": 1
+    },
+    {
+      "fieldname": "moq_exception_reason",
+      "label": "MOQ Exception Reason",
+      "fieldtype": "Small Text",
+      "description": "Required if proposed quantity is below MOQ at approval."
+    },
+    {
+      "fieldname": "remarks",
+      "label": "Notes",
+      "fieldtype": "Small Text"
+    }
+  ],
+  "permissions": [],
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "engine": "InnoDB"
+}

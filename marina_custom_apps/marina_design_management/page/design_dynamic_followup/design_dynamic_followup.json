@@ -1,0 +1,17 @@
+{
+  "doctype": "Page",
+  "name": "design-dynamic-followup",
+  "page_name": "design-dynamic-followup",
+  "module": "Marina Design Management",
+  "title": "Dynamic Design Follow-Up",
+  "standard": "Yes",
+  "system_page": 0,
+  "roles": [
+    {
+      "role": "System Manager"
+    },
+    {
+      "role": "Marina Design Participant"
+    }
+  ]
+}

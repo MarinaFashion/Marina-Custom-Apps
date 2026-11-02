@@ -1,0 +1,90 @@
+{
+  "doctype": "DocType",
+  "name": "Design Item Creation",
+  "module": "Marina Design Management",
+  "istable": 0,
+  "track_changes": 1,
+  "autoname": "field:production_key",
+  "fields": [
+    {
+      "fieldname": "design_code",
+      "label": "Design Code",
+      "fieldtype": "Link",
+      "options": "Design Code",
+      "reqd": 1,
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "production_key",
+      "label": "Production Key",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "template_item",
+      "label": "Created Item Template",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "read_only": 1,
+      "in_list_view": 1,
+      "description": "Snapshot of generated ERPNext Item Template Code. Stored as text to avoid blocking deletion of the Item; deletion of this audit remains controlled by server-side existence checks."
+    },
+    {
+      "fieldname": "created_by",
+      "label": "Created By",
+      "fieldtype": "Link",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "created_on",
+      "label": "Created On",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "variant_snapshot",
+      "label": "Created Variants Snapshot",
+      "fieldtype": "Long Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "mapping_snapshot",
+      "label": "Mapping Snapshot",
+      "fieldtype": "Long Text",
+      "read_only": 1
+    }
+  ],
+  "field_order": [
+    "design_code",
+    "production_key",
+    "template_item",
+    "created_by",
+    "created_on",
+    "variant_snapshot",
+    "mapping_snapshot"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "create": 0,
+      "write": 0,
+      "delete": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "Marina Design Participant",
+      "read": 1,
+      "write": 0,
+      "create": 0,
+      "delete": 0,
+      "report": 1,
+      "export": 1
+    }
+  ]
+}

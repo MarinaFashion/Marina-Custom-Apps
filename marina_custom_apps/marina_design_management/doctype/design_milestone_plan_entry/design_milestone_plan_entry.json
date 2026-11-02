@@ -1,0 +1,114 @@
+{
+  "doctype": "DocType",
+  "name": "Design Milestone Plan Entry",
+  "module": "Marina Design Management",
+  "custom": 0,
+  "istable": 0,
+  "autoname": "hash",
+  "fields": [
+    {
+      "fieldname": "plan_key",
+      "label": "Plan Unique Key",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "unique": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "design_code",
+      "label": "Design Code",
+      "fieldtype": "Link",
+      "options": "Design Code",
+      "reqd": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "milestone_type",
+      "label": "Milestone",
+      "fieldtype": "Link",
+      "options": "Design Milestone Type",
+      "reqd": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "sequence",
+      "label": "Display Sequence",
+      "fieldtype": "Int"
+    },
+    {
+      "fieldname": "depends_on_type",
+      "label": "Start After Milestone",
+      "fieldtype": "Link",
+      "options": "Design Milestone Type"
+    },
+    {
+      "fieldname": "trigger_status",
+      "label": "Start after Milestone Step",
+      "fieldtype": "Select",
+      "options": "Ready to Start\nIn Progress\nRework\nCompleted"
+    },
+    {
+      "fieldname": "plan_state",
+      "label": "Plan State",
+      "fieldtype": "Select",
+      "options": "Planned\nActive\nCompleted",
+      "default": "Planned",
+      "reqd": 1
+    },
+    {
+      "fieldname": "workflow_snapshot_json",
+      "label": "Workflow Snapshot",
+      "fieldtype": "Long Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "baseline_due_date",
+      "label": "Initial Baseline Due Date",
+      "fieldtype": "Date",
+      "read_only": 1,
+      "description": "Frozen when the Design milestone plan is created from its Creation Date and per-design workflow lead times. Does not change when operational due dates roll."
+    },
+    {
+      "fieldname": "activated_execution",
+      "label": "Execution",
+      "fieldtype": "Link",
+      "options": "Design Milestone Execution",
+      "read_only": 1
+    },
+    {
+      "fieldname": "selected_by",
+      "label": "Selected By",
+      "fieldtype": "Link",
+      "options": "User"
+    },
+    {
+      "fieldname": "selected_on",
+      "label": "Selected On",
+      "fieldtype": "Datetime"
+    }
+  ],
+  "field_order": [
+    "plan_key",
+    "design_code",
+    "milestone_type",
+    "sequence",
+    "depends_on_type",
+    "trigger_status",
+    "plan_state",
+    "workflow_snapshot_json",
+    "baseline_due_date",
+    "activated_execution",
+    "selected_by",
+    "selected_on"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "export": 1,
+      "create": 0,
+      "write": 0,
+      "delete": 0
+    }
+  ]
+}

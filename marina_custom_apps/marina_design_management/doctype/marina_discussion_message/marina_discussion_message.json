@@ -1,0 +1,155 @@
+{
+  "doctype": "DocType",
+  "name": "Marina Discussion Message",
+  "module": "Marina Design Management",
+  "custom": 0,
+  "autoname": "hash",
+  "engine": "InnoDB",
+  "fields": [
+    {
+      "fieldname": "reference_doctype",
+      "label": "Record Type",
+      "fieldtype": "Select",
+      "read_only": 1,
+      "options": "Design Code\nMood Board"
+    },
+    {
+      "fieldname": "reference_name",
+      "label": "Record",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "body",
+      "label": "Message",
+      "fieldtype": "Long Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "reply_to",
+      "label": "Reply To",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "attachment_url",
+      "label": "Attachment",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "attachment_name",
+      "label": "Attachment Name",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "is_image",
+      "label": "Image",
+      "fieldtype": "Check",
+      "read_only": 1
+    },
+    {
+      "fieldname": "is_removed",
+      "label": "Removed",
+      "fieldtype": "Check",
+      "read_only": 1
+    },
+    {
+      "fieldname": "revision",
+      "label": "Revision",
+      "fieldtype": "Int",
+      "read_only": 1
+    },
+    {
+      "fieldname": "history_json",
+      "label": "History",
+      "fieldtype": "Long Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "is_archived",
+      "label": "Archived",
+      "fieldtype": "Check",
+      "read_only": 1,
+      "default": "0"
+    },
+    {
+      "fieldname": "mentions_json",
+      "label": "Mentions",
+      "fieldtype": "Long Text",
+      "read_only": 1
+    },
+    {
+      "fieldname": "is_system",
+      "label": "System Update",
+      "fieldtype": "Check",
+      "read_only": 1
+    },
+    {
+      "fieldname": "source_event",
+      "label": "Workflow Event",
+      "fieldtype": "Data",
+      "read_only": 1
+    },
+    {
+      "fieldname": "attachment_file_id",
+      "label": "Managed Attachment File",
+      "fieldtype": "Link",
+      "options": "File",
+      "read_only": 1
+    },
+    {
+      "fieldname": "attachment_size",
+      "label": "Attachment Size (bytes)",
+      "fieldtype": "Int",
+      "read_only": 1,
+      "default": "0"
+    },
+    {
+      "fieldname": "attachment_expires_on",
+      "label": "Attachment Expires On",
+      "fieldtype": "Datetime",
+      "read_only": 1
+    },
+    {
+      "fieldname": "attachment_expired",
+      "label": "Attachment Expired",
+      "fieldtype": "Check",
+      "read_only": 1,
+      "default": "0"
+    }
+  ],
+  "field_order": [
+    "reference_doctype",
+    "reference_name",
+    "body",
+    "reply_to",
+    "attachment_url",
+    "attachment_name",
+    "attachment_file_id",
+    "attachment_size",
+    "attachment_expires_on",
+    "attachment_expired",
+    "is_image",
+    "is_removed",
+    "revision",
+    "history_json",
+    "is_archived",
+    "mentions_json",
+    "is_system",
+    "source_event"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1
+    },
+    {
+      "role": "Marina Design Participant",
+      "read": 1
+    }
+  ],
+  "sort_field": "creation",
+  "sort_order": "DESC"
+}

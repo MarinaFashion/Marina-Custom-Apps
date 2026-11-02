@@ -1,0 +1,35 @@
+{
+  "doctype": "Page",
+  "name": "design-management-dashboard",
+  "page_name": "design-management-dashboard",
+  "module": "Marina Design Management",
+  "title": "Design Management Dashboard",
+  "standard": "Yes",
+  "system_page": 0,
+  "roles": [
+    {
+      "role": "System Manager"
+    },
+    {
+      "role": "Marina Design Management"
+    },
+    {
+      "role": "Marina Merchandising Supervisor"
+    },
+    {
+      "role": "Marina China Office Manager"
+    },
+    {
+      "role": "Marina Design Team"
+    },
+    {
+      "role": "Marina Merchandiser"
+    },
+    {
+      "role": "Marina QC Reviewer"
+    },
+    {
+      "role": "Marina Design Participant"
+    }
+  ]
+}

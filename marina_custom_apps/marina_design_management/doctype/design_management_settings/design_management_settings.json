@@ -1,0 +1,131 @@
+{
+  "doctype": "DocType",
+  "name": "Design Management Settings",
+  "module": "Marina Design Management",
+  "custom": 0,
+  "istable": 0,
+  "is_submittable": 0,
+  "track_changes": 1,
+  "engine": "InnoDB",
+  "fields": [
+    {
+      "fieldname": "sb_factory_config",
+      "label": "Factory Configuration",
+      "fieldtype": "Section Break",
+      "description": "Legacy factory names retained for migration. Maintain factories in Factory List.",
+      "hidden": 1
+    },
+    {
+      "fieldname": "factory_list",
+      "label": "Factory List",
+      "fieldtype": "Text",
+      "description": "Legacy factory names retained for migration only.",
+      "hidden": 1,
+      "read_only": 1
+    },
+    {
+      "fieldname": "factory_defaults_v51_applied",
+      "label": "Release 5.1 Master Defaults Updated",
+      "fieldtype": "Check",
+      "default": 0,
+      "hidden": 1,
+      "read_only": 1,
+      "print_hide": 1
+    },
+    {
+      "fieldname": "sb_item_creation",
+      "label": "One-Time ERPNext Item Creation",
+      "fieldtype": "Section Break",
+      "description": "Configure direct mappings for future Item creation only. Changes never update existing ERPNext Items."
+    },
+    {
+      "fieldname": "item_creation_item_group",
+      "label": "Created Item Group",
+      "fieldtype": "Link",
+      "options": "Item Group",
+      "description": "Required for controlled one-time Item creation."
+    },
+    {
+      "fieldname": "item_creation_stock_uom",
+      "label": "Created Stock UOM",
+      "fieldtype": "Link",
+      "options": "UOM",
+      "description": "Stock and barcode UOM for the generated variants."
+    },
+    {
+      "fieldname": "item_field_mappings",
+      "label": "Item Field Mappings",
+      "fieldtype": "Table",
+      "options": "Design Item Field Mapping",
+      "description": "Administrator-managed field mappings from Design Code or Production Item to ERPNext Item. Item creation requires a separate preview and confirmation."
+    },
+    {
+      "fieldname": "sb_discussion_retention",
+      "label": "Discussion Attachment Retention",
+      "fieldtype": "Section Break",
+      "description": "Applies only to new private attachments sent from Design Code and Mood Board discussions. Changes do not alter expiry dates of previously uploaded files."
+    },
+    {
+      "fieldname": "discussion_retention_threshold_mb",
+      "label": "Keep Chat Attachments Without Expiry Up To (MB)",
+      "fieldtype": "Int",
+      "default": "50",
+      "reqd": 1,
+      "description": "Files at or below this size stay available without automatic expiry. Files strictly larger receive an expiry date. 1 MB = 1,048,576 bytes. Allowed range: 1–500 MB."
+    },
+    {
+      "fieldname": "discussion_retention_days",
+      "label": "Large Chat Attachment Retention (Days)",
+      "fieldtype": "Int",
+      "default": "14",
+      "reqd": 1,
+      "description": "Files above the threshold expire this many calendar days after upload. Allowed range: 1–365 days. The daily cleanup removes expired attachments without deleting chat messages."
+    },
+    {
+      "fieldname": "sb_module_security",
+      "label": "Security & Permissions",
+      "fieldtype": "Section Break",
+      "description": "Use the 13 approved module roles. Assign each user a role, then enable enforcement after completing Demo role UAT."
+    },
+    {
+      "fieldname": "module_rbac_enabled",
+      "label": "Enforce Module Role Permissions",
+      "fieldtype": "Check",
+      "default": 0,
+      "description": "Safe rollout: when unchecked, existing ERPNext permissions remain effective. When checked, configured role permissions further restrict module access."
+    },
+    {
+      "fieldname": "module_user_roles",
+      "label": "Module User Roles",
+      "fieldtype": "Table",
+      "options": "Design Module User Role",
+      "description": "Assign one or more configured Marina Design module roles per ERPNext User."
+    },
+    {
+      "fieldname": "factory_master_migrated",
+      "label": "Factory Master Migrated",
+      "fieldtype": "Check",
+      "default": "0",
+      "hidden": 1,
+      "read_only": 1
+    }
+  ],
+  "field_order": [
+    "sb_factory_config",
+    "factory_list",
+    "factory_defaults_v51_applied",
+    "sb_item_creation",
+    "item_creation_item_group",
+    "item_creation_stock_uom",
+    "item_field_mappings",
+    "sb_discussion_retention",
+    "discussion_retention_threshold_mb",
+    "discussion_retention_days",
+    "sb_module_security",
+    "module_rbac_enabled",
+    "module_user_roles",
+    "factory_master_migrated"
+  ],
+  "permissions": [],
+  "issingle": 1
+}

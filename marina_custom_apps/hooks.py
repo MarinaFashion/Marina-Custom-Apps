@@ -81,3 +81,63 @@ has_permission = {
     "SOP Document": "marina_custom_apps.sop_management.permissions.sop_document_permission",
     "SOP Version": "marina_custom_apps.sop_management.permissions.sop_version_permission",
 }
+
+# DESIGN MANAGEMENT INTEGRATION (independent Frappe business module)
+# App shell stays marina_custom_apps; DocType/Workspace module is
+# "Marina Design Management" and retains its business role permissions.
+app_include_js = list(globals().get("app_include_js", [])) + [
+    "/assets/marina_custom_apps/js/marina_usernames.js",
+    "/assets/marina_custom_apps/js/marina_discussions.js",
+]
+scheduler_events.setdefault("daily", []).append(
+    "marina_custom_apps.design_management.discussion_retention.expire_large_attachments"
+)
+
+permission_query_conditions.update({
+    "Mood Board": "marina_custom_apps.design_management.security.permissions.mood_board_query",
+    "Design Code": "marina_custom_apps.design_management.security.permissions.design_code_query",
+    "Design Document": "marina_custom_apps.design_management.security.permissions.document_query",
+    "Design Cost Breakdown": "marina_custom_apps.design_management.security.permissions.cost_breakdown_query",
+    "Production Colorway": "marina_custom_apps.design_management.security.permissions.colorway_query",
+    "Marina Discussion Message": "marina_custom_apps.design_management.discussions.query_condition",
+    "File": "marina_custom_apps.design_management.discussions.file_query_condition",
+})
+has_permission.update({
+    "Mood Board": "marina_custom_apps.design_management.security.permissions.mood_board_permission",
+    "Design Code": "marina_custom_apps.design_management.security.permissions.design_code_permission",
+    "Design Document": "marina_custom_apps.design_management.security.permissions.document_permission",
+    "Design Cost Breakdown": "marina_custom_apps.design_management.security.permissions.cost_breakdown_permission",
+    "Production Colorway": "marina_custom_apps.design_management.security.permissions.colorway_permission",
+    "Marina Discussion Message": "marina_custom_apps.design_management.discussions.has_permission",
+    "File": "marina_custom_apps.design_management.discussions.file_permission",
+})
+for _mdm_dt, _mdm_code in {
+    "Design Milestone Type": "design_milestone_type",
+    "Marina Fashion Category": "marina_fashion_category",
+    "Marina Pantone": "marina_pantone",
+    "Design Document Type": "design_document_type",
+    "Design Management Settings": "design_management_settings",
+    "Design Item Creation": "design_item_creation",
+    "Design Cleanup Log": "design_cleanup_log",
+    "Design Module Role": "design_module_role",
+}.items():
+    permission_query_conditions[_mdm_dt] = (
+        "marina_custom_apps.design_management.security.permissions." + _mdm_code + "_query"
+    )
+    has_permission[_mdm_dt] = (
+        "marina_custom_apps.design_management.security.permissions.module_reference_permission"
+    )
+del _mdm_dt, _mdm_code
+
+doc_events.setdefault("Item Attribute", {})["on_update"] = (
+    "marina_custom_apps.design_management.setup.size_reference.sync_when_size_changed"
+)
+for _mdm_parent in ("Design Code", "Mood Board"):
+    doc_events.setdefault(_mdm_parent, {})["on_trash"] = (
+        "marina_custom_apps.design_management.discussions.archive_on_parent_delete"
+    )
+del _mdm_parent
+
+# On an already-installed app, migration does not run bench install-app's
+# add_module_defs(). Create the module identity BEFORE schema sync.
+before_migrate = "marina_custom_apps.design_management.setup.module_ownership.ensure_design_module"

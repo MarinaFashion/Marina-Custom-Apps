@@ -1,0 +1,127 @@
+{
+  "doctype": "DocType",
+  "name": "Design Milestone Execution",
+  "module": "Marina Design Management",
+  "custom": 0,
+  "istable": 0,
+  "autoname": "hash",
+  "fields": [
+    {
+      "fieldname": "design_code",
+      "label": "Design Code",
+      "fieldtype": "Link",
+      "options": "Design Code",
+      "reqd": 1,
+      "search_index": 1
+    },
+    {
+      "fieldname": "plan_entry",
+      "label": "Plan Entry",
+      "fieldtype": "Link",
+      "options": "Design Milestone Plan Entry",
+      "reqd": 1,
+      "unique": 1
+    },
+    {
+      "fieldname": "milestone_type",
+      "label": "Milestone",
+      "fieldtype": "Link",
+      "options": "Design Milestone Type",
+      "reqd": 1
+    },
+    {
+      "fieldname": "status",
+      "label": "Current Step",
+      "fieldtype": "Select",
+      "options": "Ready to Start\nIn Progress\nReady\nRework\nCompleted",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "current_custodian",
+      "label": "Custodian",
+      "fieldtype": "Link",
+      "options": "User",
+      "search_index": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "current_role",
+      "label": "Custody Role",
+      "fieldtype": "Link",
+      "options": "Design Module Role"
+    },
+    {
+      "fieldname": "step_entered_on",
+      "label": "Step Entered On",
+      "fieldtype": "Datetime"
+    },
+    {
+      "fieldname": "latest_note",
+      "label": "Latest Note",
+      "fieldtype": "Small Text",
+      "read_only": 1,
+      "description": "Latest workflow note or manager-entered follow-up note; full audit retained in Custody Events."
+    },
+    {
+      "fieldname": "due_date",
+      "label": "Target Date",
+      "fieldtype": "Date",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "rework_count",
+      "label": "Rework Count",
+      "fieldtype": "Int",
+      "default": 0
+    },
+    {
+      "fieldname": "completed_by",
+      "label": "Completed By",
+      "fieldtype": "Link",
+      "options": "User"
+    },
+    {
+      "fieldname": "completed_on",
+      "label": "Completed On",
+      "fieldtype": "Datetime"
+    },
+    {
+      "fieldname": "evidence_document",
+      "label": "Evidence Document",
+      "fieldtype": "Link",
+      "options": "Design Document"
+    },
+    {
+      "fieldname": "last_action_on",
+      "label": "Last Action On",
+      "fieldtype": "Datetime"
+    }
+  ],
+  "field_order": [
+    "design_code",
+    "plan_entry",
+    "milestone_type",
+    "status",
+    "current_custodian",
+    "current_role",
+    "step_entered_on",
+    "latest_note",
+    "due_date",
+    "rework_count",
+    "completed_by",
+    "completed_on",
+    "evidence_document",
+    "last_action_on"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "export": 1,
+      "create": 0,
+      "write": 0,
+      "delete": 0
+    }
+  ]
+}
