@@ -64,6 +64,40 @@ class ConsolidationContracts(unittest.TestCase):
             self.assertIn(pkg, packages)
         self.assertTrue((ROOT / "MANIFEST.in").is_file())
 
+    def test_design_select_options_and_role_seeds(self):
+        """Select definitions must use actual newlines, not literal backslash-n."""
+        for schema in sorted((MODULE / "doctype").glob("*/*.json")):
+            definition = json.loads(schema.read_text())
+            for field in definition.get("fields", []):
+                if field.get("fieldtype") != "Select":
+                    continue
+                options = field.get("options") or ""
+                with self.subTest(doctype=definition.get("name"), field=field.get("fieldname")):
+                    self.assertNotIn("\\n", options, "Escape sequences must be real line breaks")
+                    default = field.get("default")
+                    if default not in (None, ""):
+                        self.assertIn(str(default), options.split("\n"))
+
+        org_source = (DESIGN / "security" / "organization.py").read_text()
+        tree = ast.parse(org_source)
+        groups = next(
+            ast.literal_eval(node.value)
+            for node in tree.body
+            if isinstance(node, ast.Assign)
+            and any(isinstance(t, ast.Name) and t.id == "DEFAULT_GROUPS"
+                    for t in node.targets)
+        )
+        role_schema = json.loads(
+            (MODULE / "doctype" / "design_module_role" / "design_module_role.json").read_text()
+        )
+        group_field = next(
+            field for field in role_schema["fields"]
+            if field.get("fieldname") == "responsibility_group"
+        )
+        allowed = set(group_field["options"].split("\n"))
+        self.assertTrue({"Other", "Buying"} <= allowed)
+        self.assertTrue(set(groups.values()) <= allowed)
+
     def test_no_old_imports_or_wrong_namespace(self):
         bad=[]
         for root in (DESIGN,MODULE):
