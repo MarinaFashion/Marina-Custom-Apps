@@ -27,7 +27,9 @@ def eligible_user(user, table):
 
 
 def can_manage_documents(user):
-    return can_doctype("Design Document", "write", user) is True
+    # None means module RBAC is disabled; native Frappe permissions still apply.
+    # Explicit module denials remain enforced when RBAC is enabled.
+    return can_doctype("Design Document", "write", user) is not False
 
 
 def can_assign_design(user, design_name):
