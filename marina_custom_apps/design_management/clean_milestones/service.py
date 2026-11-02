@@ -33,9 +33,8 @@ def _lock_design(name):
 
 
 def _design(name):
-    if not enabled():
-        frappe.throw("Enable Design Module Role Permissions before using milestone workflow",
-                     frappe.PermissionError)
+    # Reading milestones does not require optional module RBAC enforcement.
+    # Native Design Code read permission remains mandatory.
     design = frappe.get_doc("Design Code", name)
     design.check_permission("read")
     return design
