@@ -98,6 +98,24 @@ class ConsolidationContracts(unittest.TestCase):
         self.assertTrue({"Other", "Buying"} <= allowed)
         self.assertTrue(set(groups.values()) <= allowed)
 
+    def test_mood_board_import_list_and_document_permissions(self):
+        source = (DESIGN / "security" / "permissions.py").read_text()
+        # A System Manager must always see imported data even if no Design
+        # Module Role has been assigned on a freshly installed demo.
+        self.assertIn('def _design_system_admin(user):', source)
+        self.assertIn('user == "Administrator" or "System Manager" in frappe.get_roles(user)', source)
+        self.assertIn('if _design_system_admin(user) or has_overall_visibility(user):', source)
+        # An authorized importer can view a new board while no active team
+        # exists; once assigned, visibility follows custody instead.
+        self.assertIn('"((`tabMood Board`.owner="+esc+" AND NOT EXISTS ("', source)
+        self.assertIn('if doc.owner == user and not any(', source)
+        self.assertIn('"parentfield":"r22_team_assignments"', source)
+        # Match list query's linked Design Code / team visibility on open.
+        self.assertIn('assigned_scope_sql(user,"d")', source)
+        self.assertIn('"SELECT 1 FROM `tabDesign Code` d WHERE d.mood_board=%s AND "', source)
+        self.assertIn('" LIMIT 1"', source)
+        self.assertIn('if can_doctype("Mood Board","read",user) is False:', source)
+
     def test_no_old_imports_or_wrong_namespace(self):
         bad=[]
         for root in (DESIGN,MODULE):
