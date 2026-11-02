@@ -89,9 +89,8 @@ def descendants(role):
 def user_roles(user):
     if not user:
         return set()
-    from marina_custom_apps.design_management.security.role_access import enabled
-    if not enabled():
-        return set()
+    # Module role membership is independent of RBAC enforcement.
+    # RBAC toggles authorization checks, not active staff assignments.
     cache = getattr(frappe.local, "_marina_org_user_roles", None)
     if cache is None:
         cache = {}
