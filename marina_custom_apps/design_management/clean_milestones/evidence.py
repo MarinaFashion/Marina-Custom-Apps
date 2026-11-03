@@ -4,7 +4,7 @@ A valid document can be Published independently of a Design Code. On milestone
 confirmation, the authorized custodian may explicitly bind the selected
 Published document to this Design Code and milestone in the SAME transaction.
 An existing per-Design milestone mapping is never silently overwritten.
-Document Type remains advisory; file access is permission scoped.
+Required Evidence Type is enforced for every approval path; file access is permission scoped.
 """
 import json
 
@@ -18,8 +18,8 @@ def matches_milestone(assignment_target, document_target, milestone_type):
     return (assignment_target or document_target) == milestone_type
 
 
-def matching_published_documents(design_code, milestone_type):
-    """Bounded, permission-filtered lookup without document-type restriction."""
+def matching_published_documents(design_code, milestone_type, evidence_type=None):
+    """Bounded, permission-filtered lookup with required evidence-type matching."""
     if not design_code or not milestone_type:
         return []
     links = frappe.get_all(
@@ -44,7 +44,8 @@ def matching_published_documents(design_code, milestone_type):
     # Permissions are applied by get_list; get_all could expose private files.
     docs = frappe.get_list(
         "Design Document",
-        filters={"name": ["in", names], "publication_status": "Published"},
+        filters={"name": ["in", names], "publication_status": "Published",
+                 **({"document_type": evidence_type} if evidence_type else {})},
         fields=["name", "document_title", "document_type",
                 "related_milestone_type"],
         order_by="modified desc, name desc",
@@ -62,12 +63,18 @@ def matching_published_documents(design_code, milestone_type):
     ]
 
 
-def evidence_document_details(design_code, milestone_type, document_name):
+def evidence_document_details(design_code, milestone_type, document_name, evidence_type=None):
     """Inspect evidence with document read permission and immutable mappings."""
     doc = frappe.get_doc("Design Document", document_name)
     doc.check_permission("read")
     if doc.publication_status != "Published":
         frappe.throw("Only Published Design Documents can confirm a milestone")
+    if evidence_type and doc.document_type != evidence_type:
+        frappe.throw(
+            "Evidence Type mismatch: " + milestone_type +
+            " requires '" + evidence_type + "', but the selected document is '" +
+            str(doc.document_type or "") + "'"
+        )
     rows = [r for r in doc.get("assignments") or []
             if r.design_code == design_code]
     if len(rows) > 1:
@@ -126,7 +133,7 @@ def required_document(design_code, milestone_type, evidence_type, selected=None,
         frappe.throw("Step requires an Evidence Type in milestone configuration")
     if selected:
         doc, linked = evidence_document_details(
-            design_code, milestone_type, selected)
+            design_code, milestone_type, selected, evidence_type)
         if not linked:
             if not confirm_link:
                 frappe.throw(
@@ -134,11 +141,13 @@ def required_document(design_code, milestone_type, evidence_type, selected=None,
                     design_code + " / Milestone " + milestone_type)
             _bind_to_milestone(doc, design_code, milestone_type)
         return doc.name
-    docs = matching_published_documents(design_code, milestone_type)
+    docs = matching_published_documents(design_code, milestone_type, evidence_type)
     if not docs:
         frappe.throw("Select a Published Design Document to confirm " + milestone_type)
     if len(docs) > 1:
         frappe.throw("Select which Published Design Document confirms this step")
+    # Revalidate the chosen document when completing the step.
+    evidence_document_details(design_code, milestone_type, docs[0].name, evidence_type)
     return docs[0].name
 
 
@@ -166,11 +175,17 @@ def preview_evidence_link(design_code, milestone_type, document_name):
         ["plan_state", "workflow_snapshot_json"], as_dict=True)
     if not plan or plan.plan_state != "Active":
         frappe.throw("The selected milestone is not Active")
-    if not any(r["requires_evidence"] for r in
-               configured_steps(json.loads(plan.workflow_snapshot_json)["steps"])):
+    required_types = {
+        row["evidence_type"] for row in
+        configured_steps(json.loads(plan.workflow_snapshot_json)["steps"])
+        if row["requires_evidence"]
+    }
+    if not required_types:
         frappe.throw("This milestone does not require document evidence")
     doc, linked = evidence_document_details(
         design_code, milestone_type, document_name)
+    if doc.document_type not in required_types:
+        frappe.throw("Evidence Type does not match the selected milestone workflow")
     return {
         "document": doc.name, "document_title": doc.document_title,
         "document_type": doc.document_type,
@@ -215,10 +230,11 @@ def search_milestone_evidence(doctype, txt, searchfield, start, page_len, filter
         return []
 
     snapshot = json.loads(plan.workflow_snapshot_json)
-    if not any(
-        row["requires_evidence"]
-        for row in configured_steps(snapshot["steps"])
-    ):
+    required_types = {
+        row["evidence_type"] for row in configured_steps(snapshot["steps"])
+        if row["requires_evidence"]
+    }
+    if not required_types:
         return []
 
     # The picker may offer an unassigned Published document. Document
@@ -228,7 +244,8 @@ def search_milestone_evidence(doctype, txt, searchfield, start, page_len, filter
         return []
     per_page = min(50, max(1, int(page_len)))
     query = {
-        "filters": {"publication_status": "Published"},
+        "filters": {"publication_status": "Published",
+                    "document_type": ["in", sorted(required_types)]},
         "fields": ["name", "document_title", "related_milestone_type"],
         "order_by": "modified desc, name desc",
         "limit_start": max(0, int(start)),
