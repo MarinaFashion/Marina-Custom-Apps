@@ -105,14 +105,29 @@
       "fieldname": "sb_workspace_visibility",
       "label": "Design Workspace Visibility",
       "fieldtype": "Section Break",
-      "description": "Control which shortcuts appear by Marina Design Module Role. Navigation visibility does not grant page or document permissions."
+      "description": "Control each workspace link using a checkbox matrix of active module users. This changes navigation only, not actual permissions."
+    },
+    {
+      "fieldname": "workspace_visibility_matrix",
+      "label": "Workspace Visibility by User",
+      "fieldtype": "HTML",
+      "description": "Workspace items on rows, active module users on columns. Checkbox changes are saved with Settings."
+    },
+    {
+      "fieldname": "workspace_user_visibility",
+      "label": "User Visibility Overrides",
+      "fieldtype": "Table",
+      "options": "Design Workspace User Visibility",
+      "hidden": 1,
+      "description": "Stores explicit visible and hidden settings per user and workspace item."
     },
     {
       "fieldname": "workspace_visibility_rules",
       "label": "Workspace Item Visibility by Role",
       "fieldtype": "Table",
       "options": "Design Workspace Visibility Rule",
-      "description": "For each workspace item, add one row per permitted module role. If no row exists, standard visibility applies; management items have restricted defaults."
+      "description": "Legacy module-role navigation rules; only used as fallback when no user-specific rule exists.",
+      "hidden": 1
     },
     {
       "fieldname": "sb_module_security",
@@ -158,6 +173,8 @@
     "use_custom_mood_board_team_template",
     "mood_board_base_team",
     "sb_workspace_visibility",
+    "workspace_visibility_matrix",
+    "workspace_user_visibility",
     "workspace_visibility_rules",
     "sb_module_security",
     "module_rbac_enabled",
