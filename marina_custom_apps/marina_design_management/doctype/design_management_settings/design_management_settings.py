@@ -77,6 +77,22 @@ class DesignManagementSettings(Document):
                 defaults.add(role)
         if self.use_custom_mood_board_team_template and not any(r[2] for r in new_template):
             frappe.throw("Configure at least one active Base Team assignment before enabling the template")
+        # Navigation rules are independent of module RBAC enforcement.
+        visibility = [(r.workspace_item, r.module_role) for r in
+                      (self.workspace_visibility_rules or [])]
+        old_visibility = [(r.workspace_item, r.module_role) for r in
+                          ((prior.workspace_visibility_rules or []) if prior else [])]
+        if visibility != old_visibility and frappe.session.user != "Administrator" and "System Manager" not in frappe.get_roles():
+            frappe.throw("Only System Manager may change workspace visibility", frappe.PermissionError)
+        from marina_custom_apps.design_management.workspace_visibility import WORKSPACE_ITEMS
+        if len(visibility) > 200:
+            frappe.throw("Too many workspace visibility rules (maximum 200)")
+        if len(set(visibility)) != len(visibility):
+            frappe.throw("Duplicate workspace item/module role visibility rule")
+        valid_roles = set(role_catalog())
+        for item, role in visibility:
+            if item not in WORKSPACE_ITEMS or role not in valid_roles:
+                frappe.throw("Workspace visibility requires a valid item and enabled module role")
         from marina_custom_apps.design_management.security.role_access import validate_settings
         validate_settings(self)
         users = sorted({r.user for r in (self.module_user_roles or []) if r.user})
