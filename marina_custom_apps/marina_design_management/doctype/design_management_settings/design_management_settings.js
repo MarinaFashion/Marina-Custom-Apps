@@ -10,7 +10,7 @@ frappe.ui.form.on("Design Management Settings", {
         }));
     },
     onload(frm) { marina_mapping_initialize(frm); },
-    refresh(frm) { marina_mapping_initialize(frm); }
+    refresh(frm) { marina_mapping_initialize(frm); marina_workspace_visibility_matrix(frm); }
 });
 
 frappe.ui.form.on("Design Item Field Mapping", {
@@ -98,4 +98,64 @@ function marina_mapping_apply_row(frm, grid_row) {
             if (typeof control.set_data === "function") control.set_data(suggestions);
         }
     }
+}
+
+/* User-centric workspace matrix. The hidden child table is authoritative;
+   the HTML matrix is only a convenient editor for explicit user/item choices. */
+function marina_workspace_visibility_matrix(frm) {
+    const $area=frm.fields_dict.workspace_visibility_matrix?.$wrapper;
+    if(!$area?.length)return;
+    const esc=frappe.utils.escape_html;
+    const admin=frappe.user.has_role("System Manager") || frappe.session.user==="Administrator";
+    if(!admin){
+        $area.text(__("Only System Manager may edit workspace visibility."));
+        return;
+    }
+    $area.html('<p class="text-muted">'+esc(__("Loading workspace visibility…"))+'</p>');
+    frappe.call({
+        method:"marina_custom_apps.design_management.workspace_visibility.workspace_user_matrix"
+    }).then(({message:data})=>{
+        if(!data || !frm.fields_dict.workspace_visibility_matrix)return;
+        const users=data.users||[], items=data.items||[];
+        const saved=new Map((frm.doc.workspace_user_visibility||[]).map(row=>
+            [row.workspace_item+"\u0000"+row.user,row]));
+        const header='<th style="position:sticky;left:0;background:#fff;z-index:3;min-width:210px">'+
+            esc(__("Workspace Item"))+'</th>'+users.map(u=>
+            '<th style="min-width:125px;white-space:nowrap;text-align:center">'+
+            esc(u.label)+'</th>').join('');
+        const body=items.map(item=>
+            '<tr><th style="position:sticky;left:0;background:#fff;z-index:2;white-space:nowrap">'+
+            esc(item)+'</th>'+users.map(u=>{
+                const rule=saved.get(item+"\u0000"+u.user);
+                const checked=rule ? !!Number(rule.visible) : !!data.fallback?.[u.user]?.[item];
+                const disabled=frm.has_perm && !frm.has_perm("write");
+                return '<td style="text-align:center"><input type="checkbox" class="marina-visibility-check" '+
+                    'data-item="'+esc(item)+'" data-user="'+esc(u.user)+'" '+
+                    (checked?'checked ':'')+(disabled?'disabled ':'')+
+                    'aria-label="'+esc(item+" / "+u.label)+'"></td>';
+            }).join('')+'</tr>').join('');
+        $area.html('<p class="small text-muted">'+
+            esc(__("Checked = show, unchecked = hide. Save Settings to apply changes. Scroll horizontally for more users."))+
+            '</p><div style="overflow:auto;max-height:540px;border:1px solid #ddd;border-radius:6px">'+
+            '<table class="table table-bordered table-sm" style="width:max-content;min-width:100%;margin:0">'+
+            '<thead style="position:sticky;top:0;background:white;z-index:4"><tr>'+header+
+            '</tr></thead><tbody>'+body+'</tbody></table></div>');
+        $area.off("change.marinaVisibility").on("change.marinaVisibility",".marina-visibility-check",function(){
+            const item=$(this).attr("data-item"),user=$(this).attr("data-user");
+            const key=item+"\u0000"+user;
+            const visible=$(this).prop("checked")?1:0;
+            const existing=saved.get(key);
+            if(existing){
+                frappe.model.set_value(existing.doctype,existing.name,"visible",visible);
+            }else{
+                const row=frm.add_child("workspace_user_visibility",{
+                    workspace_item:item,user,visible
+                });
+                saved.set(key,row);
+                frm.dirty();
+            }
+        });
+    }).catch(()=>{
+        $area.text(__("Unable to load workspace visibility. Please retry."));
+    });
 }
