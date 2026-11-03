@@ -93,6 +93,26 @@ class DesignManagementSettings(Document):
         for item, role in visibility:
             if item not in WORKSPACE_ITEMS or role not in valid_roles:
                 frappe.throw("Workspace visibility requires a valid item and enabled module role")
+        direct_visibility = [
+            (r.workspace_item, r.user, int(r.visible or 0))
+            for r in (self.workspace_user_visibility or [])
+        ]
+        old_direct = [
+            (r.workspace_item, r.user, int(r.visible or 0))
+            for r in ((prior.workspace_user_visibility or []) if prior else [])
+        ]
+        if direct_visibility != old_direct and frappe.session.user != "Administrator" and "System Manager" not in frappe.get_roles():
+            frappe.throw("Only System Manager may modify workspace user visibility", frappe.PermissionError)
+        if len(direct_visibility) > 1500:
+            frappe.throw("Workspace visibility supports at most 1,500 user/item settings")
+        identities = [(item, user) for item, user, _ in direct_visibility]
+        if len(set(identities)) != len(identities):
+            frappe.throw("Duplicate user and workspace item visibility rule")
+        permitted_users = {r.user for r in (self.module_user_roles or []) if r.active}
+        permitted_users.add("Administrator")
+        for item, user, visible in direct_visibility:
+            if item not in WORKSPACE_ITEMS or user not in permitted_users or visible not in (0, 1):
+                frappe.throw("Workspace visibility requires a valid item and active module user")
         from marina_custom_apps.design_management.security.role_access import validate_settings
         validate_settings(self)
         users = sorted({r.user for r in (self.module_user_roles or []) if r.user})
