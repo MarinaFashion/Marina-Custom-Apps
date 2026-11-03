@@ -1,0 +1,38 @@
+{
+  "doctype": "DocType",
+  "name": "Design Workspace User Visibility",
+  "module": "Marina Design Management",
+  "custom": 0,
+  "istable": 1,
+  "engine": "InnoDB",
+  "fields": [
+    {
+      "fieldname": "workspace_item",
+      "label": "Workspace Item",
+      "fieldtype": "Data",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "user",
+      "label": "User",
+      "fieldtype": "Link",
+      "options": "User",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "visible",
+      "label": "Visible",
+      "fieldtype": "Check",
+      "default": 1,
+      "in_list_view": 1
+    }
+  ],
+  "field_order": [
+    "workspace_item",
+    "user",
+    "visible"
+  ],
+  "permissions": []
+}
