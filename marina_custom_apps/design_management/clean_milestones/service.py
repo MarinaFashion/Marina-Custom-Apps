@@ -195,7 +195,7 @@ def _activate(design, trigger_name=None, trigger_step=None, trigger_steps=None,
                 matching_published_documents, evidence_document_details,
             )
             documents = matching_published_documents(
-                design.name, plan.milestone_type)
+                design.name, plan.milestone_type, first["evidence_type"])
             if len(documents) != 1:
                 frappe.throw(
                     "One Published Design Document must be linked to " +
@@ -210,7 +210,8 @@ def _activate(design, trigger_name=None, trigger_step=None, trigger_steps=None,
                 (documents[0].name,),
             )
             verified, linked = evidence_document_details(
-                design.name, plan.milestone_type, documents[0].name)
+                design.name, plan.milestone_type, documents[0].name,
+                first["evidence_type"])
             if not linked:
                 frappe.throw("Published evidence assignment changed during initialization")
             evidence = verified.name
