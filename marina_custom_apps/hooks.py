@@ -141,3 +141,14 @@ del _mdm_parent
 # On an already-installed app, migration does not run bench install-app's
 # add_module_defs(). Create the module identity BEFORE schema sync.
 before_migrate = "marina_custom_apps.design_management.setup.module_ownership.ensure_design_module"
+
+# Marina Design Management workspace navigation (Frappe v15).
+# Both wrappers delegate to the original Frappe implementation and affect
+# only the Marina Design Management workspace, not other app workspaces.
+override_whitelisted_methods = dict(globals().get("override_whitelisted_methods", {}))
+override_whitelisted_methods.update({
+    "frappe.desk.desktop.get_workspace_sidebar_items":
+        "marina_custom_apps.design_management.workspace_visibility.get_workspace_sidebar_items",
+    "frappe.desk.desktop.get_desktop_page":
+        "marina_custom_apps.design_management.workspace_visibility.get_desktop_page",
+})
