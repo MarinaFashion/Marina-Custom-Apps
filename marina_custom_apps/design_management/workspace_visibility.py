@@ -73,7 +73,8 @@ def _visibility(user=None):
     def visible(item):
         if item not in WORKSPACE_ITEMS or administrator:
             return True
-        return bool(roles & allowed.get(item, DEFAULT_RESTRICTED.get(item, roles or set())))
+        restricted = allowed.get(item, DEFAULT_RESTRICTED.get(item))
+        return restricted is None or bool(roles & restricted)
 
     return visible
 
