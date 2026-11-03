@@ -202,7 +202,20 @@ def get_grid(page=1, page_size=50, search=None, mood_board=None,
             ["Design Code", "design_number", "like", term],
             ["Design Code", "mood_board", "like", term],
         ]
-    designs = frappe.get_list("Design Code",
+    # The Follow-Up Grid is a shared operational overview: authorized
+    # Design Participants may view all Design Codes, not only designs in
+    # their own assignments. The optional Designer/Custody filters remain
+    # opt-in. This read-only scope does not authorize milestone actions.
+    #
+    # Users without the Design Participant role retain the normal
+    # record-scoped Design Code query permissions.
+    broad_grid_read = (
+        frappe.session.user == "Administrator"
+        or "System Manager" in frappe.get_roles(frappe.session.user)
+        or "Marina Design Participant" in frappe.get_roles(frappe.session.user)
+    )
+    design_query = frappe.get_all if broad_grid_read else frappe.get_list
+    designs = design_query("Design Code",
         filters=filters,
         fields=["name", "design_number", "image", "mood_board",
                 "designer", "assigned_merchandiser", "development_stage",
