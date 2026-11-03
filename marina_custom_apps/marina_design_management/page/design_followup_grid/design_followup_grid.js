@@ -897,23 +897,10 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
         }).catch(()=>{wrapper.__marina_plan_launch_token=null;});
     };
     wrapper.marina_open_plan_from_route();
-    // One initial eligibility check. If the user has readable active work
-    // in custody, default to it. Keep a route-specific Design Code visible
-    // even if another user currently holds its milestones.
-    // frappe.call returns a jQuery Deferred in Frappe v15. Unlike native
-    // Promises, jQuery Deferred does not implement .finally(). Normalize
-    // BEFORE chaining: otherwise page initialization throws synchronously,
-    // and the Follow-Up Grid stays completely blank.
-    Promise.resolve(endpoint("has_my_current_custody",{})).then(eligible=>{
-        if(eligible && !frappe.get_route()[1]){
-            return custody.set_value(frappe.session.user);
-        }
-    }).catch(error=>{
-        console.warn("Unable to check default Custody filter",error);
-    }).finally(()=>{
-        custodyReady=true;
-        wrapper.marina_sync_design_route();
-    });
+    // Start with all visible designs. Designer and Custody are optional
+    // filters; users can select themselves via "Assigned to Me".
+    custodyReady=true;
+    wrapper.marina_sync_design_route();
 };
 frappe.pages["design-followup-grid"].on_page_show = function(wrapper) {
     wrapper.marina_sync_design_route?.(true);
