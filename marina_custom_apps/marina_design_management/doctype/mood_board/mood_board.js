@@ -2,9 +2,13 @@
    A Design Team Assignment needs a User before the Mood Board can be saved.
    No roles/Users are persisted until the user saves the parent document. */
 function marina_mood_missing_base_roles(base_roles, assignments) {
-    const existing=new Set((assignments||[])
-        .map(row=>row.module_role).filter(Boolean));
-    return (base_roles||[]).filter(row=>!existing.has(row.module_role));
+    const rows=assignments||[];
+    const pairs=new Set(rows.filter(row=>row.module_role && row.user)
+        .map(row=>row.module_role+"\\0"+row.user));
+    const roles=new Set(rows.map(row=>row.module_role).filter(Boolean));
+    return (base_roles||[]).filter(row=>
+        row.user ? !pairs.has(row.module_role+"\\0"+row.user)
+                 : !roles.has(row.module_role));
 }
 
 function marina_mood_base_roles_button(frm) {
@@ -44,24 +48,28 @@ function marina_mood_base_roles_button(frm) {
                 template,frm.doc.r22_team_assignments||[]);
             if(!missing.length){
                 frappe.show_alert({
-                    message:__("All six Base Roles are already in the Team Pool."),
+                    message:__("All configured Base Team assignments are already present."),
                     indicator:"blue"
                 });
                 return;
             }
+            const existing=frm.doc.r22_team_assignments||[];
+            const defaultRoles=new Set(existing.filter(row=>row.active && row.default_for_design)
+                .map(row=>row.module_role));
             missing.forEach(role=>{
+                const shouldDefault=Boolean(role.default_for_design) && !defaultRoles.has(role.module_role);
+                if(shouldDefault)defaultRoles.add(role.module_role);
                 frm.add_child("r22_team_assignments",{
                     module_role:role.module_role,
+                    user:role.user||"",
                     active:1,
-                    default_for_design:Number(role.default_for_design)||0,
-                    // Existing Mood Boards require an assignment-change
-                    // reason. Supply it automatically for the template.
+                    default_for_design:shouldDefault?1:0,
                     assignment_note:was_new?"":"Added from Base Roles template"
                 });
             });
             frm.refresh_field("r22_team_assignments");
             frappe.show_alert({
-                message:__("Added {0} missing Base Roles. Select a User for each new row before saving.",[missing.length]),
+                message:__("Added {0} Base Team assignments. Review and save the Mood Board.",[missing.length]),
                 indicator:"green"
             },5);
         }).catch(error=>{
