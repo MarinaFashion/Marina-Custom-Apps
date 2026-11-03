@@ -57,6 +57,7 @@ def _visibility(user=None):
     # another user's visible shortcuts.
     administrator = user == "Administrator" or "System Manager" in frappe.get_roles(user)
     roles = user_roles(user) if not administrator else set()
+    direct = {}
     allowed = {}
     rows = frappe.get_all(
         "Design Workspace Visibility Rule",
@@ -66,6 +67,16 @@ def _visibility(user=None):
         fields=["workspace_item", "module_role"],
         limit_page_length=201,
     )
+    direct_rows = frappe.get_all(
+        "Design Workspace User Visibility",
+        filters={"parent": "Design Management Settings",
+                 "parenttype": "Design Management Settings",
+                 "parentfield": "workspace_user_visibility", "user": user},
+        fields=["workspace_item", "visible"], limit_page_length=101,
+    )
+    for row in direct_rows:
+        if row.workspace_item in WORKSPACE_ITEMS:
+            direct[row.workspace_item] = bool(row.visible)
     for row in rows:
         if row.workspace_item in WORKSPACE_ITEMS:
             allowed.setdefault(row.workspace_item, set()).add(row.module_role)
@@ -73,6 +84,8 @@ def _visibility(user=None):
     def visible(item):
         if item not in WORKSPACE_ITEMS or administrator:
             return True
+        if item in direct:
+            return direct[item]
         restricted = allowed.get(item, DEFAULT_RESTRICTED.get(item))
         return restricted is None or bool(roles & restricted)
 
@@ -135,6 +148,35 @@ def get_desktop_page(page):
             if isinstance(card, dict):
                 card["links"] = [
                     row for row in card.get("links", [])
-                    if visible(row.get("label") or row.get("link_to"))
+                    if visible(_item_name(row))
                 ]
     return result
+
+@frappe.whitelist()
+def workspace_user_matrix():
+    """Settings-only read endpoint; no cross-user visibility data for ordinary staff."""
+    actor = frappe.session.user
+    if actor != "Administrator" and "System Manager" not in frappe.get_roles(actor):
+        frappe.throw("Only System Manager may configure workspace visibility", frappe.PermissionError)
+    members = frappe.get_all(
+        "Design Module User Role",
+        filters={"parent": "Design Management Settings",
+                 "parenttype": "Design Management Settings",
+                 "parentfield": "module_user_roles", "active": 1},
+        pluck="user", limit_page_length=1001,
+    )
+    ids = sorted(set(members))
+    if len(ids) > 100:
+        frappe.throw("Workspace matrix supports at most 100 active module users")
+    users = frappe.get_all("User", filters={
+        "name": ["in", ids], "enabled": 1, "user_type": "System User"},
+        fields=["name", "username"], order_by="username asc",
+        limit_page_length=len(ids)) if ids else []
+    # Compute the effective fallback using the same rules as workspace rendering,
+    # but honor explicit overrides already stored in the Settings form.
+    return {"users": [{"user": row.name, "label": row.username or row.name}
+                       for row in users],
+            "items": sorted(WORKSPACE_ITEMS),
+            "fallback": {row.name: {
+                item: _visibility(row.name)(item) for item in sorted(WORKSPACE_ITEMS)}
+                for row in users}}
