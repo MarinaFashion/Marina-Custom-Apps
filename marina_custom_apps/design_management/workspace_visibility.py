@@ -18,6 +18,30 @@ WORKSPACE_ITEMS = frozenset({
     "Role Hierarchy", "Factory List", "Mood Board Overview",
 })
 
+# A destination is a more stable identity than its translated UI label.
+ITEM_TARGETS = {
+    "design-management-dashboard": "Management Dashboard",
+    "Mood Board": "Mood Boards",
+    "Design Code": "Design Codes",
+    "Design Document": "Design Documents",
+    "design-followup-grid": "Production Follow-Up Grid",
+    "design-discussions": "Design Discussions",
+    "Marina Pantone": "Pantone Library",
+    "Marina Fashion Category": "Fashion Categories",
+    "Design Document Type": "Document Types",
+    "Design Milestone Type": "Milestone Types",
+    "Design Management Settings": "Design Management Settings",
+    "design-security-permissions": "Security & Permissions",
+    "design-role-hierarchy": "Role Hierarchy",
+    "Factory List": "Factory List",
+    "Mood Board Overview": "Mood Board Overview",
+}
+
+
+def _item_name(row):
+    return ITEM_TARGETS.get(row.get("link_to"), row.get("label"))
+
+
 # Safe defaults until a workspace item has explicitly configured rules.
 DEFAULT_RESTRICTED = {
     "Management Dashboard": frozenset({"Head Of Design", "Administrator"}),
@@ -102,7 +126,7 @@ def get_desktop_page(page):
     if isinstance(shortcuts, dict):
         shortcuts["items"] = [
             row for row in shortcuts.get("items", [])
-            if visible(row.get("label") or row.get("link_to"))
+            if visible(_item_name(row))
         ]
     cards = result.get("cards") or {}
     if isinstance(cards, dict):
