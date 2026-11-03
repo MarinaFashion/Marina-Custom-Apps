@@ -15,6 +15,7 @@ jobs:
       - name: Match input regression checks
         run: |
           node --check marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js
+          node marina_custom_apps/pos_reconciliation/tests/check_bank_reconciliation_live_preview.js
           python - <<'PY'
           from pathlib import Path
           s=Path("marina_custom_apps/pos_reconciliation/doctype/bank_statement_reconciliation/bank_statement_reconciliation.js").read_text()
