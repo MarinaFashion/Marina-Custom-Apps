@@ -4,6 +4,10 @@ frappe.ui.form.on("Design Management Settings", {
         frm.set_query("user", "module_user_roles", () => ({
             query:"marina_custom_apps.design_management.security.participants.search_participant_users"
         }));
+        frm.set_query("user", "mood_board_base_team", (doc, cdt, cdn) => ({
+            query:"marina_custom_apps.design_management.security.participants.search_participant_users",
+            filters:{module_role:locals[cdt]?.[cdn]?.module_role||""}
+        }));
     },
     onload(frm) { marina_mapping_initialize(frm); },
     refresh(frm) { marina_mapping_initialize(frm); }
