@@ -244,7 +244,7 @@ def get_grid(page=1, page_size=50, search=None, mood_board=None,
     if evidence_ids and frappe.has_permission("Design Document", "read"):
         docs = frappe.get_list("Design Document",
             filters={"name": ["in", evidence_ids]},
-            fields=["name", "document_title"],
+            fields=["name", "document_title", "attachment"],
             limit_page_length=len(evidence_ids))
         evidence_metadata = {doc.name: doc for doc in docs}
     # Projected Due is a rolling forecast; the original creation-based
@@ -277,6 +277,15 @@ def get_grid(page=1, page_size=50, search=None, mood_board=None,
             )
             evidence = evidence_metadata.get(row["evidence_document"])
             row["evidence_title"] = (evidence.document_title or evidence.name) if evidence else None
+            # Never expose a file path for evidence the user cannot read.
+            # Only local Frappe attachments may be rendered as download links.
+            attachment = evidence.attachment if evidence else None
+            row["evidence_download_url"] = (
+                attachment if isinstance(attachment, str) and
+                attachment.startswith(("/files/", "/private/files/")) and
+                ".." not in attachment and "?" not in attachment and
+                "#" not in attachment else None
+            )
             row["evidence_accessible"] = bool(evidence)
     user_ids = {row.designer for row in designs if row.designer}
     for exe in executions:
