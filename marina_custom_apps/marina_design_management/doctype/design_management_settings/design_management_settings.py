@@ -41,6 +41,42 @@ class DesignManagementSettings(Document):
         ):
             if frappe.session.user != "Administrator" and "System Manager" not in frappe.get_roles():
                 frappe.throw("Only System Manager may modify chat attachment retention.", frappe.PermissionError)
+        from marina_custom_apps.design_management.security.organization import role_catalog, user_roles
+        from marina_custom_apps.design_management.security.participants import is_participant
+        new_template = [
+            (r.module_role, r.user, int(r.active or 0), int(r.default_for_design or 0))
+            for r in (self.mood_board_base_team or [])
+        ]
+        old_template = [
+            (r.module_role, r.user, int(r.active or 0), int(r.default_for_design or 0))
+            for r in ((prior.mood_board_base_team or []) if prior else [])
+        ]
+        template_changed = (
+            new_template != old_template or
+            int(self.use_custom_mood_board_team_template or 0) !=
+            int(prior.use_custom_mood_board_team_template or 0) if prior else
+            bool(new_template or self.use_custom_mood_board_team_template)
+        )
+        if template_changed and frappe.session.user != "Administrator" and "System Manager" not in frappe.get_roles():
+            frappe.throw("Only System Manager may change the Mood Board Base Team template", frappe.PermissionError)
+        if len(new_template) > 100:
+            frappe.throw("Mood Board Base Team supports at most 100 assignments")
+        catalog = role_catalog()
+        seen, defaults = set(), set()
+        for role, user, active, default in new_template:
+            if role not in catalog:
+                frappe.throw("Choose an enabled Design Module Role in the base team")
+            if not user or not is_participant(user) or role not in user_roles(user):
+                frappe.throw("Base Team user must be active, be a Marina Design Participant, and hold Module Role " + role)
+            if (role, user) in seen:
+                frappe.throw("Duplicate Mood Board Base Team role/user combination")
+            seen.add((role, user))
+            if active and default:
+                if role in defaults:
+                    frappe.throw("Only one default user is allowed per base-team role")
+                defaults.add(role)
+        if self.use_custom_mood_board_team_template and not any(r[2] for r in new_template):
+            frappe.throw("Configure at least one active Base Team assignment before enabling the template")
         from marina_custom_apps.design_management.security.role_access import validate_settings
         validate_settings(self)
         users = sorted({r.user for r in (self.module_user_roles or []) if r.user})
