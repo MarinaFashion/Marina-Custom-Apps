@@ -86,7 +86,7 @@ def evidence_document_details(design_code, milestone_type, document_name, eviden
     return doc, bool(rows)
 
 
-def _bind_to_milestone(doc, design_code, milestone_type):
+def _bind_to_milestone(doc, design_code, milestone_type, evidence_type):
     """Append one canonical link within authorized workflow transaction.
 
     Workflow caller locks Design Code first; lock Document next. Retain all
@@ -96,7 +96,7 @@ def _bind_to_milestone(doc, design_code, milestone_type):
         "SELECT name FROM `tabDesign Document` WHERE name=%s FOR UPDATE", (doc.name,))
     # Another request might have linked the document before this lock.
     doc, linked = evidence_document_details(
-        design_code, milestone_type, doc.name)
+        design_code, milestone_type, doc.name, evidence_type)
     if linked:
         return
     if len(doc.get("assignments") or []) >= MAX_CANDIDATES:
@@ -139,7 +139,7 @@ def required_document(design_code, milestone_type, evidence_type, selected=None,
                 frappe.throw(
                     "Confirm linking this Published document to Design " +
                     design_code + " / Milestone " + milestone_type)
-            _bind_to_milestone(doc, design_code, milestone_type)
+            _bind_to_milestone(doc, design_code, milestone_type, evidence_type)
         return doc.name
     docs = matching_published_documents(design_code, milestone_type, evidence_type)
     if not docs:
@@ -164,7 +164,7 @@ def check_step_evidence(snapshot, step, design_code, milestone_type, selected=No
 
 
 @frappe.whitelist()
-def preview_evidence_link(design_code, milestone_type, document_name):
+def preview_evidence_link(design_code, milestone_type, document_name, step=None):
     """Preview the selected Published document and binding requirement."""
     from marina_custom_apps.design_management.clean_milestones.service import _design
     from marina_custom_apps.design_management.clean_milestones.rules import configured_steps
@@ -182,6 +182,14 @@ def preview_evidence_link(design_code, milestone_type, document_name):
     }
     if not required_types:
         frappe.throw("This milestone does not require document evidence")
+    if step:
+        matches = [
+            row for row in configured_steps(json.loads(plan.workflow_snapshot_json)["steps"])
+            if row["step"] == step and row["requires_evidence"]
+        ]
+        if not matches:
+            frappe.throw("The selected step does not require evidence")
+        required_types = {matches[0]["evidence_type"]}
     doc, linked = evidence_document_details(
         design_code, milestone_type, document_name)
     if doc.document_type not in required_types:
@@ -211,6 +219,7 @@ def search_milestone_evidence(doctype, txt, searchfield, start, page_len, filter
         return []
     code = filters.get("design_code")
     milestone = filters.get("milestone_type")
+    step = filters.get("step")
     if not all(
         isinstance(x, str) and 0 < len(x) <= 140
         for x in (code, milestone)
@@ -234,6 +243,14 @@ def search_milestone_evidence(doctype, txt, searchfield, start, page_len, filter
         row["evidence_type"] for row in configured_steps(snapshot["steps"])
         if row["requires_evidence"]
     }
+    if step:
+        matches = [
+            row for row in configured_steps(snapshot["steps"])
+            if row["step"] == step and row["requires_evidence"]
+        ]
+        if not matches:
+            return []
+        required_types = {matches[0]["evidence_type"]}
     if not required_types:
         return []
 
