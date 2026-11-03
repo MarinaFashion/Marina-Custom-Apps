@@ -172,11 +172,55 @@ def workspace_user_matrix():
         "name": ["in", ids], "enabled": 1, "user_type": "System User"},
         fields=["name", "username"], order_by="username asc",
         limit_page_length=len(ids)) if ids else []
-    # Compute the effective fallback using the same rules as workspace rendering,
-    # but honor explicit overrides already stored in the Settings form.
+    # Batch-load all membership and visibility data once; never query per cell.
+    role_rows = frappe.get_all(
+        "Design Module User Role",
+        filters={"parent": "Design Management Settings",
+                 "parenttype": "Design Management Settings",
+                 "parentfield": "module_user_roles",
+                 "active": 1, "user": ["in", ids]},
+        fields=["user", "module_role"], limit_page_length=1001,
+    ) if ids else []
+    from marina_custom_apps.design_management.security.organization import role_catalog
+    active_roles = set(role_catalog())
+    memberships = {uid: set() for uid in ids}
+    for row in role_rows:
+        if row.module_role in active_roles:
+            memberships[row.user].add(row.module_role)
+    legacy_rows = frappe.get_all(
+        "Design Workspace Visibility Rule",
+        filters={"parent": "Design Management Settings",
+                 "parentfield": "workspace_visibility_rules"},
+        fields=["workspace_item", "module_role"], limit_page_length=201)
+    legacy = {}
+    for row in legacy_rows:
+        if row.workspace_item in WORKSPACE_ITEMS:
+            legacy.setdefault(row.workspace_item, set()).add(row.module_role)
+    overrides = frappe.get_all(
+        "Design Workspace User Visibility",
+        filters={"parent": "Design Management Settings",
+                 "parentfield": "workspace_user_visibility",
+                 "user": ["in", ids]},
+        fields=["workspace_item", "user", "visible"], limit_page_length=1501,
+    ) if ids else []
+    explicit = {(row.user, row.workspace_item): bool(row.visible)
+                for row in overrides if row.workspace_item in WORKSPACE_ITEMS}
+    managers = set(frappe.get_all(
+        "Has Role", filters={"parenttype": "User",
+                            "role": "System Manager", "parent": ["in", ids]},
+        pluck="parent", limit_page_length=len(ids))) if ids else set()
+    fallback = {}
+    for row in users:
+        allowed_roles = memberships.get(row.name, set())
+        is_admin = row.name == "Administrator" or row.name in managers
+        fallback[row.name] = {}
+        for item in sorted(WORKSPACE_ITEMS):
+            restricted = legacy.get(item, DEFAULT_RESTRICTED.get(item))
+            fallback[row.name][item] = (
+                True if is_admin else
+                explicit.get((row.name, item),
+                    True if restricted is None else bool(allowed_roles & restricted))
+            )
     return {"users": [{"user": row.name, "label": row.username or row.name}
                        for row in users],
-            "items": sorted(WORKSPACE_ITEMS),
-            "fallback": {row.name: {
-                item: _visibility(row.name)(item) for item in sorted(WORKSPACE_ITEMS)}
-                for row in users}}
+            "items": sorted(WORKSPACE_ITEMS), "fallback": fallback}
