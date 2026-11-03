@@ -41,28 +41,36 @@ def get_mood_board_base_roles(mood_board=None):
                          frappe.PermissionError)
         action = "Assign Team Tasks"
 
+    settings = frappe.get_cached_doc("Design Management Settings")
+    custom = bool(settings.use_custom_mood_board_team_template)
+    if custom:
+        template = [
+            {"module_role": row.module_role, "user": row.user,
+             "active": 1, "default_for_design": int(row.default_for_design or 0)}
+            for row in (settings.mood_board_base_team or []) if row.active
+        ]
+    else:
+        template = [
+            {"module_role": role, "user": None, "active": 1,
+             "default_for_design": default}
+            for role, default in MOOD_BOARD_BASE_ROLES
+        ]
+    wanted = sorted({row["module_role"] for row in template})
     if not _admin(actor) and (
             not can_action(action, actor)
-            or not all(can_manage_role(actor, role)
-                       for role, _ in MOOD_BOARD_BASE_ROLES)):
-        frappe.throw(
-            "Your module role does not permit adding all Base Team Roles",
-            frappe.PermissionError)
-
-    wanted = [name for name, _ in MOOD_BOARD_BASE_ROLES]
-    configured = set(frappe.get_all(
-        "Design Module Role",
-        filters={"name": ["in", wanted], "enabled": 1},
-        pluck="name",
-        limit_page_length=len(wanted),
-    ))
-    missing = [name for name in wanted if name not in configured]
+            or not all(can_manage_role(actor, role) for role in wanted)):
+        frappe.throw("Your module role does not permit adding the configured Base Team Roles",
+                     frappe.PermissionError)
+    catalog = role_catalog()
+    missing = [role for role in wanted if role not in catalog]
     if missing:
-        frappe.throw(
-            "Enable these Design Module Roles first: " + ", ".join(missing))
-    return [{"module_role": name, "active": 1,
-             "default_for_design": default}
-            for name, default in MOOD_BOARD_BASE_ROLES]
+        frappe.throw("Enable these Design Module Roles first: " + ", ".join(missing))
+    if custom:
+        from marina_custom_apps.design_management.security.participants import is_participant
+        for row in template:
+            if not is_participant(row["user"]) or row["module_role"] not in user_roles(row["user"]):
+                frappe.throw("Configured Base Team user is no longer eligible for " + row["module_role"])
+    return template
 
 
 def _admin(actor):
