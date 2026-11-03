@@ -557,7 +557,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
                      get_query:()=>({
                          query:"marina_custom_apps.design_management.clean_milestones.evidence.search_milestone_evidence",
                          filters:{design_code:design.name,
-                                  milestone_type:row.milestone_type}
+                                  milestone_type:row.milestone_type,step:step}
                      })},
                 ],
                 primary_action_label:actionLabel(row.status,step),
@@ -575,7 +575,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
                     frappe.call({
                         method:"marina_custom_apps.design_management.clean_milestones.evidence.preview_evidence_link",
                         args:{design_code:design.name,milestone_type:row.milestone_type,
-                              document_name:values.evidence_document}
+                              document_name:values.evidence_document,step:step}
                     }).then(({message:details})=>{
                         if(!details ||
                                 dialog.get_value("evidence_document")!==values.evidence_document)return;
