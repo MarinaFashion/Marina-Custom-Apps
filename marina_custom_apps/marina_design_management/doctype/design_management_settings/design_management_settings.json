@@ -102,6 +102,19 @@
       "description": "Select active module-role members; multiple users per role are allowed, with at most one default per role."
     },
     {
+      "fieldname": "sb_workspace_visibility",
+      "label": "Design Workspace Visibility",
+      "fieldtype": "Section Break",
+      "description": "Control which shortcuts appear by Marina Design Module Role. Navigation visibility does not grant page or document permissions."
+    },
+    {
+      "fieldname": "workspace_visibility_rules",
+      "label": "Workspace Item Visibility by Role",
+      "fieldtype": "Table",
+      "options": "Design Workspace Visibility Rule",
+      "description": "For each workspace item, add one row per permitted module role. If no row exists, standard visibility applies; management items have restricted defaults."
+    },
+    {
       "fieldname": "sb_module_security",
       "label": "Security & Permissions",
       "fieldtype": "Section Break",
@@ -144,6 +157,8 @@
     "sb_mood_board_team_template",
     "use_custom_mood_board_team_template",
     "mood_board_base_team",
+    "sb_workspace_visibility",
+    "workspace_visibility_rules",
     "sb_module_security",
     "module_rbac_enabled",
     "module_user_roles",
