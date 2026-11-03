@@ -362,9 +362,12 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
             'data-design="'+di+'" data-milestone="'+mi+'" data-step="'+esc(step)+'">'+
             esc(actionLabel(row.status,step))+'</button>').join("");
         const evidence=row.evidence_document && row.evidence_accessible?
-            '<a href="#" class="mdm-open-evidence" data-design="'+di+'" data-milestone="'+mi+'" '+
-            'title="'+esc(row.evidence_document)+'">'+
-            esc(row.evidence_title||row.evidence_document)+'</a>':
+            (row.evidence_download_url?
+                '<a href="'+esc(row.evidence_download_url)+'" download '+
+                'title="'+esc(__("Download evidence file"))+'">'+
+                esc(row.evidence_title||row.evidence_document)+'</a>':
+                '<span title="'+esc(__("No downloadable attachment"))+'">'+
+                esc(row.evidence_title||row.evidence_document)+'</span>'):
             (row.evidence_document?__('Restricted document'):'—');
         return '<tr>'+
             (includeDesign?'<td style="min-width:225px">'+designIdentityHTML(design,di)+'</td>':'')+
@@ -664,13 +667,6 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
         e.preventDefault();
         const d=allRows()[Number($(this).attr("data-design"))];
         if(d)dirtyGuard(()=>frappe.set_route("Form","Design Code",d.name));
-    });
-    surface.on("click",".mdm-open-evidence",function(e){
-        e.preventDefault();
-        const d=allRows()[Number($(this).attr("data-design"))];
-        const r=d?.milestones?.[Number($(this).attr("data-milestone"))];
-        if(r?.evidence_document)dirtyGuard(()=>
-            frappe.set_route("Form","Design Document",r.evidence_document));
     });
     surface.on("click",".mdm-grid-step",function(){
         const d=allRows()[Number($(this).attr("data-design"))];
