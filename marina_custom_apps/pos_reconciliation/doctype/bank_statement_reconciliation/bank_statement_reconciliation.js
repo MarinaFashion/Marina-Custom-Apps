@@ -101,22 +101,7 @@ function bsr_render(frm) {
         `).join("")
         : `<tr><td colspan="8" class="text-muted text-center">${__("No unreconciled GL Entries.")}</td></tr>`;
 
-    const matchBody = matches.length
-        ? matches.map((match, idx) => `
-            <tr>
-                <td>${idx + 1}</td>
-                <td>${bsr_escape(match.match_type || "")}</td>
-                <td>${bsr_escape(match.group_no || "—")}</td>
-                <td>${bsr_escape(match.reference_number || "—")}</td>
-                <td class="text-right">${bsr_money(match.bank_amount)}</td>
-                <td class="text-right">${bsr_money(match.gl_amount)}</td>
-                <td class="text-right">${bsr_money(match.difference)}</td>
-                <td>${(match.bank_rows || []).length}</td>
-                <td>${(match.gl_rows || []).length}</td>
-                <td><span class="indicator-pill green">${__("Ready to Save")}</span></td>
-            </tr>
-        `).join("")
-        : `<tr><td colspan="10" class="text-muted text-center">${__("No matches prepared yet.")}</td></tr>`;
+    const matchBody = bsr_preview_rows_html(matches);
 
     field.$wrapper.html(`
         ${bsr_styles()}
@@ -136,7 +121,7 @@ function bsr_render(frm) {
         <div class="bsr-counts">
             <span class="indicator-pill orange">${bankRows.length} ${__("Bank Rows to Link")}</span>
             <span class="indicator-pill orange">${glRows.length} ${__("GL Rows to Link")}</span>
-            <span class="indicator-pill blue">${matches.length} ${__("Prepared Matches")}</span>
+            <span class="indicator-pill blue"><span class="bsr-prepared-count">${matches.length}</span> ${__("Prepared Matches")}</span>
         </div>
 
         <div class="bsr-selection-summary">${__("Selected Difference")}: <strong class="bsr-selection-difference">${bsr_money(0)}</strong></div>
@@ -189,7 +174,8 @@ function bsr_render(frm) {
         </div>
 
         <div class="bsr-panel bsr-results">
-            <div class="bsr-panel-title">${__("Reconciliation Results")}</div>
+            <div class="bsr-panel-title">${__("Reconciliation Results — Preview Before Save")}</div>
+            <div class="text-muted small" style="margin-bottom:8px">${__("Manual Match # groups update as you type. Only balanced groups can be saved; no reconciliation is written until Save Reconciliation.")}</div>
             <div class="bsr-table-wrap">
                 <table class="table table-bordered table-hover bsr-table">
                     <thead><tr>
@@ -204,7 +190,7 @@ function bsr_render(frm) {
                         <th>${__("GL Lines")}</th>
                         <th>${__("Status")}</th>
                     </tr></thead>
-                    <tbody>${matchBody}</tbody>
+                    <tbody class="bsr-preview-body">${matchBody}</tbody>
                 </table>
             </div>
         </div>
@@ -270,6 +256,7 @@ function bsr_bind_table_search(frm) {
         if (clean !== raw) input.value = clean;
         const side = $(this).closest(".bsr-config-table").attr("data-side");
         if ((frm.__bsr_table_search[side] || {})["7"]) bsr_apply_table_search(frm, side);
+        bsr_update_results_preview(frm);
     });
     for (const side of ["bank", "gl"]) bsr_apply_table_search(frm, side);
 }
@@ -356,6 +343,73 @@ function bsr_collect_match_inputs(frm) {
         if (row) row.group_no = String($(this).find(".bsr-match-input").val() || "").trim();
     });
     return { bankRows, glRows };
+}
+
+// Display-only preview of unsaved Match # values; Save still calls the
+// strict bsr_build_manual_matches validator and the server-side validator.
+function bsr_preview_manual_matches(bankRows, glRows, tolerance) {
+    const groups = new Map();
+    const add = (row, side) => {
+        const id = String(row.group_no || "").trim();
+        if (!id) return;
+        if (!groups.has(id)) groups.set(id, {bank_rows: [], gl_rows: []});
+        groups.get(id)[side === "bank" ? "bank_rows" : "gl_rows"].push(row);
+    };
+    bankRows.forEach(row => add(row, "bank"));
+    glRows.forEach(row => add(row, "gl"));
+    const limit = Math.abs(Number(tolerance || 0.01));
+    return Array.from(groups, ([group_no, rows]) => {
+        const bank_amount = bsr_round(rows.bank_rows.reduce(
+            (sum, row) => sum + Number(row.amount || 0), 0));
+        const gl_amount = bsr_round(rows.gl_rows.reduce(
+            (sum, row) => sum + Number(row.amount || 0), 0));
+        const difference = bsr_round(bank_amount - gl_amount);
+        const validGroup = /^[1-9][0-9]{0,5}$/.test(group_no);
+        const complete = rows.bank_rows.length && rows.gl_rows.length;
+        const status = !validGroup ? "Invalid Match #" : !complete ? "Incomplete"
+            : Math.abs(difference) > limit + 0.000001 ? "Difference" : "Balanced";
+        return {
+            match_type: "Manual Preview",
+            group_no,
+            reference_number: rows.bank_rows.map(row => row.reference_number).find(Boolean)
+                || rows.gl_rows.map(row => row.reference_number).find(Boolean) || "",
+            bank_amount, gl_amount, difference,
+            bank_rows: rows.bank_rows, gl_rows: rows.gl_rows,
+            preview_status: status,
+        };
+    }).sort((a, b) => Number(a.group_no) - Number(b.group_no));
+}
+
+function bsr_preview_rows_html(matches) {
+    return matches.length ? matches.map((match, idx) => {
+        const status = match.preview_status || "Ready to Save";
+        const tone = ["Ready to Save", "Balanced"].includes(status)
+            ? "green" : status === "Incomplete" ? "orange" : "red";
+        return `<tr data-preview-match="${bsr_escape(match.group_no || "")}">
+            <td>${idx + 1}</td>
+            <td>${bsr_escape(match.match_type || "")}</td>
+            <td>${bsr_escape(match.group_no || "—")}</td>
+            <td>${bsr_escape(match.reference_number || "—")}</td>
+            <td class="text-right">${bsr_money(match.bank_amount)}</td>
+            <td class="text-right">${bsr_money(match.gl_amount)}</td>
+            <td class="text-right">${bsr_money(match.difference)}</td>
+            <td>${(match.bank_rows || []).length}</td>
+            <td>${(match.gl_rows || []).length}</td>
+            <td><span class="indicator-pill ${tone}">${__(status)}</span></td>
+        </tr>`;
+    }).join("") : `<tr><td colspan="10" class="text-muted text-center">${__("No matches prepared yet.")}</td></tr>`;
+}
+
+function bsr_update_results_preview(frm) {
+    const state = frm.__bsr || {};
+    const $w = frm.fields_dict.workspace_html.$wrapper;
+    const {bankRows, glRows} = bsr_collect_match_inputs(frm);
+    const prepared = state.matches || [];
+    const manual = bsr_preview_manual_matches(bankRows, glRows, frm.doc.tolerance || 0.01);
+    // Update only the preview section; do not rebuild Bank/GL inputs, filters,
+    // selections or scroll position while the user types.
+    $w.find(".bsr-preview-body").html(bsr_preview_rows_html(prepared.concat(manual)));
+    $w.find(".bsr-prepared-count").text(prepared.length + manual.length);
 }
 
 // No accounting writes: this prepares groups for server-side validation on Save.
