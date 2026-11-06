@@ -66,7 +66,7 @@ def _visibility(user=None):
                  "parentfield": "workspace_visibility_rules"},
         fields=["workspace_item", "module_role"],
         limit_page_length=201,
-    )
+    ) if frappe.db.table_exists("Design Workspace Visibility Rule") else []
     direct_rows = frappe.get_all(
         "Design Workspace User Visibility",
         filters={"parent": "Design Management Settings",
@@ -191,7 +191,7 @@ def workspace_user_matrix():
         "Design Workspace Visibility Rule",
         filters={"parent": "Design Management Settings",
                  "parentfield": "workspace_visibility_rules"},
-        fields=["workspace_item", "module_role"], limit_page_length=201)
+        fields=["workspace_item", "module_role"], limit_page_length=201) if frappe.db.table_exists("Design Workspace Visibility Rule") else []
     legacy = {}
     for row in legacy_rows:
         if row.workspace_item in WORKSPACE_ITEMS:
@@ -202,7 +202,7 @@ def workspace_user_matrix():
                  "parentfield": "workspace_user_visibility",
                  "user": ["in", ids]},
         fields=["workspace_item", "user", "visible"], limit_page_length=1501,
-    ) if ids else []
+    ) if ids and frappe.db.table_exists("Design Workspace User Visibility") else []
     explicit = {(row.user, row.workspace_item): bool(row.visible)
                 for row in overrides if row.workspace_item in WORKSPACE_ITEMS}
     managers = set(frappe.get_all(
