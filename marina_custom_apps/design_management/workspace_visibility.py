@@ -73,7 +73,7 @@ def _visibility(user=None):
                  "parenttype": "Design Management Settings",
                  "parentfield": "workspace_user_visibility", "user": user},
         fields=["workspace_item", "visible"], limit_page_length=101,
-    )
+    ) if frappe.db.table_exists("Design Workspace User Visibility") else []
     for row in direct_rows:
         if row.workspace_item in WORKSPACE_ITEMS:
             direct[row.workspace_item] = bool(row.visible)
