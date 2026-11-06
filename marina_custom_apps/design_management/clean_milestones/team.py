@@ -34,12 +34,10 @@ def get_mood_board_base_roles(mood_board=None):
     if mood_board:
         board = frappe.get_doc("Mood Board", mood_board)
         board.check_permission("write")
-        action = "Reassign Team Tasks"
     else:
         if not frappe.has_permission("Mood Board", "create"):
             frappe.throw("Not permitted to create a Mood Board",
                          frappe.PermissionError)
-        action = "Assign Team Tasks"
 
     settings = frappe.get_cached_doc("Design Management Settings")
     custom = bool(settings.use_custom_mood_board_team_template)
@@ -56,11 +54,9 @@ def get_mood_board_base_roles(mood_board=None):
             for role, default in MOOD_BOARD_BASE_ROLES
         ]
     wanted = sorted({row["module_role"] for row in template})
-    if not _admin(actor) and (
-            not can_action(action, actor)
-            or not all(can_manage_role(actor, role) for role in wanted)):
-        frappe.throw("Your module role does not permit adding the configured Base Team Roles",
-                     frappe.PermissionError)
+    # Reading an administrator-approved template is not reassignment.
+    # Native Mood Board create/write permission is checked above; actual
+    # team edits are independently authorized in validate_board().
     catalog = role_catalog()
     missing = [role for role in wanted if role not in catalog]
     if missing:
@@ -128,12 +124,51 @@ def _manager_may_change(doc, changes):
                              " Design Team assignment")
 
 
+def _unapproved_board_changes(before, after):
+    """Exclude only NEW, active entries explicitly approved in the settings template.
+
+    No removal, replacement, deactivation, or change to existing defaults is
+    exempt. Newly inserted rows may have their configured default unchecked
+    if that role already has a default on the Mood Board.
+    """
+    from collections import Counter
+
+    def signature(row):
+        return (row.module_role, row.user, bool(row.active),
+                bool(value(row, "default_for_design", 0)))
+
+    prior = Counter(signature(row) for row in (before or []))
+    current = Counter(signature(row) for row in (after or []))
+    removed = prior - current
+    added = current - prior
+
+    settings = frappe.get_cached_doc("Design Management Settings")
+    approved = set()
+    if settings.use_custom_mood_board_team_template:
+        for row in (settings.mood_board_base_team or []):
+            if row.active and row.module_role and row.user:
+                approved.add((row.module_role, row.user,
+                              bool(row.default_for_design)))
+
+    # A row with a disabled default can be added even when the base template
+    # specifies a default; this avoids a duplicate default on existing boards.
+    changes = {role for (role, _, _, _), count in removed.items() if count}
+    for (role, user, active, default), count in added.items():
+        if not active or not any(
+                role == target_role and user == target_user
+                and (not default or target_default)
+                for target_role, target_user, target_default in approved
+        ):
+            changes.add(role)
+    return changes
+
+
 def validate_board(board):
     rows = board.get("r22_team_assignments") or []
     validate_rows(rows, allow_role_pool=True)
     before = board.get_doc_before_save() if not board.is_new() else None
     prior = before.get("r22_team_assignments") if before else []
-    _manager_may_change(board, _changes(prior, rows))
+    _manager_may_change(board, _unapproved_board_changes(prior, rows))
 
 
 def initial_snapshot_rows(board):
