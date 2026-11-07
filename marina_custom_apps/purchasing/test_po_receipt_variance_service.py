@@ -56,7 +56,12 @@ class TestPOReceiptDiscount(unittest.TestCase):
         self.assertEqual(calculate(60, 68, 127)["tolerance_qty"], 5)
         self.assertEqual(calculate(70, 80, 127)["discount_value"], 254)
 
-    def test_fixed_tolerance_and_adjustable_discount(self):
+    def test_editable_tolerance_changes_discount_at_variant_level(self):
+        self.assertEqual(calculate(70, 80, 127, 50, 8)["discount_value"], 254)
+        self.assertEqual(calculate(70, 80, 127, 50, 10)["discount_value"], 190.5)
+        self.assertEqual(calculate(70, 80, 127, 50, 0)["discount_value"], 635)
+
+    def test_default_tolerance_and_adjustable_discount(self):
         row = calculate(100, 112, 40, 25)
         self.assertEqual(row["tolerance_qty"], 8)
         self.assertEqual(row["eligible_excess_qty"], 4)
