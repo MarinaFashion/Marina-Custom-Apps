@@ -45,6 +45,7 @@ def calculate(ordered, received, cost_per_stock_unit, discount_pct=50, tolerance
         "variance_pct": (variance / ordered * 100) if ordered else 0,
         "tolerance_qty": tolerance_qty,
         "eligible_excess_qty": eligible,
+        "eligible_amount_before_discount": eligible * rate,
         "discount_value": eligible * rate * discount,
         "shortage_qty": max(ordered - received, 0),
     }
@@ -75,7 +76,8 @@ def get_columns():
         col("Tolerance Qty", "tolerance_qty"),
         col("Eligible Excess Qty", "eligible_excess_qty", "Float", 145),
         col("Avg PO Cost / Stock Unit", "unit_cost", "Currency", 165, "currency"),
-        col("Eligible Discount Value", "discount_value", "Currency", 170, "currency"),
+        col("Amount Before Discount", "eligible_amount_before_discount", "Currency", 170, "currency"),
+        col("Discount Amount", "discount_value", "Currency", 170, "currency"),
         col("Currency", "currency", "Link", 95, "Currency"),
         col("PO Lines", "po_lines", "Int", 90),
         col("Receipt Lines", "receipt_lines", "Int", 105),
@@ -273,14 +275,14 @@ def _collapse_templates(rows):
             "po_qty": 0.0, "receipt_qty": 0.0, "po_amount": 0.0,
             "variance_qty": 0.0, "shortage_qty": 0.0,
             "tolerance_qty": 0.0, "eligible_excess_qty": 0.0,
-            "discount_value": 0.0,
+            "discount_value": 0.0, "eligible_amount_before_discount": 0.0,
             "variant_count": 0, "po_lines": 0, "receipt_lines": 0,
         })
         group["po_qty"] += row["po_qty"]
         group["receipt_qty"] += row["receipt_qty"]
         group["po_amount"] += row["unit_cost"] * row["po_qty"]
         for field in ("variance_qty", "shortage_qty", "tolerance_qty",
-                      "eligible_excess_qty", "discount_value",
+                      "eligible_excess_qty", "eligible_amount_before_discount", "discount_value",
                       "variant_count", "po_lines", "receipt_lines"):
             group[field] += row[field]
     result = []
@@ -303,7 +305,10 @@ def execute(filters=None):
         {"label": _("Discount-Eligible Excess Qty"),
          "value": sum(r["eligible_excess_qty"] for r in rows),
          "datatype": "Float", "indicator": "Orange"},
-        {"label": _("Estimated Excess Discount"),
+        {"label": _("Amount Before Discount"),
+         "value": sum(r["eligible_amount_before_discount"] for r in rows),
+         "datatype": "Currency", "currency": currency, "indicator": "Blue"},
+        {"label": _("Discount Amount"),
          "value": sum(r["discount_value"] for r in rows),
          "datatype": "Currency", "currency": currency, "indicator": "Green"},
     ]
@@ -363,12 +368,13 @@ def build_matrix(rows, sizes, images):
             cells.append({"label": label, "item_code": code, **{
                 key: row[key] for key in (
                     "po_qty", "receipt_qty", "variance_qty", "variance_pct",
-                    "tolerance_qty", "eligible_excess_qty", "unit_cost", "discount_value"
+                    "tolerance_qty", "eligible_excess_qty", "unit_cost",
+                    "eligible_amount_before_discount", "discount_value"
                 )
             }})
         totals = {key: sum(flt(row[key]) for row in items) for key in (
             "po_qty", "receipt_qty", "variance_qty", "tolerance_qty",
-            "eligible_excess_qty", "discount_value"
+            "eligible_excess_qty", "eligible_amount_before_discount", "discount_value"
         )}
         totals["variance_pct"] = (totals["variance_qty"] / totals["po_qty"] * 100
                                   if totals["po_qty"] else 0)
@@ -406,7 +412,13 @@ def get_matrix_data(company, supplier, item_year=None, season=None,
         template = row["item_template"]
         if template not in images and images.get(row["item_code"]):
             images[template] = images[row["item_code"]]
+    grand_totals = {
+        "eligible_excess_qty": sum(flt(r["eligible_excess_qty"]) for r in rows),
+        "eligible_amount_before_discount": sum(flt(r["eligible_amount_before_discount"]) for r in rows),
+        "discount_value": sum(flt(r["discount_value"]) for r in rows),
+    }
     return {"currency": currency, "tolerance_pct": filters["tolerance_pct"],
             "discount_pct": filters["discount_pct"],
+            "grand_totals": grand_totals,
             "blocks": build_matrix(rows, _size_labels(codes), images)}
 
