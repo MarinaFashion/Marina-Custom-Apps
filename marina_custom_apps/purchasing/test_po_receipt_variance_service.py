@@ -27,7 +27,7 @@ class TestPOReceiptDiscount(unittest.TestCase):
         self.assertEqual(row["variance_pct"], 0)
         self.assertEqual(row["discount_value"], 0)
 
-    def test_template_tolerance_after_consolidating_variants(self):
+    def test_template_sums_variant_tolerance_without_offsetting_shortages(self):
         rows = []
         for item_code, ordered, received in (
             ("DESIGN-S", 50, 65),
@@ -39,13 +39,16 @@ class TestPOReceiptDiscount(unittest.TestCase):
                 "collection": "A", "currency": "SAR",
                 "po_qty": ordered, "receipt_qty": received, "unit_cost": 40,
                 "variant_count": 1, "po_lines": 1, "receipt_lines": 1,
+                **calculate(ordered, received, 40, 5, 50),
             })
         result = _collapse_templates(rows, {"tolerance_pct": 5, "discount_pct": 50})
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["po_qty"], 100)
         self.assertEqual(result[0]["receipt_qty"], 112)
-        self.assertEqual(result[0]["eligible_excess_qty"], 7)
-        self.assertEqual(result[0]["discount_value"], 140)
+        self.assertEqual(result[0]["eligible_excess_qty"], 12.5)
+        self.assertEqual(result[0]["discount_value"], 250)
+        self.assertEqual(result[0]["shortage_qty"], 3)
+        self.assertEqual(result[0]["tolerance_qty"], 5)
 
     def test_adjustable_tolerance_and_discount(self):
         row = calculate(100, 112, 40, 10, 25)
