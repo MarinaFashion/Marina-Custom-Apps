@@ -15,6 +15,7 @@ frappe.pages["po-receipt-variance-matrix"].on_page_load = function(wrapper) {
         {fieldname:"item_year", label:__("Year"), fieldtype:"Data"},
         {fieldname:"season", label:__("Season"), fieldtype:"Data"},
         {fieldname:"collection", label:__("Collection"), fieldtype:"Data"},
+        {fieldname:"report_currency", label:__("Currency"), fieldtype:"Select", options:"CNY\nSAR", default:"CNY", reqd:1},
         {fieldname:"tolerance_pct", label:__("Tolerance %"), fieldtype:"Percent", default:8, reqd:1},
         {fieldname:"discount_pct", label:__("Excess Discount %"), fieldtype:"Percent", default:50, reqd:1}
     ];
@@ -68,6 +69,15 @@ frappe.pages["po-receipt-variance-matrix"].on_page_load = function(wrapper) {
        .marina-po-matrix td.photo img {max-width:120px;max-height:145px;object-fit:contain;}
        .marina-po-matrix td.total {background:var(--marina-sand)!important;font-weight:700;}
        .marina-po-matrix .hint {padding:9px 0;color:var(--marina-primary);font-weight:500;}
+       .marina-po-matrix .grand-totals {display:flex;flex-wrap:wrap;gap:12px;margin:12px 0 15px;}
+       .marina-po-matrix .grand-total {flex:1;min-width:195px;background:var(--marina-cream);
+           border:1px solid var(--marina-sand);border-left:4px solid var(--marina-primary);
+           border-radius:5px;padding:12px 16px;}
+       .marina-po-matrix .grand-total .caption {font-size:12px;color:var(--marina-charcoal);font-weight:500;}
+       .marina-po-matrix .grand-total .value {font-size:20px;font-weight:800;color:var(--marina-primary);}
+       .marina-po-matrix .grand-total.final {background:var(--marina-primary);}
+       .marina-po-matrix .grand-total.final .caption,
+       .marina-po-matrix .grand-total.final .value {color:#fff;}
        @media print {
           .layout-main-section .page-form,.page-head,.navbar,.sidebar {display:none!important;}
           .marina-po-matrix .matrix-scroll {max-height:none;overflow:visible;}
@@ -106,8 +116,20 @@ frappe.pages["po-receipt-variance-matrix"].on_page_load = function(wrapper) {
             return a.localeCompare(b,undefined,{numeric:true});
         });
         metrics[4][1] = __("Accept Qty ({0}%)", [fmt(data.tolerance_pct, 2).replace(/\.00$/, "")]);
+        metrics[6][1] = __("Unit Cost ({0})", [data.currency]);
+        metrics[7][1] = __("Discount Amount ({0})", [data.currency]);
         let html = '<div class="hint">' + esc(__("Tolerance: {0}% per Item Variant (rounded to whole units). Template totals aggregate variant-level results.", [fmt(data.tolerance_pct, 2).replace(/\.00$/, "")])) +
             ' · ' + esc(__("Currency")) + ': ' + esc(data.currency) + '</div>';
+        const grand = data.grand_totals || {};
+        const summary = [
+            [__("Total Eligible Extra Qty"), fmt(grand.eligible_excess_qty, 0), false],
+            [__("Amount Before Discount ({0})", [data.currency]), fmt(grand.eligible_amount_before_discount, 2), false],
+            [__("Discount Amount ({0})", [data.currency]), fmt(grand.discount_value, 2), true]
+        ];
+        html += '<div class="grand-totals">' + summary.map(([label,value,final]) =>
+            '<div class="grand-total' + (final ? ' final' : '') + '">' +
+            '<div class="caption">' + esc(label) + '</div><div class="value">' +
+            esc(value) + '</div></div>').join('') + '</div>';
         html += '<div class="matrix-scroll"><table><thead><tr><th>' + esc(__("Item Code")) +
             '</th><th>' + esc(__("Image")) + '</th><th>' + esc(__("Values")) + '</th>' +
             sizes.map(s => '<th>' + esc(s) + '</th>').join('') + '<th>' + esc(__("Total")) + '</th></tr></thead><tbody>';
@@ -161,7 +183,15 @@ frappe.pages["po-receipt-variance-matrix"].on_page_load = function(wrapper) {
         const sizes = $root.find("thead th").slice(3,-1).map(function() {
             return $(this).text().trim();
         }).get();
-        const lines = [["Item Code","Image","Values",...sizes,"Total"]];
+        const grand = current.grand_totals || {};
+        const lines = [
+            ["Report Currency", current.currency],
+            ["Total Eligible Extra Qty", grand.eligible_excess_qty],
+            ["Amount Before Discount", grand.eligible_amount_before_discount],
+            ["Discount Amount", grand.discount_value],
+            [],
+            ["Item Code","Image","Values",...sizes,"Total"]
+        ];
         current.blocks.forEach(block => {
             const variants = new Map(block.variants.map(v => [v.label,v]));
             metrics.forEach(([key,label,digits],index) => {
