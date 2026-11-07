@@ -78,7 +78,7 @@ def _lookup(supplier, company, codes):
         factor = flt(row.conversion_factor)
         if factor <= 0:
             continue
-        remaining = flt(row.stock_qty) - flt(row.received_qty)
+        remaining = (flt(row.qty) - flt(row.received_qty)) * factor
         if remaining > 0.000001:
             found.setdefault(row.item_code, []).append({
                 "po": row.parent, "po_item": row.name,
@@ -153,7 +153,7 @@ def build_draft(text, supplier, company):
         if factor <= 0:
             frappe.throw(_("Invalid conversion factor on {0}.").format(item.item_code))
         item.qty = request["qty"] / factor
-        item.received_qty = request["qty"]
+        item.received_qty = request["qty"] / factor\n        item.stock_qty = request["qty"]
         target_items.append(item)
     if set(desired) != seen:
         frappe.throw(_("Standard ERPNext mapper could not map all selected PO lines. No document was saved."))
