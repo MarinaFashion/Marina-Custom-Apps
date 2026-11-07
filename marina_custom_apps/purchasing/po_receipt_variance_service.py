@@ -15,7 +15,7 @@ from frappe.utils import flt
 BATCH_SIZE = 250
 EPS = 0.000001
 # Contractual over-receipt allowance applies to EACH Item Variant, never to the template.
-TOLERANCE_PCT = 8
+DEFAULT_TOLERANCE_PCT = 8
 
 
 def _chunks(values, size=BATCH_SIZE):
@@ -23,7 +23,7 @@ def _chunks(values, size=BATCH_SIZE):
         yield values[index:index + size]
 
 
-def calculate(ordered, received, cost_per_stock_unit, discount_pct=50):
+def calculate(ordered, received, cost_per_stock_unit, discount_pct=50, tolerance_pct=DEFAULT_TOLERANCE_PCT):
     """All quantities are in Stock UOM; rates are company base currency per Stock UOM.
 
     The eligible quantity is ONLY units beyond the tolerance band.
@@ -32,7 +32,7 @@ def calculate(ordered, received, cost_per_stock_unit, discount_pct=50):
     ordered = flt(ordered)
     received = flt(received)
     rate = flt(cost_per_stock_unit)
-    tol = TOLERANCE_PCT / 100
+    tol = flt(tolerance_pct) / 100
     discount = flt(discount_pct) / 100
     variance = received - ordered
     # Match Excel ROUND(x, 0), rather than Python bankers rounding.
@@ -72,7 +72,7 @@ def get_columns():
         col("Variance Qty", "variance_qty"),
         col("Variance %", "variance_pct", "Percent", 105),
         col("Shortage Qty", "shortage_qty"),
-        col("Tolerance Qty (8%)", "tolerance_qty"),
+        col("Tolerance Qty", "tolerance_qty"),
         col("Eligible Excess Qty", "eligible_excess_qty", "Float", 145),
         col("Avg PO Cost / Stock Unit", "unit_cost", "Currency", 165, "currency"),
         col("Eligible Discount Value", "discount_value", "Currency", 170, "currency"),
@@ -87,10 +87,14 @@ def _validate(filters):
         frappe.throw(_("Company and Supplier are required."))
     if not frappe.has_permission("Purchase Order", "read") or not frappe.has_permission("Purchase Receipt", "read"):
         frappe.throw(_("Read access to both Purchase Orders and Purchase Receipts is required."), frappe.PermissionError)
-    discount_pct = flt(filters.get("discount_pct", 50))
-    if discount_pct < 0 or discount_pct > 100:
-        frappe.throw(_("discount_pct must be between 0 and 100."))
-    filters["discount_pct"] = discount_pct
+    for name, default in (("tolerance_pct", DEFAULT_TOLERANCE_PCT),
+                          ("discount_pct", 50)):
+        # Explicit zero is valid; only missing or blank values use the default.
+        raw = filters.get(name)
+        value = flt(default if raw is None or raw == "" else raw)
+        if value < 0 or value > 100:
+            frappe.throw(_("{0} must be between 0 and 100.").format(name))
+        filters[name] = value
     if not frappe.db.exists("Company", filters["company"]):
         frappe.throw(_("Invalid company."))
     return frappe.get_cached_value("Company", filters["company"], "default_currency")
@@ -222,7 +226,8 @@ def get_data(filters, currency):
             "receipt_lines": amounts["receipt_lines"],
         }
         # Calculate tolerance and discount BEFORE rolling up to Item Template.
-        row.update(calculate(ordered, received, rate, filters["discount_pct"]))
+        row.update(calculate(ordered, received, rate, filters["discount_pct"],
+                             filters["tolerance_pct"]))
         results.append(row)
     if filters.get("view_level", "Item Variant") == "Item Template":
         results = _collapse_templates(results)
@@ -230,7 +235,7 @@ def get_data(filters, currency):
 
 
 def _collapse_templates(rows):
-    """Display-only rollup of variant-specific 8% allowances and discounts.
+    """Display-only rollup of variant-specific allowances and discounts.
 
     Quantities are summed for display, but variant excess is never offset by
     shortages of another size or colour. Variant-specific PO rates are
@@ -284,16 +289,38 @@ def execute(filters=None):
 
 
 def _size_labels(codes):
-    """Read size attributes in batches; never infer sizes from variant codes."""
-    labels = {}
+    """Resolve size abbreviations from Item Attribute master, not item codes.
+
+    Attribute Value stores the full label on the Item; Item Attribute Value
+    stores its matching 'abbr' on the corresponding Item Attribute parent.
+    """
+    size_values = {}
     for batch in _chunks(sorted(codes)):
-        for a in frappe.get_all("Item Variant Attribute",
-                                filters={"parent": ["in", batch]},
-                                fields=["parent", "attribute", "attribute_value"],
-                                limit_page_length=0):
-            if "size" in (a.attribute or "").lower():
-                labels[a.parent] = a.attribute_value
-    return labels
+        for row in frappe.get_all(
+            "Item Variant Attribute",
+            filters={"parent": ["in", batch]},
+            fields=["parent", "attribute", "attribute_value"],
+            limit_page_length=0,
+        ):
+            if "size" in (row.attribute or "").lower() and row.attribute_value:
+                size_values[row.parent] = (row.attribute, row.attribute_value)
+    if not size_values:
+        return {}
+    attributes = {key[0] for key in size_values.values()}
+    abbreviations = {}
+    for batch in _chunks(sorted(attributes)):
+        for value in frappe.get_all(
+            "Item Attribute Value",
+            filters={"parent": ["in", batch]},
+            fields=["parent", "attribute_value", "abbr"],
+            limit_page_length=0,
+        ):
+            if value.abbr:
+                abbreviations[(value.parent, value.attribute_value)] = value.abbr
+    return {
+        code: abbreviations.get(pair) or pair[1]
+        for code, pair in size_values.items()
+    }
 
 
 def build_matrix(rows, sizes, images):
@@ -333,11 +360,13 @@ def build_matrix(rows, sizes, images):
 
 @frappe.whitelist()
 def get_matrix_data(company, supplier, item_year=None, season=None,
-                    collection=None, discount_pct=50):
+                    collection=None, discount_pct=50,
+                    tolerance_pct=DEFAULT_TOLERANCE_PCT):
     """Read-only matrix endpoint; mirrors the report permission and filter checks."""
     filters = frappe._dict(company=company, supplier=supplier,
                            item_year=item_year, season=season,
                            collection=collection, discount_pct=discount_pct,
+                           tolerance_pct=tolerance_pct,
                            view_level="Item Variant")
     currency = _validate(filters)
     rows = get_data(filters, currency)
@@ -353,7 +382,7 @@ def get_matrix_data(company, supplier, item_year=None, season=None,
         template = row["item_template"]
         if template not in images and images.get(row["item_code"]):
             images[template] = images[row["item_code"]]
-    return {"currency": currency, "tolerance_pct": TOLERANCE_PCT,
+    return {"currency": currency, "tolerance_pct": filters["tolerance_pct"],
             "discount_pct": filters["discount_pct"],
             "blocks": build_matrix(rows, _size_labels(codes), images)}
 
