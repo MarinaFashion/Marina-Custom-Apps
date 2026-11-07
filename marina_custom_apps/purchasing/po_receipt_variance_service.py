@@ -2,10 +2,11 @@
 
 Totals include all submitted purchase orders and submitted purchase receipts
 for the selected supplier/company, regardless of original PO/receipt mapping.
-Optional grouping consolidates all variants of a design before discount eligibility.
+Template rollups sum independently calculated variant-level allowances and discounts.
 No accounting documents or stock transactions are created.
 """
 from collections import defaultdict
+from decimal import Decimal, ROUND_HALF_UP
 
 import frappe
 from frappe import _
@@ -34,7 +35,10 @@ def calculate(ordered, received, cost_per_stock_unit, discount_pct=50):
     tol = TOLERANCE_PCT / 100
     discount = flt(discount_pct) / 100
     variance = received - ordered
-    tolerance_qty = ordered * tol
+    # Match Excel ROUND(x, 0), rather than Python bankers rounding.
+    tolerance_qty = float((Decimal(str(max(ordered, 0))) * Decimal(str(tol))).quantize(
+        Decimal("1"), rounding=ROUND_HALF_UP
+    ))
     eligible = max(received - ordered - tolerance_qty, 0)
     return {
         "variance_qty": variance,
@@ -277,3 +281,79 @@ def execute(filters=None):
          "datatype": "Currency", "currency": currency, "indicator": "Green"},
     ]
     return get_columns(), rows, None, None, summary
+
+
+def _size_labels(codes):
+    """Read size attributes in batches; never infer sizes from variant codes."""
+    labels = {}
+    for batch in _chunks(sorted(codes)):
+        for a in frappe.get_all("Item Variant Attribute",
+                                filters={"parent": ["in", batch]},
+                                fields=["parent", "attribute", "attribute_value"],
+                                limit_page_length=0):
+            if "size" in (a.attribute or "").lower():
+                labels[a.parent] = a.attribute_value
+    return labels
+
+
+def build_matrix(rows, sizes, images):
+    """Pure presentation rollup. All financial logic is already per variant."""
+    by_template = defaultdict(list)
+    for row in rows:
+        by_template[row["item_template"]].append(row)
+    blocks = []
+    for template, items in sorted(by_template.items()):
+        used = set()
+        cells = []
+        for row in sorted(items, key=lambda v: (str(sizes.get(v["item_code"]) or ""), v["item_code"])):
+            code = row["item_code"]
+            label = str(sizes.get(code) or code)
+            if label in used:
+                label = f"{label} ({code})"
+            used.add(label)
+            cells.append({"label": label, "item_code": code, **{
+                key: row[key] for key in (
+                    "po_qty", "receipt_qty", "variance_qty", "variance_pct",
+                    "tolerance_qty", "eligible_excess_qty", "unit_cost", "discount_value"
+                )
+            }})
+        totals = {key: sum(flt(row[key]) for row in items) for key in (
+            "po_qty", "receipt_qty", "variance_qty", "tolerance_qty",
+            "eligible_excess_qty", "discount_value"
+        )}
+        totals["variance_pct"] = (totals["variance_qty"] / totals["po_qty"] * 100
+                                  if totals["po_qty"] else 0)
+        totals["unit_cost"] = (sum(flt(row["po_qty"]) * flt(row["unit_cost"])
+                                   for row in items) / totals["po_qty"]
+                               if totals["po_qty"] else 0)
+        blocks.append({"item_code": template, "image": images.get(template),
+                       "variants": cells, "totals": totals})
+    return blocks
+
+
+@frappe.whitelist()
+def get_matrix_data(company, supplier, item_year=None, season=None,
+                    collection=None, discount_pct=50):
+    """Read-only matrix endpoint; mirrors the report permission and filter checks."""
+    filters = frappe._dict(company=company, supplier=supplier,
+                           item_year=item_year, season=season,
+                           collection=collection, discount_pct=discount_pct,
+                           view_level="Item Variant")
+    currency = _validate(filters)
+    rows = get_data(filters, currency)
+    codes = {row["item_code"] for row in rows}
+    templates = {row["item_template"] for row in rows}
+    images = {}
+    for batch in _chunks(sorted(codes | templates)):
+        for item in frappe.get_all("Item", filters={"name": ["in", batch]},
+                                   fields=["name", "image"], limit_page_length=0):
+            if item.image:
+                images[item.name] = item.image
+    for row in rows:
+        template = row["item_template"]
+        if template not in images and images.get(row["item_code"]):
+            images[template] = images[row["item_code"]]
+    return {"currency": currency, "tolerance_pct": TOLERANCE_PCT,
+            "discount_pct": filters["discount_pct"],
+            "blocks": build_matrix(rows, _size_labels(codes), images)}
+
