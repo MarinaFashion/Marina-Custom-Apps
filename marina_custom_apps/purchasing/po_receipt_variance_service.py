@@ -1,7 +1,8 @@
 """PO vs Purchase Receipt Variance & Discount — management-only report.
 
-Totals are aggregated by variant across *all* submitted purchase orders and
-submitted, PO-linked purchase receipts for the chosen supplier/company.
+Totals include all submitted purchase orders and submitted purchase receipts
+for the selected supplier/company, regardless of original PO/receipt mapping.
+Optional grouping consolidates all variants of a design before discount eligibility.
 No accounting documents or stock transactions are created.
 """
 from collections import defaultdict
