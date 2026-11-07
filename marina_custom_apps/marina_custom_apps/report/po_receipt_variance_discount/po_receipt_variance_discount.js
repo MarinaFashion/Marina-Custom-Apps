@@ -1,4 +1,10 @@
 frappe.query_reports["PO Receipt Variance Discount"] = {
+    onload(report) {
+        report.page.add_inner_button(__("Excel Matrix Layout"), () => {
+            frappe.route_options = report.get_filter_values();
+            frappe.set_route("po-receipt-variance-matrix");
+        });
+    },
     filters: [
         {
             fieldname: "company", label: __("Company"), fieldtype: "Link",
