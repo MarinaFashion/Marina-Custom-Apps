@@ -99,6 +99,9 @@
                     }
                 }
                 frm.refresh_field("items");
+                if (typeof frm.cscript?.calculate_taxes_and_totals === "function") {
+                    frm.cscript.calculate_taxes_and_totals();
+                }
                 frm.dirty();
                 dialog.hide();
                 frappe.show_alert({
