@@ -13,6 +13,8 @@ from frappe.utils import flt
 
 BATCH_SIZE = 250
 EPS = 0.000001
+# Contractual over-receipt allowance applies to EACH Item Variant, never to the template.
+TOLERANCE_PCT = 8
 
 
 def _chunks(values, size=BATCH_SIZE):
@@ -20,7 +22,7 @@ def _chunks(values, size=BATCH_SIZE):
         yield values[index:index + size]
 
 
-def calculate(ordered, received, cost_per_stock_unit, tolerance_pct=5, discount_pct=50):
+def calculate(ordered, received, cost_per_stock_unit, discount_pct=50):
     """All quantities are in Stock UOM; rates are company base currency per Stock UOM.
 
     The eligible quantity is ONLY units beyond the tolerance band.
@@ -29,7 +31,7 @@ def calculate(ordered, received, cost_per_stock_unit, tolerance_pct=5, discount_
     ordered = flt(ordered)
     received = flt(received)
     rate = flt(cost_per_stock_unit)
-    tol = flt(tolerance_pct) / 100
+    tol = TOLERANCE_PCT / 100
     discount = flt(discount_pct) / 100
     variance = received - ordered
     tolerance_qty = ordered * tol
@@ -66,7 +68,7 @@ def get_columns():
         col("Variance Qty", "variance_qty"),
         col("Variance %", "variance_pct", "Percent", 105),
         col("Shortage Qty", "shortage_qty"),
-        col("Tolerance Qty", "tolerance_qty"),
+        col("Tolerance Qty (8%)", "tolerance_qty"),
         col("Eligible Excess Qty", "eligible_excess_qty", "Float", 145),
         col("Avg PO Cost / Stock Unit", "unit_cost", "Currency", 165, "currency"),
         col("Eligible Discount Value", "discount_value", "Currency", 170, "currency"),
@@ -81,11 +83,10 @@ def _validate(filters):
         frappe.throw(_("Company and Supplier are required."))
     if not frappe.has_permission("Purchase Order", "read") or not frappe.has_permission("Purchase Receipt", "read"):
         frappe.throw(_("Read access to both Purchase Orders and Purchase Receipts is required."), frappe.PermissionError)
-    for field in ("tolerance_pct", "discount_pct"):
-        number = flt(filters.get(field, 5 if field == "tolerance_pct" else 50))
-        if number < 0 or number > 100:
-            frappe.throw(_("{0} must be between 0 and 100.").format(field))
-        filters[field] = number
+    discount_pct = flt(filters.get("discount_pct", 50))
+    if discount_pct < 0 or discount_pct > 100:
+        frappe.throw(_("discount_pct must be between 0 and 100."))
+    filters["discount_pct"] = discount_pct
     if not frappe.db.exists("Company", filters["company"]):
         frappe.throw(_("Invalid company."))
     return frappe.get_cached_value("Company", filters["company"], "default_currency")
@@ -216,16 +217,16 @@ def get_data(filters, currency):
             "currency": currency, "po_lines": amounts["po_lines"],
             "receipt_lines": amounts["receipt_lines"],
         }
-        row.update(calculate(ordered, received, rate,
-                             filters["tolerance_pct"], filters["discount_pct"]))
+        # Calculate tolerance and discount BEFORE rolling up to Item Template.
+        row.update(calculate(ordered, received, rate, filters["discount_pct"]))
         results.append(row)
     if filters.get("view_level", "Item Variant") == "Item Template":
-        results = _collapse_templates(results, filters)
+        results = _collapse_templates(results)
     return sorted(results, key=lambda r: (r["item_template"] or "", r["item_code"] or ""))
 
 
-def _collapse_templates(rows, filters):
-    """Display-only rollup of variant-specific allowances and discounts.
+def _collapse_templates(rows):
+    """Display-only rollup of variant-specific 8% allowances and discounts.
 
     Quantities are summed for display, but variant excess is never offset by
     shortages of another size or colour. Variant-specific PO rates are
