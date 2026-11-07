@@ -107,26 +107,36 @@ def _purchase_order_rows(filters):
         )
 
 
-def _receipt_rows(filters, po_item_names):
-    # Permissions must apply to the Purchase Receipt parent, not only the PO.
-    receipt_names = frappe.get_list(
+def _receipt_rows(filters, codes):
+    """All submitted receipts for this supplier/company, with or without PO links.
+
+    Return documents reverse accepted quantities. Rejected quantities are not
+    treated as purchased/accepted stock.
+    """
+    parents = frappe.get_list(
         "Purchase Receipt",
         filters={"docstatus": 1, "company": filters["company"],
                  "supplier": filters["supplier"]},
-        pluck="name", limit_page_length=0,
+        fields=["name", "is_return"],
+        limit_page_length=0,
     )
-    po_item_set = set(po_item_names)
-    for group in _chunks(receipt_names):
+    signs = {row.name: (-1 if row.is_return else 1) for row in parents}
+    code_set = set(codes)
+    for group in _chunks(list(signs)):
         for row in frappe.get_all(
             "Purchase Receipt Item",
-            filters={"parent": ["in", group], "purchase_order_item": ["is", "set"]},
-            fields=["parent", "purchase_order_item", "item_code",
-                    "qty", "conversion_factor"],
+            filters={"parent": ["in", group]},
+            fields=["parent", "item_code", "qty", "conversion_factor"],
             limit_page_length=0,
         ):
-            if row.purchase_order_item in po_item_set:
-                yield row
-
+            if row.item_code not in code_set:
+                continue
+            quantity = flt(row.qty) * flt(row.conversion_factor)
+            # ERPNext normally stores negative qty on a return; also handle
+            # legacy positive qty return rows defensively.
+            if signs[row.parent] < 0:
+                quantity = -abs(quantity)
+            yield row.item_code, quantity
 
 def _classifications(codes):
     fields = ["name", "variant_of"]
@@ -155,7 +165,6 @@ def get_data(filters, currency):
     groups = defaultdict(lambda: {"po_qty": 0.0, "po_amount": 0.0,
                                   "receipt_qty": 0.0, "po_lines": 0,
                                   "receipt_lines": 0})
-    po_items = {}
     for item in _purchase_order_rows(filters):
         factor = flt(item.conversion_factor)
         if not item.item_code or factor <= 0:
@@ -165,18 +174,14 @@ def get_data(filters, currency):
         rec["po_qty"] += quantity
         rec["po_amount"] += flt(item.qty) * flt(item.base_rate)
         rec["po_lines"] += 1
-        po_items[item.name] = item.item_code
 
-    if not po_items:
+    if not groups:
         return []
 
-    # The PO Item link is the accounting-safe identity. It prevents unrelated
-    # PR items (or other suppliers' receipts) from inflating actual receipt qty.
-    for item in _receipt_rows(filters, po_items):
-        code = po_items.get(item.purchase_order_item)
-        if not code or item.item_code != code:
-            continue
-        qty = flt(item.qty) * flt(item.conversion_factor)
+    # Include every submitted Purchase Receipt for the same supplier/company,
+    # even if it originated outside the PO mapper. Aggregate all received
+    # quantities by variant; returns reduce net accepted receipts.
+    for code, qty in _receipt_rows(filters, groups):
         groups[code]["receipt_qty"] += qty
         groups[code]["receipt_lines"] += 1
 
