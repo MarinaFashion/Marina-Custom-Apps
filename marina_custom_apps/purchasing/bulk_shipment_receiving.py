@@ -136,7 +136,8 @@ def build_draft(text, supplier, company):
     for po in po_names:
         # ERPNext's standard mapper preserves PO Item references, taxes and
         # other purchasing fields. Target remains unsaved throughout.
-        target = make_purchase_receipt(po, target_doc=target)
+        selected = [ref for ref, request in desired.items() if request["candidates"][0]["po"] == po]
+        target = make_purchase_receipt(po, target_doc=target, args={"filtered_children": selected})
     if not target:
         frappe.throw(_("No eligible Purchase Order items found."))
     target_items = []
