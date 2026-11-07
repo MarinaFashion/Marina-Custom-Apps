@@ -2,7 +2,6 @@
 
 Pasted quantities are expressed in stock UOM. Never writes inventory or submits documents.
 """
-from collections import Counter
 from decimal import Decimal, InvalidOperation
 
 import frappe
@@ -132,6 +131,19 @@ def build_draft(text, supplier, company):
 
     desired = {r["candidates"][0]["po_item"]: r for r in rows}
     po_names = sorted({r["candidates"][0]["po"] for r in rows})
+    # One Purchase Receipt cannot combine POs with different currencies.
+    parent_rows = frappe.get_list(
+        "Purchase Order",
+        filters={"name": ["in", po_names], "docstatus": 1,
+                 "supplier": supplier, "company": company},
+        fields=["name", "currency", "supplier", "company"],
+        limit_page_length=len(po_names),
+    )
+    if len(parent_rows) != len(po_names):
+        frappe.throw(_("One or more Purchase Orders are no longer eligible. Preview again."))
+    if len({r.currency for r in parent_rows}) != 1:
+        frappe.throw(_("Purchase Orders have different currencies. Create separate Receipts."))
+
     target = None
     for po in po_names:
         # ERPNext's standard mapper preserves PO Item references, taxes and
