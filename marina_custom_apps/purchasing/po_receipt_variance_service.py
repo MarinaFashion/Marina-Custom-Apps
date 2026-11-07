@@ -59,6 +59,7 @@ def get_columns():
         col("Year", "item_year", "Data", 85),
         col("Season", "season", "Data", 110),
         col("Collection", "collection", "Data", 130),
+        col("Variants", "variant_count", "Int", 85),
         col("PO Qty", "po_qty"),
         col("Receipt Qty", "receipt_qty"),
         col("Variance Qty", "variance_qty"),
@@ -210,16 +211,59 @@ def get_data(filters, currency):
             "item_code": code, "item_template": template_name,
             "item_year": year, "season": season, "collection": collection,
             "po_qty": ordered, "receipt_qty": received, "unit_cost": rate,
+            "variant_count": 1,
             "currency": currency, "po_lines": amounts["po_lines"],
             "receipt_lines": amounts["receipt_lines"],
         }
         row.update(calculate(ordered, received, rate,
                              filters["tolerance_pct"], filters["discount_pct"]))
         results.append(row)
-    return sorted(results, key=lambda r: (r["item_template"] or "", r["item_code"]))
+    if filters.get("view_level", "Item Template") == "Item Template":
+        results = _collapse_templates(results, filters)
+    return sorted(results, key=lambda r: (r["item_template"] or "", r["item_code"] or ""))
+
+
+def _collapse_templates(rows, filters):
+    """Apply tolerance after consolidating all variants within a design."""
+    grouped = {}
+    for row in rows:
+        key = row["item_template"]
+        group = grouped.setdefault(key, {
+            "item_code": None, "item_template": key,
+            "item_year": row["item_year"], "season": row["season"],
+            "collection": row["collection"], "currency": row["currency"],
+            "po_qty": 0, "receipt_qty": 0, "po_amount": 0,
+            "variant_count": 0, "po_lines": 0, "receipt_lines": 0,
+        })
+        group["po_qty"] += row["po_qty"]
+        group["receipt_qty"] += row["receipt_qty"]
+        group["po_amount"] += row["unit_cost"] * row["po_qty"]
+        for field in ("variant_count", "po_lines", "receipt_lines"):
+            group[field] += row[field]
+    result = []
+    for group in grouped.values():
+        qty = group["po_qty"]
+        group["unit_cost"] = group.pop("po_amount") / qty if abs(qty) > EPS else 0
+        group.update(calculate(qty, group["receipt_qty"], group["unit_cost"],
+                               filters["tolerance_pct"], filters["discount_pct"]))
+        result.append(group)
+    return result
 
 
 def execute(filters=None):
     filters = frappe._dict(filters or {})
     currency = _validate(filters)
-    return get_columns(), get_data(filters, currency)
+    rows = get_data(filters, currency)
+    summary = [
+        {"label": _("Total PO Qty"), "value": sum(r["po_qty"] for r in rows),
+         "datatype": "Float", "indicator": "Blue"},
+        {"label": _("Total Receipt Qty"), "value": sum(r["receipt_qty"] for r in rows),
+         "datatype": "Float", "indicator": "Blue"},
+        {"label": _("Discount-Eligible Excess Qty"),
+         "value": sum(r["eligible_excess_qty"] for r in rows),
+         "datatype": "Float", "indicator": "Orange"},
+        {"label": _("Estimated Excess Discount"),
+         "value": sum(r["discount_value"] for r in rows),
+         "datatype": "Currency", "currency": currency, "indicator": "Green"},
+    ]
+    return get_columns(), rows, None, None, summary
