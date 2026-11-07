@@ -61,6 +61,12 @@ class TestPOReceiptDiscount(unittest.TestCase):
         self.assertEqual(calculate(70, 80, 127, 50, 10)["discount_value"], 190.5)
         self.assertEqual(calculate(70, 80, 127, 50, 0)["discount_value"], 635)
 
+    def test_pre_discount_amount_and_discount_50_percent(self):
+        row = calculate(70, 80, 12.5, 50, 8)
+        self.assertEqual(row["eligible_excess_qty"], 4)
+        self.assertEqual(row["eligible_amount_before_discount"], 50)
+        self.assertEqual(row["discount_value"], 25)
+
     def test_default_tolerance_and_adjustable_discount(self):
         row = calculate(100, 112, 40, 25)
         self.assertEqual(row["tolerance_qty"], 8)
@@ -76,6 +82,7 @@ class TestPOReceiptDiscount(unittest.TestCase):
         self.assertEqual(matrix[0]["image"], "/files/a.jpg")
         self.assertEqual(matrix[0]["totals"]["discount_value"], 508)
         self.assertEqual(matrix[0]["totals"]["eligible_excess_qty"], 8)
+        self.assertEqual(matrix[0]["totals"]["eligible_amount_before_discount"], 1016)
 
     def test_template_never_offsets_variant_excess_with_other_variant_shortage(self):
         rows = []
@@ -93,6 +100,7 @@ class TestPOReceiptDiscount(unittest.TestCase):
         self.assertEqual(template["variance_qty"], 0)
         self.assertEqual(template["eligible_excess_qty"], 12)
         self.assertEqual(template["discount_value"], 240)
+        self.assertEqual(template["eligible_amount_before_discount"], 480)
 
 
 if __name__ == "__main__":
