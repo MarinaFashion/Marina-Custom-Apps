@@ -56,7 +56,7 @@
                     decisions[row.item_code] = row.status === "Matched" ? "Accept" : "";
                 });
                 dialog.__review = {paste: values.paste, supplier: frm.doc.supplier,
-                    company: frm.doc.company, rows, decisions,
+                    company: frm.doc.company, rows, decisions, selected: new Set(),
                     errors: results.errors || [], page: 0};
                 render();
             },
@@ -131,11 +131,21 @@
             const accepted = state.rows.filter(row => state.decisions[row.item_code] === "Accept").length;
             const rejected = state.rows.filter(row => state.decisions[row.item_code] === "Reject").length;
             const remaining = state.rows.length - accepted - rejected;
+            const eligible = state.rows.filter(row => ["Matched", "Variance"].includes(row.status));
+            const selected = eligible.filter(row => state.selected.has(row.item_code));
+            const excess = selected.filter(row => Number(row.variance) > 0.000001);
             const $root = dialog.fields_dict.review.$wrapper;
             let html = '<div class="mb-2"><strong>' + escape(state.rows.length) +
                 '</strong> variants · <span class="text-success">' + escape(accepted) +
                 ' accepted</span> · <span class="text-danger">' + escape(rejected) +
-                ' rejected</span> · <strong>' + escape(remaining) + ' to review</strong></div>';
+                ' rejected</span> · <strong>' + escape(remaining) + ' to review</strong> · ' +
+                '<strong>' + escape(selected.length) + ' selected</strong></div>' +
+                '<div class="d-flex align-items-center" style="gap:6px;flex-wrap:wrap;margin-bottom:10px">' +
+                '<button class="btn btn-default btn-sm marina-select-all">Select All Eligible (' + eligible.length + ')</button>' +
+                '<button class="btn btn-default btn-sm marina-clear-selection">Clear Selection</button>' +
+                '<button class="btn btn-primary btn-sm marina-approve-selected"' +
+                (selected.length ? '' : ' disabled') + '>Approve Selected (' + selected.length + ')</button>' +
+                '</div>';
             if (state.errors.length) {
                 html += '<p class="text-danger">' + state.errors.map(e =>
                     escape("Row " + e.row + ": " + e.message)).join("<br>") + '</p>';
@@ -144,7 +154,7 @@
             html += '<table class="table table-bordered table-condensed"><thead><tr>' +
                 '<th>Item Variant</th><th>PO Title</th><th>PO Qty</th>' +
                 '<th>Outstanding</th><th>Receipt Qty</th><th>Variance</th>' +
-                '<th>Status</th><th>Decision</th></tr></thead><tbody>';
+                '<th>Status</th><th>Decision</th><th>Select</th></tr></thead><tbody>';
             visible.forEach((row, index) => {
                 const po = row.candidates?.length === 1 ? row.candidates[0] : null;
                 const valid = row.status === "Matched" || row.status === "Variance";
@@ -165,7 +175,10 @@
                     '<td class="' + (valid ? "text-success" : "text-danger") + '">' +
                     escape(row.status) + '</td>' +
                     '<td><select class="form-control input-xs marina-decision" data-index="' +
-                    (begin + index) + '">' + options + '</select></td></tr>';
+                    (begin + index) + '">' + options + '</select></td>' +
+                    '<td class="text-center"><input type="checkbox" class="marina-row-select" data-index="' +
+                    (begin + index) + '"' + (valid ? '' : ' disabled') +
+                    (state.selected.has(row.item_code) ? ' checked' : '') + '></td></tr>';
             });
             html += '</tbody></table></div>';
             html += '<div class="d-flex align-items-center justify-content-between mt-3">' +
@@ -183,6 +196,34 @@
                 const row = state.rows[Number($(this).attr("data-index"))];
                 state.decisions[row.item_code] = $(this).val();
                 render();
+            });
+            $root.find(".marina-row-select").on("change", function() {
+                const row = state.rows[Number($(this).attr("data-index"))];
+                if ($(this).prop("checked")) state.selected.add(row.item_code);
+                else state.selected.delete(row.item_code);
+                render();
+            });
+            $root.find(".marina-select-all").on("click", () => {
+                eligible.forEach(row => state.selected.add(row.item_code));
+                render();
+            });
+            $root.find(".marina-clear-selection").on("click", () => {
+                state.selected.clear();
+                render();
+            });
+            $root.find(".marina-approve-selected").on("click", () => {
+                if (!selected.length) return;
+                const apply = () => {
+                    selected.forEach(row => {state.decisions[row.item_code] = "Accept";});
+                    render();
+                };
+                if (excess.length) {
+                    const excessQty = excess.reduce((sum, row) => sum + Number(row.variance), 0);
+                    frappe.confirm(
+                        __("You are accepting {0} rows with quantities ABOVE the outstanding PO balance (total excess {1} stock units). ERPNext over-receipt limits will still apply. Continue?", [excess.length, number(excessQty)]),
+                        apply
+                    );
+                } else apply();
             });
             $root.find(".marina-prev").on("click", () => {state.page -= 1; render();});
             $root.find(".marina-next").on("click", () => {state.page += 1; render();});
