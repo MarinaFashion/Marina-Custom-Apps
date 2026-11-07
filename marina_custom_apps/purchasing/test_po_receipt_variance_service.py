@@ -1,7 +1,7 @@
 """Financially critical pure calculation tests (run with bench pytest)."""
 import unittest
 
-from marina_custom_apps.purchasing.po_receipt_variance_service import calculate, _collapse_templates
+from marina_custom_apps.purchasing.po_receipt_variance_service import calculate, _collapse_templates, build_matrix
 
 
 class TestPOReceiptDiscount(unittest.TestCase):
@@ -48,13 +48,29 @@ class TestPOReceiptDiscount(unittest.TestCase):
         self.assertEqual(result[0]["eligible_excess_qty"], 11)
         self.assertEqual(result[0]["discount_value"], 220)
         self.assertEqual(result[0]["shortage_qty"], 3)
-        self.assertEqual(result[0]["tolerance_qty"], 5)
+        self.assertEqual(result[0]["tolerance_qty"], 8)
+
+    def test_excel_round_half_up_for_variant_allowance(self):
+        self.assertEqual(calculate(70, 80, 127)["tolerance_qty"], 6)
+        self.assertEqual(calculate(80, 90, 127)["tolerance_qty"], 6)
+        self.assertEqual(calculate(60, 68, 127)["tolerance_qty"], 5)
+        self.assertEqual(calculate(70, 80, 127)["discount_value"], 254)
 
     def test_fixed_tolerance_and_adjustable_discount(self):
         row = calculate(100, 112, 40, 25)
         self.assertEqual(row["tolerance_qty"], 8)
         self.assertEqual(row["eligible_excess_qty"], 4)
         self.assertEqual(row["discount_value"], 40)
+
+    def test_matrix_preserves_separate_variant_amounts(self):
+        a = {"item_code": "A-S", "item_template": "A", "po_qty": 70,
+             "receipt_qty": 80, "unit_cost": 127, **calculate(70, 80, 127)}
+        b = {"item_code": "A-M", "item_template": "A", "po_qty": 80,
+             "receipt_qty": 90, "unit_cost": 127, **calculate(80, 90, 127)}
+        matrix = build_matrix([a, b], {"A-S": "S", "A-M": "M"}, {"A": "/files/a.jpg"})
+        self.assertEqual(matrix[0]["image"], "/files/a.jpg")
+        self.assertEqual(matrix[0]["totals"]["discount_value"], 508)
+        self.assertEqual(matrix[0]["totals"]["eligible_excess_qty"], 8)
 
     def test_template_never_offsets_variant_excess_with_other_variant_shortage(self):
         rows = []
