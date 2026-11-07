@@ -24,7 +24,7 @@ def _chunks(values, size=BATCH_SIZE):
 
 
 def calculate(ordered, received, cost_per_stock_unit, discount_pct=50, tolerance_pct=DEFAULT_TOLERANCE_PCT):
-    """All quantities are in Stock UOM; rates are company base currency per Stock UOM.
+    """All quantities are in Stock UOM; rate is selected currency per Stock UOM.
 
     The eligible quantity is ONLY units beyond the tolerance band.
     Shortages incur no discount/charge.
@@ -97,25 +97,35 @@ def _validate(filters):
         filters[name] = value
     if not frappe.db.exists("Company", filters["company"]):
         frappe.throw(_("Invalid company."))
-    return frappe.get_cached_value("Company", filters["company"], "default_currency")
+    base_currency = frappe.get_cached_value("Company", filters["company"], "default_currency")
+    selected = filters.get("report_currency") or "CNY"
+    if selected not in ("CNY", "SAR"):
+        frappe.throw(_("Report Currency must be CNY or SAR."))
+    if selected == "SAR" and base_currency != "SAR":
+        frappe.throw(_("SAR mode requires the company's base currency to be SAR."))
+    filters["report_currency"] = selected
+    return selected
 
 
 def _purchase_order_rows(filters):
     # Parent query is permission-aware. Children are then scoped to these parents.
-    names = frappe.get_list(
+    parents = frappe.get_list(
         "Purchase Order",
         filters={"docstatus": 1, "company": filters["company"],
                  "supplier": filters["supplier"]},
-        pluck="name", limit_page_length=0,
+        fields=["name", "currency"], limit_page_length=0,
     )
-    for group in _chunks(names):
-        yield from frappe.get_all(
+    currencies = {p.name: p.currency for p in parents}
+    for group in _chunks(list(currencies)):
+        for item in frappe.get_all(
             "Purchase Order Item",
             filters={"parent": ["in", group]},
             fields=["name", "parent", "item_code", "qty",
-                    "conversion_factor", "base_rate"],
+                    "conversion_factor", "rate", "base_rate"],
             limit_page_length=0,
-        )
+        ):
+            item["document_currency"] = currencies[item.parent]
+            yield item
 
 
 def _receipt_rows(filters, codes):
@@ -128,10 +138,11 @@ def _receipt_rows(filters, codes):
         "Purchase Receipt",
         filters={"docstatus": 1, "company": filters["company"],
                  "supplier": filters["supplier"]},
-        fields=["name", "is_return"],
+        fields=["name", "is_return", "currency"],
         limit_page_length=0,
     )
     signs = {row.name: (-1 if row.is_return else 1) for row in parents}
+    receipt_currencies = {row.name: row.currency for row in parents}
     code_set = set(codes)
     for group in _chunks(list(signs)):
         for row in frappe.get_all(
@@ -147,7 +158,7 @@ def _receipt_rows(filters, codes):
             # legacy positive qty return rows defensively.
             if signs[row.parent] < 0:
                 quantity = -abs(quantity)
-            yield row.item_code, quantity
+            yield row.item_code, quantity, receipt_currencies[row.parent]
 
 def _classifications(codes):
     fields = ["name", "variant_of"]
@@ -180,10 +191,17 @@ def get_data(filters, currency):
         factor = flt(item.conversion_factor)
         if not item.item_code or factor <= 0:
             continue
+        if currency == "CNY" and item.document_currency != "CNY":
+            frappe.throw(_("Purchase Order {0} for item {1} is in {2}, not CNY. "
+                           "Cannot mix currencies in a supplier report.").format(
+                               item.parent, item.item_code, item.document_currency))
         quantity = flt(item.qty) * factor
         rec = groups[item.item_code]
         rec["po_qty"] += quantity
-        rec["po_amount"] += flt(item.qty) * flt(item.base_rate)
+        # PO rate is in the document currency; base_rate is in company currency.
+        # Both are weighted from each original PO line, never a current FX quote.
+        line_rate = item.rate if currency == "CNY" else item.base_rate
+        rec["po_amount"] += flt(item.qty) * flt(line_rate)
         rec["po_lines"] += 1
 
     if not groups:
@@ -192,7 +210,11 @@ def get_data(filters, currency):
     # Include every submitted Purchase Receipt for the same supplier/company,
     # even if it originated outside the PO mapper. Aggregate all received
     # quantities by variant; returns reduce net accepted receipts.
-    for code, qty in _receipt_rows(filters, groups):
+    for code, qty, receipt_currency in _receipt_rows(filters, groups):
+        if receipt_currency != "CNY":
+            frappe.throw(_("Purchase Receipt for item {0} is in {1}, not CNY. "
+                           "Review transaction currency before sharing the report.").format(
+                               code, receipt_currency))
         groups[code]["receipt_qty"] += qty
         groups[code]["receipt_lines"] += 1
 
@@ -361,12 +383,14 @@ def build_matrix(rows, sizes, images):
 @frappe.whitelist()
 def get_matrix_data(company, supplier, item_year=None, season=None,
                     collection=None, discount_pct=50,
-                    tolerance_pct=DEFAULT_TOLERANCE_PCT):
+                    tolerance_pct=DEFAULT_TOLERANCE_PCT,
+                    report_currency="CNY"):
     """Read-only matrix endpoint; mirrors the report permission and filter checks."""
     filters = frappe._dict(company=company, supplier=supplier,
                            item_year=item_year, season=season,
                            collection=collection, discount_pct=discount_pct,
                            tolerance_pct=tolerance_pct,
+                           report_currency=report_currency,
                            view_level="Item Variant")
     currency = _validate(filters)
     rows = get_data(filters, currency)
