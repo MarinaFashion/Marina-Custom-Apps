@@ -10,7 +10,7 @@ frappe.query_reports["PO Receipt Variance Discount"] = {
         },
         {
             fieldname: "view_level", label: __("View Level"), fieldtype: "Select",
-            options: "Item Template\nItem Variant", default: "Item Template", reqd: 1,
+            options: "Item Template\nItem Variant", default: "Item Variant", reqd: 1,
         },
         {fieldname: "item_year", label: __("Year"), fieldtype: "Data"},
         {fieldname: "season", label: __("Season"), fieldtype: "Data"},
