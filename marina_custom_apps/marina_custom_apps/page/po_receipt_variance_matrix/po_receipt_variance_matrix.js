@@ -64,7 +64,7 @@ frappe.pages["po-receipt-variance-matrix"].on_page_load = function(wrapper) {
            background:#fff!important;vertical-align:middle;text-align:center;font-weight:700;
            border-left:3px solid var(--marina-primary);
        }
-       .marina-po-matrix td.identity a {color:var(--marina-primary);}
+       .marina-po-matrix td.identity {color:var(--marina-primary);}
        .marina-po-matrix td.photo {background:#fff!important;vertical-align:middle;text-align:center;}
        .marina-po-matrix td.photo img {max-width:120px;max-height:145px;object-fit:contain;}
        .marina-po-matrix td.total {background:var(--marina-sand)!important;font-weight:700;}
@@ -157,8 +157,7 @@ frappe.pages["po-receipt-variance-matrix"].on_page_load = function(wrapper) {
                 html += '<tr class="' + cls + '">';
                 if (i === 0) {
                     html += '<td class="identity" rowspan="' + metrics.length + '">' +
-                        '<a href="/app/item/' + encodeURIComponent(block.item_code) + '">' +
-                        esc(block.item_code) + '</a></td>';
+                        esc(block.item_code) + '</td>';
                     const img = block.image ?
                         '<img loading="lazy" alt="" src="' + esc(block.image) + '">' :
                         '<span class="text-muted">' + esc(__("No image")) + '</span>';
