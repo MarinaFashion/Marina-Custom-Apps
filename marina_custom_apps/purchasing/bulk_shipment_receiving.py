@@ -166,7 +166,8 @@ def build_draft(text, supplier, company):
         if factor <= 0:
             frappe.throw(_("Invalid conversion factor on {0}.").format(item.item_code))
         item.qty = request["qty"] / factor
-        item.received_qty = request["qty"] / factor\n        item.stock_qty = request["qty"]
+        item.received_qty = request["qty"] / factor
+        item.stock_qty = request["qty"]
         target_items.append(item)
     if set(desired) != seen:
         frappe.throw(_("Standard ERPNext mapper could not map all selected PO lines. No document was saved."))
