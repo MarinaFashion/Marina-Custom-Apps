@@ -1,0 +1,23 @@
+{
+  "doctype": "Page",
+  "name": "po-receipt-variance-matrix",
+  "page_name": "po-receipt-variance-matrix",
+  "module": "Marina Custom Apps",
+  "title": "PO Receipt Variance Matrix",
+  "standard": "Yes",
+  "system_page": 0,
+  "roles": [
+    {
+      "role": "Purchase Manager"
+    },
+    {
+      "role": "Stock Manager"
+    },
+    {
+      "role": "Accounts Manager"
+    },
+    {
+      "role": "System Manager"
+    }
+  ]
+}
