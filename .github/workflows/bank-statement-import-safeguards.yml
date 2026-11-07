@@ -5,6 +5,7 @@ on:
       - "marina_custom_apps/pos_reconciliation/marina_bank_statement_import_service.py"
       - "marina_custom_apps/pos_reconciliation/doctype/marina_bank_statement_import/**"
       - "marina_custom_apps/pos_reconciliation/tests/check_statement_import_balance_safeguards.py"
+      - "marina_custom_apps/pos_reconciliation/tests/check_duplicate_review_bulk_ui.js"
       - ".github/workflows/bank-statement-import-safeguards.yml"
   push:
     branches: [main]
@@ -26,3 +27,10 @@ jobs:
           python -m py_compile marina_custom_apps/pos_reconciliation/doctype/marina_bank_statement_import/marina_bank_statement_import.py
       - name: Run dependency-free regression tests
         run: python marina_custom_apps/pos_reconciliation/tests/check_statement_import_balance_safeguards.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Validate bank import review UI
+        run: |
+          node --check marina_custom_apps/pos_reconciliation/doctype/marina_bank_statement_import/marina_bank_statement_import.js
+          node marina_custom_apps/pos_reconciliation/tests/check_duplicate_review_bulk_ui.js

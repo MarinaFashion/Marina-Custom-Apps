@@ -31,7 +31,10 @@ jobs:
           assert 'def _financial_identity(row):' in py
           assert 'def _prior_financial_duplicates(import_doc, rows):' in py
           assert '"reference_number": ["in", refs[start:start + CHUNK]]' in py
-          assert py.count('row.get("category") == "Potential Duplicate"') == 2
+          assert 'if error["category"] == "Potential Duplicate"' in py
+          assert 'def _validated_review_decisions(' in py
+          assert 'def _reviewed_rows(' in py
+          assert 'frappe.db.rollback()' in py
           assert "0.53.25" in Path("pyproject.toml").read_text()
           print('Filtered selection and duplicate preflight regression checks passed')
           PY
