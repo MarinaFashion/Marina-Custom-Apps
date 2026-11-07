@@ -15,6 +15,7 @@ frappe.pages["po-receipt-variance-matrix"].on_page_load = function(wrapper) {
         {fieldname:"item_year", label:__("Year"), fieldtype:"Data"},
         {fieldname:"season", label:__("Season"), fieldtype:"Data"},
         {fieldname:"collection", label:__("Collection"), fieldtype:"Data"},
+        {fieldname:"tolerance_pct", label:__("Tolerance %"), fieldtype:"Percent", default:8, reqd:1},
         {fieldname:"discount_pct", label:__("Excess Discount %"), fieldtype:"Percent", default:50, reqd:1}
     ];
     const controls = {};
@@ -25,21 +26,48 @@ frappe.pages["po-receipt-variance-matrix"].on_page_load = function(wrapper) {
     });
     const $root = $('<div class="marina-po-matrix"></div>').appendTo(page.main);
     const style = `<style>
-       .marina-po-matrix {padding:12px 0 24px;}
-       .marina-po-matrix .matrix-scroll {overflow:auto;max-height:calc(100vh - 275px);border:1px solid #ccd5da;}
-       .marina-po-matrix table {border-collapse:collapse;min-width:850px;width:100%;font-size:12px;}
-       .marina-po-matrix td,.marina-po-matrix th {border:1px solid #8b969e;padding:5px 8px;white-space:nowrap;}
-       .marina-po-matrix thead th {background:#bce0ef;position:sticky;top:0;z-index:3;text-align:center;}
+       /* Marina Fashion visual identity, scoped entirely to this report. */
+       .marina-po-matrix {
+           --marina-primary:#551C25; --marina-cream:#F2EBE7;
+           --marina-taupe:#C0A392; --marina-sand:#E4D5C4;
+           --marina-charcoal:#2D2926;
+           padding:12px 0 24px;color:var(--marina-charcoal);
+       }
+       .marina-po-matrix .matrix-scroll {
+           overflow:auto;max-height:calc(100vh - 275px);
+           border:1px solid var(--marina-taupe);border-radius:6px;
+       }
+       .marina-po-matrix table {border-collapse:separate;border-spacing:0;min-width:850px;width:100%;font-size:12px;}
+       .marina-po-matrix td,.marina-po-matrix th {
+           border-right:1px solid var(--marina-sand);
+           border-bottom:1px solid var(--marina-sand);
+           padding:5px 8px;white-space:nowrap;
+       }
+       .marina-po-matrix thead th {
+           background:var(--marina-primary);color:#fff;position:sticky;top:0;
+           z-index:3;text-align:center;font-weight:700;
+       }
        .marina-po-matrix td.number {text-align:right;font-variant-numeric:tabular-nums;}
-       .marina-po-matrix td.label {font-weight:500;background:#e8f2f9;}
-       .marina-po-matrix tr:nth-child(even) td.label,.marina-po-matrix tr:nth-child(even) td.number {background:#dcebf8;}
-       .marina-po-matrix tr.variance td {background:#83cce5!important;font-weight:600;}
-       .marina-po-matrix tr.discount td.number,.marina-po-matrix tr.excess td.total {color:#c81727;font-weight:700;}
-       .marina-po-matrix td.identity {background:white!important;vertical-align:middle;text-align:center;font-weight:700;}
-       .marina-po-matrix td.photo {background:white!important;vertical-align:middle;text-align:center;}
+       .marina-po-matrix td.label {font-weight:600;background:var(--marina-cream);}
+       .marina-po-matrix tr:nth-child(even) td.label,
+       .marina-po-matrix tr:nth-child(even) td.number {background:#faf6f3;}
+       .marina-po-matrix tr.variance td.label,
+       .marina-po-matrix tr.variance td.number {
+           background:var(--marina-sand)!important;color:var(--marina-primary);font-weight:700;
+       }
+       .marina-po-matrix tr.discount td.label,
+       .marina-po-matrix tr.discount td.number {background:var(--marina-cream);font-weight:700;}
+       .marina-po-matrix tr.discount td.number,
+       .marina-po-matrix tr.excess td.total {color:var(--marina-primary);font-weight:800;}
+       .marina-po-matrix td.identity {
+           background:#fff!important;vertical-align:middle;text-align:center;font-weight:700;
+           border-left:3px solid var(--marina-primary);
+       }
+       .marina-po-matrix td.identity a {color:var(--marina-primary);}
+       .marina-po-matrix td.photo {background:#fff!important;vertical-align:middle;text-align:center;}
        .marina-po-matrix td.photo img {max-width:120px;max-height:145px;object-fit:contain;}
-       .marina-po-matrix td.total {background:#dcebf8;font-weight:700;}
-       .marina-po-matrix .hint {padding:9px 0;color:var(--text-muted);}
+       .marina-po-matrix td.total {background:var(--marina-sand)!important;font-weight:700;}
+       .marina-po-matrix .hint {padding:9px 0;color:var(--marina-primary);font-weight:500;}
        @media print {
           .layout-main-section .page-form,.page-head,.navbar,.sidebar {display:none!important;}
           .marina-po-matrix .matrix-scroll {max-height:none;overflow:visible;}
@@ -53,7 +81,7 @@ frappe.pages["po-receipt-variance-matrix"].on_page_load = function(wrapper) {
         ["po_qty", __("PO Qty"), 0],
         ["variance_qty", __("Qty Diff"), 0],
         ["variance_pct", __("Diff %"), 1],
-        ["tolerance_qty", __("Accept Qty (8%)"), 0],
+        ["tolerance_qty", __("Accept Qty"), 0],
         ["eligible_excess_qty", __("Extra Qty"), 0],
         ["unit_cost", __("Unit Cost"), 2],
         ["discount_value", __("Discount Amount"), 2]
@@ -77,7 +105,8 @@ frappe.pages["po-receipt-variance-matrix"].on_page_load = function(wrapper) {
             if (bi !== -1) return 1;
             return a.localeCompare(b,undefined,{numeric:true});
         });
-        let html = '<div class="hint">' + esc(__("Tolerance is fixed at 8% of each item variant PO quantity, rounded to whole units. All template totals sum independently calculated variants.")) +
+        metrics[4][1] = __("Accept Qty ({0}%)", [fmt(data.tolerance_pct, 2).replace(/\\.00$/, "")]);
+        let html = '<div class="hint">' + esc(__("Tolerance: {0}% per Item Variant (rounded to whole units). Template totals aggregate variant-level results.", [fmt(data.tolerance_pct, 2).replace(/\\.00$/, "")])) +
             ' · ' + esc(__("Currency")) + ': ' + esc(data.currency) + '</div>';
         html += '<div class="matrix-scroll"><table><thead><tr><th>' + esc(__("Item Code")) +
             '</th><th>' + esc(__("Image")) + '</th><th>' + esc(__("Values")) + '</th>' +
@@ -113,7 +142,8 @@ frappe.pages["po-receipt-variance-matrix"].on_page_load = function(wrapper) {
     async function refresh() {
         const args = {};
         for (const f of fields) {
-            args[f.fieldname] = controls[f.fieldname].get_value() || "";
+            const value = controls[f.fieldname].get_value();
+            args[f.fieldname] = (value === null || value === undefined) ? "" : value;
             if (f.reqd && args[f.fieldname] === "") {
                 frappe.msgprint(__("{0} is required", [f.label]));
                 return;
