@@ -219,13 +219,18 @@ def get_data(filters, currency):
         row.update(calculate(ordered, received, rate,
                              filters["tolerance_pct"], filters["discount_pct"]))
         results.append(row)
-    if filters.get("view_level", "Item Template") == "Item Template":
+    if filters.get("view_level", "Item Variant") == "Item Template":
         results = _collapse_templates(results, filters)
     return sorted(results, key=lambda r: (r["item_template"] or "", r["item_code"] or ""))
 
 
 def _collapse_templates(rows, filters):
-    """Apply tolerance after consolidating all variants within a design."""
+    """Display-only rollup of variant-specific allowances and discounts.
+
+    Quantities are summed for display, but variant excess is never offset by
+    shortages of another size or colour. Variant-specific PO rates are
+    preserved in the estimated supplier discount value.
+    """
     grouped = {}
     for row in rows:
         key = row["item_template"]
@@ -233,23 +238,26 @@ def _collapse_templates(rows, filters):
             "item_code": None, "item_template": key,
             "item_year": row["item_year"], "season": row["season"],
             "collection": row["collection"], "currency": row["currency"],
-            "po_qty": 0, "receipt_qty": 0, "po_amount": 0,
+            "po_qty": 0.0, "receipt_qty": 0.0, "po_amount": 0.0,
+            "variance_qty": 0.0, "shortage_qty": 0.0,
+            "tolerance_qty": 0.0, "eligible_excess_qty": 0.0,
+            "discount_value": 0.0,
             "variant_count": 0, "po_lines": 0, "receipt_lines": 0,
         })
         group["po_qty"] += row["po_qty"]
         group["receipt_qty"] += row["receipt_qty"]
         group["po_amount"] += row["unit_cost"] * row["po_qty"]
-        for field in ("variant_count", "po_lines", "receipt_lines"):
+        for field in ("variance_qty", "shortage_qty", "tolerance_qty",
+                      "eligible_excess_qty", "discount_value",
+                      "variant_count", "po_lines", "receipt_lines"):
             group[field] += row[field]
     result = []
     for group in grouped.values():
         qty = group["po_qty"]
         group["unit_cost"] = group.pop("po_amount") / qty if abs(qty) > EPS else 0
-        group.update(calculate(qty, group["receipt_qty"], group["unit_cost"],
-                               filters["tolerance_pct"], filters["discount_pct"]))
+        group["variance_pct"] = (group["variance_qty"] / qty * 100) if qty else 0
         result.append(group)
     return result
-
 
 def execute(filters=None):
     filters = frappe._dict(filters or {})
