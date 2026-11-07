@@ -105,8 +105,8 @@ frappe.pages["po-receipt-variance-matrix"].on_page_load = function(wrapper) {
             if (bi !== -1) return 1;
             return a.localeCompare(b,undefined,{numeric:true});
         });
-        metrics[4][1] = __("Accept Qty ({0}%)", [fmt(data.tolerance_pct, 2).replace(/\\.00$/, "")]);
-        let html = '<div class="hint">' + esc(__("Tolerance: {0}% per Item Variant (rounded to whole units). Template totals aggregate variant-level results.", [fmt(data.tolerance_pct, 2).replace(/\\.00$/, "")])) +
+        metrics[4][1] = __("Accept Qty ({0}%)", [fmt(data.tolerance_pct, 2).replace(/\.00$/, "")]);
+        let html = '<div class="hint">' + esc(__("Tolerance: {0}% per Item Variant (rounded to whole units). Template totals aggregate variant-level results.", [fmt(data.tolerance_pct, 2).replace(/\.00$/, "")])) +
             ' · ' + esc(__("Currency")) + ': ' + esc(data.currency) + '</div>';
         html += '<div class="matrix-scroll"><table><thead><tr><th>' + esc(__("Item Code")) +
             '</th><th>' + esc(__("Image")) + '</th><th>' + esc(__("Values")) + '</th>' +
