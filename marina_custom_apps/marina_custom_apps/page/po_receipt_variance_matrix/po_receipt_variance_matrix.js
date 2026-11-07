@@ -128,15 +128,27 @@ frappe.pages["po-receipt-variance-matrix"].on_page_load = function(wrapper) {
     function export_csv() {
         if (!current || !current.blocks?.length) return;
         // Excel-readable export keeps the exact visual row/column arrangement.
-        const grid = $root.find("table tr").map(function() {
-            let cells = [];
-            $(this).children("th,td").each(function() {
-                const span = Number($(this).attr("rowspan") || 1);
-                const value = $(this).hasClass("photo") ? "" : $(this).text().trim();
-                cells.push('"' + value.replace(/"/g,'""') + '"');
+        const sizes = $root.find("thead th").slice(3,-1).map(function() {
+            return $(this).text().trim();
+        }).get();
+        const lines = [["Item Code","Image","Values",...sizes,"Total"]];
+        current.blocks.forEach(block => {
+            const variants = new Map(block.variants.map(v => [v.label,v]));
+            metrics.forEach(([key,label,digits],index) => {
+                const cell = v => v == null ? "" : fmt(v,digits) +
+                    (key === "variance_pct" ? "%" : "");
+                lines.push([
+                    index === 0 ? block.item_code : "",
+                    index === 0 ? (block.image || "") : "",
+                    label,
+                    ...sizes.map(size => variants.has(size) ?
+                        cell(variants.get(size)[key]) : ""),
+                    cell(block.totals[key])
+                ]);
             });
-            return cells.join(",");
-        }).get().join("\r\n");
+        });
+        const grid = lines.map(cells => cells.map(value =>
+            '"' + String(value).replace(/"/g,'""') + '"').join(",")).join("\\r\\n");
         const blob = new Blob(["\uFEFF",grid],{type:"text/csv;charset=utf-8;"});
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
