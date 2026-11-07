@@ -5,25 +5,25 @@ from marina_custom_apps.purchasing.po_receipt_variance_service import calculate,
 
 
 class TestPOReceiptDiscount(unittest.TestCase):
-    def test_discount_only_units_beyond_five_percent(self):
-        row = calculate(100, 112, 40, 5, 50)
+    def test_discount_only_units_beyond_fixed_eight_percent(self):
+        row = calculate(100, 112, 40, 50)
         self.assertEqual(row["variance_qty"], 12)
-        self.assertEqual(row["tolerance_qty"], 5)
-        self.assertEqual(row["eligible_excess_qty"], 7)
-        self.assertEqual(row["discount_value"], 140)
+        self.assertEqual(row["tolerance_qty"], 8)
+        self.assertEqual(row["eligible_excess_qty"], 4)
+        self.assertEqual(row["discount_value"], 80)
 
     def test_shortage_has_no_supplier_charge(self):
-        row = calculate(100, 83, 40, 5, 50)
+        row = calculate(100, 83, 40, 50)
         self.assertEqual(row["shortage_qty"], 17)
         self.assertEqual(row["eligible_excess_qty"], 0)
         self.assertEqual(row["discount_value"], 0)
 
     def test_inside_tolerance_no_discount(self):
-        row = calculate(100, 105, 40, 5, 50)
+        row = calculate(100, 108, 40, 50)
         self.assertEqual(row["eligible_excess_qty"], 0)
 
     def test_zero_order_has_no_division_error(self):
-        row = calculate(0, 0, 40, 5, 50)
+        row = calculate(0, 0, 40, 50)
         self.assertEqual(row["variance_pct"], 0)
         self.assertEqual(row["discount_value"], 0)
 
@@ -39,21 +39,39 @@ class TestPOReceiptDiscount(unittest.TestCase):
                 "collection": "A", "currency": "SAR",
                 "po_qty": ordered, "receipt_qty": received, "unit_cost": 40,
                 "variant_count": 1, "po_lines": 1, "receipt_lines": 1,
-                **calculate(ordered, received, 40, 5, 50),
+                **calculate(ordered, received, 40, 50),
             })
-        result = _collapse_templates(rows, {"tolerance_pct": 5, "discount_pct": 50})
+        result = _collapse_templates(rows)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["po_qty"], 100)
         self.assertEqual(result[0]["receipt_qty"], 112)
-        self.assertEqual(result[0]["eligible_excess_qty"], 12.5)
-        self.assertEqual(result[0]["discount_value"], 250)
+        self.assertEqual(result[0]["eligible_excess_qty"], 11)
+        self.assertEqual(result[0]["discount_value"], 220)
         self.assertEqual(result[0]["shortage_qty"], 3)
         self.assertEqual(result[0]["tolerance_qty"], 5)
 
-    def test_adjustable_tolerance_and_discount(self):
-        row = calculate(100, 112, 40, 10, 25)
-        self.assertEqual(row["eligible_excess_qty"], 2)
-        self.assertEqual(row["discount_value"], 20)
+    def test_fixed_tolerance_and_adjustable_discount(self):
+        row = calculate(100, 112, 40, 25)
+        self.assertEqual(row["tolerance_qty"], 8)
+        self.assertEqual(row["eligible_excess_qty"], 4)
+        self.assertEqual(row["discount_value"], 40)
+
+    def test_template_never_offsets_variant_excess_with_other_variant_shortage(self):
+        rows = []
+        for variant, ordered, received in (("SIZE-S", 100, 120), ("SIZE-M", 100, 80)):
+            rows.append({
+                "item_code": variant, "item_template": "STYLE-A",
+                "item_year": "2027", "season": "Ramadan", "collection": "A",
+                "currency": "SAR", "po_qty": ordered, "receipt_qty": received,
+                "unit_cost": 40, "variant_count": 1, "po_lines": 1,
+                "receipt_lines": 1, **calculate(ordered, received, 40, 50),
+            })
+        template = _collapse_templates(rows)[0]
+        self.assertEqual(template["po_qty"], 200)
+        self.assertEqual(template["receipt_qty"], 200)
+        self.assertEqual(template["variance_qty"], 0)
+        self.assertEqual(template["eligible_excess_qty"], 12)
+        self.assertEqual(template["discount_value"], 240)
 
 
 if __name__ == "__main__":
