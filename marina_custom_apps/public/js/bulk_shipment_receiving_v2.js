@@ -143,6 +143,7 @@
                 '<div class="d-flex align-items-center" style="gap:6px;flex-wrap:wrap;margin-bottom:10px">' +
                 '<button class="btn btn-default btn-sm marina-select-all">Select All Eligible (' + eligible.length + ')</button>' +
                 '<button class="btn btn-default btn-sm marina-clear-selection">Clear Selection</button>' +
+                '<button class="btn btn-default btn-sm marina-reject-unmatched">Reject All Unmatched</button>' +
                 '<button class="btn btn-primary btn-sm marina-approve-selected"' +
                 (selected.length ? '' : ' disabled') + '>Approve Selected (' + selected.length + ')</button>' +
                 '</div>';
@@ -209,6 +210,11 @@
             });
             $root.find(".marina-clear-selection").on("click", () => {
                 state.selected.clear();
+                render();
+            });
+            $root.find(".marina-reject-unmatched").on("click", () => {
+                state.rows.filter(row => !["Matched", "Variance"].includes(row.status))
+                    .forEach(row => {state.decisions[row.item_code] = "Reject";});
                 render();
             });
             $root.find(".marina-approve-selected").on("click", () => {
