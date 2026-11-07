@@ -23,6 +23,11 @@ frappe.query_reports["PO Receipt Variance Discount"] = {
         {fieldname: "season", label: __("Season"), fieldtype: "Data"},
         {fieldname: "collection", label: __("Collection"), fieldtype: "Data"},
         {
+            fieldname: "report_currency", label: __("Currency"), fieldtype: "Select",
+            options: "CNY\nSAR", default: "CNY", reqd: 1,
+            description: __("CNY from original PO transaction rates; SAR from original PO base rates."),
+        },
+        {
             fieldname: "tolerance_pct", label: __("Tolerance %"), fieldtype: "Percent",
             default: 8, reqd: 1,
             description: __("Allowance is rounded independently for each Item Variant."),
