@@ -162,8 +162,10 @@ def _decisions(value):
 
 
 @frappe.whitelist()
-def build_draft(text, supplier, company, decisions):
+def build_draft(text, supplier, company, decisions=None):
     """Re-evaluate authoritative data, apply approvals, return an unsaved receipt."""
+    if decisions is None:
+        frappe.throw(_("Outdated Bulk Shipment Receiving screen. Refresh the browser and use Preview Match again before loading."))
     rows, errors = _evaluate(text, supplier, company)
     if errors or not rows:
         frappe.throw(_("Resolve invalid input rows before loading."))
