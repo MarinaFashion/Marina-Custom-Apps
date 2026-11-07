@@ -148,7 +148,7 @@ frappe.pages["po-receipt-variance-matrix"].on_page_load = function(wrapper) {
             });
         });
         const grid = lines.map(cells => cells.map(value =>
-            '"' + String(value).replace(/"/g,'""') + '"').join(",")).join("\\r\\n");
+            '"' + String(value).replace(/"/g,'""') + '"').join(",")).join("\r\n");
         const blob = new Blob(["\uFEFF",grid],{type:"text/csv;charset=utf-8;"});
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
