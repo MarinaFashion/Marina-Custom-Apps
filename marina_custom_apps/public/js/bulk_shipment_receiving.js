@@ -27,12 +27,27 @@
         return html;
     }
 
+    // ERPNext may initialize a new Purchase Receipt with a blank grid row.
+    // Preserve any row containing entered item data; discard only placeholders.
+    function has_meaningful_item(row) {
+        return Boolean(
+            row.item_code || row.item_name || row.description ||
+            row.purchase_order || row.purchase_order_item ||
+            row.qty || row.received_qty || row.rejected_qty ||
+            row.rate || row.amount || row.batch_no || row.serial_no
+        );
+    }
+
+    function has_existing_items(frm) {
+        return (frm.doc.items || []).some(has_meaningful_item);
+    }
+
     function open_dialog(frm) {
         if (!frm.is_new() || frm.doc.docstatus !== 0) {
             msg(__("Open a new unsaved Purchase Receipt first."));
             return;
         }
-        if ((frm.doc.items || []).length) {
+        if (has_existing_items(frm)) {
             msg(__("Start with an empty Purchase Receipt. This action does not replace existing item rows."));
             return;
         }
@@ -88,6 +103,14 @@
                     msg(__("No matching items returned."));
                     return;
                 }
+                // Clear ERPNext's empty placeholder rows only after successful mapping.
+                // Recheck in case a real item was entered while the request was pending.
+                if (has_existing_items(frm)) {
+                    msg(__("Purchase Receipt now contains item data; no changes made."));
+                    return;
+                }
+                frm.clear_table("items");
+
                 // Keep the existing unsaved Purchase Receipt and its supplier/company;
                 // copy ERPNext-mapped child fields, never internal document identifiers.
                 const skip = new Set(["name", "doctype", "parent", "parentfield", "parenttype",
