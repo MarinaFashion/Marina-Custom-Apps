@@ -23,6 +23,11 @@ frappe.query_reports["PO Receipt Variance Discount"] = {
         {fieldname: "season", label: __("Season"), fieldtype: "Data"},
         {fieldname: "collection", label: __("Collection"), fieldtype: "Data"},
         {
+            fieldname: "tolerance_pct", label: __("Tolerance %"), fieldtype: "Percent",
+            default: 8, reqd: 1,
+            description: __("Allowance is rounded independently for each Item Variant."),
+        },
+        {
             fieldname: "discount_pct", label: __("Excess Discount %"), fieldtype: "Percent",
             default: 50, reqd: 1, description: __("Discount applied only to the eligible excess quantity."),
         },
