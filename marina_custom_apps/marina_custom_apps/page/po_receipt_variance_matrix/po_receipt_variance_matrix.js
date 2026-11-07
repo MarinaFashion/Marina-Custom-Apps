@@ -68,6 +68,21 @@ frappe.pages["po-receipt-variance-matrix"].on_page_load = function(wrapper) {
        .marina-po-matrix td.photo {background:#fff!important;vertical-align:middle;text-align:center;}
        .marina-po-matrix td.photo img {max-width:120px;max-height:145px;object-fit:contain;}
        .marina-po-matrix td.total {background:var(--marina-sand)!important;font-weight:700;}
+       /* Strong outer outline around each 8-row item block; no double lines. */
+       .marina-po-matrix tbody tr.item-start > td:not(.identity):not(.photo) {
+           border-top:3px solid var(--marina-primary);
+       }
+       .marina-po-matrix tbody tr.item-end > td {
+           border-bottom:3px solid var(--marina-primary);
+       }
+       .marina-po-matrix tbody td.identity,
+       .marina-po-matrix tbody td.photo {
+           border-top:3px solid var(--marina-primary);
+           border-bottom:3px solid var(--marina-primary);
+       }
+       .marina-po-matrix tbody tr > td:last-child {
+           border-right:3px solid var(--marina-primary);
+       }
        .marina-po-matrix .hint {padding:9px 0;color:var(--marina-primary);font-weight:500;}
        .marina-po-matrix .grand-totals {display:flex;flex-wrap:wrap;gap:12px;margin:12px 0 15px;}
        .marina-po-matrix .grand-total {flex:1;min-width:195px;background:var(--marina-cream);
@@ -138,6 +153,7 @@ frappe.pages["po-receipt-variance-matrix"].on_page_load = function(wrapper) {
             metrics.forEach(([key,label,digits], i) => {
                 let cls = key === "variance_qty" ? "variance" : key === "discount_value" ? "discount" :
                     key === "eligible_excess_qty" ? "excess" : "";
+                cls += (i === 0 ? " item-start" : "") + (i === metrics.length - 1 ? " item-end" : "");
                 html += '<tr class="' + cls + '">';
                 if (i === 0) {
                     html += '<td class="identity" rowspan="' + metrics.length + '">' +
