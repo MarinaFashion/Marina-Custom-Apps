@@ -8,6 +8,9 @@ from marina_custom_apps.design_management.security.user_permissions import (
 
 class DesignUserPermission(Document):
     def validate(self):
+        from marina_custom_apps.design_management.security.participants import is_participant
+        if not is_participant(self.user):
+            frappe.throw(_("Select an enabled System User with ERPNext role Marina Design Participant"))
         # Sparse storage: unchecked DocTypes and Not Allowed actions are
         # intentionally absent. The authorization engine treats absence as
         # DENY for enabled individual profiles.
