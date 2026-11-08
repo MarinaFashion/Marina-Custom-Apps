@@ -66,6 +66,13 @@
       "description": "Planning start date for initial milestones. Editable until a milestone plan is created; then locked."
     },
     {
+      "fieldname": "tech_pack_not_required",
+      "label": "Tech Pack Not Required",
+      "fieldtype": "Check",
+      "default": "0",
+      "description": "For repeated or ready-made styles that do not require a Tech Pack. The Tech Pack milestone can complete automatically without a published document. Select before creating milestones."
+    },
+    {
       "fieldname": "designer",
       "label": "Designer",
       "fieldtype": "Link",
@@ -329,6 +336,7 @@
     "assigned_merchandiser",
     "cb_identity",
     "creation_date",
+    "tech_pack_not_required",
     "designer",
     "technical_fitting_responsible",
     "factory",
