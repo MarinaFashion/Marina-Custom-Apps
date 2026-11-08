@@ -100,3 +100,38 @@ The old module-level RBAC checkbox and the two permission child tables on `Desig
 - [ ] Staff without enabled individual profiles retain legacy permissions; confirm with at least one user.
 - [ ] No changes to `marina.frappe.cloud` production.
 
+
+## Design Team Role Link reference (demo regression fix)
+
+For **Design Team Assignment.module_role**, native Frappe Link search needs
+`Design Module Role` Read/Select access in addition to the individual
+`Assign Team Tasks` / `Reassign Team Tasks` action. This is **reference
+visibility**, not permission to create or modify role definitions.
+
+- The `Design User Permission` document whitelist now accepts `Design Module Role`.
+- `Marina Design Participant` has native Read/Select on the Role master;
+  Create/Write/Delete remain **zero** for non-administrators.
+- For users with enabled individual profiles, the `Design Module Role` row
+  must have **Read=1, Create=0, Edit=0, Delete=0**. Absence of the row denies
+  access. Other users retain the existing legacy module permission behavior.
+- Previously saved profiles (such as Catherine) were created before this
+  reference was in the table and need the Read row appended once after deploy.
+- **Do not** give users `Manage Role Permissions` or native `System Manager`
+  to fix team selectors.
+- Confirm the Frappe DocPerm fixture is synced by migration. If a site has a
+  `Custom DocPerm` override for `Design Module Role`, inspect it first; a
+  custom override may supersede standard JSON permissions.
+
+Demo verification:
+
+```python
+user = "catherine@marinafashion.com.sa"
+print(frappe.has_permission("Design Module Role", "read", user=user))
+print(frappe.has_permission("Design Module Role", "select", user=user))
+from marina_custom_apps.design_management.security.user_permissions import document_allowed
+print(document_allowed("Design Module Role", "read", user))
+```
+
+Expected after granting the individual Read row: three `True` values.
+Test role dropdown, selecting an eligible employee, and saving the Design Code
+(including the required reassignment reason) as Catherine.
