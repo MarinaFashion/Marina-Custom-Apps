@@ -263,7 +263,7 @@ frappe.ui.form.on("Design Document", {
                     return;
                 }
                 frappe.confirm(
-                    __("Permanently delete this unlinked Draft Design Document? The uploaded File record is not automatically deleted."),
+                    __("Permanently delete this unlinked Draft Design Document? Frappe may also remove attachments associated with this document."),
                     () => frappe.call({
                         method: "marina_custom_apps.design_management.api.design_documents.delete_unlinked_draft",
                         type: "POST",
