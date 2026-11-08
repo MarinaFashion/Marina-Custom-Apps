@@ -133,7 +133,7 @@ def preview_user_permissions(user):
         for op in sorted(OPERATIONS):
             explicit = document_allowed(doctype, op, user)
             native = bool(frappe.has_permission(
-                doctype, op, user=user, raise_exception=False))
+                doctype, op, user=user, throw=False))
             rights[op] = {
                 "individual": explicit,
                 "native": native,
