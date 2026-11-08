@@ -60,7 +60,7 @@ class PermissionPolicyTests(unittest.TestCase):
         self.frappe.local = types.SimpleNamespace()
         self.frappe.db.profile = True
         self.frappe.db.active = True
-        self.profile = types.SimpleNamespace(
+        self.profile = Row(
             enabled=1,
             document_permissions=[Row(
                 resource_doctype="Design Code", read=1,
