@@ -117,6 +117,13 @@ def is_head(user):
 
 
 def has_overall_visibility(user):
+    from marina_custom_apps.design_management.security.user_permissions import (
+        configured, document_allowed,
+    )
+    if configured(user):
+        # Individual permissions replace role-based document scope.
+        # Custody is checked separately for configured actions.
+        return document_allowed("Design Code", "read", user) is True
     catalog = role_catalog()
     return any(catalog[role].scope == "All" for role in user_roles(user))
 
