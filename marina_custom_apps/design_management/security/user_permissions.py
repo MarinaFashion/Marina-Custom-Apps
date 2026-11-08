@@ -35,6 +35,7 @@ def _policy(user):
     result = None
     if (user and user != "Guest"
             and frappe.db.exists("DocType", POLICY_DOCTYPE)
+            and frappe.db.table_exists(POLICY_DOCTYPE)
             and frappe.db.exists(POLICY_DOCTYPE, user)
             and frappe.db.get_value("User", user, "enabled")):
         policy = frappe.get_doc(POLICY_DOCTYPE, user)
@@ -84,3 +85,50 @@ def action_allowed(action, user=None, custodian=None):
 def invalidate():
     if hasattr(frappe.local, "_marina_user_permissions"):
         delattr(frappe.local, "_marina_user_permissions")
+
+
+@frappe.whitelist()
+def preview_user_permissions(user):
+    """Admin-only preview: configured rights and native Frappe access side by side.
+
+    This does NOT simulate record-specific custody, workflow state or a
+    transaction. Use a real Design Code for those integration tests.
+    """
+    if (frappe.session.user != "Administrator"
+            and "System Manager" not in frappe.get_roles(frappe.session.user)):
+        frappe.throw("Only System Manager may inspect user permissions",
+                     frappe.PermissionError)
+    if not frappe.db.get_value("User", user, "enabled"):
+        frappe.throw("Choose an enabled user")
+    from marina_custom_apps.design_management.security.role_access import can_action
+    docs = []
+    for doctype in sorted(DOCS):
+        if not frappe.db.exists("DocType", doctype):
+            continue
+        rights = {}
+        for op in sorted(OPERATIONS):
+            explicit = document_allowed(doctype, op, user)
+            native = bool(frappe.has_permission(
+                doctype, op, user=user, raise_exception=False))
+            rights[op] = {
+                "individual": explicit,
+                "native": native,
+                "effective": native and explicit is not False,
+            }
+        docs.append({"doctype": doctype, "rights": rights})
+    actions = {}
+    for action in sorted(ACTIONS):
+        decision = action_allowed(action, user=user)
+        actions[action] = {
+            "individual": decision,
+            "allowed_without_custody": bool(can_action(action, user)),
+            "custody_only": bool(
+                _policy(user) is not None
+                and _policy(user)[1].get(action) == "Custody Only"
+            ),
+        }
+    return {
+        "user": user, "individual_profile_enabled": configured(user),
+        "documents": docs, "actions": actions,
+        "note": "Record scope, valid custody and workflow rules are checked during operations.",
+    }
