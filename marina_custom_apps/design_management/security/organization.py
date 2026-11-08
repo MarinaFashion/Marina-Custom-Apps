@@ -135,9 +135,14 @@ def roles_for_group(group):
 
 def can_manage_role(actor, target_role):
     from marina_custom_apps.design_management.security.role_access import can_action
+    from marina_custom_apps.design_management.security.user_permissions import configured
     if not (can_action("Assign Team Tasks", actor)
             or can_action("Reassign Team Tasks", actor)):
         return False
+    # Explicit user permissions are independent of the reporting hierarchy.
+    # Role/custodian eligibility remains validated by each assignment routine.
+    if configured(actor):
+        return target_role in role_catalog()
     return any(target_role in descendants(role) for role in manager_roles(actor))
 
 
