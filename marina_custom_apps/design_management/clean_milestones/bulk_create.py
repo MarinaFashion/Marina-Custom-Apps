@@ -96,13 +96,16 @@ def _ready_state(design, snapshots, roles):
         steps = configured_steps(snapshot["steps"])
         if (len(steps) == 1 and steps[0]["step"] == "Completed"
                 and steps[0]["transition_mode"] == "Auto"):
-            # Same Published evidence requirement enforced by service._activate.
-            docs = matching_published_documents(name, snapshot["name"])
-            if len(docs) != 1:
-                issues.append(
-                    "Exactly one linked Published evidence document required for "
-                    + snapshot["name"]
-                )
+            # Match the single-create exception exactly. Other evidence
+            # requirements cannot be bypassed by the Tech Pack checkbox.
+            if not service.tech_pack_exemption_applies(design, snapshot, steps[0]):
+                docs = matching_published_documents(
+                    name, snapshot["name"], steps[0]["evidence_type"])
+                if len(docs) != 1:
+                    issues.append(
+                        "Exactly one linked Published evidence document required for "
+                        + snapshot["name"]
+                    )
 
     return ("blocked", issues) if issues else ("ready", [])
 
