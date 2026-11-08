@@ -1,6 +1,48 @@
 frappe.ui.form.on("Design User Permission", {
     refresh(frm) {
-        if (frm.is_new() || !frappe.user.has_role("System Manager")) return;
+        if (!frappe.user.has_role("System Manager") && frappe.session.user !== "Administrator") return;
+
+        frm.add_custom_button(__("Insert All Documents & Actions"), async () => {
+            try {
+                const response = await frappe.call({
+                    method: "marina_custom_apps.design_management.security.user_permissions.permission_catalog"
+                });
+                const catalog = response.message || {};
+                const existingDocs = new Set((frm.doc.document_permissions || [])
+                    .map(row => row.resource_doctype).filter(Boolean));
+                const existingActions = new Set((frm.doc.action_permissions || [])
+                    .map(row => row.action_key).filter(Boolean));
+                let addedDocs = 0;
+                let addedActions = 0;
+                for (const name of catalog.documents || []) {
+                    if (existingDocs.has(name)) continue;
+                    frm.add_child("document_permissions", {
+                        resource_doctype: name, read: 0, create: 0, write: 0, delete: 0
+                    });
+                    existingDocs.add(name);
+                    addedDocs++;
+                }
+                for (const action of catalog.actions || []) {
+                    if (existingActions.has(action.name)) continue;
+                    frm.add_child("action_permissions", {
+                        action_key: action.name, access: "Not Allowed"
+                    });
+                    existingActions.add(action.name);
+                    addedActions++;
+                }
+                frm.refresh_field("document_permissions");
+                frm.refresh_field("action_permissions");
+                if (addedDocs || addedActions) frm.dirty();
+                frappe.show_alert({
+                    message: __("{0} documents and {1} actions inserted. Unchecked/Not Allowed entries are discarded when saved.", [addedDocs, addedActions]),
+                    indicator: "blue"
+                }, 9);
+            } catch (error) {
+                frappe.msgprint(__("Unable to load the Design permission catalog."));
+            }
+        });
+
+        if (frm.is_new()) return;
 
         frm.add_custom_button(__("Fill Operational Test Access"), () => {
             frappe.confirm(
