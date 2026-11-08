@@ -19,10 +19,10 @@ frappe.ui.form.on("Design User Permission", {
                     for (const row of frm.doc.document_permissions || []) {
                         const edit = editable.has(row.resource_doctype);
                         const view = edit || viewable.has(row.resource_doctype);
-                        frappe.model.set_value(row.doctype, row.name, "read", view ? 1 : 0);
-                        frappe.model.set_value(row.doctype, row.name, "create", edit ? 1 : 0);
-                        frappe.model.set_value(row.doctype, row.name, "write", edit ? 1 : 0);
-                        frappe.model.set_value(row.doctype, row.name, "delete", 0);
+                        row.read = view ? 1 : 0;
+                        row.create = edit ? 1 : 0;
+                        row.write = edit ? 1 : 0;
+                        row.delete = 0;
                     }
                     const operational = new Set([
                         "Assign Milestones", "Advance Milestone Step",
@@ -32,8 +32,7 @@ frappe.ui.form.on("Design User Permission", {
                         "Upload Discussion Attachment",
                     ]);
                     for (const row of frm.doc.action_permissions || []) {
-                        frappe.model.set_value(row.doctype, row.name, "access",
-                            operational.has(row.action_key) ? "Allowed" : "Not Allowed");
+                        row.access = operational.has(row.action_key) ? "Allowed" : "Not Allowed";
                     }
                     frm.refresh_field("document_permissions");
                     frm.refresh_field("action_permissions");
@@ -50,10 +49,10 @@ frappe.ui.form.on("Design User Permission", {
             frappe.confirm(__("Reset all entries to Not Allowed? Changes will not be saved automatically."), () => {
                 for (const row of frm.doc.document_permissions || []) {
                     for (const field of ["read", "create", "write", "delete"])
-                        frappe.model.set_value(row.doctype, row.name, field, 0);
+                        row[field] = 0;
                 }
                 for (const row of frm.doc.action_permissions || []) {
-                    frappe.model.set_value(row.doctype, row.name, "access", "Not Allowed");
+                    row.access = "Not Allowed";
                 }
                 frm.refresh_field("document_permissions");
                 frm.refresh_field("action_permissions");
