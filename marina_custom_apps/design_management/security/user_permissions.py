@@ -19,6 +19,7 @@ ACTIONS = frozenset({
     "Remove Published Assignment", "Create ERPNext Items", "Delete Design Code",
     "Return to Milestone", "Clear Related Milestones", "Manage Role Permissions",
     "Assign Team Tasks", "Reassign Team Tasks", "Approve Design Cost Breakdown",
+    "Send Discussion Message", "Upload Discussion Attachment",
 })
 CUSTODY_ACTIONS = frozenset({"Advance Milestone Step", "Return to Milestone"})
 OPERATIONS = frozenset({"read", "create", "write", "delete"})
