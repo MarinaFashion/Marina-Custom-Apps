@@ -28,7 +28,10 @@ class DesignUserPermission(Document):
             frappe.throw(_("Choose an enabled user"))
         if self.user in ("Administrator", "Guest"):
             frappe.throw(_("Do not create individual permission profiles for system users"))
-        if self.enabled and not frappe.get_roles(self.user).count("Marina Design Participant"):
+        user_roles = set(frappe.get_roles(self.user))
+        if self.enabled and "System Manager" in user_roles:
+            frappe.throw(_("System Managers use native administration; individual profiles cannot restrict their global access"))
+        if self.enabled and "Marina Design Participant" not in user_roles:
             frappe.throw(_("User must have Marina Design Participant role"))
         documents = set()
         for row in self.get("document_permissions") or []:
