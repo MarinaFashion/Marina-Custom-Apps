@@ -135,3 +135,27 @@ print(document_allowed("Design Module Role", "read", user))
 Expected after granting the individual Read row: three `True` values.
 Test role dropdown, selecting an eligible employee, and saving the Design Code
 (including the required reassignment reason) as Catherine.
+
+## Permission editor and navigation cleanup (November 2026)
+
+After deploying this branch and running `bench migrate` on **demo**:
+
+- **Insert All Documents & Actions** is visible to System Managers on new and saved individual permission forms. It inserts only missing rows from the server-side catalog, retaining any existing grants or selections.
+- All new document rows are unchecked. All new action rows are **Not Allowed**. Clicking the button does **not save** and does **not grant access**.
+- On Save, any document row with all four permissions unchecked and any action row set to Not Allowed is **removed** from the saved profile. Missing entries are **denied** for enabled individual profiles. Repeat Insert All whenever you need to configure a previously omitted entry.
+- Saving a profile with zero granted permissions is allowed (enabled profile still denies all).
+- The workspace has independent shortcuts for **Design Module Role**, **Design Management Settings**, **Design User Permission**.
+- The obsolete **Security & Permissions** and **Role Hierarchy** pages and their workspace shortcuts are removed, including cleanup of existing Page database records by a targeted idempotent post-model-sync patch.
+- The Design Module Role DocType, its business hierarchy fields, active user memberships, and custody history **remain**; do not delete them.
+- The **Design Workspace Visibility** matrix remains in Settings. Its list of configurable workspace items now uses the three active destinations, not obsolete page names; existing user/item rows are preserved, including historical values for removed pages.
+- This change **does not** migrate other users or remove legacy authorization fallback. Do not deploy it to production until user permissions and workflow validation are complete.
+
+UAT checklist:
+- [ ] Open a saved profile; Insert All preserves current grants and inserts missing entries.
+- [ ] Save and reload; unchecked documents and Not Allowed actions have disappeared from stored rows.
+- [ ] Repeat Insert All; missing entries appear unchecked / Not Allowed again.
+- [ ] Confirm saved Catherine grants remain unchanged after editing.
+- [ ] Confirm all three new workspace links are present for authorized admin users.
+- [ ] Confirm old security/hierarchy pages and shortcuts are gone after migration.
+- [ ] Confirm Design Workspace Visibility matrix still loads and previously saved overrides remain.
+- [ ] Confirm team assignments and milestone custody are unaffected.
