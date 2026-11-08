@@ -91,6 +91,27 @@ def invalidate():
 
 
 @frappe.whitelist()
+def permission_catalog():
+    """Server-authoritative document/action choices for the permission editor.
+
+    Only administrators can configure this data. Avoid emitting noninstalled
+    DocTypes; absent permissions remain denied in an enabled profile.
+    """
+    if (frappe.session.user != "Administrator"
+            and "System Manager" not in frappe.get_roles(frappe.session.user)):
+        frappe.throw("System Manager required", frappe.PermissionError)
+    return {
+        "documents": [
+            name for name in sorted(DOCS) if frappe.db.exists("DocType", name)
+        ],
+        "actions": [
+            {"name": name, "custody_supported": name in CUSTODY_ACTIONS}
+            for name in sorted(ACTIONS)
+        ],
+    }
+
+
+@frappe.whitelist()
 def preview_user_permissions(user):
     """Admin-only preview: configured rights and native Frappe access side by side.
 
