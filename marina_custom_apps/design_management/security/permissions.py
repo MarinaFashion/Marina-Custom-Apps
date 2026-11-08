@@ -28,6 +28,10 @@ def _design_system_admin(user):
 
 def mood_board_query(user=None):
     user=user or frappe.session.user
+    from marina_custom_apps.design_management.security.user_permissions import document_allowed
+    direct = document_allowed("Mood Board", "read", user)
+    if direct is not None:
+        return "" if direct else "1=0"
     if can_doctype("Mood Board","read",user) is False:
         return "1=0"
     if _design_system_admin(user) or has_overall_visibility(user):
@@ -52,6 +56,10 @@ def mood_board_query(user=None):
 
 def mood_board_permission(doc,ptype=None,user=None):
     user=user or frappe.session.user
+    from marina_custom_apps.design_management.security.user_permissions import document_allowed
+    direct = document_allowed("Mood Board", _op(ptype), user)
+    if direct is not None:
+        return direct
     if can_doctype("Mood Board",_op(ptype),user) is False:
         return False
     if _design_system_admin(user) or has_overall_visibility(user) or ptype=="create":
@@ -81,6 +89,10 @@ def mood_board_permission(doc,ptype=None,user=None):
 
 def design_code_query(user=None):
     user=user or frappe.session.user
+    from marina_custom_apps.design_management.security.user_permissions import document_allowed
+    direct = document_allowed("Design Code", "read", user)
+    if direct is not None:
+        return "" if direct else "1=0"
     if can_doctype("Design Code","read",user) is False:
         return "1=0"
     return "" if has_overall_visibility(user) else assigned_scope_sql(user)
@@ -88,6 +100,12 @@ def design_code_query(user=None):
 
 def design_code_permission(doc,ptype=None,user=None):
     user=user or frappe.session.user
+    from marina_custom_apps.design_management.security.user_permissions import document_allowed
+    direct = document_allowed("Design Code", _op(ptype), user)
+    if direct is not None:
+        if ptype == "delete":
+            return bool(direct and can_action("Delete Design Code", user))
+        return direct
     if can_doctype("Design Code",_op(ptype),user) is False:
         return False
     if ptype=="create":
@@ -102,6 +120,10 @@ def design_code_permission(doc,ptype=None,user=None):
 
 def document_query(user=None):
     user=user or frappe.session.user
+    from marina_custom_apps.design_management.security.user_permissions import document_allowed
+    direct = document_allowed("Design Document", "read", user)
+    if direct is not None:
+        return "" if direct else "1=0"
     if can_doctype("Design Document","read",user) is False:
         return "1=0"
     if has_overall_visibility(user):
@@ -117,6 +139,10 @@ def document_query(user=None):
 
 def document_permission(doc,ptype=None,user=None):
     user=user or frappe.session.user
+    from marina_custom_apps.design_management.security.user_permissions import document_allowed
+    direct = document_allowed("Design Document", _op(ptype), user)
+    if direct is not None:
+        return direct
     if can_doctype("Design Document",_op(ptype),user) is False:
         return False
     from marina_custom_apps.design_management.security.document_access import can_manage_documents
@@ -145,6 +171,10 @@ def document_permission(doc,ptype=None,user=None):
 
 def colorway_query(user=None):
     user=user or frappe.session.user
+    from marina_custom_apps.design_management.security.user_permissions import document_allowed
+    direct = document_allowed("Production Colorway", "read", user)
+    if direct is not None:
+        return "" if direct else "1=0"
     if can_doctype("Production Colorway","read",user) is False:
         return "1=0"
     if has_overall_visibility(user):
@@ -156,6 +186,10 @@ def colorway_query(user=None):
 
 def colorway_permission(doc,ptype=None,user=None):
     user=user or frappe.session.user
+    from marina_custom_apps.design_management.security.user_permissions import document_allowed
+    direct = document_allowed("Production Colorway", _op(ptype), user)
+    if direct is not None:
+        return direct
     if can_doctype("Production Colorway",_op(ptype),user) is False:
         return False
     if has_overall_visibility(user):
@@ -234,6 +268,10 @@ def cost_breakdown_query(user=None):
 
 def cost_breakdown_permission(doc, ptype=None, user=None):
     user = user or frappe.session.user
+    from marina_custom_apps.design_management.security.user_permissions import document_allowed
+    direct = document_allowed("Design Cost Breakdown", _op(ptype), user)
+    if direct is not None:
+        return direct
     from marina_custom_apps.marina_design_management.doctype.design_cost_breakdown.design_cost_breakdown import (
         _admin, _buyer, _preparer, _allowed_design,
     )
