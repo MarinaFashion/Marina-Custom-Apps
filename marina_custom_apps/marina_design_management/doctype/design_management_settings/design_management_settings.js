@@ -10,7 +10,11 @@ frappe.ui.form.on("Design Management Settings", {
         }));
     },
     onload(frm) { marina_mapping_initialize(frm); },
-    refresh(frm) { marina_mapping_initialize(frm); marina_workspace_visibility_matrix(frm); }
+    refresh(frm) {
+        marina_mapping_initialize(frm);
+        marina_workspace_visibility_matrix(frm);
+        marina_individual_permission_link(frm);
+    }
 });
 
 frappe.ui.form.on("Design Item Field Mapping", {
@@ -158,4 +162,26 @@ function marina_workspace_visibility_matrix(frm) {
     }).catch(()=>{
         $area.text(__("Unable to load workspace visibility. Please retry."));
     });
+}
+
+
+/* Navigation only. Individual permissions live in a separate, admin-controlled
+   DocType; workspace visibility and team membership remain on this form. */
+function marina_individual_permission_link(frm) {
+    const $wrapper = frm.fields_dict.design_user_permission_link?.$wrapper;
+    if (!$wrapper?.length) return;
+    const admin = frappe.session.user === "Administrator" ||
+        frappe.user.has_role("System Manager");
+    $wrapper.empty();
+    if (!admin) {
+        $wrapper.text(__("Only System Manager can configure individual permissions."));
+        return;
+    }
+    const $button = $('<button type="button" class="btn btn-primary btn-sm"></button>')
+        .text(__("Manage Design User Permissions"))
+        .appendTo($wrapper);
+    $button.on("click", () => frappe.set_route("List", "Design User Permission"));
+    $('<div class="small text-muted mt-2"></div>')
+        .text(__("Documents and Actions are managed per user. Team roles above identify responsibility and custody; workspace visibility remains independent."))
+        .appendTo($wrapper);
 }
