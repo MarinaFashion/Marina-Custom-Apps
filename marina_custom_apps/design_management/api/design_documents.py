@@ -109,7 +109,8 @@ def _may_remove_published_assignment(document):
         return False
     if not can_manage_documents(user):
         return False
-    if enabled():
+    from marina_custom_apps.design_management.security.user_permissions import configured
+    if enabled() or configured(user):
         return can_action("Remove Published Assignment", user)
     return is_manager(user) and (
         user == "Administrator" or "System Manager" in frappe.get_roles(user)
