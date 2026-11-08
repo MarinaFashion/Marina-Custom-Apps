@@ -13,6 +13,9 @@ DOCS = frozenset({
     "Design Milestone Execution", "Design Milestone Custody Event",
     "Design Document Type", "Design Item Creation", "Marina Pantone",
     "Marina Fashion Category", "Factory List", "Production Colorway",
+    # Business-role metadata is a selectable reference for Design Team rows.
+    # Read/Select must be configurable separately from administrative edits.
+    "Design Module Role",
 })
 ACTIONS = frozenset({
     "Assign Milestones", "Advance Milestone Step", "Publish Document",
