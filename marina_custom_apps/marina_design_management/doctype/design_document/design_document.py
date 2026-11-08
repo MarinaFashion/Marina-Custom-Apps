@@ -60,11 +60,22 @@ class DesignDocument(Document):
                 if removed and getattr(frappe.flags, "marina_published_detach_doc", None) != self.name:
                     frappe.throw("Use Remove Published Assignment to unlink existing designs")
         if before:
-            # The first attachment may be added to an existing Draft.
-            # After any file has been attached, it remains immutable.
-            # Publication always requires the attachment to be present.
+            # The working copy may be corrected before publication while it
+            # has no Design Code assignments. Published or linked documents
+            # retain their immutable file for evidence/audit integrity.
             if before.attachment and self.attachment != before.attachment:
-                frappe.throw("Uploaded files are immutable; create another Design Document")
+                if (before.publication_status != "Draft"
+                        or self.publication_status != "Draft"
+                        or before.get("assignments")
+                        or self.get("assignments")):
+                    frappe.throw(
+                        "Cannot replace a file on a published or linked Design Document"
+                    )
+                if (frappe.db.exists("Design Milestone Execution",
+                                    {"evidence_document": self.name})
+                        or frappe.db.exists("Design Milestone Custody Event",
+                                            {"evidence_document": self.name})):
+                    frappe.throw("Cannot replace a document used as milestone evidence")
             if self.added_by != before.added_by or str(self.added_on) != str(before.added_on):
                 frappe.throw("Upload audit fields cannot be modified")
         previous = {row.design_code: row for row in before.assignments} if before else {}
@@ -135,9 +146,17 @@ class DesignDocument(Document):
                              ", ".join(added))
 
     def on_trash(self):
-        # Publication is an immutable technical evidence record even if the
-        # Design assignment was detached after an authorized correction.
-        if self.publication_status == "Published":
-            frappe.throw("Published Design Documents are retained as historical evidence")
-        if self.assignments:
+        # Recheck at mutation time. Draft documents may be deleted only when
+        # unlinked and not referenced as current or historical evidence.
+        if self.publication_status != "Draft":
+            frappe.throw("Only Draft Design Documents can be deleted")
+        if self.get("assignments") or frappe.db.exists(
+            "Design Document Assignment",
+            {"parent": self.name, "parenttype": "Design Document"}
+        ):
             frappe.throw("Remove all Design Code assignments before deleting this document")
+        if (frappe.db.exists("Design Milestone Execution",
+                             {"evidence_document": self.name})
+                or frappe.db.exists("Design Milestone Custody Event",
+                                    {"evidence_document": self.name})):
+            frappe.throw("Cannot delete a Design Document used as milestone evidence")
