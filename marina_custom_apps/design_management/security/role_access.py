@@ -26,6 +26,8 @@ ACTIONS = frozenset({
     "Assign Team Tasks",
     "Reassign Team Tasks",
     "Approve Design Cost Breakdown",
+    "Send Discussion Message",
+    "Upload Discussion Attachment",
 })
 PERMISSION_TYPES = frozenset({"read", "create", "write", "delete"})
 SCOPES = frozenset({"Assigned", "All"})
