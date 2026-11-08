@@ -159,3 +159,26 @@ UAT checklist:
 - [ ] Confirm old security/hierarchy pages and shortcuts are gone after migration.
 - [ ] Confirm Design Workspace Visibility matrix still loads and previously saved overrides remain.
 - [ ] Confirm team assignments and milestone custody are unaffected.
+
+## Matrix UI and participant selection
+
+- Documents and Actions are displayed as compact scrollable matrices with sticky
+  headings (similar to the existing Design Workspace Visibility matrix).
+- The old child tables remain the authoritative **stored data**, but are hidden
+  from the form; changes are written to the child rows through Frappe model
+  updates. Matrix edits require form write/create rights.
+- Documents: Read, Create, Edit, Delete checkboxes.
+- Actions: mutually exclusive Not Allowed / Allowed / Custody Only radio choices;
+  Custody Only is disabled except on **Advance Milestone Step**.
+- Insert All adds only missing catalog entries with no grants; existing grants
+  remain unchanged. Save discards unchecked documents / Not Allowed actions.
+- The User picker uses the shared participant-user Link query: only enabled
+  ERPNext System Users carrying the native **Marina Design Participant** role.
+- Server-side validation repeats that eligibility test on save, so manual
+  selections, imports and API writes cannot bypass the participant requirement.
+- User role membership is independent of business role hierarchy and remains
+  part of team assignment validation.
+
+UAT: Test new and saved profiles; verify repeated Insert All, checkbox/radio
+interactions, Save and reload, role-filtered user search and invalid user
+rejection. Check no other Settings or Workspace Visibility changes.
