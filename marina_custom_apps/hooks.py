@@ -153,3 +153,29 @@ override_whitelisted_methods.update({
     "frappe.desk.desktop.get_desktop_page":
         "marina_custom_apps.design_management.workspace_visibility.get_desktop_page",
 })
+
+# Individual Design Permission coverage for operational DocTypes without
+# specialized permission hooks. These gates preserve legacy behavior unless
+# a specific user's Design User Permission profile is explicitly enabled.
+permission_query_conditions.update({
+    "Design Milestone Type": "marina_custom_apps.design_management.security.individual_document_hooks.design_milestone_type_query",
+    "Design Milestone Plan Entry": "marina_custom_apps.design_management.security.individual_document_hooks.design_milestone_plan_entry_query",
+    "Design Milestone Execution": "marina_custom_apps.design_management.security.individual_document_hooks.design_milestone_execution_query",
+    "Design Milestone Custody Event": "marina_custom_apps.design_management.security.individual_document_hooks.design_milestone_custody_event_query",
+    "Design Document Type": "marina_custom_apps.design_management.security.individual_document_hooks.design_document_type_query",
+    "Design Item Creation": "marina_custom_apps.design_management.security.individual_document_hooks.design_item_creation_query",
+    "Marina Pantone": "marina_custom_apps.design_management.security.individual_document_hooks.marina_pantone_query",
+    "Marina Fashion Category": "marina_custom_apps.design_management.security.individual_document_hooks.marina_fashion_category_query",
+    "Factory List": "marina_custom_apps.design_management.security.individual_document_hooks.factory_list_query",
+})
+has_permission.update({
+    "Design Milestone Type": "marina_custom_apps.design_management.security.individual_document_hooks.design_milestone_type_permission",
+    "Design Milestone Plan Entry": "marina_custom_apps.design_management.security.individual_document_hooks.design_milestone_plan_entry_permission",
+    "Design Milestone Execution": "marina_custom_apps.design_management.security.individual_document_hooks.design_milestone_execution_permission",
+    "Design Milestone Custody Event": "marina_custom_apps.design_management.security.individual_document_hooks.design_milestone_custody_event_permission",
+    "Design Document Type": "marina_custom_apps.design_management.security.individual_document_hooks.design_document_type_permission",
+    "Design Item Creation": "marina_custom_apps.design_management.security.individual_document_hooks.design_item_creation_permission",
+    "Marina Pantone": "marina_custom_apps.design_management.security.individual_document_hooks.marina_pantone_permission",
+    "Marina Fashion Category": "marina_custom_apps.design_management.security.individual_document_hooks.marina_fashion_category_permission",
+    "Factory List": "marina_custom_apps.design_management.security.individual_document_hooks.factory_list_permission",
+})
