@@ -12,7 +12,7 @@ DOCS = frozenset({
     "Design Milestone Type", "Design Milestone Plan Entry",
     "Design Milestone Execution", "Design Milestone Custody Event",
     "Design Document Type", "Design Item Creation", "Marina Pantone",
-    "Marina Fashion Category", "Production Colorway",
+    "Marina Fashion Category", "Factory List", "Production Colorway",
 })
 ACTIONS = frozenset({
     "Assign Milestones", "Advance Milestone Step", "Publish Document",
