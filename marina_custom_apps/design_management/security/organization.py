@@ -210,9 +210,13 @@ def eligible_team_users(actor, target_role=None):
     if not (can_action("Assign Team Tasks", actor)
             or can_action("Reassign Team Tasks", actor)):
         return []
-    permitted = set()
-    for role in manager_roles(actor):
-        permitted.update(descendants(role))
+    from marina_custom_apps.design_management.security.user_permissions import configured
+    if configured(actor):
+        permitted = set(role_catalog())
+    else:
+        permitted = set()
+        for role in manager_roles(actor):
+            permitted.update(descendants(role))
     if target_role:
         permitted &= {target_role}
     if not permitted:
@@ -246,6 +250,11 @@ def can_reassign_task(actor, prior_user, new_user):
     target_roles = user_roles(new_user)
     if not target_roles:
         return False
+    from marina_custom_apps.design_management.security.user_permissions import configured
+    if configured(actor):
+        # Individual permission replaces hierarchy only; target eligibility
+        # and mandatory active participant membership are still required.
+        return True
     for manager in manager_roles(actor):
         subtree = descendants(manager)
         if target_roles & subtree and (not prior_user or prior_roles & subtree):
