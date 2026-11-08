@@ -7,23 +7,19 @@ from marina_custom_apps.design_management.security.user_permissions import (
 
 
 class DesignUserPermission(Document):
-    def before_insert(self):
-        # New profiles are opt-in and have no grants until explicitly edited.
-        # Prefill complete, visible permission tables for a simple checkbox UI.
-        if not self.get("document_permissions"):
-            for doctype in sorted(DOCS):
-                if frappe.db.exists("DocType", doctype):
-                    self.append("document_permissions", {
-                        "resource_doctype": doctype,
-                        "read": 0, "create": 0, "write": 0, "delete": 0,
-                    })
-        if not self.get("action_permissions"):
-            for action in sorted(ACTIONS):
-                self.append("action_permissions", {
-                    "action_key": action, "access": "Not Allowed",
-                })
-
     def validate(self):
+        # Sparse storage: unchecked DocTypes and Not Allowed actions are
+        # intentionally absent. The authorization engine treats absence as
+        # DENY for enabled individual profiles.
+        self.set("document_permissions", [
+            row for row in (self.get("document_permissions") or [])
+            if any(int(row.get(permission) or 0)
+                   for permission in ("read", "create", "write", "delete"))
+        ])
+        self.set("action_permissions", [
+            row for row in (self.get("action_permissions") or [])
+            if row.get("access") not in (None, "", "Not Allowed")
+        ])
         if not frappe.db.get_value("User", self.user, "enabled"):
             frappe.throw(_("Choose an enabled user"))
         if self.user in ("Administrator", "Guest"):
@@ -47,8 +43,6 @@ class DesignUserPermission(Document):
                 frappe.throw(_("Invalid permission value"))
             if row.access == "Custody Only" and row.action_key not in CUSTODY_ACTIONS:
                 frappe.throw(_("Custody Only is applicable only to milestone actions"))
-        if self.enabled and not documents:
-            frappe.throw(_("Configure Document permissions before enabling the user profile"))
 
     def on_update(self):
         invalidate()
