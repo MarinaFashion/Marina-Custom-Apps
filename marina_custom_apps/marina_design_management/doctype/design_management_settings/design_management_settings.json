@@ -1,186 +1,195 @@
 {
-  "doctype": "DocType",
-  "name": "Design Management Settings",
-  "module": "Marina Design Management",
-  "custom": 0,
-  "istable": 0,
-  "is_submittable": 0,
-  "track_changes": 1,
-  "engine": "InnoDB",
-  "fields": [
-    {
-      "fieldname": "sb_factory_config",
-      "label": "Factory Configuration",
-      "fieldtype": "Section Break",
-      "description": "Legacy factory names retained for migration. Maintain factories in Factory List.",
-      "hidden": 1
-    },
-    {
-      "fieldname": "factory_list",
-      "label": "Factory List",
-      "fieldtype": "Text",
-      "description": "Legacy factory names retained for migration only.",
-      "hidden": 1,
-      "read_only": 1
-    },
-    {
-      "fieldname": "factory_defaults_v51_applied",
-      "label": "Release 5.1 Master Defaults Updated",
-      "fieldtype": "Check",
-      "default": 0,
-      "hidden": 1,
-      "read_only": 1,
-      "print_hide": 1
-    },
-    {
-      "fieldname": "sb_item_creation",
-      "label": "One-Time ERPNext Item Creation",
-      "fieldtype": "Section Break",
-      "description": "Configure direct mappings for future Item creation only. Changes never update existing ERPNext Items."
-    },
-    {
-      "fieldname": "item_creation_item_group",
-      "label": "Created Item Group",
-      "fieldtype": "Link",
-      "options": "Item Group",
-      "description": "Required for controlled one-time Item creation."
-    },
-    {
-      "fieldname": "item_creation_stock_uom",
-      "label": "Created Stock UOM",
-      "fieldtype": "Link",
-      "options": "UOM",
-      "description": "Stock and barcode UOM for the generated variants."
-    },
-    {
-      "fieldname": "item_field_mappings",
-      "label": "Item Field Mappings",
-      "fieldtype": "Table",
-      "options": "Design Item Field Mapping",
-      "description": "Administrator-managed field mappings from Design Code or Production Item to ERPNext Item. Item creation requires a separate preview and confirmation."
-    },
-    {
-      "fieldname": "sb_discussion_retention",
-      "label": "Discussion Attachment Retention",
-      "fieldtype": "Section Break",
-      "description": "Applies only to new private attachments sent from Design Code and Mood Board discussions. Changes do not alter expiry dates of previously uploaded files."
-    },
-    {
-      "fieldname": "discussion_retention_threshold_mb",
-      "label": "Keep Chat Attachments Without Expiry Up To (MB)",
-      "fieldtype": "Int",
-      "default": "50",
-      "reqd": 1,
-      "description": "Files at or below this size stay available without automatic expiry. Files strictly larger receive an expiry date. 1 MB = 1,048,576 bytes. Allowed range: 1–500 MB."
-    },
-    {
-      "fieldname": "discussion_retention_days",
-      "label": "Large Chat Attachment Retention (Days)",
-      "fieldtype": "Int",
-      "default": "14",
-      "reqd": 1,
-      "description": "Files above the threshold expire this many calendar days after upload. Allowed range: 1–365 days. The daily cleanup removes expired attachments without deleting chat messages."
-    },
-    {
-      "fieldname": "sb_mood_board_team_template",
-      "label": "Mood Board Base Team Template",
-      "fieldtype": "Section Break",
-      "description": "Configure roles and users inserted by Add Base Roles. Existing Mood Board assignments are never replaced."
-    },
-    {
-      "fieldname": "use_custom_mood_board_team_template",
-      "label": "Use Configured Mood Board Base Team",
-      "fieldtype": "Check",
-      "default": "0",
-      "description": "When unchecked, use the original six-role template with users selected on each Mood Board."
-    },
-    {
-      "fieldname": "mood_board_base_team",
-      "label": "Base Team Roles and Users",
-      "fieldtype": "Table",
-      "options": "Design Mood Board Base Team",
-      "description": "Select active module-role members; multiple users per role are allowed, with at most one default per role."
-    },
-    {
-      "fieldname": "sb_workspace_visibility",
-      "label": "Design Workspace Visibility",
-      "fieldtype": "Section Break",
-      "description": "Control each workspace link using a checkbox matrix of active module users. This changes navigation only, not actual permissions."
-    },
-    {
-      "fieldname": "workspace_visibility_matrix",
-      "label": "Workspace Visibility by User",
-      "fieldtype": "HTML",
-      "description": "Workspace items on rows, active module users on columns. Checkbox changes are saved with Settings."
-    },
-    {
-      "fieldname": "workspace_user_visibility",
-      "label": "User Visibility Overrides",
-      "fieldtype": "Table",
-      "options": "Design Workspace User Visibility",
-      "hidden": 1,
-      "description": "Stores explicit visible and hidden settings per user and workspace item."
-    },
-    {
-      "fieldname": "workspace_visibility_rules",
-      "label": "Workspace Item Visibility by Role",
-      "fieldtype": "Table",
-      "options": "Design Workspace Visibility Rule",
-      "description": "Legacy module-role navigation rules; only used as fallback when no user-specific rule exists.",
-      "hidden": 1
-    },
-    {
-      "fieldname": "sb_module_security",
-      "label": "Security & Permissions",
-      "fieldtype": "Section Break",
-      "description": "Use the 13 approved module roles. Assign each user a role, then enable enforcement after completing Demo role UAT."
-    },
-    {
-      "fieldname": "module_rbac_enabled",
-      "label": "Enforce Module Role Permissions",
-      "fieldtype": "Check",
-      "default": 0,
-      "description": "Safe rollout: when unchecked, existing ERPNext permissions remain effective. When checked, configured role permissions further restrict module access."
-    },
-    {
-      "fieldname": "module_user_roles",
-      "label": "Module User Roles",
-      "fieldtype": "Table",
-      "options": "Design Module User Role",
-      "description": "Assign one or more configured Marina Design module roles per ERPNext User."
-    },
-    {
-      "fieldname": "factory_master_migrated",
-      "label": "Factory Master Migrated",
-      "fieldtype": "Check",
-      "default": "0",
-      "hidden": 1,
-      "read_only": 1
-    }
-  ],
-  "field_order": [
-    "sb_factory_config",
-    "factory_list",
-    "factory_defaults_v51_applied",
-    "sb_item_creation",
-    "item_creation_item_group",
-    "item_creation_stock_uom",
-    "item_field_mappings",
-    "sb_discussion_retention",
-    "discussion_retention_threshold_mb",
-    "discussion_retention_days",
-    "sb_mood_board_team_template",
-    "use_custom_mood_board_team_template",
-    "mood_board_base_team",
-    "sb_workspace_visibility",
-    "workspace_visibility_matrix",
-    "workspace_user_visibility",
-    "workspace_visibility_rules",
-    "sb_module_security",
-    "module_rbac_enabled",
-    "module_user_roles",
-    "factory_master_migrated"
-  ],
-  "permissions": [],
-  "issingle": 1
+ "doctype": "DocType",
+ "name": "Design Management Settings",
+ "module": "Marina Design Management",
+ "custom": 0,
+ "istable": 0,
+ "is_submittable": 0,
+ "track_changes": 1,
+ "engine": "InnoDB",
+ "fields": [
+  {
+   "fieldname": "sb_factory_config",
+   "label": "Factory Configuration",
+   "fieldtype": "Section Break",
+   "description": "Legacy factory names retained for migration. Maintain factories in Factory List.",
+   "hidden": 1
+  },
+  {
+   "fieldname": "factory_list",
+   "label": "Factory List",
+   "fieldtype": "Text",
+   "description": "Legacy factory names retained for migration only.",
+   "hidden": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "factory_defaults_v51_applied",
+   "label": "Release 5.1 Master Defaults Updated",
+   "fieldtype": "Check",
+   "default": 0,
+   "hidden": 1,
+   "read_only": 1,
+   "print_hide": 1
+  },
+  {
+   "fieldname": "sb_item_creation",
+   "label": "One-Time ERPNext Item Creation",
+   "fieldtype": "Section Break",
+   "description": "Configure direct mappings for future Item creation only. Changes never update existing ERPNext Items."
+  },
+  {
+   "fieldname": "item_creation_item_group",
+   "label": "Created Item Group",
+   "fieldtype": "Link",
+   "options": "Item Group",
+   "description": "Required for controlled one-time Item creation."
+  },
+  {
+   "fieldname": "item_creation_stock_uom",
+   "label": "Created Stock UOM",
+   "fieldtype": "Link",
+   "options": "UOM",
+   "description": "Stock and barcode UOM for the generated variants."
+  },
+  {
+   "fieldname": "item_field_mappings",
+   "label": "Item Field Mappings",
+   "fieldtype": "Table",
+   "options": "Design Item Field Mapping",
+   "description": "Administrator-managed field mappings from Design Code or Production Item to ERPNext Item. Item creation requires a separate preview and confirmation."
+  },
+  {
+   "fieldname": "sb_discussion_retention",
+   "label": "Discussion Attachment Retention",
+   "fieldtype": "Section Break",
+   "description": "Applies only to new private attachments sent from Design Code and Mood Board discussions. Changes do not alter expiry dates of previously uploaded files."
+  },
+  {
+   "fieldname": "discussion_retention_threshold_mb",
+   "label": "Keep Chat Attachments Without Expiry Up To (MB)",
+   "fieldtype": "Int",
+   "default": "50",
+   "reqd": 1,
+   "description": "Files at or below this size stay available without automatic expiry. Files strictly larger receive an expiry date. 1 MB = 1,048,576 bytes. Allowed range: 1–500 MB."
+  },
+  {
+   "fieldname": "discussion_retention_days",
+   "label": "Large Chat Attachment Retention (Days)",
+   "fieldtype": "Int",
+   "default": "14",
+   "reqd": 1,
+   "description": "Files above the threshold expire this many calendar days after upload. Allowed range: 1–365 days. The daily cleanup removes expired attachments without deleting chat messages."
+  },
+  {
+   "fieldname": "sb_mood_board_team_template",
+   "label": "Mood Board Base Team Template",
+   "fieldtype": "Section Break",
+   "description": "Configure roles and users inserted by Add Base Roles. Existing Mood Board assignments are never replaced."
+  },
+  {
+   "fieldname": "use_custom_mood_board_team_template",
+   "label": "Use Configured Mood Board Base Team",
+   "fieldtype": "Check",
+   "default": "0",
+   "description": "When unchecked, use the original six-role template with users selected on each Mood Board."
+  },
+  {
+   "fieldname": "mood_board_base_team",
+   "label": "Base Team Roles and Users",
+   "fieldtype": "Table",
+   "options": "Design Mood Board Base Team",
+   "description": "Select active module-role members; multiple users per role are allowed, with at most one default per role."
+  },
+  {
+   "fieldname": "sb_workspace_visibility",
+   "label": "Design Workspace Visibility",
+   "fieldtype": "Section Break",
+   "description": "Control each workspace link using a checkbox matrix of active module users. This changes navigation only, not actual permissions."
+  },
+  {
+   "fieldname": "workspace_visibility_matrix",
+   "label": "Workspace Visibility by User",
+   "fieldtype": "HTML",
+   "description": "Workspace items on rows, active module users on columns. Checkbox changes are saved with Settings."
+  },
+  {
+   "fieldname": "workspace_user_visibility",
+   "label": "User Visibility Overrides",
+   "fieldtype": "Table",
+   "options": "Design Workspace User Visibility",
+   "hidden": 1,
+   "description": "Stores explicit visible and hidden settings per user and workspace item."
+  },
+  {
+   "fieldname": "workspace_visibility_rules",
+   "label": "Workspace Item Visibility by Role",
+   "fieldtype": "Table",
+   "options": "Design Workspace Visibility Rule",
+   "description": "Legacy module-role navigation rules; only used as fallback when no user-specific rule exists.",
+   "hidden": 1
+  },
+  {
+   "fieldname": "sb_module_security",
+   "label": "Design Team Membership",
+   "fieldtype": "Section Break",
+   "description": "Use the 13 approved module roles. Assign each user a role, then enable enforcement after completing Demo role UAT."
+  },
+  {
+   "fieldname": "module_rbac_enabled",
+   "label": "Enforce Module Role Permissions",
+   "fieldtype": "Check",
+   "default": 0,
+   "description": "Legacy RBAC compatibility field. Do not use for new permissions; permissions are configured per user in Design User Permission.",
+   "hidden": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "module_user_roles",
+   "label": "Module User Roles",
+   "fieldtype": "Table",
+   "options": "Design Module User Role",
+   "description": "Business role membership used for Design assignments, workflow responsibility, and workspace visibility. Operational permissions are configured per user in Design User Permission."
+  },
+  {
+   "fieldname": "factory_master_migrated",
+   "label": "Factory Master Migrated",
+   "fieldtype": "Check",
+   "default": "0",
+   "hidden": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "design_user_permission_link",
+   "label": "Individual Design Permissions",
+   "fieldtype": "HTML",
+   "description": "Open individual Document and Action permissions."
+  }
+ ],
+ "field_order": [
+  "sb_factory_config",
+  "factory_list",
+  "factory_defaults_v51_applied",
+  "sb_item_creation",
+  "item_creation_item_group",
+  "item_creation_stock_uom",
+  "item_field_mappings",
+  "sb_discussion_retention",
+  "discussion_retention_threshold_mb",
+  "discussion_retention_days",
+  "sb_mood_board_team_template",
+  "use_custom_mood_board_team_template",
+  "mood_board_base_team",
+  "sb_workspace_visibility",
+  "workspace_visibility_matrix",
+  "workspace_user_visibility",
+  "workspace_visibility_rules",
+  "sb_module_security",
+  "module_rbac_enabled",
+  "module_user_roles",
+  "design_user_permission_link",
+  "factory_master_migrated"
+ ],
+ "permissions": [],
+ "issingle": 1
 }
