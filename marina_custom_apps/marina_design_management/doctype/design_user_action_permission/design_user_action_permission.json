@@ -8,7 +8,7 @@
    "fieldname": "action_key",
    "label": "Action",
    "fieldtype": "Select",
-   "options": "Assign Milestones\nAdvance Milestone Step\nPublish Document\nRemove Published Assignment\nCreate ERPNext Items\nDelete Design Code\nReturn to Milestone\nClear Related Milestones\nManage Role Permissions\nAssign Team Tasks\nReassign Team Tasks\nApprove Design Cost Breakdown",
+   "options": "Assign Milestones\nAdvance Milestone Step\nPublish Document\nRemove Published Assignment\nCreate ERPNext Items\nDelete Design Code\nReturn to Milestone\nClear Related Milestones\nManage Role Permissions\nAssign Team Tasks\nReassign Team Tasks\nApprove Design Cost Breakdown\nSend Discussion Message\nUpload Discussion Attachment",
    "reqd": 1,
    "in_list_view": 1
   },
