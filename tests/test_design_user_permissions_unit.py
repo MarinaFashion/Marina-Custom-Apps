@@ -23,6 +23,9 @@ class FakeDB:
             return self.profile
         return False
 
+    def table_exists(self, doctype):
+        return True
+
     def get_value(self, doctype, name, field):
         if doctype == "User":
             return self.active
@@ -35,6 +38,7 @@ class PermissionPolicyTests(unittest.TestCase):
         cls.original = sys.modules.get("frappe")
         cls.frappe = types.ModuleType("frappe")
         cls.frappe.db = FakeDB()
+        cls.frappe.whitelist = lambda *args, **kwargs: (lambda fn: fn)
         cls.frappe.session = types.SimpleNamespace(user="catherine@example.test")
         cls.frappe.local = types.SimpleNamespace()
         cls.frappe.get_doc = lambda doctype, user: cls.profile
