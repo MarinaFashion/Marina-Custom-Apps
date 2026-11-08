@@ -327,6 +327,11 @@ def create_plan(design_code, milestone_types, lead_time_overrides=None):
     if len(milestone_types) > MAX_SELECTED or len(milestone_types) != len(set(milestone_types)):
         frappe.throw("Select unique milestones (maximum 50)")
     _lock_design(design_code)
+    # The exemption is editable only before planning. Refresh it after the
+    # row lock so concurrent saves cannot change what this plan records.
+    design.tech_pack_not_required = frappe.db.get_value(
+        "Design Code", design_code, "tech_pack_not_required"
+    )
     milestone_types = _require_all_active_milestones(milestone_types)
     # Re-read the planning baseline *after* locking. A Design Code edit may
     # have changed it between the initial _design read and this transaction.
