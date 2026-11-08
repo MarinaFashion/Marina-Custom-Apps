@@ -59,9 +59,8 @@ def can_delete_unlinked_draft(document_name):
 def delete_unlinked_draft(document_name):
     """Safely delete an unpublished, unlinked working document.
 
-    Document-level Delete grants are required. Do not delete the underlying
-    File records automatically: they may be reused and require separate file
-    retention/ownership handling.
+    Document-level Delete grants are required. Frappe's normal delete_doc
+    lifecycle handles any File attachments associated with this document.
     """
     if not isinstance(document_name, str) or not (0 < len(document_name) <= 140):
         frappe.throw("Select a valid Design Document")
