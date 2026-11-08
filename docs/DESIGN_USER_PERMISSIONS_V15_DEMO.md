@@ -187,8 +187,7 @@ rejection. Check no other Settings or Workspace Visibility changes.
 
 A Draft Design Document with **zero Design Code assignments** and **zero milestone
 evidence references** may have its attachment changed or cleared before publication.
-Once published or linked, the original file remains immutable. Uploaded File
-records are never implicitly deleted when a Draft document is deleted.
+Once published or linked, the original file remains immutable. Frappe may also remove File attachments associated with a deleted document.
 
 To delete a Draft document, a Design participant with an enabled individual
 profile must have **Design Document: Delete = checked** and **Edit = checked**.
