@@ -21,7 +21,7 @@ ACTIONS = frozenset({
     "Assign Team Tasks", "Reassign Team Tasks", "Approve Design Cost Breakdown",
     "Send Discussion Message", "Upload Discussion Attachment",
 })
-CUSTODY_ACTIONS = frozenset({"Advance Milestone Step", "Return to Milestone"})
+CUSTODY_ACTIONS = frozenset({"Advance Milestone Step"})
 OPERATIONS = frozenset({"read", "create", "write", "delete"})
 
 
