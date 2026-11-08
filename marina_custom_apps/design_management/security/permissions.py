@@ -245,6 +245,10 @@ def design_module_role_query(user=None):
 def cost_breakdown_query(user=None):
     """Never expose factory prices through unrestricted List queries."""
     user = user or frappe.session.user
+    from marina_custom_apps.design_management.security.user_permissions import document_allowed
+    direct = document_allowed("Design Cost Breakdown", "read", user)
+    if direct is not None:
+        return "" if direct else "1=0"
     from marina_custom_apps.marina_design_management.doctype.design_cost_breakdown.design_cost_breakdown import (
         _admin, _buyer, _module_roles, _commercial_all_scope,
     )
