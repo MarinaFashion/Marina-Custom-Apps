@@ -3,6 +3,85 @@ import frappe
 from marina_custom_apps.design_management.security.document_access import can_manage_documents
 
 
+def _can_delete_unlinked_draft(doc, user):
+    """Permission and business-state guard for deleting an unlinked draft.
+
+    The individual Delete checkbox is authoritative for configured users.
+    Frappe's native Delete DocPerm may be absent for Design participants;
+    the controlled endpoint can execute with elevated document deletion
+    only after checking individual Delete, native Write, ownership and
+    absence of assignment/evidence references.
+    """
+    from marina_custom_apps.design_management.security.user_permissions import (
+        document_allowed,
+    )
+    from marina_custom_apps.design_management.security.role_access import can_doctype
+    individual = document_allowed("Design Document", "delete", user)
+    if individual is False:
+        return False
+    if individual is None and can_doctype("Design Document", "delete", user) is False:
+        return False
+    if individual is None and not frappe.has_permission(
+            "Design Document", "delete", doc=doc, user=user):
+        return False
+    if not frappe.has_permission("Design Document", "write", doc=doc, user=user):
+        return False
+    if not can_manage_documents(user):
+        return False
+    if (doc.added_by != user and user != "Administrator"
+            and "System Manager" not in frappe.get_roles(user)):
+        return False
+    if doc.publication_status != "Draft" or bool(doc.get("assignments")):
+        return False
+    if frappe.db.exists("Design Document Assignment", {
+            "parent": doc.name, "parenttype": "Design Document"}):
+        return False
+    if (frappe.db.exists("Design Milestone Execution",
+                         {"evidence_document": doc.name})
+            or frappe.db.exists("Design Milestone Custody Event",
+                                {"evidence_document": doc.name})):
+        return False
+    return True
+
+
+@frappe.whitelist()
+def can_delete_unlinked_draft(document_name):
+    """UI hint. The POST endpoint always independently rechecks under lock."""
+    if not isinstance(document_name, str) or not (0 < len(document_name) <= 140):
+        return False
+    doc = frappe.get_doc("Design Document", document_name)
+    if not frappe.has_permission("Design Document", "read", doc=doc):
+        return False
+    return _can_delete_unlinked_draft(doc, frappe.session.user)
+
+
+@frappe.whitelist(methods=["POST"])
+def delete_unlinked_draft(document_name):
+    """Safely delete an unpublished, unlinked working document.
+
+    Document-level Delete grants are required. Do not delete the underlying
+    File records automatically: they may be reused and require separate file
+    retention/ownership handling.
+    """
+    if not isinstance(document_name, str) or not (0 < len(document_name) <= 140):
+        frappe.throw("Select a valid Design Document")
+    frappe.db.sql(
+        "SELECT name FROM `tabDesign Document` WHERE name=%s FOR UPDATE",
+        (document_name,),
+    )
+    doc = frappe.get_doc("Design Document", document_name)
+    if not _can_delete_unlinked_draft(doc, frappe.session.user):
+        frappe.throw(
+            "Delete requires individual Design Document Delete permission, "
+            "document ownership, Draft status and no linked designs or milestone evidence",
+            frappe.PermissionError,
+        )
+    frappe.delete_doc(
+        "Design Document", document_name, ignore_permissions=True,
+    )
+    return {"deleted": document_name}
+
+
 @frappe.whitelist()
 def preview_design_codes(filters=None, limit=100):
     if not can_manage_documents(frappe.session.user):
