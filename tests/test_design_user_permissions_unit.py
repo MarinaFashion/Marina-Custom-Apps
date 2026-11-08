@@ -95,6 +95,17 @@ class PermissionPolicyTests(unittest.TestCase):
         self.assertIsNone(self.policy.document_allowed("Design Code", "write"))
         self.assertIsNone(self.policy.action_allowed("Assign Milestones"))
 
+    def test_role_reference_requires_explicit_read(self):
+        self.assertIn("Design Module Role", self.policy.DOCS)
+        self.assertFalse(self.policy.document_allowed("Design Module Role", "read"))
+        self.profile.document_permissions.append(Row(
+            resource_doctype="Design Module Role",
+            read=1, create=0, write=0, delete=0,
+        ))
+        self.policy.invalidate()
+        self.assertTrue(self.policy.document_allowed("Design Module Role", "read"))
+        self.assertFalse(self.policy.document_allowed("Design Module Role", "write"))
+
     def test_disabled_user_policy_is_inactive(self):
         self.profile.enabled = 0
         self.assertIsNone(self.policy.document_allowed("Design Code", "read"))
