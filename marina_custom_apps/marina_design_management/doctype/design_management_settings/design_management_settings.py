@@ -90,8 +90,14 @@ class DesignManagementSettings(Document):
         if len(set(visibility)) != len(visibility):
             frappe.throw("Duplicate workspace item/module role visibility rule")
         valid_roles = set(role_catalog())
+        # Retired workspace links and previously deactivated users can leave
+        # historical rows. They must not block unrelated Settings updates.
+        # Still reject any newly added/changed invalid visibility rule.
+        previous_role_rules = set(old_visibility)
         for item, role in visibility:
-            if item not in WORKSPACE_ITEMS or role not in valid_roles:
+            if (item not in WORKSPACE_ITEMS or role not in valid_roles) and (
+                item, role
+            ) not in previous_role_rules:
                 frappe.throw("Workspace visibility requires a valid item and enabled module role")
         direct_visibility = [
             (r.workspace_item, r.user, int(r.visible or 0))
@@ -110,8 +116,16 @@ class DesignManagementSettings(Document):
             frappe.throw("Duplicate user and workspace item visibility rule")
         permitted_users = {r.user for r in (self.module_user_roles or []) if r.active}
         permitted_users.add("Administrator")
+        # Preserve unchanged historical overrides, including removed Security
+        # and Role Hierarchy shortcuts. Only new or edited invalid rows fail.
+        # Historical data is ignored by the active workspace visibility filter.
+        previous_overrides = set(old_direct)
         for item, user, visible in direct_visibility:
-            if item not in WORKSPACE_ITEMS or user not in permitted_users or visible not in (0, 1):
+            if (item not in WORKSPACE_ITEMS
+                    or user not in permitted_users
+                    or visible not in (0, 1)) and (
+                        item, user, visible
+                    ) not in previous_overrides:
                 frappe.throw("Workspace visibility requires a valid item and active module user")
         from marina_custom_apps.design_management.security.role_access import validate_settings
         validate_settings(self)
