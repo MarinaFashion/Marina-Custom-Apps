@@ -19,7 +19,8 @@
    "options": "Not Allowed\nAllowed\nCustody Only",
    "default": "Not Allowed",
    "reqd": 1,
-   "in_list_view": 1
+   "in_list_view": 1,
+   "description": "Choose Not Allowed or Allowed for all actions. Custody Only is supported for Advance Milestone Step and checks the execution's current custodian."
   }
  ],
  "field_order": [
