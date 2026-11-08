@@ -10,12 +10,25 @@ def _operation(ptype):
     return "read" if ptype in (None, "select", "print", "export") else ptype
 
 
+LEGACY_REFERENCE_DOCS = frozenset({
+    "Design Milestone Type", "Design Document Type", "Design Item Creation",
+    "Marina Pantone", "Marina Fashion Category",
+})
+
+
 def _check(doc, ptype=None, user=None):
-    return document_allowed(doc.doctype, _operation(ptype), user)
+    allowed = document_allowed(doc.doctype, _operation(ptype), user)
+    if allowed is None and doc.doctype in LEGACY_REFERENCE_DOCS:
+        from marina_custom_apps.design_management.security.permissions import module_reference_permission
+        return module_reference_permission(doc, ptype, user)
+    return allowed
 
 
 def _query(doctype, user=None):
     allowed = document_allowed(doctype, "read", user)
+    if allowed is None and doctype in LEGACY_REFERENCE_DOCS:
+        from marina_custom_apps.design_management.security.permissions import module_reference_query
+        return module_reference_query(user, doctype)
     return "1=0" if allowed is False else ""
 
 
