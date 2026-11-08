@@ -61,14 +61,14 @@ def _role_user(design, role):
     return user
 
 
-def _authorize(actor, action, design, role=None, reason=None):
+def _authorize(actor, action, design, role=None, reason=None, custodian=None):
     from marina_custom_apps.design_management.security.user_permissions import configured
     individualized = configured(actor)
     # Preserve legacy native-admin behavior only for non-configured users.
     if _is_admin(actor) and not individualized:
         return
     owner = _role_user(design, role) if role else None
-    if not can_action(action, actor, custodian=owner):
+    if not can_action(action, actor, custodian=custodian if custodian is not None else owner):
         frappe.throw("Missing Design Action: " + action, frappe.PermissionError)
     # Individual permissions replace hierarchy authorization, not milestone
     # sequencing, mandatory evidence or eligible-custodian validations.
@@ -416,7 +416,8 @@ def advance(design_code, execution_name, next_step, reason=None,
         frappe.throw("Step transition is not permitted at this point")
     stage = eligible[next_step]
     _authorize(actor, "Advance Milestone Step", design,
-               stage["responsible_module_role"], reason)
+               stage["responsible_module_role"], reason,
+               custodian=row.current_custodian)
     recorded_at = now_datetime()  # Real timestamp of user's action.
     if step_change_date is None or step_change_date == "":
         effective_day = getdate(recorded_at)
