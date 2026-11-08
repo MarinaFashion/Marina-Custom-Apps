@@ -546,6 +546,7 @@ def _rolling_events(plans, executions):
 
 
 def overview(design_code):
+    from marina_custom_apps.design_management.security.user_permissions import configured
     design = _design(design_code)
     plans = frappe.get_all("Design Milestone Plan Entry",
         filters={"design_code": design_code},
@@ -598,7 +599,6 @@ def overview(design_code):
             allowed = []
             evidence_types = {}
             for step in _next_allowed(cfg, exe.status):
-                from marina_custom_apps.design_management.security.user_permissions import configured
                 if (can_action("Advance Milestone Step", actor,
                                custodian=exe.current_custodian) if configured(actor)
                     else (_is_admin(actor) or (
