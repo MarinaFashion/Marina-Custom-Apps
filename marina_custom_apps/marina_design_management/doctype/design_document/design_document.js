@@ -242,3 +242,39 @@ frappe.ui.form.on("Design Document", {
         }
     }
 });
+
+/* Controlled cleanup of unlinked Draft working documents.
+   Requires explicit Design Document Delete permission; server rechecks
+   ownership, references and status before executing the deletion. */
+frappe.ui.form.on("Design Document", {
+    refresh(frm) {
+        if (frm.is_new() || frm.doc.publication_status !== "Draft") return;
+        if ((frm.doc.assignments || []).some(row => row.design_code)) return;
+        const document_name = frm.doc.name;
+        frappe.call({
+            method: "marina_custom_apps.design_management.api.design_documents.can_delete_unlinked_draft",
+            args: {document_name}
+        }).then(({message: allowed}) => {
+            if (!allowed || frm.doc.name !== document_name ||
+                    frm.doc.publication_status !== "Draft") return;
+            frm.add_custom_button(__("Delete Unlinked Draft"), () => {
+                if (frm.is_dirty()) {
+                    frappe.msgprint(__("Save or discard unsaved changes before deleting this document."));
+                    return;
+                }
+                frappe.confirm(
+                    __("Permanently delete this unlinked Draft Design Document? The uploaded File record is not automatically deleted."),
+                    () => frappe.call({
+                        method: "marina_custom_apps.design_management.api.design_documents.delete_unlinked_draft",
+                        type: "POST",
+                        args: {document_name},
+                        freeze: true
+                    }).then(() => {
+                        frappe.show_alert({message: __("Draft Design Document deleted"), indicator: "green"});
+                        frappe.set_route("List", "Design Document");
+                    })
+                );
+            }, __("Document"));
+        });
+    }
+});
