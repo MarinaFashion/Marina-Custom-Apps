@@ -1,0 +1,73 @@
+{
+ "doctype": "DocType",
+ "name": "Design User Permission",
+ "module": "Marina Design Management",
+ "autoname": "field:user",
+ "track_changes": 1,
+ "allow_rename": 0,
+ "fields": [
+  {
+   "fieldname": "user",
+   "label": "User",
+   "fieldtype": "Link",
+   "options": "User",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "enabled",
+   "label": "Enable Individual Permissions",
+   "fieldtype": "Check",
+   "default": "0",
+   "in_list_view": 1,
+   "description": "When off, legacy module permissions remain unchanged. Enable only after completing the user matrix."
+  },
+  {
+   "fieldname": "document_section",
+   "label": "Documents",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "document_permissions",
+   "label": "Document Permissions",
+   "fieldtype": "Table",
+   "options": "Design User Doc Permission"
+  },
+  {
+   "fieldname": "action_section",
+   "label": "Actions",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "action_permissions",
+   "label": "Action Permissions",
+   "fieldtype": "Table",
+   "options": "Design User Action Permission",
+   "description": "Not Allowed / Allowed / Custody Only. Custody Only applies to actions on an existing milestone with a current custodian."
+  },
+  {
+   "fieldname": "notes",
+   "label": "Notes",
+   "fieldtype": "Small Text"
+  }
+ ],
+ "field_order": [
+  "user",
+  "enabled",
+  "document_section",
+  "document_permissions",
+  "action_section",
+  "action_permissions",
+  "notes"
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "create": 1,
+   "write": 1,
+   "delete": 1
+  }
+ ]
+}
