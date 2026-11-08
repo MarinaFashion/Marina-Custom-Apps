@@ -1,4 +1,4 @@
-/* Dynamic role configuration — native Frappe permissions remain the baseline. */
+/* Organizational role editor. Individual action/document rights are managed separately. */
 frappe.ui.form.on("Design Module Role", {
     onload(frm) {
         frm.set_query("reports_to_role", () => ({
@@ -15,15 +15,15 @@ frappe.ui.form.on("Design Module Role", {
         }
         frm.set_df_property("frappe_role", "read_only", true);
         frm.set_df_property("reports_to_role", "description",
-            __("Choose an enabled Manager role in the reporting hierarchy. New roles require a manager; reporting does not grant approval permissions."));
+            __("Organizational reporting and responsibility only. Individual Document and Action permissions are managed in Design User Permission."));
         frm.set_df_property("scope", "description",
-            __("All grants visibility, not edit or approval authority. DocType and Workflow Action permissions must also be configured."));
+            __("Legacy record scope applies only to users not yet migrated to individual permissions."));
         if (frm.doc.role_name === "Administrator") {
             frm.set_df_property("reports_to_role", "read_only", true);
         }
         if (frm.is_new()) {
             frm.dashboard.set_headline_alert(
-                __("New module roles use the restricted Marina Design Participant ERPNext role. Configure permissions, save the role, then assign users in Design Management Settings."),
+                __("New organizational roles use the restricted Marina Design Participant ERPNext role. Save the role, assign users in Design Management Settings, and configure each user in Design User Permission."),
                 "blue"
             );
         }

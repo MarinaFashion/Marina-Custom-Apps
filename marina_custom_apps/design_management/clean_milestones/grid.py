@@ -77,11 +77,15 @@ def has_my_current_custody():
 
 def _actor_access():
     from marina_custom_apps.design_management.clean_milestones.service import _is_admin
+    from marina_custom_apps.design_management.security.user_permissions import configured
     user = frappe.session.user
-    admin = _is_admin(user)
-    action = admin or can_action("Advance Milestone Step", user)
+    individualized = configured(user)
+    admin = _is_admin(user) and not individualized
+    action = (admin or can_action("Advance Milestone Step", user)
+              or (individualized and can_action(
+                  "Advance Milestone Step", user, custodian=user)))
     scope = set()
-    if admin:
+    if admin or individualized:
         return admin, action, scope
     if (can_action("Assign Team Tasks", user) or
             can_action("Reassign Team Tasks", user)):
@@ -95,6 +99,8 @@ def _allowed_rows(designs, plans, executions):
     names = [r.name for r in designs]
     user = frappe.session.user
     admin, can_advance, manager_scope = _actor_access()
+    from marina_custom_apps.design_management.security.user_permissions import configured
+    individualized = configured(user)
     assigned = set()
     if names and can_advance and not admin:
         members = frappe.get_all("Design Team Assignment",
@@ -139,14 +145,18 @@ def _allowed_rows(designs, plans, executions):
                 ),
                 "rework_count": exe.rework_count or 0})
             if exe.status != "Completed" and can_advance:
-                row["can_note"] = bool(admin or
+                row["can_note"] = (bool(can_action(
+                    "Advance Milestone Step", user, custodian=exe.current_custodian))
+                    if individualized else bool(admin or
                     (plan.design_code, exe.current_role) in assigned or
-                    exe.current_role in manager_scope)
+                    exe.current_role in manager_scope))
                 snapshot = json.loads(plan.workflow_snapshot_json)
                 for step in _next_allowed(snapshot, exe.status):
-                    authorized = (admin or
+                    authorized = (bool(can_action(
+                        "Advance Milestone Step", user, custodian=exe.current_custodian))
+                        if individualized else (admin or
                         (plan.design_code, step["responsible_module_role"]) in assigned or
-                        step["responsible_module_role"] in manager_scope)
+                        step["responsible_module_role"] in manager_scope))
                     if not authorized:
                         continue
                     row["allowed_steps"].append(step["step"])

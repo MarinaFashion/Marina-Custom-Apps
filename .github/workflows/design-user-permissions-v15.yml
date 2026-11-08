@@ -1,0 +1,34 @@
+name: Design User Permissions v15 static validation
+
+on:
+  push:
+    branches:
+      - design-user-permissions-v15
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check Python syntax
+        run: python -m compileall -q marina_custom_apps
+      - name: Check new DocType definitions
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          base = Path('marina_custom_apps/marina_design_management/doctype')
+          names = ['design_user_permission', 'design_user_doc_permission', 'design_user_action_permission']
+          for name in names:
+              doc = json.loads((base/name/(name+'.json')).read_text())
+              assert doc['doctype'] == 'DocType'
+              fields = {f['fieldname'] for f in doc['fields']}
+              assert fields
+              print(doc['name'], 'OK')
+          PY
+      - name: Individual authorization contract tests
+        run: python -m unittest discover -s tests -p test_design_user_permissions_unit.py -v

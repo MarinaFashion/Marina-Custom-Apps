@@ -1,0 +1,1 @@
+"""Marina Design individual permissions."""

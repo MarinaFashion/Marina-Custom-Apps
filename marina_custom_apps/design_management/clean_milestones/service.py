@@ -61,13 +61,20 @@ def _role_user(design, role):
     return user
 
 
-def _authorize(actor, action, design, role=None, reason=None):
-    if _is_admin(actor):
+def _authorize(actor, action, design, role=None, reason=None, custodian=None):
+    from marina_custom_apps.design_management.security.user_permissions import configured
+    individualized = configured(actor)
+    # Preserve legacy native-admin behavior only for non-configured users.
+    if _is_admin(actor) and not individualized:
         return
-    if not can_action(action, actor):
-        frappe.throw("Missing Module Action: " + action, frappe.PermissionError)
+    owner = _role_user(design, role) if role else None
+    if not can_action(action, actor, custodian=custodian if custodian is not None else owner):
+        frappe.throw("Missing Design Action: " + action, frappe.PermissionError)
+    # Individual permissions replace hierarchy authorization, not milestone
+    # sequencing, mandatory evidence or eligible-custodian validations.
+    if individualized:
+        return
     if role:
-        owner = _role_user(design, role)
         if actor == owner and role in user_roles(actor):
             return
         if (can_manage_role(actor, role) and len((reason or "").strip()) >= 5):
@@ -409,7 +416,8 @@ def advance(design_code, execution_name, next_step, reason=None,
         frappe.throw("Step transition is not permitted at this point")
     stage = eligible[next_step]
     _authorize(actor, "Advance Milestone Step", design,
-               stage["responsible_module_role"], reason)
+               stage["responsible_module_role"], reason,
+               custodian=row.current_custodian)
     recorded_at = now_datetime()  # Real timestamp of user's action.
     if step_change_date is None or step_change_date == "":
         effective_day = getdate(recorded_at)
@@ -538,6 +546,7 @@ def _rolling_events(plans, executions):
 
 
 def overview(design_code):
+    from marina_custom_apps.design_management.security.user_permissions import configured
     design = _design(design_code)
     plans = frappe.get_all("Design Milestone Plan Entry",
         filters={"design_code": design_code},
@@ -590,12 +599,14 @@ def overview(design_code):
             allowed = []
             evidence_types = {}
             for step in _next_allowed(cfg, exe.status):
-                if _is_admin(actor) or (
-                    can_action("Advance Milestone Step", actor) and
-                    (actor == next(
-                        (r.user for r in (design.get("r22_team_assignments") or [])
-                         if r.active and r.module_role == step["responsible_module_role"]),
-                        None) or can_manage_role(actor, step["responsible_module_role"]))):
+                if (can_action("Advance Milestone Step", actor,
+                               custodian=exe.current_custodian) if configured(actor)
+                    else (_is_admin(actor) or (
+                        can_action("Advance Milestone Step", actor) and
+                        (actor == next(
+                            (r.user for r in (design.get("r22_team_assignments") or [])
+                             if r.active and r.module_role == step["responsible_module_role"]),
+                            None) or can_manage_role(actor, step["responsible_module_role"]))))):
                     allowed.append(step["step"])
                     if step["requires_evidence"]:
                         evidence_types[step["step"]] = step["evidence_type"]
@@ -607,7 +618,8 @@ def overview(design_code):
             "completed": [x for x in visible if x["state"] == "Completed"],
             "future": [x for x in visible if x["state"] == "Planned"],
             "can_plan": bool(not plans and (
-                _is_admin(actor) or can_action("Assign Milestones", actor))),
+                can_action("Assign Milestones", actor) if configured(actor)
+                else (_is_admin(actor) or can_action("Assign Milestones", actor)))),
             "requires_main_image": not bool(design.image)}
 
 

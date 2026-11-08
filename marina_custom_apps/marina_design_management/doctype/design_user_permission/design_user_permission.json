@@ -1,0 +1,90 @@
+{
+  "doctype": "DocType",
+  "name": "Design User Permission",
+  "module": "Marina Design Management",
+  "autoname": "field:user",
+  "track_changes": 1,
+  "allow_rename": 0,
+  "fields": [
+    {
+      "fieldname": "user",
+      "label": "User",
+      "fieldtype": "Link",
+      "options": "User",
+      "reqd": 1,
+      "unique": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "enabled",
+      "label": "Enable Individual Permissions",
+      "fieldtype": "Check",
+      "default": "0",
+      "in_list_view": 1,
+      "description": "When off, legacy module permissions remain unchanged. Enable only after completing the user matrix."
+    },
+    {
+      "fieldname": "document_section",
+      "label": "Documents",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "document_permission_matrix",
+      "label": "Document Permissions Matrix",
+      "fieldtype": "HTML",
+      "description": "Configure documents in a spreadsheet-style matrix. Empty rows are removed on save."
+    },
+    {
+      "fieldname": "document_permissions",
+      "label": "Document Permissions",
+      "fieldtype": "Table",
+      "options": "Design User Doc Permission",
+      "hidden": 1,
+      "description": "Stored permission records. Edited through the matrix above."
+    },
+    {
+      "fieldname": "action_section",
+      "label": "Actions",
+      "fieldtype": "Section Break"
+    },
+    {
+      "fieldname": "action_permission_matrix",
+      "label": "Action Permissions Matrix",
+      "fieldtype": "HTML",
+      "description": "Configure actions in a permission matrix. Not Allowed rows are removed on save."
+    },
+    {
+      "fieldname": "action_permissions",
+      "label": "Action Permissions",
+      "fieldtype": "Table",
+      "options": "Design User Action Permission",
+      "description": "Stored permission records. Edited through the matrix above.",
+      "hidden": 1
+    },
+    {
+      "fieldname": "notes",
+      "label": "Notes",
+      "fieldtype": "Small Text"
+    }
+  ],
+  "field_order": [
+    "user",
+    "enabled",
+    "document_section",
+    "document_permission_matrix",
+    "document_permissions",
+    "action_section",
+    "action_permission_matrix",
+    "action_permissions",
+    "notes"
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "create": 1,
+      "write": 1,
+      "delete": 1
+    }
+  ]
+}

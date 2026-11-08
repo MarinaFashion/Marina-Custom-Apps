@@ -26,6 +26,8 @@ ACTIONS = frozenset({
     "Assign Team Tasks",
     "Reassign Team Tasks",
     "Approve Design Cost Breakdown",
+    "Send Discussion Message",
+    "Upload Discussion Attachment",
 })
 PERMISSION_TYPES = frozenset({"read", "create", "write", "delete"})
 SCOPES = frozenset({"Assigned", "All"})
@@ -97,7 +99,11 @@ def _effective(user):
 
 
 def can_doctype(doctype, permission, user=None):
-    """None=legacy behavior; False=deny; True=module permits, Frappe still checks."""
+    """Configured user matrix takes priority; otherwise legacy RBAC."""
+    from marina_custom_apps.design_management.security.user_permissions import document_allowed
+    direct = document_allowed(doctype, permission, user)
+    if direct is not None:
+        return direct
     if not enabled():
         return None
     user = user or frappe.session.user
@@ -109,10 +115,14 @@ def can_doctype(doctype, permission, user=None):
     return (doctype, permission) in rights
 
 
-def can_action(action, user=None):
+def can_action(action, user=None, custodian=None):
     if action not in ACTIONS:
         return False
     user = user or frappe.session.user
+    from marina_custom_apps.design_management.security.user_permissions import action_allowed
+    direct = action_allowed(action, user, custodian=custodian)
+    if direct is not None:
+        return direct
     if _admin(user):
         return True
     if not enabled():
@@ -126,8 +136,9 @@ def require_action(action, user=None):
 
     Existing business approval, ownership, evidence and QC gates still apply.
     """
-    if enabled() and not can_action(action, user):
-        frappe.throw("Module role does not permit action: " + action, frappe.PermissionError)
+    from marina_custom_apps.design_management.security.user_permissions import configured
+    if (enabled() or configured(user)) and not can_action(action, user):
+        frappe.throw("User does not have Design action: " + action, frappe.PermissionError)
 
 
 def has_all_scope(user=None):

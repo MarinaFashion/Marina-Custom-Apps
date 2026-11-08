@@ -117,6 +117,13 @@ def is_head(user):
 
 
 def has_overall_visibility(user):
+    from marina_custom_apps.design_management.security.user_permissions import (
+        configured, document_allowed,
+    )
+    if configured(user):
+        # Individual permissions replace role-based document scope.
+        # Custody is checked separately for configured actions.
+        return document_allowed("Design Code", "read", user) is True
     catalog = role_catalog()
     return any(catalog[role].scope == "All" for role in user_roles(user))
 
@@ -135,9 +142,14 @@ def roles_for_group(group):
 
 def can_manage_role(actor, target_role):
     from marina_custom_apps.design_management.security.role_access import can_action
+    from marina_custom_apps.design_management.security.user_permissions import configured
     if not (can_action("Assign Team Tasks", actor)
             or can_action("Reassign Team Tasks", actor)):
         return False
+    # Explicit user permissions are independent of the reporting hierarchy.
+    # Role/custodian eligibility remains validated by each assignment routine.
+    if configured(actor):
+        return target_role in role_catalog()
     return any(target_role in descendants(role) for role in manager_roles(actor))
 
 
@@ -198,9 +210,13 @@ def eligible_team_users(actor, target_role=None):
     if not (can_action("Assign Team Tasks", actor)
             or can_action("Reassign Team Tasks", actor)):
         return []
-    permitted = set()
-    for role in manager_roles(actor):
-        permitted.update(descendants(role))
+    from marina_custom_apps.design_management.security.user_permissions import configured
+    if configured(actor):
+        permitted = set(role_catalog())
+    else:
+        permitted = set()
+        for role in manager_roles(actor):
+            permitted.update(descendants(role))
     if target_role:
         permitted &= {target_role}
     if not permitted:
@@ -234,6 +250,11 @@ def can_reassign_task(actor, prior_user, new_user):
     target_roles = user_roles(new_user)
     if not target_roles:
         return False
+    from marina_custom_apps.design_management.security.user_permissions import configured
+    if configured(actor):
+        # Individual permission replaces hierarchy only; target eligibility
+        # and mandatory active participant membership are still required.
+        return True
     for manager in manager_roles(actor):
         subtree = descendants(manager)
         if target_roles & subtree and (not prior_user or prior_roles & subtree):

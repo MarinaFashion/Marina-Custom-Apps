@@ -46,6 +46,10 @@ def _module_roles(user=None):
 
 def _buyer(user=None):
     user = user or frappe.session.user
+    from marina_custom_apps.design_management.security.user_permissions import configured
+    if configured(user):
+        from marina_custom_apps.design_management.security.role_access import can_action
+        return can_action("Approve Design Cost Breakdown", user)
     if _admin(user):
         return True
     if "Buying Manager" not in _module_roles(user):
@@ -56,6 +60,12 @@ def _buyer(user=None):
 
 def _preparer(design, user=None):
     user = user or frappe.session.user
+    from marina_custom_apps.design_management.security.user_permissions import (
+        configured, document_allowed,
+    )
+    if configured(user):
+        return bool(document_allowed("Design Cost Breakdown", "create", user)
+                    or document_allowed("Design Cost Breakdown", "write", user))
     if _admin(user):
         return True
     if user == design.assigned_merchandiser:
@@ -64,12 +74,13 @@ def _preparer(design, user=None):
 
 
 def _commercial_all_scope(user=None):
-    """A configured All-scope Buying/Merchandising Manager can read costings.
-
-    This is a Cost Breakdown-specific authorization, not a grant to browse or
-    edit other Design Code records when general module RBAC is disabled.
-    """
+    """Costing scope: user matrix when configured, otherwise legacy commercial roles."""
     user = user or frappe.session.user
+    from marina_custom_apps.design_management.security.user_permissions import (
+        configured, document_allowed,
+    )
+    if configured(user):
+        return document_allowed("Design Cost Breakdown", "read", user) is True
     if _admin(user):
         return True
     eligible = _module_roles(user) & {"Buying Manager", "Head Of Merchandisers"}
