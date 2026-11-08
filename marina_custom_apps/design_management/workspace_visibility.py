@@ -14,8 +14,8 @@ WORKSPACE_ITEMS = frozenset({
     "Management Dashboard", "Mood Boards", "Design Codes", "Design Documents",
     "Production Follow-Up Grid", "Design Discussions", "Pantone Library",
     "Fashion Categories", "Document Types", "Milestone Types",
-    "Design Management Settings", "Security & Permissions",
-    "Role Hierarchy", "Factory List", "Mood Board Overview",
+    "Design Management Settings", "Design Module Role",
+    "Design User Permission", "Factory List", "Mood Board Overview",
 })
 
 # A destination is a more stable identity than its translated UI label.
@@ -31,8 +31,8 @@ ITEM_TARGETS = {
     "Design Document Type": "Document Types",
     "Design Milestone Type": "Milestone Types",
     "Design Management Settings": "Design Management Settings",
-    "design-security-permissions": "Security & Permissions",
-    "design-role-hierarchy": "Role Hierarchy",
+    "Design Module Role": "Design Module Role",
+    "Design User Permission": "Design User Permission",
     "Factory List": "Factory List",
     "Mood Board Overview": "Mood Board Overview",
 }
@@ -46,8 +46,8 @@ def _item_name(row):
 DEFAULT_RESTRICTED = {
     "Management Dashboard": frozenset({"Head Of Design", "Administrator"}),
     "Design Management Settings": frozenset({"Administrator"}),
-    "Security & Permissions": frozenset({"Administrator"}),
-    "Role Hierarchy": frozenset({"Administrator", "Head Of Design"}),
+    "Design Module Role": frozenset({"Administrator"}),
+    "Design User Permission": frozenset({"Administrator"}),
 }
 
 
