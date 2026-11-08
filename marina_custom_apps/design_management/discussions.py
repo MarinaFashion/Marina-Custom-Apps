@@ -196,6 +196,12 @@ def _create_discussion_message(reference_doctype, reference_name, body, reply_to
                                request_id, mentions, attachment=None):
     """Shared transactional implementation for text and native binary uploads."""
     parent_access(reference_doctype, reference_name)
+    from marina_custom_apps.design_management.security.user_permissions import action_allowed
+    allowed = action_allowed("Send Discussion Message")
+    if allowed is False:
+        frappe.throw("Design discussion sending is not permitted", frappe.PermissionError)
+    if attachment is not None and action_allowed("Upload Discussion Attachment") is False:
+        frappe.throw("Design discussion attachments are not permitted", frappe.PermissionError)
     body = clean_body(body)
     if not isinstance(request_id, str) or not re.fullmatch(r'[a-f0-9]{32}', request_id):
         frappe.throw("Invalid message request. Refresh and retry.")
