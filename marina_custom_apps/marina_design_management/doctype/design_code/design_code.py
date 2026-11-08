@@ -57,6 +57,19 @@ class DesignCode(Document):
             frappe.throw("Cannot access this Mood Board", frappe.PermissionError)
         before = self.get_doc_before_save() if not self.is_new() else None
         self._validate_creation_date(before)
+        if before and cint(before.get("tech_pack_not_required")) != cint(
+                self.get("tech_pack_not_required")):
+            # Freeze the exception at plan creation to avoid retroactively
+            # changing the evidence basis of completed milestones.
+            frappe.db.sql(
+                "SELECT name FROM `tabDesign Code` WHERE name=%s FOR UPDATE",
+                (self.name,),
+            )
+            if frappe.db.exists("Design Milestone Plan Entry", {
+                    "design_code": self.name}):
+                frappe.throw(
+                    "Tech Pack Not Required cannot change after milestones are created"
+                )
         if before:
             if before.design_number != self.design_number:
                 frappe.throw("Design Number cannot be changed")

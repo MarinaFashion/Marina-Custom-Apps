@@ -161,6 +161,23 @@ def _target_date(entered, snapshot, current):
     return (getdate(entered) + timedelta(days=lead)).isoformat() if lead else None
 
 
+def tech_pack_exemption_applies(design, milestone_snapshot, first_step):
+    """Only waive Tech Pack evidence for an explicitly opted-out Design Code.
+
+    Other milestone evidence types (Fitting, QC, Shipping, etc.) stay mandatory.
+    A Tech Pack is a document type, not an inferred milestone title.
+    """
+    evidence_type = str(first_step.get("evidence_type") or "").strip().casefold()
+    return bool(
+        design.get("tech_pack_not_required")
+        and first_step.get("requires_evidence")
+        and evidence_type in {"tech pack", "technical pack", "techpack"}
+        and first_step.get("step") == "Completed"
+        and first_step.get("transition_mode") == "Auto"
+        and len(configured_steps(milestone_snapshot["steps"])) == 1
+    )
+
+
 def _activate(design, trigger_name=None, trigger_step=None, trigger_steps=None,
               trigger_sequence=None, effective_moment=None):
     plans = frappe.get_all("Design Milestone Plan Entry",
@@ -198,30 +215,31 @@ def _activate(design, trigger_name=None, trigger_step=None, trigger_steps=None,
             # of already-released work, NOT a shortcut around evidence.
             if not first["requires_evidence"]:
                 frappe.throw("An Auto Completed milestone requires Published evidence")
-            from marina_custom_apps.design_management.clean_milestones.evidence import (
-                matching_published_documents, evidence_document_details,
-            )
-            documents = matching_published_documents(
-                design.name, plan.milestone_type, first["evidence_type"])
-            if len(documents) != 1:
-                frappe.throw(
-                    "One Published Design Document must be linked to " +
-                    design.name + " / " + plan.milestone_type +
-                    " before initializing this one-step Completed milestone"
+            exempt = tech_pack_exemption_applies(design, cfg, first)
+            if not exempt:
+                from marina_custom_apps.design_management.clean_milestones.evidence import (
+                    matching_published_documents, evidence_document_details,
                 )
-            # Recheck under a document lock so an in-flight Unpublish or
-            # assignment removal cannot invalidate the evidence while the
-            # milestone is being recorded as Completed.
-            frappe.db.sql(
-                "SELECT name FROM `tabDesign Document` WHERE name=%s FOR UPDATE",
-                (documents[0].name,),
-            )
-            verified, linked = evidence_document_details(
-                design.name, plan.milestone_type, documents[0].name,
-                first["evidence_type"])
-            if not linked:
-                frappe.throw("Published evidence assignment changed during initialization")
-            evidence = verified.name
+                documents = matching_published_documents(
+                    design.name, plan.milestone_type, first["evidence_type"])
+                if len(documents) != 1:
+                    frappe.throw(
+                        "One Published Design Document must be linked to " +
+                        design.name + " / " + plan.milestone_type +
+                        " before initializing this one-step Completed milestone"
+                    )
+                # Recheck under a document lock so an in-flight Unpublish or
+                # assignment removal cannot invalidate the evidence.
+                frappe.db.sql(
+                    "SELECT name FROM `tabDesign Document` WHERE name=%s FOR UPDATE",
+                    (documents[0].name,),
+                )
+                verified, linked = evidence_document_details(
+                    design.name, plan.milestone_type, documents[0].name,
+                    first["evidence_type"])
+                if not linked:
+                    frappe.throw("Published evidence assignment changed during initialization")
+                evidence = verified.name
         owner = _role_user(design, first["custody_role"])
         time = effective_moment or now_datetime()
         # On a controlled return, retain the original execution identity:
@@ -309,6 +327,11 @@ def create_plan(design_code, milestone_types, lead_time_overrides=None):
     if len(milestone_types) > MAX_SELECTED or len(milestone_types) != len(set(milestone_types)):
         frappe.throw("Select unique milestones (maximum 50)")
     _lock_design(design_code)
+    # The exemption is editable only before planning. Refresh it after the
+    # row lock so concurrent saves cannot change what this plan records.
+    design.tech_pack_not_required = frappe.db.get_value(
+        "Design Code", design_code, "tech_pack_not_required"
+    )
     milestone_types = _require_all_active_milestones(milestone_types)
     # Re-read the planning baseline *after* locking. A Design Code edit may
     # have changed it between the initial _design read and this transaction.
