@@ -182,3 +182,33 @@ UAT checklist:
 UAT: Test new and saved profiles; verify repeated Insert All, checkbox/radio
 interactions, Save and reload, role-filtered user search and invalid user
 rejection. Check no other Settings or Workspace Visibility changes.
+
+## Unlinked Draft Design Document cleanup (Nov 2026)
+
+A Draft Design Document with **zero Design Code assignments** and **zero milestone
+evidence references** may have its attachment changed or cleared before publication.
+Once published or linked, the original file remains immutable. Uploaded File
+records are never implicitly deleted when a Draft document is deleted.
+
+To delete a Draft document, a Design participant with an enabled individual
+profile must have **Design Document: Delete = checked** and **Edit = checked**.
+The controlled **Document > Delete Unlinked Draft** form action also requires
+that the user created the document (or is a System Manager), and checks every
+condition again under a row lock. This lets authorized owners delete a working
+Draft even when the participant's native ERPNext role has no general Delete
+DocPerm; it does not grant a general delete capability for Published/linked
+documents. Users with no individual profile retain legacy and native permission
+checks. The existing on_trash checks still independently guard unpublished,
+unlinked documents against deletion when referenced by evidence.
+
+Demo UAT:
+- [ ] Catherine with Edit but without Delete sees no Delete Unlinked Draft action.
+- [ ] After administrator checks **Design Document Delete** for Catherine,
+      she can delete her own unlinked Draft, but not anyone else's document.
+- [ ] Unpublished, unlinked Draft supports replacing or clearing the attachment,
+      followed by Save and subsequent Publish with an existing valid File.
+- [ ] Linked Draft refuses attachment replacement and deletion.
+- [ ] Published document refuses attachment replacement and deletion.
+- [ ] Draft referenced by milestone execution/custody evidence refuses attachment
+      replacement and deletion, regardless of current assignment table.
+- [ ] Check no Design Code/milestone links or evidence rows were mutated.
