@@ -10,7 +10,14 @@ from marina_custom_apps.design_management.security.participants import participa
 @frappe.whitelist()
 def current_user_is_merchandiser():
     user=frappe.session.user
-    if user in ("Guest",None,"") or not enabled():
+    if user in ("Guest",None,""):
+        return False
+    from marina_custom_apps.design_management.security.user_permissions import configured
+    from marina_custom_apps.design_management.security.role_access import can_action
+    if configured(user):
+        return bool(can_action("Assign Team Tasks", user)
+                    or can_action("Reassign Team Tasks", user))
+    if not enabled():
         return False
     return bool(user_roles(user) & owner_roles("assigned_merchandiser"))
 
