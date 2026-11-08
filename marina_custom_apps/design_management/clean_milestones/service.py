@@ -62,12 +62,19 @@ def _role_user(design, role):
 
 
 def _authorize(actor, action, design, role=None, reason=None):
-    if _is_admin(actor):
+    from marina_custom_apps.design_management.security.user_permissions import configured
+    individualized = configured(actor)
+    # Preserve legacy native-admin behavior only for non-configured users.
+    if _is_admin(actor) and not individualized:
         return
-    if not can_action(action, actor):
-        frappe.throw("Missing Module Action: " + action, frappe.PermissionError)
+    owner = _role_user(design, role) if role else None
+    if not can_action(action, actor, custodian=owner):
+        frappe.throw("Missing Design Action: " + action, frappe.PermissionError)
+    # Individual permissions replace hierarchy authorization, not milestone
+    # sequencing, mandatory evidence or eligible-custodian validations.
+    if individualized:
+        return
     if role:
-        owner = _role_user(design, role)
         if actor == owner and role in user_roles(actor):
             return
         if (can_manage_role(actor, role) and len((reason or "").strip()) >= 5):
