@@ -58,6 +58,21 @@ override_doctype_class = {
         "marina_custom_apps.stock_auto_allocation."
         "logistics_stock_allocation_run.LogisticsStockAllocationRun"
     ),
+    # Direct controller paths for new Design permission DocTypes.
+    # Frappe's default module lookup may resolve the retired standalone
+    # app on benches that still have the old package installed.
+    "Design User Permission": (
+        "marina_custom_apps.marina_design_management.doctype."
+        "design_user_permission.design_user_permission.DesignUserPermission"
+    ),
+    "Design User Doc Permission": (
+        "marina_custom_apps.marina_design_management.doctype."
+        "design_user_doc_permission.design_user_doc_permission.DesignUserDocPermission"
+    ),
+    "Design User Action Permission": (
+        "marina_custom_apps.marina_design_management.doctype."
+        "design_user_action_permission.design_user_action_permission.DesignUserActionPermission"
+    ),
 }
 
 override_doctype_dashboards = {
