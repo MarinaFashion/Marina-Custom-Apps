@@ -76,3 +76,27 @@ import frappe
 for doctype in ("Design User Permission", "Design User Doc Permission", "Design User Action Permission"):
     print(doctype, bool(frappe.db.exists("DocType", doctype)), frappe.db.table_exists(doctype))
 ```
+
+## Simplified Settings UI (phase 1)
+
+The old module-level RBAC checkbox and the two permission child tables on `Design Module Role` are now **hidden, not deleted**. The old database rows remain available to the legacy fallback for any user with no enabled individual permission profile. Existing records and application validation are preserved; do not manually remove legacy tables yet.
+
+- `Design Management Settings`: retained **Design Workspace Visibility**, Mood Board Base Team, Item field mappings, retention settings, and **Design Team Membership** (Module User Roles).
+- Added **Manage Design User Permissions** shortcut within Settings.
+- `Design Module Role`: retains organizational attributes, reporting and group; legacy DocType and Action permission tables are hidden.
+- The old global `module_rbac_enabled` configuration remains stored and unchanged. It is not a new permission source for users with an enabled individual profile.
+- Added explicit DocType controller overrides for three `Design User Permission*` DocTypes to avoid the stale standalone module map when opening a **new** console or browser session. Existing other module DocTypes are unchanged.
+
+**This is a UI cleanup, not a removal of legacy authorization code or a data migration.** It is not safe to delete the old system until all active users are configured and audited in Design User Permission; doing so would otherwise change access for the unconfigured users.
+
+### Additional demo checks for cleanup
+
+- [ ] Existing Catherine profile and 13/14 configured rows still load after new deployment.
+- [ ] Open a **fresh** `bench --site marinademo.frappe.cloud console` and `frappe.get_doc("Design User Permission", "catherine@marinafashion.com.sa")` without rebuilding the module map manually.
+- [ ] Design Management Settings displays the original Workspace Visibility matrix unchanged and retains all saved user/item visibility overrides.
+- [ ] Design Team Membership remains editable and organizational roles still determine eligible assignees and custody.
+- [ ] Design Module Role no longer shows role-based Document/Action grids.
+- [ ] The new Settings button opens `Design User Permission`.
+- [ ] Staff without enabled individual profiles retain legacy permissions; confirm with at least one user.
+- [ ] No changes to `marina.frappe.cloud` production.
+
