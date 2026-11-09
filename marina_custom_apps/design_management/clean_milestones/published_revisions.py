@@ -92,6 +92,7 @@ def replace_published_file(document_name, file_url, reason, replace_target=None)
         "doctype": "Design Document",
         "document_title": previous.document_title,
         "document_type": previous.document_type,
+        "tech_pack_mood_board": previous.tech_pack_mood_board,
         "related_milestone_type": previous.related_milestone_type,
         "description": previous.description,
         "attachment": (file_url if target == previous.attachment
@@ -123,6 +124,9 @@ def replace_published_file(document_name, file_url, reason, replace_target=None)
     revision.flags.document_publication_action = True
     revision.flags.document_revision_action = True
     revision.save()
+    # Designer file mapping is carried forward exactly. Existing Design
+    # assignments are copied above, and old milestone evidence is untouched.
+    # Future Design Codes will use the new published version only.
 
     # The old document is never saved or changed other than its reference to
     # the replacement. Its attachment, publication and evidence remain intact.
