@@ -54,6 +54,11 @@ doctype_js = {
 
 
 override_doctype_class = {
+    # Resolve Design Code through consolidated app, not retired standalone controller.
+    "Design Code": (
+        "marina_custom_apps.marina_design_management.doctype."
+        "design_code.design_code.DesignCode"
+    ),
     "Stock Allocation Run": (
         "marina_custom_apps.stock_auto_allocation."
         "logistics_stock_allocation_run.LogisticsStockAllocationRun"
