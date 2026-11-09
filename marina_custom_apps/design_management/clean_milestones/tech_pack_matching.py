@@ -6,7 +6,7 @@ key is immutable at publication. Existing legacy single-file Tech Packs
 without a Mood Board continue using explicit assignment behavior.
 """
 import frappe
-from frappe.utils import now_datetime
+from frappe.utils import cint, now_datetime
 from uuid import uuid4
 
 MAX_MATCHES = 500
@@ -18,7 +18,7 @@ def designer_file(document, design):
             or not document.get("tech_pack_mood_board")
             or document.publication_status != "Published"
             or document.get("superseded_by")
-            or design.get("tech_pack_not_required")
+            or cint(design.get("tech_pack_not_required"))
             or document.tech_pack_mood_board != design.mood_board
             or not design.designer):
         return None
@@ -35,7 +35,7 @@ def candidate_documents(design, milestone_type, *, permission_filtered=True):
     A candidate is valid only if its related milestone and unique Designer
     file match the Design Code. Multiple matches are deliberately ambiguous.
     """
-    if design.get("tech_pack_not_required") or not design.designer:
+    if cint(design.get("tech_pack_not_required")) or not design.designer:
         return []
     conditions = {
         "document_type": "Tech Pack",
@@ -113,7 +113,7 @@ def link_design(design):
     Does not expose any file to the Design's creator or permit an ambiguity
     to select an arbitrary Tech Pack. A re-publish can also link existing codes.
     """
-    if design.get("tech_pack_not_required") or not design.mood_board or not design.designer:
+    if cint(design.get("tech_pack_not_required")) or not design.mood_board or not design.designer:
         return None
     # This runs inside Design Code's transaction. All linked relationships
     # must agree with the persisted Design's Mood Board/Designer.
