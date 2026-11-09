@@ -126,7 +126,7 @@ def related_documents(design_code):
     docs = frappe.get_list("Design Document",
         filters={"name": ["in", sorted({r.parent for r in links})]},
         fields=["name", "document_title", "document_type", "attachment",
-                "publication_status", "related_milestone_type",
+                "publication_status", "superseded_by", "related_milestone_type",
                 "added_by", "added_on"],
         limit_page_length=500)
     by_id = {r.name: r for r in docs}
