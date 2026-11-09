@@ -138,6 +138,14 @@ class DesignCode(Document):
         # Reassign only currently active work; keep all earlier history.
         from marina_custom_apps.design_management.clean_milestones.team import sync_active_custody
         sync_active_custody(self)
+        # New Design Codes automatically link a unique published Tech Pack
+        # with the same Mood Board and Designer. Older Design Codes are not
+        # retroactively reassigned when Designer/Team changes.
+        if self.is_new() or self.flags.get("in_insert"):
+            from marina_custom_apps.design_management.clean_milestones.tech_pack_matching import (
+                link_design,
+            )
+            link_design(self)
 
     def _normalize_design_sizes(self):
         """Normalize old Size descriptions and validate ERPNext Size abbreviations."""
