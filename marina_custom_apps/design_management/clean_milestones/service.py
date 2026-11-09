@@ -85,7 +85,7 @@ def _authorize(actor, action, design, role=None, reason=None, custodian=None):
 
 
 def _event(design, plan, execution, action, old=None, prior=None,
-           actor=None, reason=None, evidence=None, effective_date=None):
+           actor=None, reason=None, evidence=None, evidence_file=None, effective_date=None):
     event = frappe.get_doc({
         "doctype": "Design Milestone Custody Event",
         "name": uuid4().hex, "request_id": uuid4().hex,
@@ -97,6 +97,7 @@ def _event(design, plan, execution, action, old=None, prior=None,
         "performed_on": now_datetime(), "reason": reason or "",
         "effective_date": getdate(effective_date) if effective_date else None,
         "evidence_document": evidence,
+        "evidence_file": evidence_file,
     })
     event.db_insert()
     return event.name
@@ -210,6 +211,7 @@ def _activate(design, trigger_name=None, trigger_step=None, trigger_steps=None,
             and first["transition_mode"] == "Auto"
         )
         evidence = None
+        evidence_file = None
         if auto_completed:
             # A one-step Completed milestone is a factual acknowledgement
             # of already-released work, NOT a shortcut around evidence.
@@ -238,8 +240,18 @@ def _activate(design, trigger_name=None, trigger_step=None, trigger_steps=None,
                     design.name, plan.milestone_type, documents[0].name,
                     first["evidence_type"])
                 if not linked:
-                    frappe.throw("Published evidence assignment changed during initialization")
+                    if (verified.document_type == "Tech Pack"
+                            and verified.tech_pack_mood_board):
+                        from marina_custom_apps.design_management.clean_milestones.evidence import _bind_to_milestone
+                        _bind_to_milestone(verified, design.name, plan.milestone_type,
+                                           first["evidence_type"])
+                    else:
+                        frappe.throw("Published evidence assignment changed during initialization")
                 evidence = verified.name
+                from marina_custom_apps.design_management.clean_milestones.tech_pack_matching import designer_file
+                evidence_file = (designer_file(verified, design)
+                                 if verified.document_type == "Tech Pack" and verified.tech_pack_mood_board
+                                 else verified.attachment)
         owner = _role_user(design, first["custody_role"])
         time = effective_moment or now_datetime()
         # On a controlled return, retain the original execution identity:
@@ -262,7 +274,8 @@ def _activate(design, trigger_name=None, trigger_step=None, trigger_steps=None,
             "rework_count": 0, "last_action_on": now_datetime(),
             "completed_by": frappe.session.user if auto_completed else None,
             "completed_on": time if auto_completed else None,
-            "evidence_document": evidence, "latest_note": None,
+            "evidence_document": evidence, "evidence_file": evidence_file,
+            "latest_note": None,
         }
         if stored:
             frappe.db.set_value("Design Milestone Execution", stored, values,
@@ -284,7 +297,8 @@ def _activate(design, trigger_name=None, trigger_step=None, trigger_steps=None,
                ("Auto Completed" if auto_completed else
                 "Auto Reactivated" if stored else "Auto Activated"),
                old="Planned" if stored else None,
-               evidence=evidence, effective_date=time)
+               evidence=evidence, evidence_file=evidence_file,
+               effective_date=time)
         activated.append(plan.milestone_type)
         if auto_completed:
             # Propagate the newly completed event to dependents, including
@@ -483,6 +497,13 @@ def advance(design_code, execution_name, next_step, reason=None,
             design_code, row.milestone_type, stage["evidence_type"],
             evidence_document, confirm_link=str(confirm_evidence_link).lower()
             in ("1", "true"))
+    from marina_custom_apps.design_management.clean_milestones.tech_pack_matching import designer_file
+    chosen_file = None
+    if chosen_document:
+        chosen_doc = frappe.get_doc("Design Document", chosen_document)
+        chosen_file = (designer_file(chosen_doc, design)
+                       if chosen_doc.document_type == "Tech Pack" and chosen_doc.tech_pack_mood_board
+                       else chosen_doc.attachment)
     old_step, old_custodian = row.status, row.current_custodian
     if next_step == "Completed" and not row.due_date:
         # Freeze the last displayed forecast on completion, including a
@@ -504,6 +525,7 @@ def advance(design_code, execution_name, next_step, reason=None,
         "due_date": (row.due_date if next_step == "Completed" else
                      _target_date(moment, snapshot, next_step)),
         "evidence_document": chosen_document or row.evidence_document,
+        "evidence_file": chosen_file or row.evidence_file,
     }
     if (reason or "").strip():
         update["latest_note"] = reason.strip()[:500]
@@ -520,7 +542,7 @@ def advance(design_code, execution_name, next_step, reason=None,
     event_id = _event(design, plan, row, "Step " + next_step,
            old=old_step, prior=old_custodian,
            actor=actor, reason=reason, evidence=chosen_document,
-           effective_date=effective_day)
+           evidence_file=chosen_file, effective_date=effective_day)
     triggered = _activate(design, row.milestone_type, next_step,
                           configured_steps(snapshot["steps"]), plan.sequence,
                           effective_moment=moment)
