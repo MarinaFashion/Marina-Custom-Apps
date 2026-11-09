@@ -72,8 +72,8 @@ def publish_document(document_name):
     doc = _publication_document(document_name)
     if doc.publication_status == "Published":
         return {"published": document_name, "already_published": True}
-    if not doc.attachment:
-        frappe.throw("Attach a file before publishing")
+    if not (doc.attachment or any(row.file for row in (doc.get("additional_files") or []))):
+        frappe.throw("Attach at least one file before publishing")
     for assignment in doc.assignments:
         if not (assignment.target_milestone_type or doc.related_milestone_type):
             frappe.throw("Select the supported milestone for every Design Code assignment")
