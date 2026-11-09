@@ -44,6 +44,42 @@ class DesignDocument(Document):
             if any(url not in found for url in files):
                 frappe.throw("One or more attached files do not exist in ERPNext Files")
         before = self.get_doc_before_save() if not self.is_new() else None
+        is_special_tech_pack = self.document_type == "Tech Pack"
+        if is_special_tech_pack and self.is_new() and not self.tech_pack_mood_board:
+            frappe.throw("Select a Mood Board for the Tech Pack")
+        if self.tech_pack_mood_board:
+            if not is_special_tech_pack:
+                frappe.throw("Tech Pack Mood Board is only available for Tech Pack documents")
+            if not frappe.db.exists("Mood Board", self.tech_pack_mood_board):
+                frappe.throw("Select an existing Tech Pack Mood Board")
+            if not frappe.has_permission("Mood Board", "read",
+                                         doc=self.tech_pack_mood_board):
+                frappe.throw("Cannot access the selected Mood Board",
+                             frappe.PermissionError)
+            if not self.related_milestone_type:
+                frappe.throw("Select Tech Pack Released milestone before publication")
+            designer_files = (self.get("additional_files") or [])
+            if not designer_files and self.publication_status == "Published":
+                frappe.throw("Add at least one Designer + Tech Pack File")
+            unique_designers = set()
+            for row in designer_files:
+                if not row.designer or not row.file:
+                    frappe.throw("Each Tech Pack file requires Designer and File")
+                if row.designer in unique_designers:
+                    frappe.throw("Only one Tech Pack file per Designer in this document")
+                unique_designers.add(row.designer)
+            # A Tech Pack's Mood Board and designer-file mapping are the
+            # authoritative evidence. Manual Design Code overrides must not
+            # assign files to the wrong designer.
+            for assignment in self.get("assignments") or []:
+                info = frappe.db.get_value("Design Code", assignment.design_code,
+                    ["mood_board", "designer"], as_dict=True)
+                if (not info or info.mood_board != self.tech_pack_mood_board
+                        or info.designer not in unique_designers):
+                    frappe.throw("Assigned Design Code must belong to this Mood Board and a Tech Pack Designer")
+        if before and before.publication_status == "Published":
+            if self.tech_pack_mood_board != before.tech_pack_mood_board:
+                frappe.throw("Published Tech Pack Mood Board is immutable")
         # Revision metadata is written only by the controlled publication
         # endpoint. Read-only fields must also be protected server-side.
         revision_fields = ("supersedes_document", "superseded_by", "revision_reason")
