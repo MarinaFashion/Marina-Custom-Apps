@@ -130,6 +130,24 @@ def related_documents(design_code):
                 "added_by", "added_on"],
         limit_page_length=500)
     by_id = {r.name: r for r in docs}
+    # One bounded batch for the extra designer files; these parent
+    # documents have already passed Frappe's document READ filter.
+    files_by_doc = {}
+    if docs:
+        extra_files = frappe.get_all(
+            "Design Document Additional File",
+            filters={"parenttype": "Design Document",
+                     "parentfield": "additional_files",
+                     "parent": ["in", [row.name for row in docs]]},
+            fields=["parent", "file", "designer", "description", "idx"],
+            order_by="idx asc", limit_page_length=10000,
+        )
+        for item in extra_files:
+            files_by_doc.setdefault(item.parent, []).append({
+                "file": item.file,
+                "designer": item.designer,
+                "description": item.description,
+            })
     user_ids = sorted({r.added_by for r in docs if r.added_by})
     titles = {r.name: ((r.username or "").strip() or "Username not configured")
               for r in frappe.get_all("User",
@@ -139,7 +157,8 @@ def related_documents(design_code):
                 by_id[row.parent].added_by, "Username not configured"),
                 assigned_on=row.assigned_on,
                 target_milestone_type=(row.target_milestone_type or
-                                       by_id[row.parent].related_milestone_type))
+                                       by_id[row.parent].related_milestone_type),
+                additional_files=files_by_doc.get(row.parent, []))
             for row in links if row.parent in by_id]
 
 
