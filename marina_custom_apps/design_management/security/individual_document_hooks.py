@@ -97,7 +97,29 @@ def marina_fashion_category_query(user=None):
 
 
 def factory_list_permission(doc, ptype=None, user=None, **kwargs):
-    return _check(doc, ptype, user)
+    # Factory List grants a native Create/Write/Delete baseline to the
+    # Participant role so Frappe's normal list/form buttons work. That
+    # baseline must never grant operations independently of a user's
+    # individual permission profile.
+    from marina_custom_apps.design_management.security.user_permissions import (
+        document_allowed,
+    )
+    import frappe
+
+    actor = user or frappe.session.user
+    operation = _operation(ptype)
+    decision = document_allowed("Factory List", operation, actor)
+    if decision is not None:
+        return decision
+
+    # Preserve ordinary read/select behavior for legacy participants, but
+    # do not expand their mutation permissions through the new native grant.
+    # Full administrators retain their standard Frappe rights.
+    if operation in ("create", "write", "delete"):
+        if actor == "Administrator" or "System Manager" in frappe.get_roles(actor):
+            return None
+        return False
+    return None
 
 
 def factory_list_query(user=None):
