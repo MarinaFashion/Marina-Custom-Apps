@@ -37,7 +37,7 @@ frappe.ui.form.on("Design Document", {
         // Only Published documents require a file; Drafts can be prepared
         // and linked to designs before the Tech Pack is available.
         frm.set_df_property("attachment","reqd",
-            frm.doc.publication_status==="Published" ? 1 : 0);
+            (frm.doc.publication_status==="Published" && !(frm.doc.additional_files||[]).length) ? 1 : 0);
         frm.add_custom_button(__("Find Design Codes"),()=> {
             const filters = {};
             [
@@ -127,10 +127,9 @@ frappe.ui.form.on("Design Document",{
     refresh(frm){
         if(frm.is_new() || frm.doc.publication_status==="Published")return;
         frm.add_custom_button(__("Publish Document"),()=>{
-            if(!frm.doc.attachment){
-                frm.set_df_property("attachment","reqd",1);
-                frappe.msgprint(__("Attach a file before publishing this Design Document."));
-                frm.scroll_to_field("attachment");
+            if(!frm.doc.attachment && !(frm.doc.additional_files||[]).some(row=>row.file)){
+                frappe.msgprint(__("Attach a primary or additional designer file before publishing this Design Document."));
+                frm.scroll_to_field("additional_files");
                 return;
             }
             if(frm.is_dirty()){
