@@ -108,6 +108,15 @@ def replace_published_file(document_name, file_url, reason, replace_target=None)
             "description": row.description,
         })
     for assignment in previous.get("assignments") or []:
+        if previous.document_type == "Tech Pack" and previous.tech_pack_mood_board:
+            current = frappe.db.get_value("Design Code", assignment.design_code,
+                ["mood_board", "designer"], as_dict=True)
+            active_designers = {row.designer for row in previous.get("additional_files") or []}
+            if (not current or current.mood_board != previous.tech_pack_mood_board
+                    or current.designer not in active_designers):
+                # The earlier version keeps its historical Design Code link.
+                # A newer version never inherits a now-incorrect mapping.
+                continue
         revision.append("assignments", {
             "design_code": assignment.design_code,
             "target_milestone_type": assignment.target_milestone_type,
