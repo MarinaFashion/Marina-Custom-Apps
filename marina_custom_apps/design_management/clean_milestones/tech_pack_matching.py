@@ -128,14 +128,20 @@ def link_design(design):
     )
     if len(documents) > MAX_MATCHES:
         return None
-    matches = []
-    for item in documents:
-        row = frappe.db.get_value("Design Document Additional File",
-            {"parent": item.name, "parenttype": "Design Document",
-             "parentfield": "additional_files", "designer": design.designer},
-            "file")
-        if row:
-            matches.append(item)
+    relevant_ids = [row.name for row in documents]
+    files = frappe.get_all(
+        "Design Document Additional File",
+        filters={"parenttype": "Design Document", "parentfield": "additional_files",
+                 "parent": ["in", relevant_ids], "designer": design.designer},
+        fields=["parent", "file"], limit_page_length=MAX_MATCHES + 1,
+    ) if relevant_ids else []
+    counts = {}
+    for row in files:
+        counts.setdefault(row.parent, []).append(row.file)
+    matches = [
+        row for row in documents
+        if len(counts.get(row.name, [])) == 1
+    ]
     # Do not silently pick between conflicting active Tech Packs.
     if len(matches) != 1:
         return None
