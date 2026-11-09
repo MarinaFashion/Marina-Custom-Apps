@@ -45,8 +45,15 @@ def safe_image(value):
     return value if parsed.path.startswith(('/files/', '/private/files/', '/assets/')) else ''
 
 
+def mood_board_display_name(name):
+    """Remove a numeric presentation prefix; never change the stored Mood Board ID."""
+    name = str(name or '').strip()
+    return re.sub(r'^\d+\s*[-–—]\s*', '', name, count=1) or name
+
+
 def cover_heading(year, season, collection, drop, title):
-    return ' - '.join(str(value).strip() for value in (year, season, collection, drop, title)
+    return ' / '.join(str(value).strip() for value in (year, season, collection, drop,
+                                                       mood_board_display_name(title))
                       if value is not None and str(value).strip())
 
 
@@ -91,9 +98,10 @@ def board_context(mood_board):
     for design in designs:
         design['report_image'] = safe_image(design.get('image'))
         design['milestone_caption'] = milestone_caption(grouped[design['name']])
+    display_name = mood_board_display_name(board.mood_board_name or board.name)
     return {
-        'title': board.mood_board_name or board.name,
-        'cover_heading': cover_heading(board.year, board.season, board.collection, board.drop, board.mood_board_name or board.name),
+        'title': display_name,
+        'cover_heading': cover_heading(board.year, board.season, board.collection, board.drop, display_name),
         'cover': safe_image(board.image),
         'year': board.year or '',
         'season': board.season or '',
