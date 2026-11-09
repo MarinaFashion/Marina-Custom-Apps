@@ -565,7 +565,8 @@ function marina_display_related_documents(frm) {
                         esc(item.description||item.designer||__("Open File"))+'</a></div>').join("");
                 return '<tr><td><a href="/app/design-document/'+encodeURIComponent(doc.name)+'">'+
                     esc(doc.document_title)+'</a></td><td>'+esc(doc.document_type)+
-                    '</td><td>'+esc(doc.publication_status||"—")+
+                    '</td><td>'+esc(doc.superseded_by ? __("Superseded") :
+                        (doc.publication_status||"—"))+
                     '</td><td>'+esc(doc.target_milestone_type||"—")+
                     '</td><td>'+ (links||"—") +'</td><td>'+
                     esc(doc.added_username||__("Username not configured"))+'</td></tr>';
