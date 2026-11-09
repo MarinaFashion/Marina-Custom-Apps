@@ -68,6 +68,12 @@ def _bootstrap(*, migrate=False):
                 frappe.db.set_single_value("Design Management Settings", fieldname, default)
     from marina_custom_apps.design_management.setup.module_role_defaults import sync_module_roles
     sync_module_roles()
+    # Repair module-managed Participant grants removed by historical RBAC-off
+    # synchronization. Existing manually assigned roles remain untouched.
+    if migrate:
+        from marina_custom_apps.design_management.security.module_role_sync import sync_user_roles
+        settings = frappe.get_doc("Design Management Settings")
+        sync_user_roles(settings, None, force=True)
     from marina_custom_apps.design_management.setup.module_role_defaults import sync_cost_breakdown_permissions
     sync_cost_breakdown_permissions()
     sync_document_types()

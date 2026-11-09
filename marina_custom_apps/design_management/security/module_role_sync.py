@@ -19,14 +19,15 @@ def sync_user_roles(settings, before, force=False):
                for r in (settings.get("module_user_roles") or [])}
     old = {(r.user, r.module_role, int(r.active or 0))
            for r in (before.get("module_user_roles") or [])} if before else set()
-    active_now = bool(settings.module_rbac_enabled)
-    active_before = bool(before.module_rbac_enabled) if before else False
-    if current == old and active_now == active_before and not force:
+    # Business-role membership and the native Participant role are independent
+    # of the optional RBAC enforcement switch. Toggling RBAC alone must never
+    # grant or revoke native Frappe roles.
+    if current == old and not force:
         return
 
-    # Normal user-role edits only need to touch changed users.
-    # Enabling RBAC or a one-time migration reconciles all assigned users.
-    affected = (current | old) if (force or active_now != active_before) else (current ^ old)
+    # Only changed assignments are reconciled on Settings save. A controlled
+    # migration can use force=True to repair users affected by the old logic.
+    affected = (current | old) if force else (current ^ old)
     users = {r[0] for r in affected}
     if len(users) > 200:
         frappe.throw("Maximum of 200 affected module users per Settings update")
@@ -41,7 +42,7 @@ def sync_user_roles(settings, before, force=False):
     # A single participant role per active user, regardless of how many
     # distinct business roles the user holds. Never grant System Manager.
     for user in sorted(users):
-        is_participant = active_now and any(
+        is_participant = any(
             u == user and active and role in active_roles
             for u, role, active in current
         )
