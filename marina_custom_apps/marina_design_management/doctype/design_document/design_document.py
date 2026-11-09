@@ -18,18 +18,55 @@ class DesignDocument(Document):
             frappe.throw("Not authorized to manage Design Documents", frappe.PermissionError)
         if not frappe.db.get_value("Design Document Type", self.document_type, "is_active"):
             frappe.throw("Document Type must be active")
-        # Draft Design Documents can be saved without an uploaded file.
-        # Published documents (including direct API saves) must always have
-        # a valid ERPNext attachment, verified independently at publication.
-        if self.attachment or self.publication_status == "Published":
-            if (not self.attachment
-                    or not self.attachment.startswith(("/files/", "/private/files/"))
-                    or ".." in self.attachment or "?" in self.attachment
-                    or "#" in self.attachment):
+        # A Design Document may include a primary file plus several files from
+        # different designers. All files are evidence for the same assignments.
+        files = ([self.attachment] if self.attachment else []) + [
+            row.file for row in (self.get("additional_files") or [])
+        ]
+        if len(files) > 50:
+            frappe.throw("Maximum 50 files per Design Document")
+        if self.publication_status == "Published" and not files:
+            frappe.throw("At least one valid ERPNext file is required for publication")
+        if len(set(files)) != len(files) or not all(files):
+            frappe.throw("Design Document files must be nonempty and unique")
+        for file_url in files:
+            if (not isinstance(file_url, str)
+                    or not file_url.startswith(("/files/", "/private/files/"))
+                    or ".." in file_url or "?" in file_url or "#" in file_url
+                    or len(file_url) > 500):
                 frappe.throw("Attach a valid ERPNext file before publishing")
-            if not frappe.db.exists("File", {"file_url": self.attachment}):
-                frappe.throw("The selected file does not exist in ERPNext Files")
+        if files:
+            found = {
+                row.file_url for row in frappe.get_all(
+                    "File", filters={"file_url": ["in", files]},
+                    fields=["file_url"], limit_page_length=51)
+            }
+            if any(url not in found for url in files):
+                frappe.throw("One or more attached files do not exist in ERPNext Files")
         before = self.get_doc_before_save() if not self.is_new() else None
+        # Revision metadata is written only by the controlled publication
+        # endpoint. Read-only fields must also be protected server-side.
+        revision_fields = ("supersedes_document", "superseded_by", "revision_reason")
+        if self.is_new():
+            if (any(self.get(k) for k in revision_fields)
+                    and not self.flags.get("document_revision_action")):
+                frappe.throw("Use Replace Published File to create a document revision")
+        elif before:
+            if (any(self.get(k) != before.get(k) for k in revision_fields)
+                    and not self.flags.get("document_revision_action")):
+                frappe.throw("Document revision history is immutable")
+            if before.superseded_by:
+                frappe.throw("Replaced published versions cannot be edited")
+            def _file_rows(doc):
+                return sorted((row.file or "", row.designer or "",
+                               row.description or "")
+                              for row in (doc.get("additional_files") or []))
+            if (before.publication_status == "Published"
+                    and _file_rows(before) != _file_rows(self)):
+                frappe.throw(
+                    "Published additional files cannot be edited. "
+                    "Use Replace Published File to issue a new version."
+                )
         if self.publication_status not in ("Draft", "Published", None, ""):
             frappe.throw("Invalid publication state")
         if self.publication_status == "Published" and not self.flags.get(
@@ -130,6 +167,30 @@ class DesignDocument(Document):
         # Assignment filters are only for previews; no future matching Design Code inherits a file.
 
     def on_update(self):
+        # File uploads on new forms can be attached to temporary names.
+        # Reassociate ONLY the current user's temporary File records after
+        # the document receives its permanent identifier. Never take over
+        # files attached to other saved documents.
+        file_urls = ([self.attachment] if self.attachment else []) + [
+            r.file for r in (self.get("additional_files") or []) if r.file
+        ]
+        if file_urls:
+            uploaded = frappe.get_all("File",
+                filters={"file_url": ["in", file_urls]},
+                fields=["name", "owner", "attached_to_doctype",
+                        "attached_to_name", "file_url"],
+                limit_page_length=51)
+            for record in uploaded:
+                if (record.owner == frappe.session.user
+                        and record.attached_to_doctype in (
+                            "Design Document", "Design Document Additional File")
+                        and (record.attached_to_name or "").startswith("new-")):
+                    frappe.db.set_value("File", record.name, {
+                        "attached_to_doctype": "Design Document",
+                        "attached_to_name": self.name,
+                        "attached_to_field": "attachment" if record.file_url == self.attachment
+                            else "additional_files",
+                    }, update_modified=False)
         # Frappe Version also tracks the full child-table change. A readable
         # timeline event makes appended designs easy to find in the document.
         previous = self.get_doc_before_save()

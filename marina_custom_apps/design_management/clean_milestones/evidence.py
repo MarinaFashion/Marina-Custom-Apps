@@ -45,6 +45,7 @@ def matching_published_documents(design_code, milestone_type, evidence_type=None
     docs = frappe.get_list(
         "Design Document",
         filters={"name": ["in", names], "publication_status": "Published",
+                 "superseded_by": ["is", "not set"],
                  **({"document_type": evidence_type} if evidence_type else {})},
         fields=["name", "document_title", "document_type",
                 "related_milestone_type"],
@@ -134,6 +135,8 @@ def required_document(design_code, milestone_type, evidence_type, selected=None,
     if selected:
         doc, linked = evidence_document_details(
             design_code, milestone_type, selected, evidence_type)
+        if doc.superseded_by:
+            frappe.throw("This document was superseded. Select its latest published version")
         if not linked:
             if not confirm_link:
                 frappe.throw(
@@ -192,6 +195,8 @@ def preview_evidence_link(design_code, milestone_type, document_name, step=None)
         required_types = {matches[0]["evidence_type"]}
     doc, linked = evidence_document_details(
         design_code, milestone_type, document_name)
+    if doc.superseded_by:
+        frappe.throw("This document was superseded. Select its latest published version")
     if doc.document_type not in required_types:
         frappe.throw("Evidence Type does not match the selected milestone workflow")
     return {
@@ -262,6 +267,7 @@ def search_milestone_evidence(doctype, txt, searchfield, start, page_len, filter
     per_page = min(50, max(1, int(page_len)))
     query = {
         "filters": {"publication_status": "Published",
+                    "superseded_by": ["is", "not set"],
                     "document_type": ["in", sorted(required_types)]},
         "fields": ["name", "document_title", "related_milestone_type"],
         "order_by": "modified desc, name desc",

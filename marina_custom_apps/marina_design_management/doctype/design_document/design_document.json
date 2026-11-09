@@ -44,6 +44,29 @@
       "read_only": 1
     },
     {
+      "fieldname": "supersedes_document",
+      "label": "Previous Published Version",
+      "fieldtype": "Link",
+      "options": "Design Document",
+      "read_only": 1,
+      "description": "Previous immutable published version, preserved for historical evidence."
+    },
+    {
+      "fieldname": "superseded_by",
+      "label": "Replaced By",
+      "fieldtype": "Link",
+      "options": "Design Document",
+      "read_only": 1,
+      "description": "Latest replacement version; the old document remains available for audit."
+    },
+    {
+      "fieldname": "revision_reason",
+      "label": "Revision Reason",
+      "fieldtype": "Small Text",
+      "read_only": 1,
+      "description": "Recorded when a new published version replaces an older version."
+    },
+    {
       "fieldname": "published_by",
       "label": "Published By",
       "fieldtype": "Link",
@@ -63,10 +86,10 @@
     },
     {
       "fieldname": "attachment",
-      "label": "File",
+      "label": "Primary File",
       "fieldtype": "Attach",
       "reqd": 0,
-      "description": "Optional while Draft. A valid ERPNext File attachment is mandatory when publishing."
+      "description": "Primary document file. Additional designer files can be attached below; publication requires at least one valid file."
     },
     {
       "fieldname": "added_by",
@@ -80,6 +103,19 @@
       "label": "Added On",
       "fieldtype": "Datetime",
       "read_only": 1
+    },
+    {
+      "fieldname": "sb_additional_files",
+      "label": "Additional Designer Files",
+      "fieldtype": "Section Break",
+      "description": "Every file in this table belongs to this Design Document and is shared with all assigned Design Codes."
+    },
+    {
+      "fieldname": "additional_files",
+      "label": "Additional Files",
+      "fieldtype": "Table",
+      "options": "Design Document Additional File",
+      "description": "Attach one or more contributors' Tech Packs. File links remain immutable once Published."
     },
     {
       "fieldname": "sb_description",
@@ -164,12 +200,17 @@
     "document_type",
     "related_milestone_type",
     "publication_status",
+    "supersedes_document",
+    "superseded_by",
+    "revision_reason",
     "published_by",
     "published_on",
     "cb_document",
     "attachment",
     "added_by",
     "added_on",
+    "sb_additional_files",
+    "additional_files",
     "sb_description",
     "description",
     "sb_filters",

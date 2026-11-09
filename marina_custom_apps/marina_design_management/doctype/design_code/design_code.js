@@ -554,14 +554,23 @@ function marina_display_related_documents(frm) {
         args:{design_code:frm.doc.name},
         callback({message}) {
             const esc=frappe.utils.escape_html;
-            const rows=(message||[]).map(doc=>
-                '<tr><td><a href="/app/design-document/'+encodeURIComponent(doc.name)+'">'+
-                esc(doc.document_title)+'</a></td><td>'+esc(doc.document_type)+
-                '</td><td>'+esc(doc.publication_status||"—")+
-                '</td><td>'+esc(doc.target_milestone_type||"—")+
-                '</td><td><a href="'+esc(doc.attachment)+'" target="_blank" rel="noopener">'+
-                __("Open File")+'</a></td><td>'+esc(doc.added_username||__("Username not configured"))+'</td></tr>'
-            ).join("");
+            const rows=(message||[]).map(doc=>{
+                const files=[
+                    ...(doc.attachment ? [{file:doc.attachment,description:__("Primary File")}] : []),
+                    ...(doc.additional_files||[])
+                ];
+                const links=files.filter(item=>item.file && (item.file.startsWith("/files/") || item.file.startsWith("/private/files/")))
+                    
+                    .map(item=>'<div><a href="'+esc(item.file)+'" target="_blank" rel="noopener">'+
+                        esc(item.description||item.designer||__("Open File"))+'</a></div>').join("");
+                return '<tr><td><a href="/app/design-document/'+encodeURIComponent(doc.name)+'">'+
+                    esc(doc.document_title)+'</a></td><td>'+esc(doc.document_type)+
+                    '</td><td>'+esc(doc.superseded_by ? __("Superseded") :
+                        (doc.publication_status||"—"))+
+                    '</td><td>'+esc(doc.target_milestone_type||"—")+
+                    '</td><td>'+ (links||"—") +'</td><td>'+
+                    esc(doc.added_username||__("Username not configured"))+'</td></tr>';
+            }).join("");
             wrapper.html(rows?
                 '<div class="table-responsive"><table class="table table-bordered">'+
                 '<thead><tr><th>'+__("Document")+'</th><th>'+__("Type")+

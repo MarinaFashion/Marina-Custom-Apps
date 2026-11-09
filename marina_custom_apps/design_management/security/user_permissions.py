@@ -19,7 +19,7 @@ DOCS = frozenset({
 })
 ACTIONS = frozenset({
     "Assign Milestones", "Advance Milestone Step", "Publish Document",
-    "Remove Published Assignment", "Create ERPNext Items", "Delete Design Code",
+    "Remove Published Assignment", "Replace Published Document", "Create ERPNext Items", "Delete Design Code",
     "Return to Milestone", "Clear Related Milestones", "Manage Role Permissions",
     "Assign Team Tasks", "Reassign Team Tasks", "Approve Design Cost Breakdown",
     "Send Discussion Message", "Upload Discussion Attachment",

@@ -28,7 +28,8 @@ def can_unpublish_document(document_name):
     if not can_action("Publish Document", actor) or not can_manage_documents(actor):
         return False
     doc = frappe.get_doc("Design Document", document_name)
-    if not doc.has_permission("write") or doc.publication_status != "Published":
+    if (not doc.has_permission("write") or doc.publication_status != "Published"
+            or doc.superseded_by):
         return False
     return not bool(
         frappe.db.exists("Design Milestone Execution",
@@ -47,8 +48,8 @@ def unpublish_document(document_name):
     directly to those published documents without this action.
     """
     doc = _publication_document(document_name)
-    if doc.publication_status != "Published":
-        frappe.throw("Only a published document can be unpublished")
+    if doc.publication_status != "Published" or doc.superseded_by:
+        frappe.throw("A superseded published version cannot be unpublished")
     if (frappe.db.exists("Design Milestone Execution",
                          {"evidence_document": doc.name})
             or frappe.db.exists("Design Milestone Custody Event",
@@ -71,8 +72,8 @@ def publish_document(document_name):
     doc = _publication_document(document_name)
     if doc.publication_status == "Published":
         return {"published": document_name, "already_published": True}
-    if not doc.attachment:
-        frappe.throw("Attach a file before publishing")
+    if not (doc.attachment or any(row.file for row in (doc.get("additional_files") or []))):
+        frappe.throw("Attach at least one file before publishing")
     for assignment in doc.assignments:
         if not (assignment.target_milestone_type or doc.related_milestone_type):
             frappe.throw("Select the supported milestone for every Design Code assignment")

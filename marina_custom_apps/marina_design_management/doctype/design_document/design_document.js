@@ -12,6 +12,10 @@ frappe.ui.form.on("Design Document Assignment", {
 
 frappe.ui.form.on("Design Document", {
     setup(frm) {
+        frm.set_query("designer", "additional_files", () => ({
+            query: "marina_custom_apps.design_management.api.design_documents.search_eligible_users",
+            filters: {team: "designers"}
+        }));
         frm.set_query("filter_subcategory",()=>({
             filters:{parent_category:frm.doc.filter_category||""}
         }));
@@ -37,6 +41,8 @@ frappe.ui.form.on("Design Document", {
         // Only Published documents require a file; Drafts can be prepared
         // and linked to designs before the Tech Pack is available.
         frm.set_df_property("attachment","reqd",
+            (frm.doc.publication_status==="Published" && !(frm.doc.additional_files||[]).length) ? 1 : 0);
+        frm.set_df_property("additional_files","read_only",
             frm.doc.publication_status==="Published" ? 1 : 0);
         frm.add_custom_button(__("Find Design Codes"),()=> {
             const filters = {};
@@ -127,10 +133,9 @@ frappe.ui.form.on("Design Document",{
     refresh(frm){
         if(frm.is_new() || frm.doc.publication_status==="Published")return;
         frm.add_custom_button(__("Publish Document"),()=>{
-            if(!frm.doc.attachment){
-                frm.set_df_property("attachment","reqd",1);
-                frappe.msgprint(__("Attach a file before publishing this Design Document."));
-                frm.scroll_to_field("attachment");
+            if(!frm.doc.attachment && !(frm.doc.additional_files||[]).some(row=>row.file)){
+                frappe.msgprint(__("Attach a primary or additional designer file before publishing this Design Document."));
+                frm.scroll_to_field("additional_files");
                 return;
             }
             if(frm.is_dirty()){
@@ -274,6 +279,76 @@ frappe.ui.form.on("Design Document", {
                         frappe.set_route("List", "Design Document");
                     })
                 );
+            }, __("Document"));
+        });
+    }
+});
+
+/* Controlled published-file replacement: create a NEW Published version.
+   Never overwrite a file referenced by historic milestone evidence. */
+frappe.ui.form.on("Design Document", {
+    refresh(frm) {
+        if (frm.is_new() || frm.doc.publication_status !== "Published" ||
+                frm.doc.superseded_by) return;
+        const source = frm.doc.name;
+        const method = "marina_custom_apps.design_management.clean_milestones.published_revisions";
+        frappe.call({
+            method: method + ".can_replace_published_file",
+            args: {document_name: source}
+        }).then(({message: allowed}) => {
+            if (!allowed || frm.doc.name !== source ||
+                    frm.doc.publication_status !== "Published" ||
+                    frm.doc.superseded_by) return;
+            frm.add_custom_button(__("Replace Published File"), () => {
+                if (frm.is_dirty()) {
+                    frappe.msgprint(__("Save or discard unsaved changes before replacing the published file."));
+                    return;
+                }
+                const sourceFiles = [
+                    ...(frm.doc.attachment ? [{url: frm.doc.attachment, label: __("Primary File")}] : []),
+                    ...(frm.doc.additional_files || []).filter(row => row.file)
+                        .map(row => ({
+                            url: row.file,
+                            label: row.designer || row.description || __("Additional File")
+                        }))
+                ];
+                const dialog = new frappe.ui.Dialog({
+                    title: __("Publish Replacement File"),
+                    fields: [
+                        {fieldname: "replace_target", label: __("Existing File to Replace"),
+                         fieldtype: "Select", reqd: 1,
+                         options: sourceFiles.map(item => item.url).join(String.fromCharCode(10)),
+                         description: __("Choose the existing file. Other designer files remain unchanged in the new version.")},
+                        {fieldname: "file_url", label: __("Replacement File"),
+                         fieldtype: "Attach", reqd: 1,
+                         description: __("A new published Design Document will be created. The earlier version and historical milestone evidence remain unchanged.")},
+                        {fieldname: "reason", label: __("Revision Reason"),
+                         fieldtype: "Small Text", reqd: 1,
+                         description: __("Describe what changed in this Tech Pack or Mood Board (10–500 characters).")}
+                    ],
+                    primary_action_label: __("Publish New Version"),
+                    primary_action(values) {
+                        const reason = (values.reason || "").trim();
+                        if (reason.length < 10 || reason.length > 500) {
+                            frappe.msgprint(__("Enter a revision reason of 10–500 characters."));
+                            return;
+                        }
+                        frappe.confirm(__("Publish a replacement for {0}? The earlier version and any historic approvals will remain unchanged.", [source]), () => {
+                            frappe.call({
+                                method: method + ".replace_published_file",
+                                type: "POST", freeze: true,
+                                args: {document_name: source,
+                                       file_url: values.file_url,
+                                       replace_target: values.replace_target, reason}
+                            }).then(({message}) => {
+                                dialog.hide();
+                                frappe.set_route("Form", "Design Document", message.replacement);
+                            });
+                        });
+                    }
+                });
+                dialog.show();
+                if (sourceFiles.length) dialog.set_value("replace_target", sourceFiles[0].url);
             }, __("Document"));
         });
     }

@@ -126,10 +126,28 @@ def related_documents(design_code):
     docs = frappe.get_list("Design Document",
         filters={"name": ["in", sorted({r.parent for r in links})]},
         fields=["name", "document_title", "document_type", "attachment",
-                "publication_status", "related_milestone_type",
+                "publication_status", "superseded_by", "related_milestone_type",
                 "added_by", "added_on"],
         limit_page_length=500)
     by_id = {r.name: r for r in docs}
+    # One bounded batch for the extra designer files; these parent
+    # documents have already passed Frappe's document READ filter.
+    files_by_doc = {}
+    if docs:
+        extra_files = frappe.get_all(
+            "Design Document Additional File",
+            filters={"parenttype": "Design Document",
+                     "parentfield": "additional_files",
+                     "parent": ["in", [row.name for row in docs]]},
+            fields=["parent", "file", "designer", "description", "idx"],
+            order_by="idx asc", limit_page_length=10000,
+        )
+        for item in extra_files:
+            files_by_doc.setdefault(item.parent, []).append({
+                "file": item.file,
+                "designer": item.designer,
+                "description": item.description,
+            })
     user_ids = sorted({r.added_by for r in docs if r.added_by})
     titles = {r.name: ((r.username or "").strip() or "Username not configured")
               for r in frappe.get_all("User",
@@ -139,7 +157,8 @@ def related_documents(design_code):
                 by_id[row.parent].added_by, "Username not configured"),
                 assigned_on=row.assigned_on,
                 target_milestone_type=(row.target_milestone_type or
-                                       by_id[row.parent].related_milestone_type))
+                                       by_id[row.parent].related_milestone_type),
+                additional_files=files_by_doc.get(row.parent, []))
             for row in links if row.parent in by_id]
 
 
@@ -199,7 +218,7 @@ def _may_remove_published_assignment(document):
 def can_remove_published_assignment(document_name):
     document = frappe.get_doc("Design Document", document_name)
     return bool(document.publication_status == "Published" and
-                document.get("assignments") and
+                not document.superseded_by and document.get("assignments") and
                 _may_remove_published_assignment(document))
 
 
@@ -219,8 +238,8 @@ def remove_published_assignment(document_name, design_code, reason):
         "SELECT name FROM `tabDesign Document` WHERE name=%s FOR UPDATE",
         (document_name,))
     document = frappe.get_doc("Design Document", document_name, for_update=True)
-    if document.publication_status != "Published":
-        frappe.throw("This action is only for published document assignments")
+    if document.publication_status != "Published" or document.superseded_by:
+        frappe.throw("This action is only for the latest published document assignments")
     if not _may_remove_published_assignment(document):
         frappe.throw("Not authorized to detach this published document", frappe.PermissionError)
     matches = [row for row in (document.get("assignments") or [])
@@ -295,7 +314,8 @@ def search_linkable_published_documents(
         return []
     per_page = min(25, max(1, int(page_len)))
     query = {
-        "filters": {"publication_status": "Published"},
+        "filters": {"publication_status": "Published",
+                    "superseded_by": ["is", "not set"]},
         "fields": ["name", "document_title", "document_type"],
         # Standard get_list applies document READ permissions. The selected
         # document is separately checked for WRITE before it can be linked.
@@ -322,8 +342,8 @@ def published_document_link_details(design_code, document_name):
                      frappe.PermissionError)
     doc = frappe.get_doc("Design Document", document_name)
     doc.check_permission("write")
-    if doc.publication_status != "Published":
-        frappe.throw("Only Published Design Documents can be linked")
+    if doc.publication_status != "Published" or doc.superseded_by:
+        frappe.throw("Only the latest Published Design Document can be linked")
     return {
         "name": doc.name,
         "document_title": doc.document_title,
@@ -361,8 +381,8 @@ def link_published_document(design_code, document_name, target_milestone_type=No
     )
     doc = frappe.get_doc("Design Document", document_name)
     doc.check_permission("write")
-    if doc.publication_status != "Published":
-        frappe.throw("Only Published Design Documents can be linked")
+    if doc.publication_status != "Published" or doc.superseded_by:
+        frappe.throw("Only the latest Published Design Document can be linked")
     # Linking a Published document must not depend on the Design's
     # milestone plan or a future milestone yet to be configured.
     # An explicitly requested override is checked against the global master.

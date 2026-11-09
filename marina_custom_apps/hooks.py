@@ -73,6 +73,12 @@ override_doctype_class = {
         "marina_custom_apps.marina_design_management.doctype."
         "design_user_action_permission.design_user_action_permission.DesignUserActionPermission"
     ),
+    # Keep new multifile child controller resolvable on benches where a
+    # previously installed standalone Design app still exists in module map.
+    "Design Document Additional File": (
+        "marina_custom_apps.marina_design_management.doctype."
+        "design_document_additional_file.design_document_additional_file.DesignDocumentAdditionalFile"
+    ),
 }
 
 override_doctype_dashboards = {
