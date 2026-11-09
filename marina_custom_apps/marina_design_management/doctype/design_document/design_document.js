@@ -1,3 +1,17 @@
+/* Tech Packs use Mood Board + Designer matching, not manual bulk assignments.
+   Existing legacy single-file documents remain readable. */
+function marina_tech_pack_ui(frm) {
+    const special = frm.doc.document_type === "Tech Pack";
+    const auto = special && Boolean(frm.doc.tech_pack_mood_board);
+    frm.set_df_property("tech_pack_mood_board", "reqd", special ? 1 : 0);
+    frm.set_df_property("assignments", "read_only", auto ? 1 : 0);
+    frm.set_df_property("attachment", "hidden", auto ? 1 : 0);
+    frm.set_df_property("additional_files", "reqd", auto && frm.is_new() ? 1 : 0);
+    if (auto) {
+        frm.set_intro(__("Tech Pack: one file per Designer. The published document automatically links Design Codes with the same Mood Board and assigned Designer. No manual Design Code selection is needed."), "blue");
+    }
+}
+
 /* A new assignment inherits the document's milestone by default.
    Existing mappings are not changed: published evidence stays auditable. */
 frappe.ui.form.on("Design Document Assignment", {
@@ -25,6 +39,12 @@ frappe.ui.form.on("Design Document", {
         }));
     },
     filter_category(frm){frm.set_value("filter_subcategory",null);},
+    document_type(frm) { marina_tech_pack_ui(frm); },
+    tech_pack_mood_board(frm) {
+        if (frm.doc.document_type === "Tech Pack") {
+            frm.set_value("filter_mood_board", frm.doc.tech_pack_mood_board || null);
+        }
+    },
     related_milestone_type(frm) {
         // When the parent is set after adding blank, unsaved rows, complete
         // only those new rows. Never rewrite existing or explicit overrides.
@@ -38,12 +58,14 @@ frappe.ui.form.on("Design Document", {
         });
     },
     refresh(frm) {
+        marina_tech_pack_ui(frm);
         // Only Published documents require a file; Drafts can be prepared
         // and linked to designs before the Tech Pack is available.
         frm.set_df_property("attachment","reqd",
             (frm.doc.publication_status==="Published" && !(frm.doc.additional_files||[]).length) ? 1 : 0);
         frm.set_df_property("additional_files","read_only",
             frm.doc.publication_status==="Published" ? 1 : 0);
+        if (frm.doc.document_type !== "Tech Pack" || !frm.doc.tech_pack_mood_board)
         frm.add_custom_button(__("Find Design Codes"),()=> {
             const filters = {};
             [
