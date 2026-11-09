@@ -18,6 +18,7 @@ ACTIONS = frozenset({
     "Advance Milestone Step",
     "Publish Document",
     "Remove Published Assignment",
+    "Replace Published Document",
     "Create ERPNext Items",
     "Delete Design Code",
     "Return to Milestone",
