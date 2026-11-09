@@ -44,6 +44,29 @@
       "read_only": 1
     },
     {
+      "fieldname": "supersedes_document",
+      "label": "Previous Published Version",
+      "fieldtype": "Link",
+      "options": "Design Document",
+      "read_only": 1,
+      "description": "Previous immutable published version, preserved for historical evidence."
+    },
+    {
+      "fieldname": "superseded_by",
+      "label": "Replaced By",
+      "fieldtype": "Link",
+      "options": "Design Document",
+      "read_only": 1,
+      "description": "Latest replacement version; the old document remains available for audit."
+    },
+    {
+      "fieldname": "revision_reason",
+      "label": "Revision Reason",
+      "fieldtype": "Small Text",
+      "read_only": 1,
+      "description": "Recorded when a new published version replaces an older version."
+    },
+    {
       "fieldname": "published_by",
       "label": "Published By",
       "fieldtype": "Link",
@@ -164,6 +187,9 @@
     "document_type",
     "related_milestone_type",
     "publication_status",
+    "supersedes_document",
+    "superseded_by",
+    "revision_reason",
     "published_by",
     "published_on",
     "cb_document",
