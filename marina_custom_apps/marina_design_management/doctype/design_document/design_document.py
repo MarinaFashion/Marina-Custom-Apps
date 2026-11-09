@@ -78,7 +78,16 @@ class DesignDocument(Document):
                     ["mood_board", "designer"], as_dict=True)
                 if (not info or info.mood_board != self.tech_pack_mood_board
                         or info.designer not in unique_designers):
-                    frappe.throw("Assigned Design Code must belong to this Mood Board and a Tech Pack Designer")
+                    # Keep historical assignments unchanged if a Designer
+                    # was reassigned after this document was Published.
+                    # New assignments (and Draft publication) must match.
+                    already_published = (
+                        before and before.publication_status == "Published"
+                        and any(r.design_code == assignment.design_code
+                                for r in (before.assignments or []))
+                    )
+                    if not already_published:
+                        frappe.throw("Assigned Design Code must belong to this Mood Board and a Tech Pack Designer")
         if before and before.publication_status == "Published":
             if self.tech_pack_mood_board != before.tech_pack_mood_board:
                 frappe.throw("Published Tech Pack Mood Board is immutable")
