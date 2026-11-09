@@ -39,7 +39,7 @@ def matching_published_documents(design_code, milestone_type, evidence_type=None
     # This is resolved by indexed parent lookup + one child query, never by
     # scanning all files or silently choosing between ambiguous revisions.
     from marina_custom_apps.design_management.clean_milestones.tech_pack_matching import (
-        candidate_documents, designer_file,
+        candidate_documents,
     )
     design = frappe.get_doc("Design Code", design_code)
     special = (
@@ -60,23 +60,42 @@ def matching_published_documents(design_code, milestone_type, evidence_type=None
                  "superseded_by": ["is", "not set"],
                  **({"document_type": evidence_type} if evidence_type else {})},
         fields=["name", "document_title", "document_type",
-                "related_milestone_type"],
+                "tech_pack_mood_board", "related_milestone_type"],
         order_by="modified desc, name desc",
         limit_page_length=len(names),
     )
     targets = {}
     for link in links:
         targets.setdefault(link.parent, []).append(link.target_milestone_type)
+    # One batched child lookup for matching designer files instead of
+    # loading each linked Design Document separately (no N+1 queries).
+    special_names = [
+        doc.name for doc in docs
+        if doc.document_type == "Tech Pack" and doc.tech_pack_mood_board
+    ]
+    matched_counts = {}
+    if special_names and design.designer:
+        child_rows = frappe.get_all(
+            "Design Document Additional File",
+            filters={"parent": ["in", special_names],
+                     "parenttype": "Design Document",
+                     "parentfield": "additional_files",
+                     "designer": design.designer},
+            fields=["parent", "file"], limit_page_length=MAX_CANDIDATES + 1,
+        )
+        for row in child_rows:
+            matched_counts.setdefault(row.parent, []).append(row.file)
     results = []
     for doc in docs:
         if not any(matches_milestone(
                 target, doc.related_milestone_type, milestone_type)
                 for target in targets.get(doc.name, [])):
             continue
-        if doc.document_type == "Tech Pack":
-            full_doc = frappe.get_doc("Design Document", doc.name)
-            if full_doc.tech_pack_mood_board and not designer_file(full_doc, design):
-                continue
+        if (doc.document_type == "Tech Pack" and doc.tech_pack_mood_board
+                and (doc.tech_pack_mood_board != design.mood_board
+                     or design.get("tech_pack_not_required")
+                     or len(matched_counts.get(doc.name, [])) != 1)):
+            continue
         results.append(doc)
     found = {row.name for row in results}
     results.extend(frappe._dict(name=row.name)
