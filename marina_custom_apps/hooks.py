@@ -59,6 +59,18 @@ override_doctype_class = {
         "marina_custom_apps.marina_design_management.doctype."
         "design_code.design_code.DesignCode"
     ),
+    "Mood Board": (
+        "marina_custom_apps.marina_design_management.doctype."
+        "mood_board.mood_board.MoodBoard"
+    ),
+    "Design Document": (
+        "marina_custom_apps.marina_design_management.doctype."
+        "design_document.design_document.DesignDocument"
+    ),
+    "Design Management Settings": (
+        "marina_custom_apps.marina_design_management.doctype."
+        "design_management_settings.design_management_settings.DesignManagementSettings"
+    ),
     "Stock Allocation Run": (
         "marina_custom_apps.stock_auto_allocation."
         "logistics_stock_allocation_run.LogisticsStockAllocationRun"
