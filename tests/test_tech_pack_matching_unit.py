@@ -81,9 +81,9 @@ class TechPackMatchingTests(unittest.TestCase):
             self.doc[key] = original
 
     def test_waiver_and_duplicate_designer_files_never_auto_match(self):
-        self.design.tech_pack_not_required = "1"
+        self.design["tech_pack_not_required"] = "1"
         self.assertIsNone(self.match.designer_file(self.doc, self.design))
-        self.design.tech_pack_not_required = "0"
+        self.design["tech_pack_not_required"] = "0"
         self.doc.additional_files.append(
             Row(designer="razan@example.test", file="/private/files/other.pdf"))
         self.assertIsNone(self.match.designer_file(self.doc, self.design))
