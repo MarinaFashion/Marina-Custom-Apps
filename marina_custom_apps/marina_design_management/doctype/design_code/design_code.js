@@ -559,7 +559,8 @@ function marina_display_related_documents(frm) {
                     ...(doc.attachment ? [{file:doc.attachment,description:__("Primary File")}] : []),
                     ...(doc.additional_files||[])
                 ];
-                const links=files.filter(item=>item.file && /^\\/(private\\/)?files\\//.test(item.file))
+                const links=files.filter(item=>item.file && (item.file.startsWith("/files/") || item.file.startsWith("/private/files/")))
+                    
                     .map(item=>'<div><a href="'+esc(item.file)+'" target="_blank" rel="noopener">'+
                         esc(item.description||item.designer||__("Open File"))+'</a></div>').join("");
                 return '<tr><td><a href="/app/design-document/'+encodeURIComponent(doc.name)+'">'+
