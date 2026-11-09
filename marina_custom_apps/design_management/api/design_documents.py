@@ -212,6 +212,10 @@ def search_eligible_users(doctype, txt, searchfield, start, page_len, filters):
 
 
 def _may_remove_published_assignment(document):
+    # Tech Pack membership is governed by Mood Board + Designer and cannot
+    # be unlinked manually without changing the underlying matching rule.
+    if document.document_type == "Tech Pack" and document.tech_pack_mood_board:
+        return False
     from marina_custom_apps.design_management.security.role_access import enabled, can_action
     from marina_custom_apps.design_management.security.permissions import is_manager
     user = frappe.session.user
