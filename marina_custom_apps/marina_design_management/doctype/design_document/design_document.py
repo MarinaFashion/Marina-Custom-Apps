@@ -167,6 +167,28 @@ class DesignDocument(Document):
         # Assignment filters are only for previews; no future matching Design Code inherits a file.
 
     def on_update(self):
+        # File uploads on new forms can be attached to temporary names.
+        # Reassociate ONLY the current user's temporary File records after
+        # the document receives its permanent identifier. Never take over
+        # files attached to other saved documents.
+        file_urls = ([self.attachment] if self.attachment else []) + [
+            r.file for r in (self.get("additional_files") or []) if r.file
+        ]
+        if file_urls:
+            uploaded = frappe.get_all("File",
+                filters={"file_url": ["in", file_urls],
+                         "attached_to_doctype": "Design Document"},
+                fields=["name", "owner", "attached_to_name", "file_url"],
+                limit_page_length=51)
+            for record in uploaded:
+                if (record.owner == frappe.session.user
+                        and (record.attached_to_name or "").startswith("new-")):
+                    frappe.db.set_value("File", record.name, {
+                        "attached_to_doctype": "Design Document",
+                        "attached_to_name": self.name,
+                        "attached_to_field": "attachment" if record.file_url == self.attachment
+                            else "additional_files",
+                    }, update_modified=False)
         # Frappe Version also tracks the full child-table change. A readable
         # timeline event makes appended designs easy to find in the document.
         previous = self.get_doc_before_save()
