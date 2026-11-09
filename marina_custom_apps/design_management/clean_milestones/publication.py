@@ -82,4 +82,9 @@ def publish_document(document_name):
     doc.published_on = now_datetime()
     doc.flags.document_publication_action = True
     doc.save(ignore_permissions=True)
+    if doc.document_type == "Tech Pack" and doc.tech_pack_mood_board:
+        from marina_custom_apps.design_management.clean_milestones.tech_pack_matching import (
+            link_published_document,
+        )
+        link_published_document(doc)
     return {"published": document_name, "already_published": False}
