@@ -86,10 +86,10 @@
     },
     {
       "fieldname": "attachment",
-      "label": "File",
+      "label": "Primary File",
       "fieldtype": "Attach",
       "reqd": 0,
-      "description": "Optional while Draft. A valid ERPNext File attachment is mandatory when publishing."
+      "description": "Primary document file. Additional designer files can be attached below; publication requires at least one valid file."
     },
     {
       "fieldname": "added_by",
@@ -103,6 +103,19 @@
       "label": "Added On",
       "fieldtype": "Datetime",
       "read_only": 1
+    },
+    {
+      "fieldname": "sb_additional_files",
+      "label": "Additional Designer Files",
+      "fieldtype": "Section Break",
+      "description": "Every file in this table belongs to this Design Document and is shared with all assigned Design Codes."
+    },
+    {
+      "fieldname": "additional_files",
+      "label": "Additional Files",
+      "fieldtype": "Table",
+      "options": "Design Document Additional File",
+      "description": "Attach one or more contributors' Tech Packs. File links remain immutable once Published."
     },
     {
       "fieldname": "sb_description",
@@ -196,6 +209,8 @@
     "attachment",
     "added_by",
     "added_on",
+    "sb_additional_files",
+    "additional_files",
     "sb_description",
     "description",
     "sb_filters",
