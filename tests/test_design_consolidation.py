@@ -36,6 +36,29 @@ class ConsolidationContracts(unittest.TestCase):
                         install.index("ensure_independent_workspaces()",
                                      install.index("def app_after_migrate")))
     
+    def test_core_design_controllers_resolve_from_consolidated_app(self):
+        """Prevent retired standalone modules from handling core Design workflows."""
+        tree = ast.parse((APP / "hooks.py").read_text())
+        override = next(
+            node.value for node in tree.body
+            if isinstance(node, ast.Assign)
+            and any(isinstance(target, ast.Name) and target.id == "override_doctype_class"
+                    for target in node.targets)
+        )
+        entries = {
+            ast.literal_eval(k): ast.literal_eval(v)
+            for k, v in zip(override.keys, override.values)
+        }
+        for dt, slug, klass in (
+            ("Design Code", "design_code", "DesignCode"),
+            ("Mood Board", "mood_board", "MoodBoard"),
+            ("Design Document", "design_document", "DesignDocument"),
+            ("Design Management Settings", "design_management_settings", "DesignManagementSettings"),
+        ):
+            expected = f"marina_custom_apps.marina_design_management.doctype.{slug}.{slug}.{klass}"
+            self.assertEqual(entries[dt], expected)
+            self.assertTrue((MODULE / "doctype" / slug / (slug + ".py")).exists())
+
     def test_top_level_workspaces(self):
         for ws in ["Marina Design Management","DC Dispatch","POS Reconciliation",
                    "Sales Forecasting","Marina Calendar","Cycle Count",
