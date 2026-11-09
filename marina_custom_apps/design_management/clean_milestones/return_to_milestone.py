@@ -40,7 +40,7 @@ def _state(design_code):
         "Design Milestone Execution",
         filters={"design_code": design_code},
         fields=["name", "plan_entry", "design_code", "status", "current_role",
-                "current_custodian", "evidence_document", "last_action_on"],
+                "current_custodian", "evidence_document", "evidence_file", "last_action_on"],
         limit_page_length=MAX_PLANS + 1,
     )
     if len(executions) > MAX_PLANS:
@@ -202,8 +202,8 @@ def execute_return(design_code, milestone_type, step, reason, expected_revision)
     # operational state and allow _activate to reuse the identity on restart.
     for plan in changed:
         exe = executions[plan.name]
-        old_step, old_custodian, old_evidence = (
-            exe.status, exe.current_custodian, exe.evidence_document)
+        old_step, old_custodian, old_evidence, old_file = (
+            exe.status, exe.current_custodian, exe.evidence_document, exe.evidence_file)
         downstream_cfg = json.loads(plan.workflow_snapshot_json)
         initial = configured_steps(downstream_cfg["steps"])[0]
         frappe.db.set_value("Design Milestone Plan Entry", plan.name,
@@ -212,7 +212,7 @@ def execute_return(design_code, milestone_type, step, reason, expected_revision)
             "status": initial["step"], "current_role": None,
             "current_custodian": None, "step_entered_on": None,
             "due_date": None, "completed_by": None, "completed_on": None,
-            "evidence_document": None, "latest_note": None,
+            "evidence_document": None, "evidence_file": None, "latest_note": None,
             "rework_count": 0, "last_action_on": moment,
         }, update_modified=False)
         # Planned is a PLAN state, not an Execution step; use it solely in
@@ -221,16 +221,17 @@ def execute_return(design_code, milestone_type, step, reason, expected_revision)
             name=exe.name, status="Planned", current_custodian=None)
         _event(design, plan, planned_event, "Returned to Future",
                old=old_step, prior=old_custodian, reason=reason,
-               evidence=old_evidence)
+               evidence=old_evidence, evidence_file=old_file)
 
-    old_step, old_custodian, old_evidence = (
-        current.status, current.current_custodian, current.evidence_document)
+    old_step, old_custodian, old_evidence, old_file = (
+        current.status, current.current_custodian, current.evidence_document,
+        current.evidence_file)
     frappe.db.set_value("Design Milestone Execution", current.name, {
         "status": step, "current_role": selected["custody_role"],
         "current_custodian": custodian, "step_entered_on": moment,
         "due_date": _target_date(moment, cfg, step),
         "completed_by": None, "completed_on": None,
-        "evidence_document": None, "latest_note": reason,
+        "evidence_document": None, "evidence_file": None, "latest_note": reason,
         "last_action_on": moment, "rework_count": 0,
     }, update_modified=False)
     frappe.db.set_value("Design Milestone Plan Entry", target.name,
@@ -239,7 +240,8 @@ def execute_return(design_code, milestone_type, step, reason, expected_revision)
         name=current.name, status=step, current_custodian=custodian)
     _event(design, target, returned, "Returned to Milestone",
            old=old_step, prior=old_custodian,
-           reason=reason, evidence=old_evidence)
+           reason=reason, evidence=old_evidence,
+            evidence_file=old_file)
     return {
         "returned": target.milestone_type, "status": step,
         "custodian": custodian, "moved_to_future": len(changed),
