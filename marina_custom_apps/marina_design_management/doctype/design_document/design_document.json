@@ -34,8 +34,7 @@
       "fieldtype": "Link",
       "options": "Mood Board",
       "depends_on": "eval:doc.document_type=='Tech Pack'",
-      "mandatory_depends_on": "eval:doc.document_type=='Tech Pack'",
-      "description": "Required for Tech Packs. Published files match Design Codes by this Mood Board and their assigned Designer."
+      "description": "Required for Tech Packs. Published files match Design Codes by this Mood Board and their assigned Designer. Existing published legacy Tech Packs without a Mood Board remain valid until explicitly migrated."
     },
     {
       "fieldname": "related_milestone_type",
