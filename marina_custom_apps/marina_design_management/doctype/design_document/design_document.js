@@ -12,6 +12,10 @@ frappe.ui.form.on("Design Document Assignment", {
 
 frappe.ui.form.on("Design Document", {
     setup(frm) {
+        frm.set_query("designer", "additional_files", () => ({
+            query: "marina_custom_apps.design_management.api.design_documents.search_eligible_users",
+            filters: {team: "designers"}
+        }));
         frm.set_query("filter_subcategory",()=>({
             filters:{parent_category:frm.doc.filter_category||""}
         }));
@@ -38,6 +42,8 @@ frappe.ui.form.on("Design Document", {
         // and linked to designs before the Tech Pack is available.
         frm.set_df_property("attachment","reqd",
             (frm.doc.publication_status==="Published" && !(frm.doc.additional_files||[]).length) ? 1 : 0);
+        frm.set_df_property("additional_files","read_only",
+            frm.doc.publication_status==="Published" ? 1 : 0);
         frm.add_custom_button(__("Find Design Codes"),()=> {
             const filters = {};
             [
