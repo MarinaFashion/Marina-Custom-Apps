@@ -298,9 +298,21 @@ frappe.ui.form.on("Design Document", {
                     frappe.msgprint(__("Save or discard unsaved changes before replacing the published file."));
                     return;
                 }
+                const sourceFiles = [
+                    ...(frm.doc.attachment ? [{url: frm.doc.attachment, label: __("Primary File")}] : []),
+                    ...(frm.doc.additional_files || []).filter(row => row.file)
+                        .map(row => ({
+                            url: row.file,
+                            label: row.designer || row.description || __("Additional File")
+                        }))
+                ];
                 const dialog = new frappe.ui.Dialog({
                     title: __("Publish Replacement File"),
                     fields: [
+                        {fieldname: "replace_target", label: __("Existing File to Replace"),
+                         fieldtype: "Select", reqd: 1,
+                         options: sourceFiles.map(item => item.url).join("\\n"),
+                         description: __("Choose the existing file. Other designer files remain unchanged in the new version.")},
                         {fieldname: "file_url", label: __("Replacement File"),
                          fieldtype: "Attach", reqd: 1,
                          description: __("A new published Design Document will be created. The earlier version and historical milestone evidence remain unchanged.")},
@@ -320,7 +332,8 @@ frappe.ui.form.on("Design Document", {
                                 method: method + ".replace_published_file",
                                 type: "POST", freeze: true,
                                 args: {document_name: source,
-                                       file_url: values.file_url, reason}
+                                       file_url: values.file_url,
+                                       replace_target: values.replace_target, reason}
                             }).then(({message}) => {
                                 dialog.hide();
                                 frappe.set_route("Form", "Design Document", message.replacement);
@@ -329,6 +342,7 @@ frappe.ui.form.on("Design Document", {
                     }
                 });
                 dialog.show();
+                if (sourceFiles.length) dialog.set_value("replace_target", sourceFiles[0].url);
             }, __("Document"));
         });
     }
