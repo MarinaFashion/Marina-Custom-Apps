@@ -278,3 +278,59 @@ frappe.ui.form.on("Design Document", {
         });
     }
 });
+
+/* Controlled published-file replacement: create a NEW Published version.
+   Never overwrite a file referenced by historic milestone evidence. */
+frappe.ui.form.on("Design Document", {
+    refresh(frm) {
+        if (frm.is_new() || frm.doc.publication_status !== "Published" ||
+                frm.doc.superseded_by) return;
+        const source = frm.doc.name;
+        const method = "marina_custom_apps.design_management.clean_milestones.published_revisions";
+        frappe.call({
+            method: method + ".can_replace_published_file",
+            args: {document_name: source}
+        }).then(({message: allowed}) => {
+            if (!allowed || frm.doc.name !== source ||
+                    frm.doc.publication_status !== "Published" ||
+                    frm.doc.superseded_by) return;
+            frm.add_custom_button(__("Replace Published File"), () => {
+                if (frm.is_dirty()) {
+                    frappe.msgprint(__("Save or discard unsaved changes before replacing the published file."));
+                    return;
+                }
+                const dialog = new frappe.ui.Dialog({
+                    title: __("Publish Replacement File"),
+                    fields: [
+                        {fieldname: "file_url", label: __("Replacement File"),
+                         fieldtype: "Attach", reqd: 1,
+                         description: __("A new published Design Document will be created. The earlier version and historical milestone evidence remain unchanged.")},
+                        {fieldname: "reason", label: __("Revision Reason"),
+                         fieldtype: "Small Text", reqd: 1,
+                         description: __("Describe what changed in this Tech Pack or Mood Board (10–500 characters).")}
+                    ],
+                    primary_action_label: __("Publish New Version"),
+                    primary_action(values) {
+                        const reason = (values.reason || "").trim();
+                        if (reason.length < 10 || reason.length > 500) {
+                            frappe.msgprint(__("Enter a revision reason of 10–500 characters."));
+                            return;
+                        }
+                        frappe.confirm(__("Publish a replacement for {0}? The earlier version and any historic approvals will remain unchanged.", [source]), () => {
+                            frappe.call({
+                                method: method + ".replace_published_file",
+                                type: "POST", freeze: true,
+                                args: {document_name: source,
+                                       file_url: values.file_url, reason}
+                            }).then(({message}) => {
+                                dialog.hide();
+                                frappe.set_route("Form", "Design Document", message.replacement);
+                            });
+                        });
+                    }
+                });
+                dialog.show();
+            }, __("Document"));
+        });
+    }
+});
