@@ -45,7 +45,9 @@ class DesignDocument(Document):
                 frappe.throw("One or more attached files do not exist in ERPNext Files")
         before = self.get_doc_before_save() if not self.is_new() else None
         is_special_tech_pack = self.document_type == "Tech Pack"
-        if is_special_tech_pack and self.is_new() and not self.tech_pack_mood_board:
+        if (is_special_tech_pack and self.is_new() and not self.tech_pack_mood_board
+                and not (self.flags.get("document_revision_action")
+                         and self.supersedes_document)):
             frappe.throw("Select a Mood Board for the Tech Pack")
         if self.tech_pack_mood_board:
             if not is_special_tech_pack:
