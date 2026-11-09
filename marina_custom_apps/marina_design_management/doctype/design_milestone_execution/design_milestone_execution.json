@@ -93,6 +93,13 @@
       "options": "Design Document"
     },
     {
+      "fieldname": "evidence_file",
+      "label": "Evidence File",
+      "fieldtype": "Data",
+      "read_only": 1,
+      "description": "Exact ERPNext File URL pinned when evidence is accepted; existing historical records remain unchanged."
+    },
+    {
       "fieldname": "last_action_on",
       "label": "Last Action On",
       "fieldtype": "Datetime"
@@ -112,6 +119,7 @@
     "completed_by",
     "completed_on",
     "evidence_document",
+    "evidence_file",
     "last_action_on"
   ],
   "permissions": [
