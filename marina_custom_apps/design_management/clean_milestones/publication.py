@@ -77,9 +77,19 @@ def publish_document(document_name):
     for assignment in doc.assignments:
         if not (assignment.target_milestone_type or doc.related_milestone_type):
             frappe.throw("Select the supported milestone for every Design Code assignment")
+    if doc.document_type == "Tech Pack" and doc.tech_pack_mood_board:
+        from marina_custom_apps.design_management.clean_milestones.tech_pack_matching import (
+            assert_unique_published_designer_files,
+        )
+        assert_unique_published_designer_files(doc)
     doc.publication_status = "Published"
     doc.published_by = actor
     doc.published_on = now_datetime()
     doc.flags.document_publication_action = True
     doc.save(ignore_permissions=True)
+    if doc.document_type == "Tech Pack" and doc.tech_pack_mood_board:
+        from marina_custom_apps.design_management.clean_milestones.tech_pack_matching import (
+            link_published_document,
+        )
+        link_published_document(doc)
     return {"published": document_name, "already_published": False}

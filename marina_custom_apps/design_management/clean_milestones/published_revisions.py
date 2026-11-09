@@ -92,6 +92,7 @@ def replace_published_file(document_name, file_url, reason, replace_target=None)
         "doctype": "Design Document",
         "document_title": previous.document_title,
         "document_type": previous.document_type,
+        "tech_pack_mood_board": previous.tech_pack_mood_board,
         "related_milestone_type": previous.related_milestone_type,
         "description": previous.description,
         "attachment": (file_url if target == previous.attachment
@@ -107,6 +108,15 @@ def replace_published_file(document_name, file_url, reason, replace_target=None)
             "description": row.description,
         })
     for assignment in previous.get("assignments") or []:
+        if previous.document_type == "Tech Pack" and previous.tech_pack_mood_board:
+            current = frappe.db.get_value("Design Code", assignment.design_code,
+                ["mood_board", "designer"], as_dict=True)
+            active_designers = {row.designer for row in previous.get("additional_files") or []}
+            if (not current or current.mood_board != previous.tech_pack_mood_board
+                    or current.designer not in active_designers):
+                # The earlier version keeps its historical Design Code link.
+                # A newer version never inherits a now-incorrect mapping.
+                continue
         revision.append("assignments", {
             "design_code": assignment.design_code,
             "target_milestone_type": assignment.target_milestone_type,
@@ -114,6 +124,13 @@ def replace_published_file(document_name, file_url, reason, replace_target=None)
         })
     revision.flags.document_revision_action = True
     revision.insert()
+    # Reject overlapping active Tech Packs except the version being replaced.
+    # The Mood Board lock also serializes competing concurrent publications.
+    if revision.document_type == "Tech Pack" and revision.tech_pack_mood_board:
+        from marina_custom_apps.design_management.clean_milestones.tech_pack_matching import (
+            assert_unique_published_designer_files,
+        )
+        assert_unique_published_designer_files(revision)
     # Publish within the same transaction; do not require a separate
     # Publish action because the Replace action is the explicit authority.
     from frappe.utils import now_datetime
@@ -123,6 +140,9 @@ def replace_published_file(document_name, file_url, reason, replace_target=None)
     revision.flags.document_publication_action = True
     revision.flags.document_revision_action = True
     revision.save()
+    # Designer file mapping is carried forward exactly. Existing Design
+    # assignments are copied above, and old milestone evidence is untouched.
+    # Future Design Codes will use the new published version only.
 
     # The old document is never saved or changed other than its reference to
     # the replacement. Its attachment, publication and evidence remain intact.

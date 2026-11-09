@@ -34,12 +34,24 @@ def matching_published_documents(design_code, milestone_type, evidence_type=None
     )
     if len(links) > MAX_CANDIDATES:
         frappe.throw("Too many Design Document assignments to evaluate")
-    if not links:
+    # Tech Packs with configured Mood Board and designer files can match
+    # a Design Code even before its assignment child row is materialized.
+    # This is resolved by indexed parent lookup + one child query, never by
+    # scanning all files or silently choosing between ambiguous revisions.
+    from marina_custom_apps.design_management.clean_milestones.tech_pack_matching import (
+        candidate_documents,
+    )
+    design = frappe.get_doc("Design Code", design_code)
+    special = (
+        candidate_documents(design, milestone_type)
+        if evidence_type in (None, "Tech Pack") else []
+    )
+    if not links and not special:
         return []
 
     names = sorted({link.parent for link in links if link.parent})
     if not names:
-        return []
+        return [frappe._dict(name=x.name) for x in special]
 
     # Permissions are applied by get_list; get_all could expose private files.
     docs = frappe.get_list(
@@ -48,20 +60,47 @@ def matching_published_documents(design_code, milestone_type, evidence_type=None
                  "superseded_by": ["is", "not set"],
                  **({"document_type": evidence_type} if evidence_type else {})},
         fields=["name", "document_title", "document_type",
-                "related_milestone_type"],
+                "tech_pack_mood_board", "related_milestone_type"],
         order_by="modified desc, name desc",
         limit_page_length=len(names),
     )
     targets = {}
     for link in links:
         targets.setdefault(link.parent, []).append(link.target_milestone_type)
-    return [
-        doc for doc in docs if any(
-            matches_milestone(target, doc.related_milestone_type,
-                              milestone_type)
-            for target in targets.get(doc.name, [])
-        )
+    # One batched child lookup for matching designer files instead of
+    # loading each linked Design Document separately (no N+1 queries).
+    special_names = [
+        doc.name for doc in docs
+        if doc.document_type == "Tech Pack" and doc.tech_pack_mood_board
     ]
+    matched_counts = {}
+    if special_names and design.designer:
+        child_rows = frappe.get_all(
+            "Design Document Additional File",
+            filters={"parent": ["in", special_names],
+                     "parenttype": "Design Document",
+                     "parentfield": "additional_files",
+                     "designer": design.designer},
+            fields=["parent", "file"], limit_page_length=MAX_CANDIDATES + 1,
+        )
+        for row in child_rows:
+            matched_counts.setdefault(row.parent, []).append(row.file)
+    results = []
+    for doc in docs:
+        if not any(matches_milestone(
+                target, doc.related_milestone_type, milestone_type)
+                for target in targets.get(doc.name, [])):
+            continue
+        if (doc.document_type == "Tech Pack" and doc.tech_pack_mood_board
+                and (doc.tech_pack_mood_board != design.mood_board
+                     or design.get("tech_pack_not_required")
+                     or len(matched_counts.get(doc.name, [])) != 1)):
+            continue
+        results.append(doc)
+    found = {row.name for row in results}
+    results.extend(frappe._dict(name=row.name)
+                   for row in special if row.name not in found)
+    return results
 
 
 def evidence_document_details(design_code, milestone_type, document_name, evidence_type=None):
@@ -70,6 +109,13 @@ def evidence_document_details(design_code, milestone_type, document_name, eviden
     doc.check_permission("read")
     if doc.publication_status != "Published":
         frappe.throw("Only Published Design Documents can confirm a milestone")
+    if doc.document_type == "Tech Pack" and doc.tech_pack_mood_board:
+        from marina_custom_apps.design_management.clean_milestones.tech_pack_matching import designer_file
+        design = frappe.get_doc("Design Code", design_code)
+        if not designer_file(doc, design):
+            frappe.throw("Tech Pack file does not match this Design Code's Mood Board and Designer")
+        if doc.related_milestone_type != milestone_type:
+            frappe.throw("Tech Pack does not match this milestone")
     if evidence_type and doc.document_type != evidence_type:
         frappe.throw(
             "Evidence Type mismatch: " + milestone_type +
@@ -138,7 +184,9 @@ def required_document(design_code, milestone_type, evidence_type, selected=None,
         if doc.superseded_by:
             frappe.throw("This document was superseded. Select its latest published version")
         if not linked:
-            if not confirm_link:
+            automatic_tech_pack = (
+                doc.document_type == "Tech Pack" and doc.tech_pack_mood_board)
+            if not automatic_tech_pack and not confirm_link:
                 frappe.throw(
                     "Confirm linking this Published document to Design " +
                     design_code + " / Milestone " + milestone_type)
@@ -150,7 +198,12 @@ def required_document(design_code, milestone_type, evidence_type, selected=None,
     if len(docs) > 1:
         frappe.throw("Select which Published Design Document confirms this step")
     # Revalidate the chosen document when completing the step.
-    evidence_document_details(design_code, milestone_type, docs[0].name, evidence_type)
+    resolved, linked = evidence_document_details(
+        design_code, milestone_type, docs[0].name, evidence_type)
+    if not linked and resolved.document_type == "Tech Pack" and resolved.tech_pack_mood_board:
+        _bind_to_milestone(resolved, design_code, milestone_type, evidence_type)
+    elif not linked:
+        frappe.throw("Selected evidence has no Design Code assignment")
     return docs[0].name
 
 

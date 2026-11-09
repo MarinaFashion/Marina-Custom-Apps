@@ -126,10 +126,14 @@ def related_documents(design_code):
     docs = frappe.get_list("Design Document",
         filters={"name": ["in", sorted({r.parent for r in links})]},
         fields=["name", "document_title", "document_type", "attachment",
-                "publication_status", "superseded_by", "related_milestone_type",
+                "publication_status", "superseded_by", "tech_pack_mood_board",
+                "related_milestone_type",
                 "added_by", "added_on"],
         limit_page_length=500)
     by_id = {r.name: r for r in docs}
+    design_mood_board, design_designer = frappe.db.get_value(
+        "Design Code", design_code, ["mood_board", "designer"]
+    )
     # One bounded batch for the extra designer files; these parent
     # documents have already passed Frappe's document READ filter.
     files_by_doc = {}
@@ -143,6 +147,12 @@ def related_documents(design_code):
             order_by="idx asc", limit_page_length=10000,
         )
         for item in extra_files:
+            parent = by_id.get(item.parent)
+            if (parent and parent.document_type == "Tech Pack"
+                    and parent.tech_pack_mood_board
+                    and (parent.tech_pack_mood_board != design_mood_board
+                         or item.designer != design_designer)):
+                continue
             files_by_doc.setdefault(item.parent, []).append({
                 "file": item.file,
                 "designer": item.designer,
@@ -158,6 +168,9 @@ def related_documents(design_code):
                 assigned_on=row.assigned_on,
                 target_milestone_type=(row.target_milestone_type or
                                        by_id[row.parent].related_milestone_type),
+                attachment=(None if by_id[row.parent].document_type == "Tech Pack"
+                            and by_id[row.parent].tech_pack_mood_board
+                            else by_id[row.parent].attachment),
                 additional_files=files_by_doc.get(row.parent, []))
             for row in links if row.parent in by_id]
 
@@ -199,6 +212,10 @@ def search_eligible_users(doctype, txt, searchfield, start, page_len, filters):
 
 
 def _may_remove_published_assignment(document):
+    # Tech Pack membership is governed by Mood Board + Designer and cannot
+    # be unlinked manually without changing the underlying matching rule.
+    if document.document_type == "Tech Pack" and document.tech_pack_mood_board:
+        return False
     from marina_custom_apps.design_management.security.role_access import enabled, can_action
     from marina_custom_apps.design_management.security.permissions import is_manager
     user = frappe.session.user
