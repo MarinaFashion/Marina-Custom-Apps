@@ -3,7 +3,9 @@
 function marina_tech_pack_ui(frm) {
     const special = frm.doc.document_type === "Tech Pack";
     const auto = special && Boolean(frm.doc.tech_pack_mood_board);
-    frm.set_df_property("tech_pack_mood_board", "reqd", special ? 1 : 0);
+    frm.set_df_property("tech_pack_mood_board", "reqd",
+        special && (frm.is_new() && !frm.doc.supersedes_document ||
+                    Boolean(frm.doc.tech_pack_mood_board)) ? 1 : 0);
     frm.set_df_property("assignments", "read_only", auto ? 1 : 0);
     frm.set_df_property("attachment", "hidden", auto ? 1 : 0);
     frm.set_df_property("additional_files", "reqd", auto && frm.is_new() ? 1 : 0);
