@@ -9,8 +9,22 @@ function marina_tech_pack_ui(frm) {
     frm.set_df_property("assignments", "read_only", auto ? 1 : 0);
     frm.set_df_property("attachment", "hidden", auto ? 1 : 0);
     frm.set_df_property("additional_files", "reqd", auto && frm.is_new() ? 1 : 0);
-    if (auto) {
-        frm.set_intro(__("Tech Pack: one file per Designer. The published document automatically links Design Codes with the same Mood Board and assigned Designer. No manual Design Code selection is needed."), "blue");
+}
+
+/* Frappe v15 appends form intro messages. Clear once, then choose exactly
+   one notice; otherwise every refresh duplicates previous notices. */
+function marina_design_document_intro(frm) {
+    frm.set_intro("");
+    const techPack = frm.doc.document_type === "Tech Pack" &&
+        Boolean(frm.doc.tech_pack_mood_board);
+    if (techPack) {
+        frm.set_intro(__(frm.doc.publication_status === "Published"
+            ? "Published Tech Pack: Design Codes are matched by Mood Board and Designer. Existing published files stay immutable; use Replace Published File to issue a revision."
+            : "Tech Pack: attach one file per Designer, then publish to automatically link matching Design Codes by Mood Board and Designer. Manual Design Code selection is not needed."), "blue");
+    } else if (frm.doc.publication_status === "Published") {
+        frm.set_intro(__("To include additional styles, use Find Design Codes, add the missing designs, and Save. Existing published assignments and attached files remain unchanged."), "blue");
+    } else if (!(frm.doc.assignments || []).length) {
+        frm.set_intro(__("You can publish this document after attaching a file, without assigning a Design Code. The responsible user can link it when confirming milestone evidence."), "blue");
     }
 }
 
@@ -41,7 +55,10 @@ frappe.ui.form.on("Design Document", {
         }));
     },
     filter_category(frm){frm.set_value("filter_subcategory",null);},
-    document_type(frm) { marina_tech_pack_ui(frm); },
+    document_type(frm) {
+        marina_tech_pack_ui(frm);
+        marina_design_document_intro(frm);
+    },
     tech_pack_mood_board(frm) {
         if (frm.doc.document_type === "Tech Pack") {
             frm.set_value("filter_mood_board", frm.doc.tech_pack_mood_board || null);
@@ -61,6 +78,7 @@ frappe.ui.form.on("Design Document", {
     },
     refresh(frm) {
         marina_tech_pack_ui(frm);
+        marina_design_document_intro(frm);
         // Only Published documents require a file; Drafts can be prepared
         // and linked to designs before the Tech Pack is available.
         frm.set_df_property("attachment","reqd",
@@ -233,7 +251,6 @@ frappe.ui.form.on("Design Document", {
 frappe.ui.form.on("Design Document", {
     refresh(frm) {
         if (frm.is_new() || frm.doc.publication_status !== "Published") return;
-        frm.set_intro(__("To include additional styles, use Find Design Codes, add the missing designs, and Save. Existing published assignments and the attached file remain unchanged."), "blue");
         const name = frm.doc.name;
         frappe.call({
             method:"marina_custom_apps.design_management.clean_milestones.publication.can_unpublish_document",
@@ -258,19 +275,6 @@ frappe.ui.form.on("Design Document", {
     }
 });
 
-
-/* Standalone publication: a Tech Pack may be Published before it is linked
-   to any Design Code; the milestone evidence dialog confirms the link later. */
-frappe.ui.form.on("Design Document", {
-    refresh(frm) {
-        if (frm.doc.publication_status === "Published") return;
-        if (!(frm.doc.assignments||[]).length) {
-            frm.set_intro(__(
-                "You can publish this document after attaching its file, without assigning a Design Code. The responsible user can link it when confirming milestone evidence."
-            ), "blue");
-        }
-    }
-});
 
 /* Controlled cleanup of unlinked Draft working documents.
    Requires explicit Design Document Delete permission; server rechecks
