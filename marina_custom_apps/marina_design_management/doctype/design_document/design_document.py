@@ -30,6 +30,19 @@ class DesignDocument(Document):
             if not frappe.db.exists("File", {"file_url": self.attachment}):
                 frappe.throw("The selected file does not exist in ERPNext Files")
         before = self.get_doc_before_save() if not self.is_new() else None
+        # Revision metadata is written only by the controlled publication
+        # endpoint. Read-only fields must also be protected server-side.
+        revision_fields = ("supersedes_document", "superseded_by", "revision_reason")
+        if self.is_new():
+            if (any(self.get(k) for k in revision_fields)
+                    and not self.flags.get("document_revision_action")):
+                frappe.throw("Use Replace Published File to create a document revision")
+        elif before:
+            if (any(self.get(k) != before.get(k) for k in revision_fields)
+                    and not self.flags.get("document_revision_action")):
+                frappe.throw("Document revision history is immutable")
+            if before.superseded_by:
+                frappe.throw("Replaced published versions cannot be edited")
         if self.publication_status not in ("Draft", "Published", None, ""):
             frappe.throw("Invalid publication state")
         if self.publication_status == "Published" and not self.flags.get(
