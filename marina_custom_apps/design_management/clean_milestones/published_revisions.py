@@ -32,7 +32,7 @@ def can_replace_published_file(document_name):
 
 
 @frappe.whitelist(methods=["POST"])
-def replace_published_file(document_name, file_url, reason):
+def replace_published_file(document_name, file_url, reason, replace_target=None):
     """Publish a new immutable revision, superseding the prior document.
 
     The source is locked and its historical evidence remains unchanged.
@@ -61,8 +61,14 @@ def replace_published_file(document_name, file_url, reason):
             "Read/Create/Edit permissions are required",
             frappe.PermissionError,
         )
-    if file_url == previous.attachment:
-        frappe.throw("Select a different replacement file")
+    old_urls = ([previous.attachment] if previous.attachment else []) + [
+        row.file for row in (previous.get("additional_files") or [])
+    ]
+    target = replace_target or previous.attachment
+    if target not in old_urls:
+        frappe.throw("Select an existing file in this published document")
+    if file_url in old_urls:
+        frappe.throw("Select a new replacement file, not one already in this document")
 
     # Only an actual ERPNext File controlled by the acting user can be used.
     # Prevent pointing to another document's existing stored attachment.
@@ -88,11 +94,18 @@ def replace_published_file(document_name, file_url, reason):
         "document_type": previous.document_type,
         "related_milestone_type": previous.related_milestone_type,
         "description": previous.description,
-        "attachment": file_url,
+        "attachment": (file_url if target == previous.attachment
+                       else previous.attachment),
         "publication_status": "Draft",
         "supersedes_document": previous.name,
         "revision_reason": reason,
     })
+    for row in previous.get("additional_files") or []:
+        revision.append("additional_files", {
+            "designer": row.designer,
+            "file": file_url if row.file == target else row.file,
+            "description": row.description,
+        })
     for assignment in previous.get("assignments") or []:
         revision.append("assignments", {
             "design_code": assignment.design_code,
@@ -140,4 +153,5 @@ def replace_published_file(document_name, file_url, reason):
         "replacement": revision.name,
         "publication_status": revision.publication_status,
         "linked_designs": len(revision.assignments or []),
+        "files": (1 if revision.attachment else 0) + len(revision.additional_files or []),
     }
