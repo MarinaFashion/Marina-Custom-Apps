@@ -157,6 +157,53 @@ def link_design(design):
     return document.name
 
 
+def assert_unique_published_designer_files(document):
+    """Prevent competing active Tech Pack versions for one Mood Board/Designer.
+
+    Lock Mood Board first to serialize two concurrent publications targeting
+    the same Mood Board. The previous version may still be Published while a
+    legitimate replacement is being created in the same transaction.
+    """
+    if document.document_type != "Tech Pack" or not document.tech_pack_mood_board:
+        return
+    frappe.db.sql(
+        "SELECT name FROM `tabMood Board` WHERE name=%s FOR UPDATE",
+        (document.tech_pack_mood_board,),
+    )
+    designers = {r.designer for r in (document.get("additional_files") or [])
+                 if r.designer and r.file}
+    if not designers:
+        frappe.throw("Select at least one Designer and Tech Pack File")
+    others = frappe.get_all(
+        "Design Document",
+        filters={"name": ["!=", document.name],
+                 "document_type": "Tech Pack",
+                 "tech_pack_mood_board": document.tech_pack_mood_board,
+                 "publication_status": "Published",
+                 "superseded_by": ["is", "not set"]},
+        fields=["name"], limit_page_length=MAX_MATCHES + 1,
+    )
+    if len(others) > MAX_MATCHES:
+        frappe.throw("Too many published Tech Pack documents in this Mood Board")
+    names = [row.name for row in others if row.name != document.supersedes_document]
+    if not names:
+        return
+    overlapping = frappe.get_all(
+        "Design Document Additional File",
+        filters={"parenttype": "Design Document",
+                 "parentfield": "additional_files",
+                 "parent": ["in", names],
+                 "designer": ["in", sorted(designers)]},
+        fields=["parent", "designer"], limit_page_length=1,
+    )
+    if overlapping:
+        frappe.throw(
+            "Another active Published Tech Pack already covers one of these "
+            "Designers in this Mood Board. Replace that published version "
+            "instead of creating an ambiguous second mapping."
+        )
+
+
 def link_published_document(document):
     """At publication, link existing designs matching one of its Designers.
 
