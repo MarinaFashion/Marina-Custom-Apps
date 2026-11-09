@@ -115,6 +115,13 @@ def replace_published_file(document_name, file_url, reason, replace_target=None)
         })
     revision.flags.document_revision_action = True
     revision.insert()
+    # Reject overlapping active Tech Packs except the version being replaced.
+    # The Mood Board lock also serializes competing concurrent publications.
+    if revision.document_type == "Tech Pack" and revision.tech_pack_mood_board:
+        from marina_custom_apps.design_management.clean_milestones.tech_pack_matching import (
+            assert_unique_published_designer_files,
+        )
+        assert_unique_published_designer_files(revision)
     # Publish within the same transaction; do not require a separate
     # Publish action because the Replace action is the explicit authority.
     from frappe.utils import now_datetime
