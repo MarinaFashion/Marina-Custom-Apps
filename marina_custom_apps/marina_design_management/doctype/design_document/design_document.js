@@ -317,7 +317,7 @@ frappe.ui.form.on("Design Document", {
                     fields: [
                         {fieldname: "replace_target", label: __("Existing File to Replace"),
                          fieldtype: "Select", reqd: 1,
-                         options: sourceFiles.map(item => item.url).join("\\n"),
+                         options: sourceFiles.map(item => item.url).join(String.fromCharCode(10)),
                          description: __("Choose the existing file. Other designer files remain unchanged in the new version.")},
                         {fieldname: "file_url", label: __("Replacement File"),
                          fieldtype: "Attach", reqd: 1,
