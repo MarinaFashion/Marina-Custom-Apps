@@ -1,0 +1,57 @@
+name: Design Tech Pack matching
+
+on:
+  push:
+    branches:
+      - feature-tech-pack-moodboard-designer-matching
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'marina_custom_apps/design_management/clean_milestones/**'
+      - 'marina_custom_apps/marina_design_management/doctype/design_document/**'
+      - 'marina_custom_apps/marina_design_management/doctype/design_document_additional_file/**'
+      - 'marina_custom_apps/marina_design_management/doctype/design_milestone_execution/**'
+      - 'marina_custom_apps/marina_design_management/doctype/design_milestone_custody_event/**'
+      - 'marina_custom_apps/marina_design_management/doctype/design_code/**'
+      - 'tests/test_tech_pack_matching_unit.py'
+      - '.github/workflows/design-tech-pack-matching.yml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Compile Design Python source
+        run: python -m compileall -q marina_custom_apps/design_management marina_custom_apps/marina_design_management
+      - name: Check Design form JavaScript
+        run: |
+          node --check marina_custom_apps/marina_design_management/doctype/design_document/design_document.js
+          node --check marina_custom_apps/marina_design_management/doctype/design_code/design_code.js
+      - name: Validate new Tech Pack fields and child DocTypes
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          base = Path("marina_custom_apps/marina_design_management/doctype")
+          specs = {
+              "design_document": ("tech_pack_mood_board", "additional_files"),
+              "design_document_additional_file": ("designer", "file"),
+              "design_milestone_execution": ("evidence_document", "evidence_file"),
+              "design_milestone_custody_event": ("evidence_document", "evidence_file"),
+          }
+          for key, required in specs.items():
+              data = json.loads((base/key/(key+".json")).read_text())
+              fields = {f["fieldname"] for f in data["fields"]}
+              assert set(required) <= fields, (key, fields)
+              print(key, "OK")
+          PY
+      - name: Tech Pack matching contract tests
+        run: python -m unittest discover -s tests -p test_tech_pack_matching_unit.py -v
