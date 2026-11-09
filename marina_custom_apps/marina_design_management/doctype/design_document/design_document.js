@@ -195,7 +195,7 @@ frappe.ui.form.on("Design Document", {
                     title:__("Remove Published Assignment"),
                     fields:[
                         {fieldname:"design_code",label:__("Design Code"),
-                         fieldtype:"Select",options:assignments.join("\\n"),reqd:1},
+                         fieldtype:"Select",options:assignments.join(String.fromCharCode(10)),reqd:1},
                         {fieldname:"reason",label:__("Reason"),fieldtype:"Small Text",reqd:1}
                     ],
                     primary_action_label:__("Remove Assignment"),
