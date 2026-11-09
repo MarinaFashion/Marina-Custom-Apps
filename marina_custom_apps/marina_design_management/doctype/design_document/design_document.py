@@ -176,12 +176,14 @@ class DesignDocument(Document):
         ]
         if file_urls:
             uploaded = frappe.get_all("File",
-                filters={"file_url": ["in", file_urls],
-                         "attached_to_doctype": "Design Document"},
-                fields=["name", "owner", "attached_to_name", "file_url"],
+                filters={"file_url": ["in", file_urls]},
+                fields=["name", "owner", "attached_to_doctype",
+                        "attached_to_name", "file_url"],
                 limit_page_length=51)
             for record in uploaded:
                 if (record.owner == frappe.session.user
+                        and record.attached_to_doctype in (
+                            "Design Document", "Design Document Additional File")
                         and (record.attached_to_name or "").startswith("new-")):
                     frappe.db.set_value("File", record.name, {
                         "attached_to_doctype": "Design Document",
