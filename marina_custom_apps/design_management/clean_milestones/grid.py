@@ -256,7 +256,7 @@ def get_grid(page=1, page_size=50, search=None, mood_board=None,
         filters={"design_code": ["in", ids]},
         fields=["name", "design_code", "milestone_type", "sequence",
                 "plan_state", "depends_on_type", "trigger_status",
-                "workflow_snapshot_json", "baseline_due_date"],
+                "workflow_snapshot_json", "baseline_due_date", "completion_weight_days"],
         order_by="design_code asc, sequence asc, name asc",
         limit_page_length=row_limit)
     if len(plans) >= row_limit:
