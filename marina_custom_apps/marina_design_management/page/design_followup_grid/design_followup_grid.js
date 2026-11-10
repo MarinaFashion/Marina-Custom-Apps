@@ -154,6 +154,13 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
         .attr({id:"mdm-grid-search",placeholder:__("Design Code / Mood Board")})
         .css("width","100%").appendTo(searchBox.col);
     searchBox.heading.attr("for","mdm-grid-search");
+    const multiRow=$('<div class="d-flex align-items-center flex-wrap mt-1"></div>')
+        .css({gap:"6px"}).appendTo(searchBox.col);
+    const multiButton=$('<button type="button" class="btn btn-default btn-xs"></button>')
+        .text(__("Multiple Codes")).appendTo(multiRow);
+    const multiCount=$('<span class="text-muted small"></span>').appendTo(multiRow);
+    const multiClear=$('<button type="button" class="btn btn-link btn-xs p-0"></button>')
+        .text(__("Clear")).hide().appendTo(multiRow);
     const makeLink = (fieldname, box, doctype) => {
         const control=frappe.ui.form.make_control({
             parent:box.col,
@@ -277,7 +284,51 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
     // Keep this client-only state separate from unsaved edits and server status.
     let state = {page:1,data:null,dirty:new Map(),request:0,
                  expanded:new Set(),view:"design",milestoneFilter:"active",
-                 appliedCustody:""};
+                 appliedCustody:"",designCodes:[]};
+    const showMultiCount = () => {
+        const count=state.designCodes.length;
+        multiCount.text(count?count+" "+__("selected"):"");
+        multiClear.toggle(Boolean(count));
+        multiButton.toggleClass("btn-primary",Boolean(count))
+            .toggleClass("btn-default",!count);
+    };
+    const parsePastedCodes = value =>
+        [...new Set(String(value||"").split(/[\r\n\t,;]+/)
+            .map(code=>code.trim()).filter(Boolean))];
+    multiButton.on("click",()=>{
+        const dialog=new frappe.ui.Dialog({
+            title:__("Filter Multiple Design Codes"),
+            fields:[{
+                fieldtype:"Small Text",fieldname:"codes",
+                label:__("Design Codes"),reqd:1,
+                default:state.designCodes.join("\n"),
+                description:__("Paste from Excel: one code per line, or separate with tabs, commas or semicolons. Maximum 500 unique codes. Exact matches only.")
+            }],
+            primary_action_label:__("Apply Codes"),
+            primary_action(values){
+                const codes=parsePastedCodes(values.codes);
+                if(!codes.length || codes.length>500 ||
+                        codes.some(code=>code.length>140 || /\s/.test(code))){
+                    frappe.msgprint(__("Enter 1–500 valid Design Codes (maximum 140 characters each)."));
+                    return;
+                }
+                dirtyGuard(()=>{
+                    state.designCodes=codes;
+                    showMultiCount();
+                    state.page=1;
+                    dialog.hide();
+                    reload();
+                });
+            }
+        });
+        dialog.show();
+    });
+    multiClear.on("click",()=>dirtyGuard(()=>{
+        state.designCodes=[];
+        showMultiCount();
+        state.page=1;
+        reload();
+    }));
     // Classify by plan state: Rework remains Current, not Completed.
     const showMilestone = row =>
         (state.milestoneFilter==="all" ||
@@ -509,7 +560,9 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
     const reload = () => {
         const token=++state.request;
         const args={page:state.page,page_size:Number(size.val()),
-                    search:search.val().trim(),mood_board:mood.get_value(),
+                    search:search.val().trim(),
+                    design_codes:state.designCodes.length?JSON.stringify(state.designCodes):null,
+                    mood_board:mood.get_value(),
                     designer:designer.get_value(),factory:factory.val(),
                     custody:custody.get_value(),
                     milestone_view:state.milestoneFilter};
@@ -864,6 +917,8 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
         wrapper.__marina_route_design=selected;
         const next=()=>{
             search.val(selected);
+            state.designCodes=[];
+            showMultiCount();
             state.page=1;
             if(!selected){reload();return;}
             factory.val("");
