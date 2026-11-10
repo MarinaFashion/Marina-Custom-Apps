@@ -62,6 +62,13 @@
       "read_only": 1
     },
     {
+      "fieldname": "completion_weight_days",
+      "label": "Frozen Completion Weight (Days)",
+      "fieldtype": "Int",
+      "read_only": 1,
+      "description": "Fixed when plan is created. Historical plans with no saved weight use their immutable workflow snapshot."
+    },
+    {
       "fieldname": "baseline_due_date",
       "label": "Initial Baseline Due Date",
       "fieldtype": "Date",
@@ -96,6 +103,7 @@
     "trigger_status",
     "plan_state",
     "workflow_snapshot_json",
+    "completion_weight_days",
     "baseline_due_date",
     "activated_execution",
     "selected_by",
