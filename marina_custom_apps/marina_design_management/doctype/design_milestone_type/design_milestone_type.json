@@ -51,6 +51,13 @@
       "depends_on": "eval:!doc.start_with_design_creation"
     },
     {
+      "fieldname": "completion_weight_days",
+      "label": "Completion Weight Override (Days)",
+      "fieldtype": "Int",
+      "default": 0,
+      "description": "0 derives weight from saved step lead times; one-step auto-completed Tech Pack defaults to 10 days. Positive number overrides progress weighting only, never scheduling."
+    },
+    {
       "fieldname": "workflow_steps",
       "label": "Milestone Workflow Steps",
       "fieldtype": "Table",
@@ -65,6 +72,7 @@
     "start_with_design_creation",
     "depends_on_type",
     "r22_trigger_status",
+    "completion_weight_days",
     "workflow_steps"
   ],
   "permissions": [],
