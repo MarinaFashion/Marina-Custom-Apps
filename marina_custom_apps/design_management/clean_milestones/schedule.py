@@ -106,82 +106,74 @@ def projected_dates(plans, creation_date):
     return result
 
 
-def baseline_progress(plans, creation_date, executions=None, legacy_dates=None):
-    """Stable timeline-weighted Design completion, independent of actual dates.
+def milestone_weight_days(snapshot):
+    """Original milestone effort, independent of calendar overlap and actual dates.
 
-    Timeline = calendar days from frozen Design Creation Date to the latest
-    initial projected due date. For parallel branches the maximum initial due
-    is used rather than the last display-sequence date: this prevents a later
-    displayed milestone with an earlier deadline from distorting the score.
-
-    Credit advances only through the last CONSECUTIVELY completed milestone
-    in display sequence. Rework/return automatically lowers the earned
-    frontier without rewriting the saved baseline; a parallel completion
-    beyond the frontier earns no premature credit.
-
-    New plans use stored baseline_due_date. Historical plans, created before
-    that field existed, derive the same fixed schedule from their immutable
-    workflow_snapshot_json and the locked Design creation_date; never read
-    or recalculate from operational due_date or Milestone Master.
+    Zero-day auto-completed Tech Pack evidence represents approximately ten
+    days of development prior to the plan being created. Other zero-day
+    milestones retain a one-day minimum so completing them earns progress.
     """
-    entries = sorted(plans, key=lambda p: (
-        int(_field(p, "sequence") or 0),
-        str(_field(p, "milestone_type") or ""),
-        str(_field(p, "name") or ""),
-    ))
-    if not entries:
+    override = snapshot.get("completion_weight_days") or 0
+    if isinstance(override, bool) or not isinstance(override, (int, float)):
+        raise ValueError("Invalid milestone completion weight")
+    if override < 0 or override > 3650 or int(override) != override:
+        raise ValueError("Completion weight days must be a whole number (0–3650)")
+    if override:
+        return int(override)
+    stages = configured_steps(snapshot["steps"])
+    if (len(stages) == 1 and stages[0]["step"] == "Completed"
+            and stages[0]["transition_mode"] == "Auto"
+            and stages[0].get("requires_evidence")
+            and str(stages[0].get("evidence_type") or "").strip().casefold()
+            in {"tech pack", "technical pack", "techpack"}):
+        return 10
+    normal = [stage for stage in stages if stage["step"] != "Rework"]
+    return max(1, sum(stage["lead_time_days"] for stage in normal[1:]))
+
+
+def milestone_plan_weights(plans):
+    """Return frozen integer effort per Plan Entry, with legacy fallback.
+
+    Existing plans without a persisted weight are derived only from their
+    immutable saved workflow snapshot, never from the editable Milestone Master.
+    """
+    result = {}
+    for plan in plans:
+        stored = _field(plan, "completion_weight_days")
+        if stored is not None and int(stored) > 0:
+            result[_field(plan, "name")] = int(stored)
+        else:
+            snapshot = json.loads(_field(plan, "workflow_snapshot_json"))
+            result[_field(plan, "name")] = milestone_weight_days(snapshot)
+    return result
+
+
+def baseline_progress(plans, creation_date, executions=None, legacy_dates=None):
+    """Progress as completed, frozen milestone effort / total planned effort.
+
+    Partial and parallel milestones count independently only when both Plan
+    State and Execution Status are Completed. Operational dates, calendar
+    overlap, and current Milestone Master edits never alter frozen weights.
+    Keep the function signature for existing report callers.
+    """
+    if not plans:
         return {"percent": None, "earned_days": 0, "total_days": 0}
     executions = executions or {}
-    origin = _baseline_date(creation_date)
-    if not origin:
-        return {"percent": None, "earned_days": 0, "total_days": None}
-
-    fallback = legacy_dates
-    if fallback is None and any(not _field(p, "baseline_due_date") for p in entries):
-        fallback = projected_dates(entries, origin)
-    fallback = fallback or {}
-
-    days = []
-    all_completed = True
-    for plan in entries:
-        name = _field(plan, "name")
-        exe = executions.get(name)
-        finished = (
-            _field(plan, "plan_state") == "Completed"
-            and exe is not None
-            and _field(exe, "status") == "Completed"
-        )
-        all_completed = all_completed and finished
-        frozen_date = _field(plan, "baseline_due_date")
-        if not frozen_date:
-            frozen_date = (fallback.get(name) or {}).get("projected_due_date")
-        due = _baseline_date(frozen_date)
-        days.append((max(0, (due - origin).days) if due else None, finished))
-
-    if any(day is None for day, _ in days):
-        return {
-            "percent": 100 if all_completed else None,
-            "earned_days": None, "total_days": None,
-        }
-    total_days = max(day for day, _ in days)
-    earned_days = 0
-    for day, finished in days:
-        if not finished:
-            break
-        earned_days = max(earned_days, day)
-    if all_completed:
-        percent = 100
-    elif total_days == 0:
-        percent = 0
-    else:
-        # Integer half-up rounding, matching a displayed whole percentage.
-        # Never show 100% until EVERY plan is actually complete.
-        percent = min(99, (200 * earned_days + total_days) // (2 * total_days))
-    return {
-        "percent": percent,
-        "earned_days": earned_days,
-        "total_days": total_days,
-    }
+    weights = milestone_plan_weights(plans)
+    total = sum(weights.values())
+    earned = sum(
+        weights[_field(plan, "name")]
+        for plan in plans
+        if (_field(plan, "plan_state") == "Completed"
+            and _field(executions.get(_field(plan, "name")), "status") == "Completed")
+    )
+    if total <= 0:
+        return {"percent": None, "earned_days": 0, "total_days": 0}
+    # Integer half-up rounding. Don't report 100% until every milestone
+    # actually completes, even for exceptionally small remaining weights.
+    percent = (100 if earned == total
+               else min(99, (200 * earned + total) // (2 * total)))
+    return {"percent": percent, "earned_days": earned, "total_days": total}
 
 
 def rolling_projected_dates(plans, creation_date, executions=None, step_events=None):
