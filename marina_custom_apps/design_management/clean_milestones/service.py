@@ -116,6 +116,7 @@ def _snapshots(names):
             "depends_on_type": doc.depends_on_type or None,
             "trigger_status": doc.r22_trigger_status or "Completed",
             "steps": [r.as_dict() for r in (doc.get("workflow_steps") or [])],
+            "completion_weight_days": int(doc.completion_weight_days or 0),
         }
         try:
             validate_master_definition(snapshot)
@@ -399,6 +400,7 @@ def create_plan(design_code, milestone_types, lead_time_overrides=None):
         ) for cfg in snapshots
     ]
     frozen_dates = projected_dates(initial_plan_rows, baseline_date)
+    from marina_custom_apps.design_management.clean_milestones.schedule import milestone_weight_days
     for cfg in snapshots:
         identifier = hashlib.sha256(
             (design_code + "\0" + cfg["name"]).encode()).hexdigest()
@@ -411,6 +413,7 @@ def create_plan(design_code, milestone_types, lead_time_overrides=None):
             "plan_state": "Planned",
             "workflow_snapshot_json": json.dumps(cfg, sort_keys=True, default=str),
             "baseline_due_date": frozen_dates[cfg["name"]]["projected_due_date"],
+            "completion_weight_days": milestone_weight_days(cfg),
             "selected_on": now_datetime(), "selected_by": actor,
         }).db_insert()
     # All milestones configured Start with Design Creation begin on the
