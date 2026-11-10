@@ -76,9 +76,20 @@ def correct_execution_dates(execution_name, target_date, completed_on, reason,
         corrected_completed = None
 
     updates = {}
-    if corrected_due != getdate(row.due_date) if row.due_date else True:
+    if not row.due_date or corrected_due != getdate(row.due_date):
         updates["due_date"] = corrected_due
-    if row.status == "Completed" and corrected_completed != get_datetime(row.completed_on):
+    if (row.status == "Completed" and
+            (not row.completed_on or corrected_completed != get_datetime(row.completed_on))):
+        # Changing a completion date after a dependent milestone has begun
+        # would leave downstream activation and forecasts inconsistent.
+        dependent = frappe.db.exists("Design Milestone Plan Entry", {
+            "design_code": design.name,
+            "depends_on_type": row.milestone_type,
+            "plan_state": ["in", ["Active", "Completed"]],
+        })
+        if dependent:
+            frappe.throw("Dependent milestones have already started. "
+                         "Use Return to Milestone to correct workflow dates safely.")
         # For a completed execution, step_entered_on is also the effective
         # completion-step timestamp; keep the two aligned.
         updates["completed_on"] = corrected_completed
