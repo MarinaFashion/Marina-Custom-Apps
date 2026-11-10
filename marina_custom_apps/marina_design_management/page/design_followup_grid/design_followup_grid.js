@@ -442,17 +442,17 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
             r.plan_state==="Completed").length;
         const active=design.milestones.filter(r=>r.plan_state==="Active").length;
         const total=design.milestones.length;
-        // The server calculates earned timeline days from FROZEN initial
-        // projected dates, never rolling due dates or actual completion days.
-        // The denominator and milestone weights never drift after planning.
+        // The server calculates progress from frozen per-milestone effort.
+        // Completed parallel milestones earn weight independently; due dates
+        // and workflow timing never change the weight after planning.
         const completion=Number.isInteger(design.completion_percent)?
             design.completion_percent:null;
         const completionText=!total?__("Not initialized"):
-            completion===null?__("Baseline unavailable"):
+            completion===null?__("Completion unavailable"):
             __("{0}% complete",[completion]);
         const tooltip=completion===null?
-            __("Baseline completion unavailable; review the initial milestone dates"):
-            __("Fixed baseline progress: {0} of {1} planned calendar days earned. Credit advances through consecutively completed milestones.",[
+            __("Completion weights are unavailable; review milestone plans"):
+            __("Completed milestone effort: {0} of {1} planned weight days. Each completed milestone contributes independently.",[
                 design.baseline_earned_days,design.baseline_total_days
             ]);
         const label=expanded?__("Collapse milestones"):__("Expand milestones");
