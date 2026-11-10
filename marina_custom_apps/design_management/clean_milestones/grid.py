@@ -15,6 +15,9 @@ from marina_custom_apps.design_management.security.organization import (
     descendants, manager_roles,
 )
 from marina_custom_apps.design_management.security.role_access import can_action
+from marina_custom_apps.design_management.clean_milestones.design_code_filter import (
+    parse_design_codes, restrict_to_design_codes,
+)
 
 MAX_DESIGNS = 100
 MAX_PLANS_PER_DESIGN = 50
@@ -168,7 +171,8 @@ def _allowed_rows(designs, plans, executions):
 
 @frappe.whitelist()
 def get_grid(page=1, page_size=50, search=None, mood_board=None,
-             designer=None, custody=None, milestone_view="all", factory=None):
+             designer=None, custody=None, milestone_view="all", factory=None,
+             design_codes=None):
     if not frappe.has_permission("Design Code", "read"):
         frappe.throw("Design Code read permission required", frappe.PermissionError)
     try:
@@ -180,6 +184,10 @@ def get_grid(page=1, page_size=50, search=None, mood_board=None,
         frappe.throw("Page size must be 20, 50 or 100")
     if milestone_view not in ("all", "active", "completed", "future"):
         frappe.throw("Invalid milestone status filter")
+    try:
+        selected_codes = parse_design_codes(design_codes)
+    except ValueError as exc:
+        frappe.throw(str(exc))
     filters = {}
     if mood_board:
         filters["mood_board"] = str(mood_board)[:140]
@@ -201,6 +209,9 @@ def get_grid(page=1, page_size=50, search=None, mood_board=None,
             return {"designs": [], "page": page,
                     "page_size": page_size, "has_more": False}
         filters["name"] = ["in", candidates]
+    if not restrict_to_design_codes(filters, selected_codes):
+        return {"designs": [], "page": page,
+                "page_size": page_size, "has_more": False}
     search = (search or "").strip()
     if len(search) > 100:
         frappe.throw("Search must be 100 characters or less")

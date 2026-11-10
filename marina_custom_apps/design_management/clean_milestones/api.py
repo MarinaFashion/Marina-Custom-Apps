@@ -64,10 +64,11 @@ def history(design_code, offset=0, limit=50):
 # Unified grid uses the same permission-checked overview/history/advance endpoints.
 @frappe.whitelist()
 def followup_grid(page=1, page_size=50, search=None, mood_board=None,
-                  designer=None, custody=None, milestone_view="all", factory=None):
+                  designer=None, custody=None, milestone_view="all", factory=None,
+                  design_codes=None):
     from marina_custom_apps.design_management.clean_milestones.grid import get_grid
     return get_grid(page, page_size, search, mood_board, designer, custody,
-                    milestone_view, factory=factory)
+                    milestone_view, factory=factory, design_codes=design_codes)
 
 
 @frappe.whitelist()
