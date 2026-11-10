@@ -16,6 +16,10 @@ class DesignMilestoneType(Document):
         if not self.milestone_type or not self.milestone_type.strip():
             frappe.throw("Milestone name is required")
         try:
+            weight = self.completion_weight_days or 0
+            if (isinstance(weight, bool) or int(weight) != float(weight)
+                    or not 0 <= int(weight) <= 3650):
+                frappe.throw("Completion Weight Override must be a whole number between 0 and 3650")
             roles, evidence_types = validate_master_definition({
                 "name": self.name or self.milestone_type,
                 "start_with_design_creation": self.start_with_design_creation,
