@@ -254,7 +254,7 @@ def get_grid(page=1, page_size=50, search=None, mood_board=None,
         filters={"design_code": ["in", ids]},
         fields=["name", "design_code", "plan_entry", "status",
                 "current_custodian", "current_role",
-                "latest_note", "due_date", "evidence_document",
+                "latest_note", "due_date", "evidence_document", "evidence_file",
                 "step_entered_on", "rework_count", "completed_on"],
         limit_page_length=row_limit)
     if len(executions) >= row_limit:
@@ -300,11 +300,16 @@ def get_grid(page=1, page_size=50, search=None, mood_board=None,
             )
             evidence = evidence_metadata.get(row["evidence_document"])
             row["evidence_title"] = (evidence.document_title or evidence.name) if evidence else None
+            # The workflow pins the exact per-Design evidence file at the time
+            # of milestone completion. Multi-designer Tech Packs have no single
+            # primary attachment; never substitute another Designer's file.
+            # Keep the primary attachment fallback for historical records only.
+            execution = execution_map.get(plan.name)
+            attachment = (execution.evidence_file if execution and execution.evidence_file
+                          else evidence.attachment if evidence else None)
             # Never expose a file path for evidence the user cannot read.
-            # Only local Frappe attachments may be rendered as download links.
-            attachment = evidence.attachment if evidence else None
             row["evidence_download_url"] = (
-                attachment if isinstance(attachment, str) and
+                attachment if evidence and isinstance(attachment, str) and
                 attachment.startswith(("/files/", "/private/files/")) and
                 ".." not in attachment and "?" not in attachment and
                 "#" not in attachment else None
