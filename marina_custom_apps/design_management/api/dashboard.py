@@ -181,3 +181,26 @@ def get_design_dashboard(year=None, season=None, mood_board=None,
         "current_milestones": distribution,
         "completed_milestones": completed,
     }
+
+@frappe.whitelist()
+def get_dashboard_mood_board_options(year=None, season=None, collection=None,
+                                    drop=None):
+    """Accessible Mood Boards used by designs in the selected hierarchy.
+
+    Scopes options to readable Design Codes; no access through get_all and no
+    unrestricted Mood Board enumeration.
+    """
+    where, params = _scope(
+        year=year, season=season, collection=collection, drop=drop
+    )
+    rows = frappe.db.sql("""
+        SELECT DISTINCT d.mood_board
+        FROM `tabDesign Code` d
+        WHERE """ + where + """
+          AND d.mood_board IS NOT NULL AND d.mood_board != ''
+        ORDER BY d.mood_board
+        LIMIT 501
+    """, params, as_dict=True)
+    if len(rows) > 500:
+        frappe.throw("Too many Mood Boards for dashboard dropdown; narrow filters")
+    return [row.mood_board for row in rows]
