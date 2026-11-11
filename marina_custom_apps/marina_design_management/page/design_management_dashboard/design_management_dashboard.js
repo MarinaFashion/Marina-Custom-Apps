@@ -57,12 +57,14 @@ frappe.pages["design-management-dashboard"].on_page_load=function(wrapper){
     // queries and no unnecessary extra request on dashboard Refresh.
     page.main.find('[data-filter="year"],[data-filter="season"],'+
         '[data-filter="collection"],[data-filter="drop"]').on("change",loadMoodBoards);
-    function chart(selector,title,rows,explanation){
+    function chart(selector,title,rows,explanation,view){
         const max=Math.max(1,...rows.map(x=>Number(x.designs)||0));
         const bars=rows.map(x=>
             '<div class="d-flex align-items-center mb-2" style="gap:12px">'+
             '<div style="width:240px;flex:none;overflow-wrap:anywhere">'+
-            safe(x.milestone_type)+'</div>'+
+            '<a href="#" class="mdm-milestone-drilldown" data-view="'+safe(view)+'" '+
+            'data-milestone="'+safe(x.milestone_type)+'">'+
+            safe(x.milestone_type)+'</a></div>'+
             '<div class="flex-fill bg-light rounded">'+
             '<div class="rounded" style="background:#551C25;height:17px;width:'+
             Math.max(0,Math.min(100,100*Number(x.designs)/max))+'%"></div></div>'+
@@ -74,6 +76,23 @@ frappe.pages["design-management-dashboard"].on_page_load=function(wrapper){
             (rows.length?bars:'<p class="text-muted">'+
                 __("No matching milestones.")+'</p>'));
     }
+    // Drill into exactly the same visible dashboard selection. The grid
+    // validates the status and applies these filters before pagination.
+    page.main.on("click",".mdm-milestone-drilldown",function(event){
+        event.preventDefault();
+        const milestone=$(this).attr("data-milestone");
+        const view=$(this).attr("data-view");
+        if(!milestone || !["active","completed"].includes(view))return;
+        const filters={};
+        ["year","season","collection","drop","mood_board",
+         "assigned_merchandiser","deadline_status"].forEach(field=>{
+            const value=page.main.find('[data-filter="'+field+'"]').val();
+            if(value && String(value).trim())filters[field]=String(value).trim();
+        });
+        frappe.set_route("design-followup-grid","dashboard",view,
+            encodeURIComponent(milestone),
+            encodeURIComponent(JSON.stringify(filters)));
+    });
     let request=0;
     function refresh(){
         const token=++request;
@@ -101,10 +120,12 @@ frappe.pages["design-management-dashboard"].on_page_load=function(wrapper){
             ).join("")+'</div>');
             chart(".mdm-current-distribution",__("Designs by Current Milestone"),
                 r.current_milestones||[],
-                __("A Design may appear under multiple active milestones when work runs in parallel."));
+                __("A Design may appear under multiple active milestones when work runs in parallel."),
+                "active");
             chart(".mdm-completed-distribution",__("Designs by Completed Milestone"),
                 r.completed_milestones||[],
-                __("Number of designs that have completed each milestone."));
+                __("Number of designs that have completed each milestone."),
+                "completed");
         }).catch(error=>{
             if(token!==request)return;
             console.error("Unable to load Design Management Dashboard",error);
