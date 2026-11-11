@@ -52,11 +52,13 @@ class BulkMilestoneCompletionWiringTests(unittest.TestCase):
         functions = {f.name for f in tree.body if isinstance(f, ast.FunctionDef)}
         self.assertTrue({"preview_bulk_completion", "complete_bulk_milestones"}.issubset(functions))
 
-    def test_grid_bulk_uses_multiple_codes_and_clears_selection_on_reload(self):
+    def test_grid_bulk_works_without_multiple_codes_and_clears_selection_on_reload(self):
         code = GRID.read_text(encoding="utf-8")
-        self.assertIn('state.designCodes.length>0', code)
+        self.assertIn('const bulkEnabled=()=>state.milestoneFilter===\"active\";', code)
+        self.assertNotIn('state.designCodes.length>0 && state.milestoneFilter', code)
         self.assertIn('state.selectedBulk.clear()', code)
-        self.assertIn('bulkSignature', code)
+        self.assertIn('uniqueAdditional.forEach(item=>addBulkRow(item))', code)
+        self.assertIn('Select only one milestone per Design Code.', code)
         self.assertIn('Select All', code)
         self.assertIn('Complete Selected', code)
         self.assertIn('preview_bulk_completion', code)
