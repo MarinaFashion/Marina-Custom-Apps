@@ -263,6 +263,11 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
         .text(__("Collapse All")).appendTo(bar);
     const save = $('<button type="button" class="btn btn-primary btn-sm"></button>')
         .text(__("Save Notes")).prop("disabled",true).appendTo(bar);
+    const bulkAll=$('<button type="button" class="btn btn-default btn-sm"></button>')
+        .text(__("Select All")).hide().appendTo(bar);
+    const bulkComplete=$('<button type="button" class="btn btn-primary btn-sm"></button>')
+        .text(__("Complete Selected")).prop("disabled",true).hide().appendTo(bar);
+    const bulkCount=$('<span class="small text-muted"></span>').hide().appendTo(bar);
     const prev = $('<button type="button" class="btn btn-default btn-sm"></button>')
         .text(__("Previous")).appendTo(bar);
     const number = $('<span class="small"></span>').appendTo(bar);
@@ -286,7 +291,8 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
     // Keep this client-only state separate from unsaved edits and server status.
     let state = {page:1,data:null,dirty:new Map(),request:0,
                  expanded:new Set(),view:"design",milestoneFilter:"active",
-                 appliedCustody:"",designCodes:[],dashboard:null};
+                 appliedCustody:"",designCodes:[],dashboard:null,
+                 selectedBulk:new Map()};
     const showMultiCount = () => {
         const count=state.designCodes.length;
         multiCount.text(count?count+" "+__("selected"):"");
@@ -331,6 +337,17 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
         state.page=1;
         reload();
     }));
+    const bulkEnabled=()=>state.designCodes.length>0 && state.milestoneFilter==="active";
+    const bulkEligible=row=>Boolean(row.execution && row.plan_state==="Active" &&
+        row.current_custodian && (row.allowed_steps||[]).includes("Completed"));
+    const bulkSignature=row=>[row.milestone_type,row.status,row.current_custodian].join("\u0000");
+    const updateBulkActions=()=>{
+        const enabled=bulkEnabled();
+        bulkAll.toggle(enabled);
+        bulkComplete.toggle(enabled).prop("disabled",!state.selectedBulk.size);
+        bulkCount.toggle(enabled).text(
+            __("{0} selected (this page, max 50)",[state.selectedBulk.size]));
+    };
     // Classify by plan state: Rework remains Current, not Completed.
     const showMilestone = row =>
         (!state.dashboard || row.milestone_type===state.dashboard.milestone) &&
@@ -404,6 +421,13 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
             esc(__("On Time"))+'</span>';
     };
     const milestoneCells = (design,row,di,mi,includeDesign) => {
+        const selectable=bulkEnabled() && bulkEligible(row);
+        const bulkCell=bulkEnabled()?
+            '<td class="text-center" style="width:38px">'+
+            '<input type="checkbox" class="mdm-bulk-row" data-design="'+di+
+            '" data-milestone="'+mi+'" aria-label="'+esc(__("Select for bulk completion"))+'" '+
+            (selectable?'':'disabled ')+
+            (state.selectedBulk.has(row.execution)?'checked ':'')+'></td>':'';
         const dirty=state.dirty.get(row.execution);
         const currentNote=dirty?dirty.note:(row.note||"");
         const note=row.can_note && row.execution?
@@ -423,7 +447,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
                 '<span title="'+esc(__("No downloadable attachment"))+'">'+
                 esc(row.evidence_title||row.evidence_document)+'</span>'):
             (row.evidence_document?__('Restricted document'):'—');
-        return '<tr>'+
+        return '<tr>'+bulkCell+
             (includeDesign?'<td style="min-width:225px">'+designIdentityHTML(design,di)+'</td>':'')+
             '<td style="min-width:155px">'+esc(row.milestone_type)+'</td>'+
             '<td class="'+statusClass(row)+'">'+esc(row.status)+'</td>'+
@@ -460,7 +484,8 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
             ]);
         const label=expanded?__("Collapse milestones"):__("Expand milestones");
         const arrow=expanded?"▾":"▸";
-        let html='<tr class="table-active mdm-design-header"><td colspan="9">'+
+        let html='<tr class="table-active mdm-design-header"><td colspan="'+
+            (bulkEnabled()?10:9)+'">'+
             '<div class="d-flex align-items-center">'+
             '<button type="button" class="btn btn-default btn-sm mdm-toggle-design mr-2" '+
             'data-design="'+di+'" aria-expanded="'+expanded+'" aria-label="'+esc(label)+'" '+
@@ -478,7 +503,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
             '</div></div></div></td></tr>';
         if(!expanded)return html;
         if(!design.milestones.length){
-            return html+'<tr><td colspan="9" class="text-muted">'+
+            return html+'<tr><td colspan="'+(bulkEnabled()?10:9)+'" class="text-muted">'+
                 __("No milestone plan selected for this Design.")+'</td></tr>';
         }
         let shown=0;
@@ -487,7 +512,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
             shown++;
             html+=milestoneCells(design,row,di,mi,false);
         });
-        if (!shown) html+='<tr><td colspan="9" class="text-muted">'+
+        if (!shown) html+='<tr><td colspan="'+(bulkEnabled()?10:9)+'" class="text-muted">'+
             __("No milestones match this filter for this Design.")+'</td></tr>';
         return html;
     };
@@ -516,7 +541,8 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
                 (a[0]===""?1:b[0]===""?-1:
                  a[1].title.localeCompare(b[1].title)));
         return entries.map(([key,group])=>{
-            const heading='<tr class="table-active mdm-group-header"><td colspan="10">'+
+            const heading='<tr class="table-active mdm-group-header"><td colspan="'+
+                (bulkEnabled()?11:10)+'">'+
                 '<strong>'+esc(group.title)+'</strong> '+
                 '<span class="text-muted">('+group.entries.length+' '+__("milestones on this page")+')</span>'+
                 '</td></tr>';
@@ -542,14 +568,15 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
         info.text(__("Grouped by {0} (current page)",[groupName])+" · "+
             designs.length+" "+__("designs on this page")+" · "+
             flatCount+" "+__("milestones"));
-        const headers=(grouped?[__("Design")]:[]).concat([
+        const headers=(bulkEnabled()?[__("Select")]:[])
+            .concat(grouped?[__("Design")]:[]).concat([
             __("Milestone"),__("Status"),__("Notes"),
             __("Projected Due"),__("Completion Date"),__("Variance"),
             __("Custody / Role"),__("Evidence"),__("Actions")
         ]);
         const body=designs.length?
             (grouped?(groupedRowsHTML(designs,state.view) ||
-                '<tr><td colspan="10" class="text-muted">'+
+                '<tr><td colspan="'+headers.length+'" class="text-muted">'+
                 __("No milestones match this filter on the current page.")+'</td></tr>'):
                 designs.map(designRowsHTML).join("")):
             '<tr><td colspan="'+headers.length+'" class="text-muted">'+
@@ -559,6 +586,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
             '<thead class="thead-light"><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join("")+
             '</tr></thead><tbody>'+body+'</tbody></table>');
         changeButton();
+        updateBulkActions();
     };
     const reload = () => {
         const token=++state.request;
@@ -579,6 +607,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
                 throw new Error("Invalid Follow-Up Grid response");
             }
             state.data=data;
+            state.selectedBulk.clear();
             state.appliedCustody=args.custody||"";
             if(state.dashboard){
                 data.designs.forEach(design=>state.expanded.add(design.name));
