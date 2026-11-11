@@ -251,6 +251,8 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
         .text(__("Apply Filters")).appendTo(filterActions);
     const refresh=$('<button type="button" class="btn btn-default btn-sm"></button>')
         .text(__("Refresh")).appendTo(filterActions);
+    const clearDashboard=$('<button type="button" class="btn btn-default btn-sm"></button>')
+        .text(__("Clear Dashboard Filter")).hide().prependTo(filterActions);
     const toolbar = $('<div class="mdm-grid-toolbar d-flex flex-wrap align-items-center justify-content-between mb-2"></div>')
         .css("gap","10px").appendTo(root);
     const info = $('<span class="mdm-grid-info text-muted small"></span>').appendTo(toolbar);
@@ -284,7 +286,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
     // Keep this client-only state separate from unsaved edits and server status.
     let state = {page:1,data:null,dirty:new Map(),request:0,
                  expanded:new Set(),view:"design",milestoneFilter:"active",
-                 appliedCustody:"",designCodes:[]};
+                 appliedCustody:"",designCodes:[],dashboard:null};
     const showMultiCount = () => {
         const count=state.designCodes.length;
         multiCount.text(count?count+" "+__("selected"):"");
@@ -331,6 +333,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
     }));
     // Classify by plan state: Rework remains Current, not Completed.
     const showMilestone = row =>
+        (!state.dashboard || row.milestone_type===state.dashboard.milestone) &&
         (state.milestoneFilter==="all" ||
          row.plan_state === ({active:"Active",completed:"Completed",
                              future:"Planned"}[state.milestoneFilter])) &&
@@ -565,7 +568,9 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
                     mood_board:mood.get_value(),
                     designer:designer.get_value(),factory:factory.val(),
                     custody:custody.get_value(),
-                    milestone_view:state.milestoneFilter};
+                    milestone_view:state.milestoneFilter,
+                    dashboard_milestone:state.dashboard?.milestone||null,
+                    ...(state.dashboard?.filters||{})};
         // Render an actionable error instead of a blank table when a
         // permission, migration or request failure prevents grid loading.
         Promise.resolve(endpoint("followup_grid",args)).then(data=>{
@@ -575,6 +580,9 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
             }
             state.data=data;
             state.appliedCustody=args.custody||"";
+            if(state.dashboard){
+                data.designs.forEach(design=>state.expanded.add(design.name));
+            }
             draw();
         }).catch(error=>{
             if(token!==state.request)return;
@@ -805,6 +813,9 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
     });
     apply.on("click",()=>dirtyGuard(()=>{state.page=1;reload()}));
     refresh.on("click",()=>dirtyGuard(()=>reload()));
+    clearDashboard.on("click",()=>dirtyGuard(()=>{
+        frappe.set_route("design-followup-grid");
+    }));
     size.on("change",()=>dirtyGuard(()=>{state.page=1;reload()}));
     search.on("keydown",e=>{if(e.key==="Enter"){e.preventDefault();apply.trigger("click")}});
     prev.on("click",()=>dirtyGuard(()=>{if(state.page>1){state.page--;reload()}}));
@@ -913,9 +924,46 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
         const route=frappe.get_route();
         if(route[0]!=="design-followup-grid")return;
         const selected=route[1]||"";
-        if(!force && wrapper.__marina_route_design===selected)return;
-        wrapper.__marina_route_design=selected;
+        const signature=route.join("|");
+        if(!force && wrapper.__marina_route_design===signature)return;
+        wrapper.__marina_route_design=signature;
         const next=()=>{
+            if(selected==="dashboard"){
+                try {
+                    const view=route[2];
+                    const milestone=decodeURIComponent(route[3]||"");
+                    const filters=JSON.parse(decodeURIComponent(route[4]||"%7B%7D"));
+                    const accepted=["year","season","collection","drop","mood_board",
+                                    "assigned_merchandiser","deadline_status"];
+                    if(!["active","completed"].includes(view) ||
+                            !milestone || milestone.length>140 ||
+                            !filters || Array.isArray(filters) ||
+                            typeof filters!=="object" ||
+                            Object.keys(filters).some(key=>!accepted.includes(key) ||
+                                typeof filters[key]!=="string" ||
+                                filters[key].length>140)){
+                        throw new Error("Invalid dashboard filter");
+                    }
+                    state.dashboard={milestone,filters};
+                    clearDashboard.show();
+                    state.milestoneFilter=view;
+                    milestoneFilter.val(view);
+                    state.designCodes=[];showMultiCount();
+                    search.val("");factory.val("");
+                    state.page=1;
+                    state.view="design";groupBy.val("design");
+                    Promise.all([mood.set_value(filters.mood_board||""),
+                        designer.set_value(""),custody.set_value("")]).then(()=>{
+                        if(frappe.get_route().join("|")!==signature)return;
+                        reload();
+                    });
+                } catch(error){
+                    frappe.msgprint(__("Invalid dashboard drill-down. Open the dashboard again."));
+                }
+                return;
+            }
+            state.dashboard=null;
+            clearDashboard.hide();
             search.val(selected);
             state.designCodes=[];
             showMultiCount();
