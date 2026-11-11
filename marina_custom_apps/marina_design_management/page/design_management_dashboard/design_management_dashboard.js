@@ -85,7 +85,7 @@ frappe.pages["design-management-dashboard"].on_page_load=function(wrapper){
         if(!milestone || !["active","completed"].includes(view))return;
         const filters={};
         ["year","season","collection","drop","mood_board",
-         "assigned_merchandiser","deadline_status"].forEach(field=>{
+         "assigned_merchandiser","deadline_status","current_milestone"].forEach(field=>{
             const value=page.main.find('[data-filter="'+field+'"]').val();
             if(value && String(value).trim())filters[field]=String(value).trim();
         });
