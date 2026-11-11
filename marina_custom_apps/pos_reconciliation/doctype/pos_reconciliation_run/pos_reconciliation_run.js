@@ -99,6 +99,84 @@ frappe.ui.form.on("POS Reconciliation Run", {
         }
 
         if (!execution_active && (frappe.user_roles.includes("Accounts Manager") || frappe.user_roles.includes("System Manager"))) {
+            const controlMethod = "marina_custom_apps.pos_reconciliation.manual_alhamrani_control_service.";
+            const openAlhamraniControl = () => {
+                frappe.prompt([
+                    {fieldname:"alhamrani_name",fieldtype:"Data",label:__("Alhamrani Transaction ID"),reqd:1}
+                ], (first) => {
+                    frappe.call({
+                        method: controlMethod + "preview_alhamrani_control",
+                        args:{alhamrani_name:first.alhamrani_name},
+                        freeze:true
+                    }).then((res) => {
+                        const data = res.message;
+                        if (!data) return;
+                        const mode = data.action === "confirm";
+                        const d = new frappe.ui.Dialog({
+                            title: __("Update Manual Alhamrani Payment"),
+                            fields:[
+                                {fieldname:"transaction_details",fieldtype:"HTML"},
+                                {fieldname:"rrn",fieldtype:"Data",label:__("RRN (12 digits)"),reqd:1,
+                                 default:data.rrn || "",description:__("Verify the RRN against the terminal slip.")},
+                                {fieldname:"reason",fieldtype:"Small Text",label:__("Reason / Terminal Slip Evidence"),reqd:1},
+                                {fieldname:"confirmed",fieldtype:"Check",reqd:1,
+                                 label:__("I personally verified the terminal slip and confirm this change.")},
+                            ],
+                            primary_action_label: mode ? __("Approve Manual Confirmation") : __("Save Corrected RRN"),
+                            primary_action(values) {
+                                const rrn = String(values.rrn || "").trim();
+                                const reason = String(values.reason || "").trim();
+                                if (!/^\d{12}$/.test(rrn) || reason.length < 10 || !values.confirmed) {
+                                    frappe.msgprint(__("Enter a 12-digit RRN, a reason of at least 10 characters, and acknowledge the terminal slip."));
+                                    return;
+                                }
+                                if (!mode && rrn === String(data.rrn || "").trim()) {
+                                    frappe.msgprint(__("Corrected RRN must differ from the current value."));
+                                    return;
+                                }
+                                frappe.confirm(
+                                    mode
+                                        ? __("Approve this Alhamrani transaction based on the verified terminal slip? Status will become Approved.")
+                                        : __("Replace this manually confirmed Alhamrani RRN? Existing accounting and links will not be changed."),
+                                    () => frappe.call({
+                                        method:controlMethod + "update_alhamrani_control",
+                                        args:{alhamrani_name:data.name,rrn,reason,confirmed:1,expected_action:data.action},
+                                        freeze:true,
+                                        freeze_message:__("Revalidating transaction and saving audit trail...")
+                                    }).then((result) => {
+                                        if (result.message && result.message.name === data.name) {
+                                            d.hide();
+                                            frappe.msgprint(__("Saved {0}. The updated AUP will be considered on the next POS reconciliation run.", [data.name]));
+                                            frm.reload_doc();
+                                        }
+                                    })
+                                );
+                            }
+                        });
+                        const summary = [
+                            [__("AUP"), data.name],
+                            [__("Sales Invoice"), data.sales_invoice],
+                            [__("Status"), data.status],
+                            [__("Current RRN"), data.rrn],
+                            [__("Response Meaning"), data.response_meaning],
+                            [__("POS Profile"), data.pos_profile],
+                        ];
+                        d.show();
+                        d.fields_dict.transaction_details.$wrapper.html(
+                            '<div class="alert alert-info"><b>' +
+                            (mode ? __("Confirm from terminal slip") : __("Correct manually entered RRN")) +
+                            '</b><table class="table table-condensed" style="margin:8px 0 0">' +
+                            summary.map(pair => '<tr><th>' + pos_recon_escape(pair[0]) +
+                                '</th><td>' + pos_recon_escape(pair[1] || "—") +
+                                '</td></tr>').join("") + '</table></div>'
+                        );
+                    });
+                }, __("Update Manual Alhamrani Payment"), __("Find Transaction"));
+            };
+            frm.add_custom_button(__("Update Manual Alhamrani Payment"), openAlhamraniControl, __("Actions"));
+        }
+
+        if (!execution_active && (frappe.user_roles.includes("Accounts Manager") || frappe.user_roles.includes("System Manager"))) {
             frm.add_custom_button(__("Link Manual Alhamrani Payment"), () => {
                 frappe.prompt([{fieldname:"alhamrani_name",fieldtype:"Data",label:__("Alhamrani Transaction ID"),reqd:1}], (first) => {
                     frappe.call({
@@ -211,19 +289,19 @@ frappe.ui.form.on("POS Reconciliation Run", {
         if (has_results) {
             frm.add_custom_button(__("View Records"), () => {
                 frappe.set_route("List", "POS Reconciliation Record");
-            }, __("Actions"));
+            }, __("Connections"));
         }
 
         {
             frm.add_custom_button(__("Import POS Transactions"), () => {
                 frappe.set_route("Form", "POS Bank Import", "POS Bank Import");
-            }, __("Actions"));
+            }, __("Connections"));
 
             frm.add_custom_button(__("Import Bank Statement"), () => {
                 frappe.new_doc("Marina Bank Statement Import", {
                     bank_account: frm.doc.bank_account || "",
                 });
-            }, __("Actions"));
+            }, __("Connections"));
         }
 
         if (lifecycle === "Open" && has_results) {
@@ -240,10 +318,10 @@ frappe.ui.form.on("POS Reconciliation Run", {
 
         frm.add_custom_button(__("Period Locks"), () => {
             frappe.set_route("List", "POS Reconciliation Period Lock");
-        }, __("Actions"));
+        }, __("Connections"));
         frm.add_custom_button(__("Execution History"), () => {
             frappe.set_route("List", "POS Reconciliation Execution");
-        }, __("Actions"));
+        }, __("Connections"));
 
         if (has_results && lifecycle === "Open") {
             pos_recon_setup_review(frm);
