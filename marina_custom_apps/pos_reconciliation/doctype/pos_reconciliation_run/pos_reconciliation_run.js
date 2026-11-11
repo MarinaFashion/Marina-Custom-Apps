@@ -63,6 +63,77 @@ function pos_recon_manual_link_preview(candidate) {
     </div>`;
 }
 
+// Connections belong in the document (like standard ERPNext Connections),
+// not in the toolbar Actions menu. Links are navigation only.
+function pos_recon_render_connections(frm, has_results) {
+    const field = frm.fields_dict.connections_html;
+    if (!field || !field.$wrapper) return;
+
+    const groups = [
+        {
+            title: __("Related"),
+            items: has_results
+                ? [{id: "records", label: __("POS Reconciliation Records")}]
+                : []
+        },
+        {
+            title: __("Import"),
+            items: [
+                {id: "import_pos", label: __("Import POS Transactions")},
+                {id: "import_statement", label: __("Import Bank Statement")}
+            ]
+        },
+        {
+            title: __("Administration"),
+            items: [
+                {id: "locks", label: __("Period Locks")},
+                {id: "history", label: __("Execution History")}
+            ]
+        }
+    ];
+    const html = '<div class="row pos-recon-connections" style="padding: 6px 0 12px;">' +
+        groups.map(group => {
+            const items = group.items.length
+                ? group.items.map(item =>
+                    '<div style="margin: 0 0 10px;">' +
+                    '<button type="button" class="btn btn-default btn-sm pos-recon-connection-link" ' +
+                    'data-connection="' + item.id + '" ' +
+                    'style="border:0; background:var(--control-bg, #f4f5f6); color:var(--text-color); ' +
+                    'border-radius:8px; text-align:left;">' +
+                    pos_recon_escape(item.label) + '</button></div>'
+                ).join("")
+                : '<p class="text-muted small">' + __("No reconciliation records yet.") + '</p>';
+            return '<div class="col-sm-4" style="margin-bottom:16px;">' +
+                '<h5 style="margin:0 0 14px; font-weight:500;">' +
+                pos_recon_escape(group.title) + '</h5>' + items + '</div>';
+        }).join("") + '</div>';
+
+    field.$wrapper.html(html);
+    field.$wrapper.off("click.pos_recon_connections")
+        .on("click.pos_recon_connections", ".pos-recon-connection-link", function () {
+            const target = $(this).attr("data-connection");
+            switch (target) {
+                case "records":
+                    frappe.set_route("List", "POS Reconciliation Record");
+                    break;
+                case "import_pos":
+                    frappe.set_route("Form", "POS Bank Import", "POS Bank Import");
+                    break;
+                case "import_statement":
+                    frappe.new_doc("Marina Bank Statement Import", {
+                        bank_account: frm.doc.bank_account || ""
+                    });
+                    break;
+                case "locks":
+                    frappe.set_route("List", "POS Reconciliation Period Lock");
+                    break;
+                case "history":
+                    frappe.set_route("List", "POS Reconciliation Execution");
+                    break;
+            }
+        });
+}
+
 frappe.ui.form.on("POS Reconciliation Run", {
     refresh(frm) {
         // Singles have one fixed document, with no New document workflow.
@@ -286,24 +357,6 @@ frappe.ui.form.on("POS Reconciliation Run", {
             btn.addClass("btn-primary");
         }
 
-        if (has_results) {
-            frm.add_custom_button(__("View Records"), () => {
-                frappe.set_route("List", "POS Reconciliation Record");
-            }, __("Connections"));
-        }
-
-        {
-            frm.add_custom_button(__("Import POS Transactions"), () => {
-                frappe.set_route("Form", "POS Bank Import", "POS Bank Import");
-            }, __("Connections"));
-
-            frm.add_custom_button(__("Import Bank Statement"), () => {
-                frappe.new_doc("Marina Bank Statement Import", {
-                    bank_account: frm.doc.bank_account || "",
-                });
-            }, __("Connections"));
-        }
-
         if (lifecycle === "Open" && has_results) {
             frm.add_custom_button(__("Create Journal Entries"), () => {
                 pos_recon_open_accounting_dialog(frm);
@@ -316,12 +369,7 @@ frappe.ui.form.on("POS Reconciliation Run", {
             }
         }
 
-        frm.add_custom_button(__("Period Locks"), () => {
-            frappe.set_route("List", "POS Reconciliation Period Lock");
-        }, __("Connections"));
-        frm.add_custom_button(__("Execution History"), () => {
-            frappe.set_route("List", "POS Reconciliation Execution");
-        }, __("Connections"));
+        pos_recon_render_connections(frm, has_results);
 
         if (has_results && lifecycle === "Open") {
             pos_recon_setup_review(frm);

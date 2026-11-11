@@ -44,7 +44,10 @@
   "pending_count",
   "ui_tab_pos_reconciliation_run_5",
   "results_review_section",
-  "results_review_html"
+  "results_review_html",
+  "connections_tab",
+  "connections_section",
+  "connections_html"
  ],
  "fields": [
   {
@@ -302,6 +305,21 @@
    "fieldname": "results_review_html",
    "fieldtype": "HTML",
    "label": "Reconciliation Results Review"
+  },
+  {
+   "fieldname": "connections_tab",
+   "fieldtype": "Tab Break",
+   "label": "Connections"
+  },
+  {
+   "fieldname": "connections_section",
+   "fieldtype": "Section Break",
+   "label": "Connections"
+  },
+  {
+   "fieldname": "connections_html",
+   "fieldtype": "HTML",
+   "label": "Related Links"
   }
  ],
  "name": "POS Reconciliation Run",
