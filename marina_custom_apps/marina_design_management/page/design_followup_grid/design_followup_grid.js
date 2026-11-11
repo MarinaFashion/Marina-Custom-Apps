@@ -761,12 +761,13 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
     bulkComplete.on("click",()=>dirtyGuard(async()=>{
         if(!bulkEnabled()||!state.selectedBulk.size)return;
         const selected=selectedPayload();
-        const reasonRequired=false;
         // Preview is read-only; the server checks the full authorization and
         // source-of-truth state again before the transactional POST.
         let preview;
         try{
-            preview=await endpoint("preview_bulk_completion",{selected});
+            preview=await endpoint("preview_bulk_completion",{
+                selected:JSON.stringify(selected),reason:"Bulk milestone completion"
+            });
         }catch(error){
             frappe.msgprint(__("Bulk selection cannot be completed. Check milestone, step, custody and user permissions."));
             return;
@@ -783,6 +784,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
                  description:__("Same effective completion date for every selected milestone.")},
                 {fieldtype:"Small Text",fieldname:"reason",
                  label:__("Reason / Review Notes"),
+                 default:"Bulk milestone completion",
                  description:__("A reason may be required for manager override or correction.")},
                 {fieldtype:"Link",fieldname:"evidence_document",
                  label:__("Published Evidence"),
