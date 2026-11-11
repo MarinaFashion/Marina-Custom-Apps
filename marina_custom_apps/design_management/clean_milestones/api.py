@@ -95,3 +95,22 @@ def save_followup_notes(changes):
     return save_grid_notes(changes)
 
 
+
+
+@frappe.whitelist()
+def preview_bulk_completion(selected, reason=None):
+    from marina_custom_apps.design_management.clean_milestones.bulk_completion import (
+        preview_bulk_completion as preview,
+    )
+    return preview(selected, reason=reason)
+
+
+@frappe.whitelist(methods=["POST"])
+def complete_bulk_milestones(selected, evidence_document=None,
+                             step_change_date=None, reason=None,
+                             confirm_evidence_link=False):
+    from marina_custom_apps.design_management.clean_milestones.bulk_completion import (
+        complete_bulk,
+    )
+    return complete_bulk(selected, evidence_document, step_change_date,
+                         reason, confirm_evidence_link)
