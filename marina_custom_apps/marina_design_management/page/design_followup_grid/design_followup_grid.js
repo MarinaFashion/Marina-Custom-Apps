@@ -761,6 +761,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
         });
     });
     milestoneFilter.on("change",()=>{
+        if(state.dashboard){milestoneFilter.val(state.milestoneFilter);return;}
         const next=milestoneFilter.val();
         if(!state.appliedCustody){
             // With no Custody filtering, all milestone states are already
@@ -934,7 +935,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
                     const milestone=decodeURIComponent(route[3]||"");
                     const filters=JSON.parse(decodeURIComponent(route[4]||"%7B%7D"));
                     const accepted=["year","season","collection","drop","mood_board",
-                                    "assigned_merchandiser","deadline_status"];
+                                    "assigned_merchandiser","deadline_status","current_milestone"];
                     if(!["active","completed"].includes(view) ||
                             !milestone || milestone.length>140 ||
                             !filters || Array.isArray(filters) ||
@@ -947,7 +948,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
                     state.dashboard={milestone,filters};
                     clearDashboard.show();
                     state.milestoneFilter=view;
-                    milestoneFilter.val(view);
+                    milestoneFilter.val(view).prop("disabled",true);
                     state.designCodes=[];showMultiCount();
                     search.val("");factory.val("");
                     state.page=1;
@@ -964,6 +965,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
             }
             state.dashboard=null;
             clearDashboard.hide();
+            milestoneFilter.prop("disabled",false);
             search.val(selected);
             state.designCodes=[];
             showMultiCount();
