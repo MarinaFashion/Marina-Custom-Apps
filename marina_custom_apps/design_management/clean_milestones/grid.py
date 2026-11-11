@@ -174,7 +174,8 @@ def get_grid(page=1, page_size=50, search=None, mood_board=None,
              designer=None, custody=None, milestone_view="all", factory=None,
              design_codes=None, dashboard_milestone=None,
              year=None, season=None, collection=None, drop=None,
-             assigned_merchandiser=None, deadline_status=None):
+             assigned_merchandiser=None, deadline_status=None,
+             current_milestone=None):
     if not frappe.has_permission("Design Code", "read"):
         frappe.throw("Design Code read permission required", frappe.PermissionError)
     try:
@@ -228,6 +229,9 @@ def get_grid(page=1, page_size=50, search=None, mood_board=None,
         return {"designs": [], "page": page,
                 "page_size": page_size, "has_more": False}
     if dashboard_milestone:
+        if current_milestone:
+            if not isinstance(current_milestone, str) or len(current_milestone) > 140:
+                frappe.throw("Invalid dashboard Current Milestone filter")
         # Select design IDs from the same plan/execution conditions used
         # by the dashboard. Do this before pagination; per-page filtering
         # otherwise yields missing designs and incorrect navigation.
@@ -246,6 +250,16 @@ def get_grid(page=1, page_size=50, search=None, mood_board=None,
         if len(matching) > MAX_CUSTODY_DESIGNS:
             frappe.throw("Too many matching milestones. Narrow the selection.")
         names = {row.design_code for row in matching}
+        # Keep the dashboard's own Current Milestone filter when a user
+        # drills into a different bar (especially a Completed bar).
+        if current_milestone and names:
+            current = frappe.db.sql("""
+                SELECT DISTINCT p.design_code
+                FROM `tabDesign Milestone Plan Entry` p
+                WHERE p.plan_state='Active' AND p.milestone_type=%s
+                  AND p.design_code IN %s
+            """, (current_milestone, tuple(sorted(names))), as_dict=True)
+            names &= {row.design_code for row in current}
         # Dashboard deadline filter is a distinct-design condition, not
         # necessarily the same active milestone that was clicked.
         if deadline_status:
@@ -292,7 +306,8 @@ def get_grid(page=1, page_size=50, search=None, mood_board=None,
         or "System Manager" in frappe.get_roles(frappe.session.user)
         or "Marina Design Participant" in frappe.get_roles(frappe.session.user)
     )
-    design_query = frappe.get_all if broad_grid_read else frappe.get_list
+    design_query = (frappe.get_list if dashboard_milestone else
+                    frappe.get_all if broad_grid_read else frappe.get_list)
     designs = design_query("Design Code",
         filters=filters,
         fields=["name", "design_number", "image", "mood_board",
