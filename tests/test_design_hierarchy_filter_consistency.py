@@ -49,8 +49,13 @@ class HierarchyFilterConsistencyTests(unittest.TestCase):
         grid = GRID.read_text()
         for field in EXPECTED:
             self.assertIn('dropdown("' + field + '"', dash)
+        for field in ("season", "collection"):
             self.assertIn("hierarchyFilters." + field + ".val()", grid)
-        self.assertIn("season=None, collection=None, drop=None", GRID_API.read_text())
+        self.assertNotIn("hierarchyFilters.drop", grid)
+        self.assertIn('filterColumn(__("Custody")', grid)
+        self.assertIn('filterColumn(__("Milestone Type")', grid)
+        self.assertIn('milestone_type:milestoneType.val()', grid)
+        self.assertIn("followup_milestone_types", GRID_API.read_text())
 
     def test_discussion_and_communication_dropdowns(self):
         for path in (DISCUSSIONS, COMM):
