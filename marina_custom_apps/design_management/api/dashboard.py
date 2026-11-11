@@ -133,7 +133,7 @@ def get_design_dashboard(year=None, season=None, mood_board=None,
               ON x.name=p.activated_execution AND x.design_code=p.design_code
             WHERE p.design_code=d.name AND p.plan_state='Active'
               AND x.status!='Completed' AND x.due_date < %(today)s
-          )) AS delayed,
+          )) AS delayed_designs,
           SUM(EXISTS (
             SELECT 1 FROM `tabDesign Milestone Plan Entry` p
             INNER JOIN `tabDesign Milestone Execution` x
@@ -175,7 +175,7 @@ def get_design_dashboard(year=None, season=None, mood_board=None,
         "total": count,
         "in_bulk_production": int(summary.in_bulk_production or 0),
         "blocked_hold": int(summary.blocked_hold or 0),
-        "delayed": int(summary.delayed or 0),
+        "delayed": int(summary.delayed_designs or 0),
         "upcoming": int(summary.upcoming or 0),
         "average_completion": round(progress_sum / count, 1) if count else 0,
         "current_milestones": distribution,
