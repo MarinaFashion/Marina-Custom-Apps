@@ -32,7 +32,7 @@
       "fieldname": "season",
       "label": "Season",
       "fieldtype": "Select",
-      "options": "Spring\nSummer\nAutumn\nWinter\nHajj\nRamadan\nOther",
+      "options": "\nRamadan\nSummer\nWinter",
       "reqd": 1,
       "in_list_view": 1
     },
@@ -50,8 +50,9 @@
     {
       "fieldname": "collection",
       "label": "Collection",
-      "fieldtype": "Data",
-      "reqd": 1
+      "fieldtype": "Select",
+      "reqd": 1,
+      "options": "\nEID\nRamadan\nHajj\nSummer\nAutumn\nWinter"
     },
     {
       "fieldname": "sb_planning",
@@ -61,7 +62,9 @@
     {
       "fieldname": "drop",
       "label": "Drop",
-      "fieldtype": "Data"
+      "fieldtype": "Select",
+      "options": "\nDrop- 01\nDrop- 02\nDrop- 03\nDrop- 04\nDrop- B2S\nDrop- Reorder\nNot Assigned",
+      "default": "Not Assigned"
     },
     {
       "fieldname": "cb_planning",
