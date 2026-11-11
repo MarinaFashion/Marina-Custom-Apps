@@ -692,6 +692,158 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
             dialog.show();
         });
     }
+    function bulkPageRows(){
+        return allRows().flatMap(design=>(design.milestones||[])
+            .filter(row=>showMilestone(row) && bulkEligible(row))
+            .map(row=>({design_code:design.name,execution:row.execution,row})));
+    }
+    const selectedPayload=()=>[...state.selectedBulk.values()].map(item=>({
+        design_code:item.design_code,execution:item.execution
+    }));
+    function addBulkRow(item){
+        if(state.selectedBulk.has(item.execution))return true;
+        if(state.selectedBulk.size>=50){
+            frappe.msgprint(__("Select no more than 50 milestone rows per batch."));
+            return false;
+        }
+        const chosen=[...state.selectedBulk.values()];
+        if(chosen.length && bulkSignature(chosen[0].row)!==bulkSignature(item.row)){
+            frappe.msgprint(__("Select designs with the same milestone, current step and current custodian."));
+            return false;
+        }
+        if(chosen.some(existing=>existing.design_code===item.design_code)){
+            frappe.msgprint(__("Select only one milestone per Design Code."));
+            return false;
+        }
+        state.selectedBulk.set(item.execution,item);
+        return true;
+    }
+    bulkAll.on("click",()=>dirtyGuard(()=>{
+        if(!bulkEnabled())return;
+        const rows=bulkPageRows();
+        if(!rows.length){
+            frappe.msgprint(__("No eligible milestones found on this page."));
+            return;
+        }
+        const groups=new Map();
+        rows.forEach(item=>{
+            const key=bulkSignature(item.row);
+            if(!groups.has(key))groups.set(key,[]);
+            groups.get(key).push(item);
+        });
+        const chosen=state.selectedBulk.size?
+            bulkSignature([...state.selectedBulk.values()][0].row):null;
+        if(!chosen && groups.size!==1){
+            frappe.msgprint(__("This page contains different milestones, steps or custodians. Select one row first, then use Select All to select matching rows."));
+            return;
+        }
+        const target=chosen||[...groups.keys()][0];
+        const matches=groups.get(target)||[];
+        if(matches.length>50){
+            frappe.msgprint(__("More than 50 matching rows on this page. Select a smaller page size."));
+            return;
+        }
+        matches.forEach(item=>addBulkRow(item));
+        draw();
+    }));
+    surface.on("change",".mdm-bulk-row",function(){
+        if(!bulkEnabled())return;
+        const design=allRows()[Number($(this).attr("data-design"))];
+        const row=design?.milestones?.[Number($(this).attr("data-milestone"))];
+        if(!design||!row||!bulkEligible(row))return;
+        if($(this).prop("checked")){
+            addBulkRow({design_code:design.name,execution:row.execution,row});
+        }else{
+            state.selectedBulk.delete(row.execution);
+        }
+        draw();
+    });
+    bulkComplete.on("click",()=>dirtyGuard(async()=>{
+        if(!bulkEnabled()||!state.selectedBulk.size)return;
+        const selected=selectedPayload();
+        const reasonRequired=false;
+        // Preview is read-only; the server checks the full authorization and
+        // source-of-truth state again before the transactional POST.
+        let preview;
+        try{
+            preview=await endpoint("preview_bulk_completion",{selected});
+        }catch(error){
+            frappe.msgprint(__("Bulk selection cannot be completed. Check milestone, step, custody and user permissions."));
+            return;
+        }
+        if(!preview || preview.count!==selected.length)return;
+        const documentRequired=Boolean(preview.evidence_type);
+        const dialog=new frappe.ui.Dialog({
+            title:__("Complete {0} selected designs",[preview.count]),
+            fields:[
+                {fieldtype:"HTML",fieldname:"summary_html"},
+                {fieldtype:"Date",fieldname:"step_change_date",
+                 label:__("Completion Date"),reqd:1,
+                 default:frappe.datetime.get_today(),
+                 description:__("Same effective completion date for every selected milestone.")},
+                {fieldtype:"Small Text",fieldname:"reason",
+                 label:__("Reason / Review Notes"),
+                 description:__("A reason may be required for manager override or correction.")},
+                {fieldtype:"Link",fieldname:"evidence_document",
+                 label:__("Published Evidence"),
+                 options:"Design Document",hidden:documentRequired?0:1,
+                 reqd:documentRequired?1:0,
+                 description:documentRequired?
+                     __("Choose one Published document to link to every selected design."):
+                     __("This milestone does not require evidence."),
+                 get_query:()=>({
+                     query:"marina_custom_apps.design_management.clean_milestones.bulk_completion.search_bulk_evidence",
+                     filters:{selected:JSON.stringify(selected),
+                              reason:dialog.get_value("reason")||""}
+                 })}
+            ],
+            primary_action_label:__("Complete All Selected"),
+            async primary_action(values){
+                if(!values.step_change_date)return;
+                const names=preview.design_codes.map(code=>esc(code)).join(", ");
+                const documentText=documentRequired?
+                    __("The Published Evidence will be linked to all designs."):"";
+                frappe.confirm(
+                    __("Complete {0} designs at milestone {1} from step {2} for custodian {3}? Designs: {4}",[
+                        preview.count,esc(preview.milestone_type),
+                        esc(preview.current_step),esc(preview.custodian),names
+                    ])+" "+documentText,
+                    async()=>{
+                        try {
+                            const result=await endpoint("complete_bulk_milestones",{
+                                selected:JSON.stringify(selected),
+                                evidence_document:values.evidence_document||null,
+                                step_change_date:values.step_change_date,
+                                reason:values.reason||"",
+                                confirm_evidence_link:documentRequired?1:0
+                            },true);
+                            dialog.hide();
+                            state.selectedBulk.clear();
+                            frappe.show_alert({
+                                indicator:"green",
+                                message:__("Completed {0} milestones",[result.completed])
+                            },8);
+                            reload();
+                        }catch(error){
+                            console.error("Bulk completion failed",error);
+                            frappe.msgprint(__("No milestones were completed. Review the error and retry."));
+                        }
+                    }
+                );
+            }
+        });
+        dialog.show();
+        dialog.fields_dict.summary_html.$wrapper.html(
+            '<p><b>'+esc(preview.milestone_type)+'</b> — '+
+            esc(preview.current_step)+' — '+esc(preview.custodian)+'</p>'+
+            '<p>'+esc(__("{0} designs selected",[preview.count]))+'</p>'+
+            '<div style="max-height:130px;overflow:auto">'+
+            preview.design_codes.map(code=>'<span class="badge badge-light mr-1 mb-1">'+
+                esc(code)+'</span>').join("")+'</div>'+
+            (documentRequired?'<p class="small text-muted">'+
+                esc(__("Required evidence type: {0}",[preview.evidence_type]))+'</p>':"")
+        );
+    }));
     surface.on("click",".mdm-toggle-design",function(){
         const design=allRows()[Number($(this).attr("data-design"))];
         if(!design)return;
