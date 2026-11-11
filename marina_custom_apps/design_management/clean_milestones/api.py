@@ -67,7 +67,8 @@ def followup_grid(page=1, page_size=50, search=None, mood_board=None,
                   designer=None, custody=None, milestone_view="all", factory=None,
                   design_codes=None, dashboard_milestone=None,
                   year=None, season=None, collection=None, drop=None,
-                  assigned_merchandiser=None, deadline_status=None):
+                  assigned_merchandiser=None, deadline_status=None,
+                  current_milestone=None):
     from marina_custom_apps.design_management.clean_milestones.grid import get_grid
     return get_grid(
         page, page_size, search, mood_board, designer, custody,
@@ -76,6 +77,7 @@ def followup_grid(page=1, page_size=50, search=None, mood_board=None,
         collection=collection, drop=drop,
         assigned_merchandiser=assigned_merchandiser,
         deadline_status=deadline_status,
+        current_milestone=current_milestone,
     )
 
 
