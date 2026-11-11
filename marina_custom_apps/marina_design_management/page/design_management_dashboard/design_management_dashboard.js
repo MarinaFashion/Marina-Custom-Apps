@@ -4,12 +4,19 @@ frappe.pages["design-management-dashboard"].on_page_load=function(wrapper){
     });
     page.add_inner_button(__("Refresh"),()=>refresh());
     const esc=frappe.utils.escape_html;
+    const hierarchyOptions={"season":["Ramadan","Summer","Winter"],"collection":["EID","Ramadan","Hajj","Summer","Autumn","Winter"],"drop":["Drop- 01","Drop- 02","Drop- 03","Drop- 04","Drop- B2S","Drop- Reorder","Not Assigned"]};
+    const dropdown=(name,label)=>
+        '<div class="col-md-3 mb-2"><label>'+esc(label)+'</label>'+
+        '<select class="form-control" data-filter="'+esc(name)+'">'+
+        '<option value="">'+__("All")+'</option>'+hierarchyOptions[name].map(value=>
+            '<option value="'+esc(value)+'">'+esc(value)+'</option>').join("")+
+        '</select></div>';
     const filter=(name,label,placeholder="")=>
         '<div class="col-md-3 mb-2"><label>'+esc(label)+'</label>'+
         '<input class="form-control" data-filter="'+esc(name)+'" placeholder="'+esc(placeholder)+'"></div>';
     page.main.html('<div class="container-fluid p-3 mdm-r4-dashboard"><div class="row">'+
-        filter("year",__("Year"),"2027")+filter("season",__("Season"),"Summer")+
-        filter("collection",__("Collection"))+filter("drop",__("Drop"))+
+        filter("year",__("Year"),"2027")+dropdown("season",__("Season"))+
+        dropdown("collection",__("Collection"))+dropdown("drop",__("Drop"))+
         '<div class="col-md-3 mb-2"><label>'+__("Mood Board")+'</label>'+
         '<select class="form-control" data-filter="mood_board">'+
         '<option value="">'+__("All Mood Boards")+'</option></select></div>'+
