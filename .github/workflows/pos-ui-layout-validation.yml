@@ -38,7 +38,16 @@ jobs:
                   b = {k:v for k,v in after.items() if k != "description"}
                   assert a == b, (str(path), name, "functional field metadata changed")
               for name in set(current) - set(original):
-                  assert current[name]["fieldtype"] in ("Column Break", "Tab Break") or (name in ("bank_statement_settlement_lookahead_days", "transaction_time_tolerance_seconds") and current[name]["fieldtype"] == "Int"), (str(path), name)
+                  is_layout = current[name]["fieldtype"] in ("Column Break", "Tab Break")
+                  is_legacy_setting = name in ("bank_statement_settlement_lookahead_days", "transaction_time_tolerance_seconds") and current[name]["fieldtype"] == "Int"
+                  is_connections_presentation = (
+                      path.name == "pos_reconciliation_run.json"
+                      and (
+                          (name == "connections_section" and current[name]["fieldtype"] == "Section Break")
+                          or (name == "connections_html" and current[name]["fieldtype"] == "HTML")
+                      )
+                  )
+                  assert is_layout or is_legacy_setting or is_connections_presentation, (str(path), name)
               seq = now["field_order"]
               assert len(seq) == len(set(seq)) and set(seq) == set(current), str(path)
               if now.get("istable"):
