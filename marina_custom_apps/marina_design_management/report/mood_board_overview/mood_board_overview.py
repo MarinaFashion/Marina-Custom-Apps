@@ -12,9 +12,9 @@ def execute(filters=None):
         {'fieldname': 'mood_board', 'label': 'Mood Board', 'fieldtype': 'Data', 'width': 220},
         {'fieldname': 'milestones', 'label': 'Current Milestones', 'fieldtype': 'Data', 'width': 350},
     ]
-    selected = {key: filters.get(key) for key in ('year', 'season', 'collection', 'mood_boards')}
+    selected = {key: filters.get(key) for key in ('year', 'season', 'collection', 'drop', 'mood_boards')}
     if not any(selected.values()):
-        return columns, [], 'Select Year, Season, Collection or Mood Board above, then click Run Report.'
+        return columns, [], 'Select Year, Season, Collection, Drop or Mood Board above, then click Run Report.'
     context = report_context(**selected)
     html = frappe.render_template('templates/design_collection_report.html', context)
     message = ('<iframe class="marina-mood-board-preview" title="Mood Board Overview" '
