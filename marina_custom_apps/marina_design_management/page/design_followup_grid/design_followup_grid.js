@@ -368,10 +368,10 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
         state.page=1;
         reload();
     }));
-    const bulkEnabled=()=>state.designCodes.length>0 && state.milestoneFilter==="active";
+    // Bulk completion works with any filters; Multiple Codes is optional.
+    const bulkEnabled=()=>state.milestoneFilter==="active";
     const bulkEligible=row=>Boolean(row.execution && row.plan_state==="Active" &&
         row.current_custodian && (row.allowed_steps||[]).includes("Completed"));
-    const bulkSignature=row=>[row.milestone_type,row.status,row.current_custodian].join("\u0000");
     const updateBulkActions=()=>{
         const enabled=bulkEnabled();
         bulkAll.toggle(enabled);
@@ -743,10 +743,6 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
             return false;
         }
         const chosen=[...state.selectedBulk.values()];
-        if(chosen.length && bulkSignature(chosen[0].row)!==bulkSignature(item.row)){
-            frappe.msgprint(__("Select designs with the same milestone, current step and current custodian."));
-            return false;
-        }
         if(chosen.some(existing=>existing.design_code===item.design_code)){
             frappe.msgprint(__("Select only one milestone per Design Code."));
             return false;
@@ -761,25 +757,18 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
             frappe.msgprint(__("No eligible milestones found on this page."));
             return;
         }
-        const groups=new Map();
-        rows.forEach(item=>{
-            const key=bulkSignature(item.row);
-            if(!groups.has(key))groups.set(key,[]);
-            groups.get(key).push(item);
+        const additional=rows.filter(item=>!state.selectedBulk.has(item.execution));
+        const codes=new Set([...state.selectedBulk.values()].map(item=>item.design_code));
+        const uniqueAdditional=additional.filter(item=>{
+            if(codes.has(item.design_code))return false;
+            codes.add(item.design_code);
+            return true;
         });
-        const chosen=state.selectedBulk.size?
-            bulkSignature([...state.selectedBulk.values()][0].row):null;
-        if(!chosen && groups.size!==1){
-            frappe.msgprint(__("This page contains different milestones, steps or custodians. Select one row first, then use Select All to select matching rows."));
+        if(state.selectedBulk.size+uniqueAdditional.length>50){
+            frappe.msgprint(__("This selection exceeds 50 designs. Reduce Designs / Page or select individual rows."));
             return;
         }
-        const target=chosen||[...groups.keys()][0];
-        const matches=groups.get(target)||[];
-        if(matches.length>50){
-            frappe.msgprint(__("More than 50 matching rows on this page. Select a smaller page size."));
-            return;
-        }
-        matches.forEach(item=>addBulkRow(item));
+        uniqueAdditional.forEach(item=>addBulkRow(item));
         draw();
     }));
     surface.on("change",".mdm-bulk-row",function(){
@@ -986,6 +975,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
         if(state.dashboard){milestoneFilter.val(state.milestoneFilter);return;}
         const next=milestoneFilter.val();
         if(!state.appliedCustody){
+            state.selectedBulk.clear();
             // With no Custody filtering, all milestone states are already
             // loaded; retain the original zero-query in-memory behavior.
             state.milestoneFilter=next;
@@ -994,6 +984,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
         }
         const previous=state.milestoneFilter;
         const change=()=>{
+            state.selectedBulk.clear();
             state.milestoneFilter=next;
             milestoneFilter.val(next);
             state.page=1;
