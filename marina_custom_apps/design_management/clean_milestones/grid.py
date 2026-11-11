@@ -172,7 +172,9 @@ def _allowed_rows(designs, plans, executions):
 @frappe.whitelist()
 def get_grid(page=1, page_size=50, search=None, mood_board=None,
              designer=None, custody=None, milestone_view="all", factory=None,
-             design_codes=None):
+             design_codes=None, dashboard_milestone=None,
+             year=None, season=None, collection=None, drop=None,
+             assigned_merchandiser=None, deadline_status=None):
     if not frappe.has_permission("Design Code", "read"):
         frappe.throw("Design Code read permission required", frappe.PermissionError)
     try:
@@ -189,6 +191,19 @@ def get_grid(page=1, page_size=50, search=None, mood_board=None,
     except ValueError as exc:
         frappe.throw(str(exc))
     filters = {}
+    if dashboard_milestone:
+        if (not isinstance(dashboard_milestone, str)
+                or len(dashboard_milestone) > 140
+                or milestone_view not in ("active", "completed")):
+            frappe.throw("Invalid dashboard milestone selection")
+    for field, value in (
+        ("year", year), ("season", season), ("collection", collection),
+        ("drop", drop), ("assigned_merchandiser", assigned_merchandiser),
+    ):
+        if value:
+            if not isinstance(value, str) or len(value) > 140:
+                frappe.throw("Invalid " + field + " filter")
+            filters[field] = value
     if mood_board:
         filters["mood_board"] = str(mood_board)[:140]
     if designer:
@@ -212,6 +227,48 @@ def get_grid(page=1, page_size=50, search=None, mood_board=None,
     if not restrict_to_design_codes(filters, selected_codes):
         return {"designs": [], "page": page,
                 "page_size": page_size, "has_more": False}
+    if dashboard_milestone:
+        # Select design IDs from the same plan/execution conditions used
+        # by the dashboard. Do this before pagination; per-page filtering
+        # otherwise yields missing designs and incorrect navigation.
+        active = milestone_view == "active"
+        status_clause = "x.status!='Completed'" if active else "x.status='Completed'"
+        matching = frappe.db.sql("""
+            SELECT DISTINCT p.design_code
+            FROM `tabDesign Milestone Plan Entry` p
+            INNER JOIN `tabDesign Milestone Execution` x
+              ON x.name=p.activated_execution AND x.design_code=p.design_code
+            WHERE p.milestone_type=%s AND p.plan_state=%s
+              AND """ + status_clause + """
+            LIMIT %s
+        """, (dashboard_milestone, "Active" if active else "Completed",
+              MAX_CUSTODY_DESIGNS + 1), as_dict=True)
+        if len(matching) > MAX_CUSTODY_DESIGNS:
+            frappe.throw("Too many matching milestones. Narrow the selection.")
+        names = {row.design_code for row in matching}
+        # Dashboard deadline filter is a distinct-design condition, not
+        # necessarily the same active milestone that was clicked.
+        if deadline_status:
+            if deadline_status not in ("Delayed", "On Track"):
+                frappe.throw("Invalid deadline filter")
+            from frappe.utils import today as current_day
+            overdue = frappe.db.sql("""
+                SELECT DISTINCT p.design_code
+                FROM `tabDesign Milestone Plan Entry` p
+                INNER JOIN `tabDesign Milestone Execution` x
+                  ON x.name=p.activated_execution AND x.design_code=p.design_code
+                WHERE p.plan_state='Active' AND x.status!='Completed'
+                  AND x.due_date < %s
+                  AND p.design_code IN %s
+            """, (current_day(), tuple(sorted(names)) or ("",)), as_dict=True)
+            delayed = {row.design_code for row in overdue}
+            names = names & delayed if deadline_status == "Delayed" else names - delayed
+        if "name" in filters:
+            names &= set(filters["name"][1])
+        if not names:
+            return {"designs": [], "page": page,
+                    "page_size": page_size, "has_more": False}
+        filters["name"] = ["in", sorted(names)]
     search = (search or "").strip()
     if len(search) > 100:
         frappe.throw("Search must be 100 characters or less")
