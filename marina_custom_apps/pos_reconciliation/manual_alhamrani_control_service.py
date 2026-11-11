@@ -33,7 +33,7 @@ def _invoice_field():
 
 def _read(name, lock=False):
     name = cstr(name).strip()
-    if not re.fullmatch(r"AUP-\\d{4}-\\d{5}(?:-\\d+)?", name):
+    if not re.fullmatch(r"AUP-\d{4}-\d{5}(?:-\d+)?", name):
         frappe.throw(_("Enter a valid Alhamrani transaction ID."))
     if lock:
         frappe.db.sql("SELECT name FROM `tabAlhamrani Transaction` WHERE name=%s FOR UPDATE", (name,))
@@ -63,13 +63,26 @@ def _check_unlinked(doc):
                     "bank_statement_settlement"],
             limit_page_length=2,
         )
-        if rows:
-            frappe.throw(_("This AUP already appears in POS reconciliation results. Review/reconcile the existing record before changing source evidence."))
+        for row in rows:
+            # An unlinked, Alhamrani-only preview is safe to refresh on the next
+            # reconciliation run. Never mutate an already paired or financially
+            # consumed source, even if its status label is stale.
+            financial_fields = (
+                "bank_transaction", "accounting_posting", "journal_entry",
+                "settlement_number", "bank_statement_reconciliation",
+                "bank_statement_settlement",
+            )
+            if any(cstr(row.get(field)).strip() for field in financial_fields):
+                frappe.throw(_("AUP is linked to reconciliation or financial evidence. Finance review is required."))
+            if cstr(row.get("accounting_status")).strip() in {
+                "Draft Created", "Posted", "Draft - Review Required", "Posted - Review Required"
+            }:
+                frappe.throw(_("AUP has protected accounting status. Source correction is blocked."))
 
 
 def _rrn(value):
     value = cstr(value).strip()
-    if not re.fullmatch(r"\\d{12}", value):
+    if not re.fullmatch(r"\d{12}", value):
         frappe.throw(_("RRN must contain exactly 12 digits."))
     return value
 
@@ -99,7 +112,7 @@ def _audit(doc, label, old, new, reason):
         "doctype": "Comment", "comment_type": "Info",
         "reference_doctype": ALHAMRANI_DOCTYPE,
         "reference_name": doc.name,
-        "content": "\\n".join(lines),
+        "content": "\n".join(lines),
     }).insert(ignore_permissions=True)
 
 
