@@ -111,9 +111,9 @@ def board_context(mood_board):
     }
 
 
-def report_context(mood_boards=None, year=None, season=None, collection=None):
+def report_context(mood_boards=None, year=None, season=None, collection=None, drop=None):
     filters = {}
-    for field, value in (("year", year), ("season", season), ("collection", collection)):
+    for field, value in (("year", year), ("season", season), ("collection", collection), ("drop", drop)):
         if value:
             if not isinstance(value, str) or len(value) > 140:
                 frappe.throw("Invalid report filter")
@@ -153,6 +153,6 @@ def report_context(mood_boards=None, year=None, season=None, collection=None):
 
 
 @frappe.whitelist()
-def preview(mood_boards=None, year=None, season=None, collection=None):
+def preview(mood_boards=None, year=None, season=None, collection=None, drop=None):
     return frappe.render_template('templates/design_collection_report.html',
-        report_context(mood_boards=mood_boards, year=year, season=season, collection=collection))
+        report_context(mood_boards=mood_boards, year=year, season=season, collection=collection, drop=drop))
