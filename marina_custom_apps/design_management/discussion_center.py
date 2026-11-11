@@ -18,11 +18,12 @@ def _term(value, max_length=100):
 
 
 @frappe.whitelist()
-def boards(year=None, season=None, collection=None, design_code=None, offset=0):
+def boards(year=None, season=None, collection=None, design_code=None, offset=0, drop=None):
     if frappe.session.user == "Guest":
         frappe.throw("Sign in to view discussions.", frappe.PermissionError)
     year, season = _term(year), _term(season)
     collection, design_code = _term(collection), _term(design_code)
+    drop = _term(drop)
     try:
         offset = int(offset)
     except (ValueError, TypeError):
@@ -30,7 +31,7 @@ def boards(year=None, season=None, collection=None, design_code=None, offset=0):
     if offset < 0 or offset > 100000:
         frappe.throw("Invalid page.")
     filters = {}
-    for key, val in (("year", year), ("season", season), ("collection", collection)):
+    for key, val in (("year", year), ("season", season), ("collection", collection), ("drop", drop)):
         if val:
             filters[key] = val
     # If filtering by design number, prefilter Mood Boards using a permission-

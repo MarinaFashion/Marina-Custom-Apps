@@ -178,6 +178,21 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
         control.$wrapper?.find(".form-group, .frappe-control").css("margin-bottom","0");
         return control;
     };
+    const hierarchyChoices={
+        season:["Ramadan","Summer","Winter"],
+        collection:["EID","Ramadan","Hajj","Summer","Autumn","Winter"],
+        drop:["Drop- 01","Drop- 02","Drop- 03","Drop- 04",
+              "Drop- B2S","Drop- Reorder","Not Assigned"]
+    };
+    const hierarchyFilters={};
+    for(const key of ["season","collection","drop"]){
+        const box=filterColumn(__(key[0].toUpperCase()+key.slice(1)),"145px");
+        const select=$('<select class="form-control input-sm"></select>').appendTo(box.col);
+        $('<option>').val("").text(__("All")).appendTo(select);
+        hierarchyChoices[key].forEach(value=>
+            $('<option>').val(value).text(value).appendTo(select));
+        hierarchyFilters[key]=select;
+    }
     const mood=makeLink("mood_board",filterColumn(__("Mood Board"),"155px"),"Mood Board");
     const designer=makeLink("designer",filterColumn(__("Designer"),"155px"),"User");
     designer.get_query=()=>({
@@ -595,6 +610,9 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
                     design_codes:state.designCodes.length?JSON.stringify(state.designCodes):null,
                     mood_board:mood.get_value(),
                     designer:designer.get_value(),factory:factory.val(),
+                    season:hierarchyFilters.season.val(),
+                    collection:hierarchyFilters.collection.val(),
+                    drop:hierarchyFilters.drop.val(),
                     custody:custody.get_value(),
                     milestone_view:state.milestoneFilter,
                     dashboard_milestone:state.dashboard?.milestone||null,
@@ -1137,6 +1155,8 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
                     milestoneFilter.val(view).prop("disabled",true);
                     state.designCodes=[];showMultiCount();
                     search.val("");factory.val("");
+                    ["season","collection","drop"].forEach(key=>
+                        hierarchyFilters[key].val(filters[key]||""));
                     state.page=1;
                     state.view="design";groupBy.val("design");
                     Promise.all([mood.set_value(filters.mood_board||""),

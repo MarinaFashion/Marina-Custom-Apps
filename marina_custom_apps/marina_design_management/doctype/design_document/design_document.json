@@ -172,12 +172,14 @@
     {
       "fieldname": "filter_season",
       "label": "Season",
-      "fieldtype": "Data"
+      "fieldtype": "Select",
+      "options": "\nRamadan\nSummer\nWinter"
     },
     {
       "fieldname": "filter_collection",
       "label": "Collection",
-      "fieldtype": "Data"
+      "fieldtype": "Select",
+      "options": "\nEID\nRamadan\nHajj\nSummer\nAutumn\nWinter"
     },
     {
       "fieldname": "filter_merchandiser",

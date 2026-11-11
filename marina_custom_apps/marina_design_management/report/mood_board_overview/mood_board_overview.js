@@ -2,14 +2,19 @@ frappe.query_reports["Mood Board Overview"] = {
     filters: [
         {fieldname: "year", label: __("Year"), fieldtype: "Data", on_change: marina_overview_filters_changed},
         {fieldname: "season", label: __("Season"), fieldtype: "Select",
-            options: "\nSpring\nSummer\nAutumn\nWinter\nHajj\nRamadan\nOther", on_change: marina_overview_filters_changed},
-        {fieldname: "collection", label: __("Collection"), fieldtype: "Data", on_change: marina_overview_filters_changed},
+            options: "\nRamadan\nSummer\nWinter", on_change: marina_overview_filters_changed},
+        {fieldname: "collection", label: __("Collection"), fieldtype: "Select",
+            options: "\nEID\nRamadan\nHajj\nSummer\nAutumn\nWinter",
+            on_change: marina_overview_filters_changed},
+        {fieldname: "drop", label: __("Drop"), fieldtype: "Select",
+            options: "\nDrop- 01\nDrop- 02\nDrop- 03\nDrop- 04\nDrop- B2S\nDrop- Reorder\nNot Assigned",
+            on_change: marina_overview_filters_changed},
         {fieldname: "mood_boards", label: __("Mood Board"), fieldtype: "MultiSelectList",
             on_change: marina_overview_filters_changed,
             get_data(txt) {
                 const report = frappe.query_report;
                 const filters = {};
-                ["year", "season", "collection"].forEach(key => {
+                ["year", "season", "collection", "drop"].forEach(key => {
                     const value = report.get_filter_value(key);
                     if (value) filters[key] = value;
                 });
