@@ -38,7 +38,7 @@ def _selection(items):
     return sorted(parsed)
 
 
-def _inspect(selected):
+def _inspect(selected, reason=None):
     """Recheck source-of-truth records and every actor's individual rights."""
     actor = frappe.session.user
     signature = None
@@ -69,7 +69,7 @@ def _inspect(selected):
             frappe.throw(code + ": Completed is not an allowed next step")
         stage = allowed["Completed"]
         service._authorize(actor, "Advance Milestone Step", design,
-                           stage["responsible_module_role"],
+                           stage["responsible_module_role"], reason=reason,
                            custodian=row.current_custodian)
         # Verify that a valid target owner can be assigned before any writes.
         service._role_user(design, stage["custody_role"])
@@ -89,8 +89,8 @@ def _inspect(selected):
 
 
 @frappe.whitelist()
-def preview_bulk_completion(selected):
-    rows = _inspect(_selection(selected))
+def preview_bulk_completion(selected, reason=None):
+    rows = _inspect(_selection(selected), reason=reason)
     head = rows[0]
     return {
         "count": len(rows),
@@ -117,7 +117,7 @@ def complete_bulk(selected, evidence_document=None, step_change_date=None,
     # or beginning the existing advance() business transaction.
     for code, _ in parsed:
         service._lock_design(code)
-    rows = _inspect(parsed)
+    rows = _inspect(parsed, reason=reason)
     required = rows[0]["evidence_type"]
     if required and not evidence_document:
         frappe.throw("Select one Published Evidence document for all designs")
@@ -148,3 +148,43 @@ def complete_bulk(selected, evidence_document=None, step_change_date=None,
         results.append(row["design_code"])
     return {"completed": len(results), "design_codes": results,
             "milestone_type": rows[0]["milestone_type"]}
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def search_bulk_evidence(doctype, txt, searchfield, start, page_len, filters):
+    """Published, unsuperseded evidence from the selected Milestone Type."""
+    if doctype != "Design Document":
+        return []
+    if isinstance(filters, str):
+        filters = frappe.parse_json(filters)
+    if not isinstance(filters, dict):
+        return []
+    selected = _selection(filters.get("selected"))
+    rows = _inspect(selected, reason=filters.get("reason"))
+    milestone, evidence_type = rows[0]["milestone_type"], rows[0]["evidence_type"]
+    if not evidence_type:
+        return []
+    query = {
+        "filters": {
+            "publication_status": "Published",
+            "superseded_by": ["is", "not set"],
+            "related_milestone_type": milestone,
+            "document_type": evidence_type,
+        },
+        "fields": ["name", "document_title"],
+        "order_by": "modified desc, name desc",
+        "limit_start": max(0, int(start)),
+        "limit_page_length": min(50, max(1, int(page_len))),
+    }
+    needle = (txt or "").strip()
+    if len(needle) > 100:
+        return []
+    if needle:
+        term = "%" + needle + "%"
+        query["or_filters"] = [
+            ["Design Document", "name", "like", term],
+            ["Design Document", "document_title", "like", term],
+        ]
+    docs = frappe.get_list("Design Document", **query)
+    return [(doc.name, doc.document_title or doc.name) for doc in docs]
