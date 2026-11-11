@@ -1,31 +1,31 @@
 {
- "doctype": "DocType",
- "name": "Design User Action Permission",
- "module": "Marina Design Management",
- "istable": 1,
- "fields": [
-  {
-   "fieldname": "action_key",
-   "label": "Action",
-   "fieldtype": "Select",
-   "options": "Assign Milestones\nAdvance Milestone Step\nPublish Document\nRemove Published Assignment\nCreate ERPNext Items\nDelete Design Code\nReturn to Milestone\nClear Related Milestones\nManage Role Permissions\nAssign Team Tasks\nReassign Team Tasks\nApprove Design Cost Breakdown\nSend Discussion Message\nUpload Discussion Attachment",
-   "reqd": 1,
-   "in_list_view": 1
-  },
-  {
-   "fieldname": "access",
-   "label": "Permission",
-   "fieldtype": "Select",
-   "options": "Not Allowed\nAllowed\nCustody Only",
-   "default": "Not Allowed",
-   "reqd": 1,
-   "in_list_view": 1,
-   "description": "Choose Not Allowed or Allowed for all actions. Custody Only is supported for Advance Milestone Step and checks the execution's current custodian."
-  }
- ],
- "field_order": [
-  "action_key",
-  "access"
- ],
- "permissions": []
+  "doctype": "DocType",
+  "name": "Design User Action Permission",
+  "module": "Marina Design Management",
+  "istable": 1,
+  "fields": [
+    {
+      "fieldname": "action_key",
+      "label": "Action",
+      "fieldtype": "Select",
+      "options": "Assign Milestones\nAdvance Milestone Step\nPublish Document\nRemove Published Assignment\nReplace Published Document\nCreate ERPNext Items\nDelete Design Code\nReturn to Milestone\nClear Related Milestones\nManage Role Permissions\nAssign Team Tasks\nReassign Team Tasks\nApprove Design Cost Breakdown\nSend Discussion Message\nUpload Discussion Attachment",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "access",
+      "label": "Permission",
+      "fieldtype": "Select",
+      "options": "Not Allowed\nAllowed\nCustody Only",
+      "default": "Not Allowed",
+      "reqd": 1,
+      "in_list_view": 1,
+      "description": "Choose Not Allowed or Allowed for all actions. Custody Only is supported for Advance Milestone Step and checks the execution's current custodian."
+    }
+  ],
+  "field_order": [
+    "action_key",
+    "access"
+  ],
+  "permissions": []
 }
