@@ -175,7 +175,7 @@ def get_grid(page=1, page_size=50, search=None, mood_board=None,
              design_codes=None, dashboard_milestone=None,
              year=None, season=None, collection=None, drop=None,
              assigned_merchandiser=None, deadline_status=None,
-             current_milestone=None):
+             current_milestone=None, milestone_type=None):
     if not frappe.has_permission("Design Code", "read"):
         frappe.throw("Design Code read permission required", frappe.PermissionError)
     try:
@@ -228,6 +228,32 @@ def get_grid(page=1, page_size=50, search=None, mood_board=None,
     if not restrict_to_design_codes(filters, selected_codes):
         return {"designs": [], "page": page,
                 "page_size": page_size, "has_more": False}
+    if milestone_type:
+        if not isinstance(milestone_type, str) or len(milestone_type) > 140:
+            frappe.throw("Invalid Milestone Type filter")
+        # Filter designs using milestone plans before pagination, not on the
+        # already-fetched page. The selected plan state also governs rows.
+        plan_state = {
+            "active": "Active", "completed": "Completed", "future": "Planned"
+        }.get(milestone_view)
+        milestone_filters = {"milestone_type": milestone_type}
+        if plan_state:
+            milestone_filters["plan_state"] = plan_state
+        matching_plans = frappe.get_all(
+            "Design Milestone Plan Entry",
+            filters=milestone_filters,
+            fields=["design_code"],
+            limit_page_length=MAX_CUSTODY_DESIGNS + 1,
+        )
+        if len(matching_plans) > MAX_CUSTODY_DESIGNS:
+            frappe.throw("Too many milestone records. Narrow the filters.")
+        matching_names = {row.design_code for row in matching_plans}
+        if "name" in filters:
+            matching_names &= set(filters["name"][1])
+        if not matching_names:
+            return {"designs": [], "page": page,
+                    "page_size": page_size, "has_more": False}
+        filters["name"] = ["in", sorted(matching_names)]
     if dashboard_milestone:
         if current_milestone:
             if not isinstance(current_milestone, str) or len(current_milestone) > 140:
