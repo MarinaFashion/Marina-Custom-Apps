@@ -61,7 +61,10 @@ class BulkMilestoneCompletionWiringTests(unittest.TestCase):
         self.assertIn('Complete Selected', code)
         self.assertIn('preview_bulk_completion', code)
         self.assertIn('complete_bulk_milestones', code)
-        self.assertIn('search_bulk_evidence', code)
+        self.assertIn('preview.evidence_options', code)
+        self.assertIn('fieldtype:"Select",fieldname:"evidence_document"', code)
+        self.assertIn('documentByDisplay.get(values.evidence_document)', code)
+        self.assertNotIn('search_bulk_evidence', code)
 
 
 if __name__ == "__main__":
