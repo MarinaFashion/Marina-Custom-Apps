@@ -51,7 +51,10 @@ jobs:
           assert '"time": cstr(alh.transaction_time).strip()' in service
           assert '"time_origin": time_origin' in service
           assert 'time_tolerance_seconds' in service
-          assert js.index('fieldname:"mapping_confirmation"') < js.index('fieldname:"reason",fieldtype:"Small Text"')
+          # Scope the ordering check to the existing manual LINK dialog:
+          # the newer AUP confirmation dialog has its own reason field.
+          manual_link_js = js.split('frm.add_custom_button(__("Link Manual Alhamrani Payment")', 1)[1]
+          assert manual_link_js.index('fieldname:"mapping_confirmation"') < manual_link_js.index('fieldname:"reason",fieldtype:"Small Text"')
           assert 'I reviewed both POS Profiles, Amount, Date and Time and confirm this mapping.' in js
           assert 'source.pos_profile, candidate.pos_profile' in js
           assert 'POS Profiles differ (Alhamrani:' in js
