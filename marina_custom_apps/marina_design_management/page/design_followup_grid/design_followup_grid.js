@@ -180,12 +180,10 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
     };
     const hierarchyChoices={
         season:["Ramadan","Summer","Winter"],
-        collection:["EID","Ramadan","Hajj","Summer","Autumn","Winter"],
-        drop:["Drop- 01","Drop- 02","Drop- 03","Drop- 04",
-              "Drop- B2S","Drop- Reorder","Not Assigned"]
+        collection:["EID","Ramadan","Hajj","Summer","Autumn","Winter"]
     };
     const hierarchyFilters={};
-    for(const key of ["season","collection","drop"]){
+    for(const key of ["season","collection"]){
         const box=filterColumn(__(key[0].toUpperCase()+key.slice(1)),"145px");
         const select=$('<select class="form-control input-sm"></select>').appendTo(box.col);
         $('<option>').val("").text(__("All")).appendTo(select);
@@ -193,13 +191,6 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
             $('<option>').val(value).text(value).appendTo(select));
         hierarchyFilters[key]=select;
     }
-    const mood=makeLink("mood_board",filterColumn(__("Mood Board"),"155px"),"Mood Board");
-    const designer=makeLink("designer",filterColumn(__("Designer"),"155px"),"User");
-    designer.get_query=()=>({
-        query:"marina_custom_apps.design_management.security.participants.search_participant_users",
-        filters:{owner_field:"designer"}
-    });
-    designer.df.get_query=designer.get_query;
     const custodyBox=filterColumn(__("Custody"),"170px");
     const custody=makeLink("custody",custodyBox,"User");
     custody.get_query=()=>({
@@ -213,6 +204,31 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
         e.preventDefault();
         Promise.resolve(custody.set_value(frappe.session.user))
             .then(()=>apply.trigger("click"));
+    });
+    const mood=makeLink("mood_board",filterColumn(__("Mood Board"),"155px"),"Mood Board");
+    const designer=makeLink("designer",filterColumn(__("Designer"),"155px"),"User");
+    designer.get_query=()=>({
+        query:"marina_custom_apps.design_management.security.participants.search_participant_users",
+        filters:{owner_field:"designer"}
+    });
+    designer.df.get_query=designer.get_query;
+    const milestoneBox=filterColumn(__("Milestone Type"),"160px");
+    const milestoneType=$('<select class="form-control input-sm"></select>')
+        .attr("id","mdm-grid-milestone-type").appendTo(milestoneBox.col);
+    $('<option>').val("").text(__("All Milestone Types")).appendTo(milestoneType);
+    milestoneBox.heading.attr("for","mdm-grid-milestone-type");
+    // Load milestone masters once, not on every filter.
+    frappe.call({
+        method:"marina_custom_apps.design_management.clean_milestones.api.followup_milestone_types"
+    }).then(({message:types})=>{
+        (types||[]).forEach(name=>
+            $('<option>').val(name).text(name).appendTo(milestoneType));
+        const chosen=state.dashboard?.milestone||milestoneType.data("pending-value");
+        if(chosen)milestoneType.val(chosen);
+    }).catch(error=>{
+        console.warn("Unable to load Milestone Type options",error);
+        $('<option>').val("").prop("disabled",true)
+            .text(__("Milestone types unavailable — reload page")).appendTo(milestoneType);
     });
     const viewBox=filterColumn(__("Group By"),"140px");
     const groupBy=$('<select class="form-control input-sm"></select>')
@@ -306,7 +322,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
     // Keep this client-only state separate from unsaved edits and server status.
     let state = {page:1,data:null,dirty:new Map(),request:0,
                  expanded:new Set(),view:"design",milestoneFilter:"active",
-                 appliedCustody:"",designCodes:[],dashboard:null,
+                 appliedCustody:"",selectedMilestone:"",designCodes:[],dashboard:null,
                  selectedBulk:new Map()};
     const showMultiCount = () => {
         const count=state.designCodes.length;
@@ -366,6 +382,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
     // Classify by plan state: Rework remains Current, not Completed.
     const showMilestone = row =>
         (!state.dashboard || row.milestone_type===state.dashboard.milestone) &&
+        (!state.selectedMilestone || row.milestone_type===state.selectedMilestone) &&
         (state.milestoneFilter==="all" ||
          row.plan_state === ({active:"Active",completed:"Completed",
                              future:"Planned"}[state.milestoneFilter])) &&
@@ -612,7 +629,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
                     designer:designer.get_value(),factory:factory.val(),
                     season:hierarchyFilters.season.val(),
                     collection:hierarchyFilters.collection.val(),
-                    drop:hierarchyFilters.drop.val(),
+                    milestone_type:milestoneType.val()||null,
                     custody:custody.get_value(),
                     milestone_view:state.milestoneFilter,
                     dashboard_milestone:state.dashboard?.milestone||null,
@@ -627,6 +644,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
             state.data=data;
             state.selectedBulk.clear();
             state.appliedCustody=args.custody||"";
+            state.selectedMilestone=args.milestone_type||"";
             if(state.dashboard){
                 data.designs.forEach(design=>state.expanded.add(design.name));
             }
@@ -1155,8 +1173,9 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
                     milestoneFilter.val(view).prop("disabled",true);
                     state.designCodes=[];showMultiCount();
                     search.val("");factory.val("");
-                    ["season","collection","drop"].forEach(key=>
+                    ["season","collection"].forEach(key=>
                         hierarchyFilters[key].val(filters[key]||""));
+                    milestoneType.data("pending-value",milestone).val(milestone).prop("disabled",true);
                     state.page=1;
                     state.view="design";groupBy.val("design");
                     Promise.all([mood.set_value(filters.mood_board||""),
@@ -1172,6 +1191,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
             state.dashboard=null;
             clearDashboard.hide();
             milestoneFilter.prop("disabled",false);
+            milestoneType.prop("disabled",false);
             search.val(selected);
             state.designCodes=[];
             showMultiCount();
