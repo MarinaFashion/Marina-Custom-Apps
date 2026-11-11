@@ -88,6 +88,57 @@ def _inspect(selected, reason=None):
     return details
 
 
+def _published_evidence_options(milestone_type, evidence_type):
+    """Bounded, readable Published documents linked to this milestone.
+
+    A document may target the milestone on its parent or through an
+    explicit Design Document Assignment override. Never list Draft or
+    superseded documents; no document mutations occur during preview.
+    """
+    if not evidence_type:
+        return []
+    documents = frappe.get_list(
+        "Design Document",
+        filters={
+            "publication_status": "Published",
+            "superseded_by": ["is", "not set"],
+            "document_type": evidence_type,
+        },
+        fields=["name", "document_title", "related_milestone_type"],
+        order_by="modified desc, name desc",
+        limit_page_length=501,
+    )
+    if len(documents) > 500:
+        frappe.throw("Too many Published evidence documents. Narrow the document collection.")
+    if not documents:
+        return []
+    names = [doc.name for doc in documents]
+    links = frappe.get_all(
+        "Design Document Assignment",
+        filters={
+            "parenttype": "Design Document",
+            "parentfield": "assignments",
+            "parent": ["in", names],
+        },
+        fields=["parent", "target_milestone_type"],
+        limit_page_length=5001,
+    )
+    if len(links) > 5000:
+        frappe.throw("Too many evidence assignments. Review document organization.")
+    # Parent milestone is the default only when an assignment has no override.
+    overrides = {}
+    for link in links:
+        overrides.setdefault(link.parent, set()).add(link.target_milestone_type)
+    from marina_custom_apps.design_management.clean_milestones.evidence import matches_milestone
+    return [
+        {"name": doc.name, "title": doc.document_title or doc.name}
+        for doc in documents
+        if (doc.related_milestone_type == milestone_type
+            or any(matches_milestone(target, doc.related_milestone_type, milestone_type)
+                   for target in overrides.get(doc.name, set())))
+    ]
+
+
 @frappe.whitelist()
 def preview_bulk_completion(selected, reason=None):
     rows = _inspect(_selection(selected), reason=reason)
@@ -98,6 +149,8 @@ def preview_bulk_completion(selected, reason=None):
         "current_step": head["step"],
         "custodian": head["custodian"],
         "evidence_type": head["evidence_type"],
+        "evidence_options": _published_evidence_options(
+            head["milestone_type"], head["evidence_type"]),
         "design_codes": [row["design_code"] for row in rows],
         "earliest_completion_date": max(
             str(getdate(row["step_entered_on"])) for row in rows
