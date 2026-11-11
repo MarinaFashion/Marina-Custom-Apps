@@ -786,18 +786,15 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
                  label:__("Reason / Review Notes"),
                  default:"Bulk milestone completion",
                  description:__("A reason may be required for manager override or correction.")},
-                {fieldtype:"Link",fieldname:"evidence_document",
+                {fieldtype:"Select",fieldname:"evidence_document",
                  label:__("Published Evidence"),
-                 options:"Design Document",hidden:documentRequired?0:1,
+                 options:["",...(preview.evidence_options||[]).map(
+                     doc=>doc.name)],
+                 hidden:documentRequired?0:1,
                  reqd:documentRequired?1:0,
                  description:documentRequired?
-                     __("Choose one Published document to link to every selected design."):
-                     __("This milestone does not require evidence."),
-                 get_query:()=>({
-                     query:"marina_custom_apps.design_management.clean_milestones.bulk_completion.search_bulk_evidence",
-                     filters:{selected:JSON.stringify(selected),
-                              reason:dialog.get_value("reason")||""}
-                 })}
+                     __("Select one Published Fitting Report or other milestone evidence. The same document is linked to all selected designs."):
+                     __("This milestone does not require evidence.")}
             ],
             primary_action_label:__("Complete All Selected"),
             async primary_action(values){
@@ -843,7 +840,9 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
             preview.design_codes.map(code=>'<span class="badge badge-light mr-1 mb-1">'+
                 esc(code)+'</span>').join("")+'</div>'+
             (documentRequired?'<p class="small text-muted">'+
-                esc(__("Required evidence type: {0}",[preview.evidence_type]))+'</p>':"")
+                esc(__("Required evidence type: {0}",[preview.evidence_type]))+
+                ' · '+esc(__("{0} Published documents available",[
+                    (preview.evidence_options||[]).length]))+'</p>':"")
         );
     }));
     surface.on("click",".mdm-toggle-design",function(){
