@@ -774,6 +774,11 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
         }
         if(!preview || preview.count!==selected.length)return;
         const documentRequired=Boolean(preview.evidence_type);
+        const evidenceChoices=(preview.evidence_options||[]).map(doc=>({
+            name:doc.name,
+            display:(doc.title||doc.name)+" ("+doc.name+")"
+        }));
+        const documentByDisplay=new Map(evidenceChoices.map(doc=>[doc.display,doc.name]));
         const dialog=new frappe.ui.Dialog({
             title:__("Complete {0} selected designs",[preview.count]),
             fields:[
@@ -788,8 +793,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
                  description:__("A reason may be required for manager override or correction.")},
                 {fieldtype:"Select",fieldname:"evidence_document",
                  label:__("Published Evidence"),
-                 options:["",...(preview.evidence_options||[]).map(
-                     doc=>doc.name)],
+                 options:["",...evidenceChoices.map(doc=>doc.display)],
                  hidden:documentRequired?0:1,
                  reqd:documentRequired?1:0,
                  description:documentRequired?
@@ -811,7 +815,7 @@ frappe.pages["design-followup-grid"].on_page_load = function (wrapper) {
                         try {
                             const result=await endpoint("complete_bulk_milestones",{
                                 selected:JSON.stringify(selected),
-                                evidence_document:values.evidence_document||null,
+                                evidence_document:documentByDisplay.get(values.evidence_document)||null,
                                 step_change_date:values.step_change_date,
                                 reason:values.reason||"",
                                 confirm_evidence_link:documentRequired?1:0
