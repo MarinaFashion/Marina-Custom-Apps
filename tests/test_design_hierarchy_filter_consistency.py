@@ -30,7 +30,8 @@ class HierarchyFilterConsistencyTests(unittest.TestCase):
         fields = {f["fieldname"]: f for f in json.loads(MOOD.read_text())["fields"]}
         for field, values in EXPECTED.items():
             self.assertEqual(fields[field]["fieldtype"], "Select")
-            self.assertEqual(fields[field]["options"].splitlines()[1:], values)
+            self.assertEqual(fields[field]["options"].splitlines(),
+                                 values if field == "drop" else [""] + values)
 
     def test_overview_report_options_and_drop_wiring(self):
         code = REPORT.read_text()
