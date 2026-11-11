@@ -236,17 +236,19 @@ def get_grid(page=1, page_size=50, search=None, mood_board=None,
         plan_state = {
             "active": "Active", "completed": "Completed", "future": "Planned"
         }.get(milestone_view)
-        milestone_filters = {"milestone_type": milestone_type}
-        if plan_state:
-            milestone_filters["plan_state"] = plan_state
-        matching_plans = frappe.get_all(
-            "Design Milestone Plan Entry",
-            filters=milestone_filters,
-            fields=["design_code"],
-            limit_page_length=MAX_CUSTODY_DESIGNS + 1,
-        )
+        # DISTINCT avoids reading duplicate Design Code IDs when a design
+        # has multiple plan entries. The milestone/state are indexed filters.
+        matching_plans = frappe.db.sql("""
+            SELECT DISTINCT design_code
+            FROM `tabDesign Milestone Plan Entry`
+            WHERE milestone_type=%s
+        """ + (" AND plan_state=%s" if plan_state else "") +
+        " LIMIT %s", (
+            (milestone_type, plan_state, MAX_CUSTODY_DESIGNS + 1)
+            if plan_state else (milestone_type, MAX_CUSTODY_DESIGNS + 1)
+        ), as_dict=True)
         if len(matching_plans) > MAX_CUSTODY_DESIGNS:
-            frappe.throw("Too many milestone records. Narrow the filters.")
+            frappe.throw("Too many matching designs. Narrow the filters.")
         matching_names = {row.design_code for row in matching_plans}
         if "name" in filters:
             matching_names &= set(filters["name"][1])
