@@ -98,9 +98,17 @@ def _is_manual(doc):
     return " ".join(cstr(doc.get("response_meaning")).split()).casefold() == MANUAL_SLIP_RESPONSE_MEANING.casefold()
 
 
-def _ensure_manual_only(doc):
-    if not _is_manual(doc):
-        frappe.throw(_("RRN correction is restricted to manually confirmed terminal-slip transactions."))
+def _decide_action(doc):
+    """Choose workflow from current evidence; never trust a UI-supplied mode."""
+    if _is_manual(doc):
+        return "correct_rrn"
+    if cstr(doc.get("status")).strip().upper() in {"APPROVED", "SUCCESS", "COMPLETED"}:
+        frappe.throw(_("An approved electronic transaction cannot be manually re-confirmed."))
+    if cstr(doc.get("response_code")).strip():
+        frappe.throw(_("An electronic response code exists; manual confirmation is blocked."))
+    if cstr(doc.get("response_meaning")).strip():
+        frappe.throw(_("Existing electronic response meaning is present. Manual confirmation is blocked."))
+    return "confirm"
 
 
 def _audit(doc, label, old, new, reason):
@@ -117,15 +125,13 @@ def _audit(doc, label, old, new, reason):
 
 
 @frappe.whitelist()
-def preview_alhamrani_control(alhamrani_name, action):
+def preview_alhamrani_control(alhamrani_name):
     _site_guard()
-    if action not in {"confirm", "correct_rrn"}:
-        frappe.throw(_("Invalid action."))
     doc, invoice = _read(alhamrani_name)
     _check_unlinked(doc)
-    if action == "correct_rrn":
-        _ensure_manual_only(doc)
+    action = _decide_action(doc)
     return {
+        "action": action,
         "name": doc.name, "sales_invoice": invoice,
         "rrn": cstr(doc.get("rrn")).strip(),
         "status": cstr(doc.get("status")).strip(),
@@ -136,16 +142,17 @@ def preview_alhamrani_control(alhamrani_name, action):
 
 
 @frappe.whitelist()
-def update_alhamrani_control(alhamrani_name, action, rrn, reason, confirmed=0):
+def update_alhamrani_control(alhamrani_name, rrn, reason, confirmed=0, expected_action=None):
     _site_guard()
-    if action not in {"confirm", "correct_rrn"}:
-        frappe.throw(_("Invalid action."))
     if cstr(confirmed).lower() not in {"1", "true"}:
         frappe.throw(_("Terminal-slip verification acknowledgement is mandatory."))
     new_rrn = _rrn(rrn)
     reason = _reason(reason)
     doc, invoice = _read(alhamrani_name, lock=True)
     _check_unlinked(doc)
+    action = _decide_action(doc)
+    if expected_action and cstr(expected_action) != action:
+        frappe.throw(_("Transaction state changed after preview. Reload and review again."))
     old = {
         "rrn": doc.get("rrn"),
         "response_meaning": doc.get("response_meaning"),
@@ -156,8 +163,8 @@ def update_alhamrani_control(alhamrani_name, action, rrn, reason, confirmed=0):
             frappe.throw(_("This transaction is already approved; do not reconfirm it."))
         if cstr(doc.get("response_code")).strip():
             frappe.throw(_("An electronic response code exists; terminal-slip override is blocked."))
-        if cstr(doc.get("rrn")).strip() and cstr(doc.get("rrn")).strip() != new_rrn:
-            frappe.throw(_("Existing RRN differs. Use the controlled RRN correction workflow."))
+        # Unconfirmed manual entries may contain a mistyped RRN. Keep the
+        # original value in the audit; financial/link guards run first.
         if cstr(doc.get("response_meaning")).strip() and not _is_manual(doc):
             frappe.throw(_("Existing electronic response meaning is present. Manual override is blocked."))
         updates = {
@@ -166,7 +173,7 @@ def update_alhamrani_control(alhamrani_name, action, rrn, reason, confirmed=0):
             "status": "Approved",
         }
     else:
-        _ensure_manual_only(doc)
+        # _decide_action has already established manual confirmation.
         if not cstr(doc.get("rrn")).strip():
             frappe.throw(_("Existing RRN is empty; use manual confirmation instead."))
         if cstr(doc.get("rrn")).strip() == new_rrn:
