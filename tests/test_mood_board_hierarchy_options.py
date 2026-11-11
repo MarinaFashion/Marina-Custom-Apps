@@ -24,7 +24,7 @@ class MoodBoardHierarchyOptionsTest(unittest.TestCase):
                 self.assertEqual([x for x in fields[key]["options"].splitlines() if x], values)
         self.assertEqual(fields["drop"]["default"], "Not Assigned")
         self.assertEqual(fields["drop"]["reqd"], 1)
-        self.assertFalse(fields["drop"]["options"].startswith("\\n"))
+        self.assertEqual(fields["drop"]["options"].splitlines()[0], "Drop- 01")
 
     def test_design_code_hierarchy_remains_inherited(self):
         fields = {r["fieldname"]: r for r in json.loads(DESIGN.read_text())["fields"]}
