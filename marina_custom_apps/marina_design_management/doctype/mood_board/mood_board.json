@@ -63,8 +63,9 @@
       "fieldname": "drop",
       "label": "Drop",
       "fieldtype": "Select",
-      "options": "\nDrop- 01\nDrop- 02\nDrop- 03\nDrop- 04\nDrop- B2S\nDrop- Reorder\nNot Assigned",
-      "default": "Not Assigned"
+      "options": "Drop- 01\nDrop- 02\nDrop- 03\nDrop- 04\nDrop- B2S\nDrop- Reorder\nNot Assigned",
+      "default": "Not Assigned",
+      "reqd": 1
     },
     {
       "fieldname": "cb_planning",
