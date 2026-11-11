@@ -68,7 +68,7 @@ def followup_grid(page=1, page_size=50, search=None, mood_board=None,
                   design_codes=None, dashboard_milestone=None,
                   year=None, season=None, collection=None, drop=None,
                   assigned_merchandiser=None, deadline_status=None,
-                  current_milestone=None):
+                  current_milestone=None, milestone_type=None):
     from marina_custom_apps.design_management.clean_milestones.grid import get_grid
     return get_grid(
         page, page_size, search, mood_board, designer, custody,
@@ -77,8 +77,24 @@ def followup_grid(page=1, page_size=50, search=None, mood_board=None,
         collection=collection, drop=drop,
         assigned_merchandiser=assigned_merchandiser,
         deadline_status=deadline_status,
-        current_milestone=current_milestone,
+        current_milestone=current_milestone, milestone_type=milestone_type,
     )
+
+
+@frappe.whitelist()
+def followup_milestone_types():
+    """All configured milestone types for the shared Follow-Up Grid picker."""
+    if not frappe.has_permission("Design Code", "read"):
+        frappe.throw("Design Code read permission required", frappe.PermissionError)
+    rows = frappe.get_all(
+        "Design Milestone Type",
+        fields=["name"],
+        order_by="sequence asc, name asc",
+        limit_page_length=101,
+    )
+    if len(rows) > 100:
+        frappe.throw("Too many configured Milestone Types")
+    return [row.name for row in rows]
 
 
 @frappe.whitelist()
