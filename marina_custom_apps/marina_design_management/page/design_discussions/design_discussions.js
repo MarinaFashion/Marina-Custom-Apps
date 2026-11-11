@@ -141,10 +141,20 @@ frappe.pages['design-discussions'].on_page_load = function(wrapper) {
     const filters = $('<div class="mdm-filters" hidden></div>').appendTo(root);
     filterToggle.on('click', () => { const open = filters.is('[hidden]'); filters.prop('hidden', !open); filterToggle.attr('aria-expanded', String(open)).text(__('Filters') + (open ? ' ▴' : ' ▾')); });
     const inputs = {};
-    [['year','Year'],['season','Season'],['collection','Collection'],['design_code','Design Code']].forEach(([key,label]) => {
+    const hierarchyOptions={"season":["Ramadan","Summer","Winter"],"collection":["EID","Ramadan","Hajj","Summer","Autumn","Winter"],"drop":["Drop- 01","Drop- 02","Drop- 03","Drop- 04","Drop- B2S","Drop- Reorder","Not Assigned"]};
+    [['year','Year'],['season','Season'],['collection','Collection'],['drop','Drop'],['design_code','Design Code']].forEach(([key,label]) => {
         const group = $('<div></div>').appendTo(filters);
         $('<label></label>').text(__(label)).appendTo(group);
-        inputs[key] = $('<input type="text" class="form-control input-sm">').attr('placeholder', __(label)).appendTo(group);
+        if(hierarchyOptions[key]){
+            const select=$('<select class="form-control input-sm"></select>').appendTo(group);
+            $('<option></option>').val('').text(__('All')).appendTo(select);
+            hierarchyOptions[key].forEach(value=>
+                $('<option></option>').val(value).text(value).appendTo(select));
+            inputs[key]=select;
+        }else{
+            inputs[key]=$('<input type="text" class="form-control input-sm">')
+                .attr('placeholder', __(label)).appendTo(group);
+        }
     });
     const reset = $('<button type="button" class="btn btn-default btn-sm"></button>').text(__('Clear All')).appendTo(filters);
     const layout = $('<div class="mdm-layout"></div>').appendTo(root);
