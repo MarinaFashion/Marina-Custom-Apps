@@ -80,6 +80,90 @@ frappe.listview_settings["Design Code"] = Object.assign(
                 return result;
             });
 
+        // Use controlled milestone transitions, never Frappe's generic bulk field
+        // editor: existing Fabric Sourcing plans may change custody and steps.
+        listview.page.add_action_item(__("Set Fabric Approval"), async () => {
+            const selected=listview.get_checked_items(true);
+            if(!selected?.length || selected.length>20){
+                frappe.msgprint(__("Select between 1 and 20 Design Codes."));
+                return;
+            }
+            const method="marina_custom_apps.design_management.clean_milestones.bulk_fabric_approval";
+            const dialog=new frappe.ui.Dialog({
+                title:__("Set Fabric Approval for Selected Designs"),
+                fields:[
+                    {fieldname:"approval",fieldtype:"Select",label:__("Fabric Approval"),
+                     options:"\nRequired\nNot Required",reqd:1},
+                    {fieldname:"reason",fieldtype:"Small Text",
+                     label:__("Reason for Change"),reqd:1,
+                     description:__("Required for audit history, at least 5 characters.")},
+                    {fieldname:"preview",fieldtype:"HTML",
+                     options:'<p class="text-muted">'+
+                        __("Choose a value and press Preview to validate all selected designs.")+'</p>'}
+                ],
+                primary_action_label:__("Preview"),
+                primary_action:async values=>{
+                    const btn=dialog.get_primary_btn();
+                    btn.prop("disabled",true);
+                    try{
+                        const approval=values.approval;
+                        const reason=(values.reason||"").trim();
+                        if(reason.length<5 || reason.length>350){
+                            frappe.msgprint(__("Enter a reason between 5 and 350 characters."));
+                            return;
+                        }
+                        const {message:preview}=await frappe.call({
+                            method:method+".preview_bulk_fabric_approval",
+                            args:{design_codes:selected,approval}
+                        });
+                        if(!preview || preview.selected!==selected.length)throw new Error("Invalid preview");
+                        const esc=frappe.utils.escape_html;
+                        const rows=preview.designs.map(item=>
+                            '<tr><td>'+esc(item.design_code)+'</td><td>'+
+                            esc(item.previous)+'</td><td>'+esc(item.status)+'</td><td>'+
+                            esc((item.reasons||[]).join("; ")||"—")+'</td></tr>').join("");
+                        dialog.fields_dict.preview.$wrapper.html(
+                            '<p>'+esc(__("Ready: {0}, Unchanged: {1}, Blocked: {2}",[
+                                preview.ready,preview.unchanged,preview.blocked]))+'</p>'+
+                            '<div style="max-height:260px;overflow:auto"><table class="table table-sm table-bordered">'+
+                            '<thead><tr><th>Design</th><th>Previous</th><th>Status</th><th>Reason</th></tr></thead>'+
+                            '<tbody>'+rows+'</tbody></table></div>');
+                        if(preview.blocked || !preview.ready)return;
+                        frappe.confirm(
+                            __("Update Fabric Approval to {0} for {1} designs? This may change unfinished milestone custody.",[
+                                approval,preview.ready]),
+                            async()=>{
+                                const button=dialog.get_primary_btn();
+                                button.prop("disabled",true);
+                                try{
+                                    const {message:result}=await frappe.call({
+                                        method:method+".set_bulk_fabric_approval",
+                                        type:"POST",freeze:true,
+                                        args:{design_codes:selected,approval,reason,confirm:1}
+                                    });
+                                    dialog.hide();
+                                    listview.clear_checked_items();
+                                    listview.refresh();
+                                    frappe.msgprint({
+                                        title:__("Fabric Approval Updated"),
+                                        message:__("Updated {0} designs; unchanged {1}.",[
+                                            result.updated,result.unchanged]),
+                                        indicator:"green"
+                                    });
+                                }catch(error){
+                                    console.error("Bulk Fabric Approval update failed",error);
+                                }finally{button.prop("disabled",false);}
+                            }
+                        );
+                    }catch(error){
+                        console.error("Bulk Fabric Approval preview failed",error);
+                        frappe.msgprint(__("Unable to validate the selected designs. No changes were made."));
+                    }finally{btn.prop("disabled",false);}
+                }
+            });
+            dialog.show();
+        });
+
         listview.page.add_action_item(__("Assign Designer"), () => {
             const selected = listview.get_checked_items(true);
             if(!selected?.length){
