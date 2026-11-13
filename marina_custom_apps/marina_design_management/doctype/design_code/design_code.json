@@ -74,10 +74,12 @@
     },
     {
       "fieldname": "fabric_approval_required",
-      "label": "Fabric Approval Required",
-      "fieldtype": "Check",
-      "default": "0",
-      "description": "Select when Fabric / Material Sourcing must be reviewed and approved by the assigned Designer. This field prepares the optional approval process; workflow enforcement will be enabled in a separate controlled update. Choose before creating milestones."
+      "label": "Fabric Approval",
+      "fieldtype": "Select",
+      "default": "",
+      "description": "Mandatory decision before Create Milestones: select Required for Designer approval or Not Required for direct Fabric Sourcing completion. Draft Design Codes may remain undecided. Conditional workflow activation will be implemented separately.",
+      "options": "\nRequired\nNot Required",
+      "reqd": 0
     },
     {
       "fieldname": "designer",
