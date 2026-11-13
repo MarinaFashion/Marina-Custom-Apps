@@ -4,6 +4,51 @@ from marina_custom_apps.design_management.clean_milestones import service
 
 
 @frappe.whitelist()
+def fabric_approval_change_info(design_code):
+    from marina_custom_apps.design_management.clean_milestones import service
+    from marina_custom_apps.design_management.clean_milestones.fabric_approval import MILESTONE
+    design = service._design(design_code)
+    plans = frappe.get_all(
+        "Design Milestone Plan Entry",
+        filters={"design_code": design.name, "milestone_type": MILESTONE},
+        fields=["plan_state"], limit_page_length=2,
+    )
+    has_plan = bool(frappe.db.exists(
+        "Design Milestone Plan Entry", {"design_code": design.name}))
+    return {"has_plan": has_plan,
+            "can_change": has_plan and len(plans) == 1
+            and plans[0].plan_state in ("Planned", "Active")}
+
+
+@frappe.whitelist(methods=["POST"])
+def change_fabric_approval(design_code, approval, reason, previous_approval):
+    """Authorized, audited change while Fabric Sourcing is not completed."""
+    from marina_custom_apps.design_management.clean_milestones import service
+    from marina_custom_apps.design_management.clean_milestones.fabric_approval import (
+        VALUES, switch_existing_plan,
+    )
+    if approval not in VALUES or previous_approval not in VALUES:
+        frappe.throw("Select a valid Fabric Approval value")
+    if not isinstance(reason, str) or len(reason.strip()) < 5 or len(reason) > 500:
+        frappe.throw("Enter a change reason between 5 and 500 characters")
+    service._lock_design(design_code)
+    design = service._design(design_code)
+    design.check_permission("write")
+    service._authorize(frappe.session.user, "Assign Milestones", design)
+    saved = frappe.db.get_value("Design Code", design_code, "fabric_approval_required")
+    if saved != previous_approval:
+        frappe.throw("Fabric Approval changed. Refresh this Design before retrying")
+    if approval == saved:
+        return {"unchanged": True, "fabric_approval": saved}
+    old = saved
+    state = switch_existing_plan(design, approval, reason.strip())
+    frappe.db.set_value("Design Code", design_code, "fabric_approval_required",
+                        approval, update_modified=False)
+    return {"fabric_approval": approval, "previous": old,
+            "plan_state": state}
+
+
+@frappe.whitelist()
 def available_milestones(design_code):
     service._design(design_code)
     rows = frappe.get_all("Design Milestone Type",
