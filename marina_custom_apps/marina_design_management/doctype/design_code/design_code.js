@@ -1269,6 +1269,10 @@ frappe.ui.form.on("Design Code", {
    only through a permission-checked, reasoned server action. */
 frappe.ui.form.on("Design Code", {
     refresh(frm) {
+        // The field must remain visible on saved/legacy Design Codes too.
+        // Do not change its value or assume blank means Not Required.
+        frm.set_df_property("fabric_approval_required","hidden",0);
+        frm.refresh_field("fabric_approval_required");
         if (frm.is_new()) return;
         const design=frm.doc.name;
         const generation=frm.__marina_menu_version;
