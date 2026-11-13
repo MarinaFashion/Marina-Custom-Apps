@@ -73,6 +73,13 @@
       "description": "For repeated or ready-made styles that do not require a Tech Pack. The Tech Pack milestone can complete automatically without a published document. Select before creating milestones."
     },
     {
+      "fieldname": "fabric_approval_required",
+      "label": "Fabric Approval Required",
+      "fieldtype": "Check",
+      "default": "0",
+      "description": "Select when Fabric / Material Sourcing must be reviewed and approved by the assigned Designer. This field prepares the optional approval process; workflow enforcement will be enabled in a separate controlled update. Choose before creating milestones."
+    },
+    {
       "fieldname": "designer",
       "label": "Designer",
       "fieldtype": "Link",
@@ -337,6 +344,7 @@
     "cb_identity",
     "creation_date",
     "tech_pack_not_required",
+    "fabric_approval_required",
     "designer",
     "technical_fitting_responsible",
     "factory",
