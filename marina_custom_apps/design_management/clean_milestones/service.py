@@ -344,9 +344,17 @@ def create_plan(design_code, milestone_types, lead_time_overrides=None):
     _lock_design(design_code)
     # The exemption is editable only before planning. Refresh it after the
     # row lock so concurrent saves cannot change what this plan records.
-    design.tech_pack_not_required = frappe.db.get_value(
-        "Design Code", design_code, "tech_pack_not_required"
+    settings = frappe.db.get_value(
+        "Design Code", design_code,
+        ["tech_pack_not_required", "fabric_approval_required"], as_dict=True
     )
+    design.tech_pack_not_required = settings.tech_pack_not_required
+    design.fabric_approval_required = settings.fabric_approval_required
+    if design.fabric_approval_required not in ("Required", "Not Required"):
+        frappe.throw(
+            "Select Fabric Approval (Required or Not Required) on the Design Code "
+            "before creating milestones"
+        )
     milestone_types = _require_all_active_milestones(milestone_types)
     # Re-read the planning baseline *after* locking. A Design Code edit may
     # have changed it between the initial _design read and this transaction.
