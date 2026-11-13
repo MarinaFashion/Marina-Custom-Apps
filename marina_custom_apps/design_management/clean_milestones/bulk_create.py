@@ -65,6 +65,8 @@ def _ready_state(design, snapshots, roles):
         return "existing", ["A milestone plan already exists"]
 
     issues = []
+    if design.get("fabric_approval_required") not in ("Required", "Not Required"):
+        issues.append("Select Fabric Approval (Required or Not Required) before creating milestones")
     baseline = design.creation_date
     if not baseline:
         issues.append("Creation Date is missing")
