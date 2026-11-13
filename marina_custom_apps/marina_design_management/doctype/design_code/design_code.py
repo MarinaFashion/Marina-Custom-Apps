@@ -70,6 +70,19 @@ class DesignCode(Document):
                 frappe.throw(
                     "Tech Pack Not Required cannot change after milestones are created"
                 )
+        if before and (before.get("fabric_approval_required") or "") != (
+                self.get("fabric_approval_required") or ""):
+            # Fabric approval is a planning choice, never a live workflow
+            # toggle. Lock and recheck to avoid concurrent plan creation.
+            frappe.db.sql(
+                "SELECT name FROM `tabDesign Code` WHERE name=%s FOR UPDATE",
+                (self.name,),
+            )
+            if frappe.db.exists("Design Milestone Plan Entry", {
+                    "design_code": self.name}):
+                frappe.throw(
+                    "Fabric Approval cannot change after milestones are created"
+                )
         if before:
             if before.design_number != self.design_number:
                 frappe.throw("Design Number cannot be changed")
