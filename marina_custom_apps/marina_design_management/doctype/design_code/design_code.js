@@ -113,7 +113,7 @@ function marina_clean_render_milestones(frm) {
 /* Deterministic menu order despite independently resolved permission requests.
    Keep action buttons gated by their existing server-side permission checks. */
 const marina_design_menu_order={
-    Actions:["Create Milestones","Milestone Follow up","Return to Milestone",
+    Actions:["Create Milestones","Change Fabric Approval","Milestone Follow up","Return to Milestone",
              "Clear Related Milestones","Edit Design Responsibility","Delete Design"],
     Document:["Show Linked Documents","Link To Published Document","New Design Document"]
 };
@@ -1264,3 +1264,71 @@ frappe.ui.form.on("Design Code", {
     }
 });
 
+
+/* Fabric Approval may change while the Fabric Sourcing plan is unfinished,
+   only through a permission-checked, reasoned server action. */
+frappe.ui.form.on("Design Code", {
+    refresh(frm) {
+        if (frm.is_new()) return;
+        const design=frm.doc.name;
+        const generation=frm.__marina_menu_version;
+        frappe.call({
+            method:"marina_custom_apps.design_management.clean_milestones.api.fabric_approval_change_info",
+            args:{design_code:design}
+        }).then(({message:info})=>{
+            if(frm.doc.name!==design || frm.__marina_menu_version!==generation)return;
+            frm.set_df_property("fabric_approval_required","read_only",info?.has_plan?1:0);
+            if(!info?.can_change)return;
+            marina_design_button(frm,"Change Fabric Approval",()=>{
+                if(frm.is_dirty()){
+                    frappe.msgprint(__("Save or discard your unsaved changes first."));
+                    return;
+                }
+                const previous=frm.doc.fabric_approval_required;
+                const dialog=new frappe.ui.Dialog({
+                    title:__("Change Fabric Approval"),
+                    fields:[
+                        {fieldtype:"Select",fieldname:"approval",label:__("Fabric Approval"),
+                         options:["Required","Not Required"],reqd:1,
+                         default:previous},
+                        {fieldtype:"Small Text",fieldname:"reason",
+                         label:__("Reason for Change"),reqd:1,
+                         description:__("Enter at least 5 characters. The change will be recorded in milestone history.")}
+                    ],
+                    primary_action_label:__("Confirm Change"),
+                    async primary_action(values){
+                        if(!values.reason || values.reason.trim().length<5){
+                            frappe.msgprint(__("Enter a reason of at least 5 characters."));
+                            return;
+                        }
+                        if(values.approval===previous){
+                            dialog.hide();
+                            return;
+                        }
+                        try{
+                            await frappe.call({
+                                method:"marina_custom_apps.design_management.clean_milestones.api.change_fabric_approval",
+                                type:"POST",freeze:true,
+                                args:{design_code:design,approval:values.approval,
+                                      previous_approval:previous,reason:values.reason.trim()}
+                            });
+                            dialog.hide();
+                            await frm.reload_doc();
+                            frappe.show_alert({
+                                indicator:"green",
+                                message:__("Fabric Approval updated and recorded in milestone history.")
+                            },7);
+                        }catch(error){
+                            console.error("Fabric Approval change failed",error);
+                        }
+                    }
+                });
+                dialog.show();
+            },"Actions");
+        }).catch(error=>{
+            console.warn("Unable to load Fabric Approval change permissions",error);
+            // Fail closed if plan state cannot be verified.
+            if(frm.doc.name===design)frm.set_df_property("fabric_approval_required","read_only",1);
+        });
+    }
+});
