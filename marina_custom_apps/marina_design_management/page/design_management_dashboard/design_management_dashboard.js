@@ -1,4 +1,7 @@
 frappe.pages["design-management-dashboard"].on_page_load=function(wrapper){
+    // Page-load can race with route navigation on a cold asset fetch.
+    // Retain one initialized instance and allow page-show to retry.
+    if(wrapper.__marina_dashboard_initialized)return;
     const page=frappe.ui.make_app_page({
         parent:wrapper,title:__("Design Management Dashboard"),single_column:true
     });
@@ -30,6 +33,14 @@ frappe.pages["design-management-dashboard"].on_page_load=function(wrapper){
         '<div class="mdm-summary mt-4"></div>'+
         '<div class="mdm-current-distribution mt-4"></div>'+
         '<div class="mdm-completed-distribution mt-4"></div></div>');
+    wrapper.__marina_dashboard_initialized=true;
+    const summary=page.main.find(".mdm-summary");
+    const currentDistribution=page.main.find(".mdm-current-distribution");
+    const completedDistribution=page.main.find(".mdm-completed-distribution");
+    const loadingHTML=()=>'<div class="text-muted p-3" role="status">'+
+        '<span class="spinner-border spinner-border-sm mr-2" aria-hidden="true"></span>'+
+        __("Loading design statistics...")+'</div>';
+    summary.html(loadingHTML());
     page.main.find(".mdm-filter-apply").on("click",()=>refresh());
     function safe(value){return esc(String(value??""));}
     const boardSelect=page.main.find('[data-filter="mood_board"]');
@@ -101,17 +112,27 @@ frappe.pages["design-management-dashboard"].on_page_load=function(wrapper){
             encodeURIComponent(JSON.stringify(filters)));
     });
     let request=0;
+    let pending=false;
+    let loaded=false;
     function refresh(){
+        if(pending)return;
+        pending=true;
         const token=++request;
+        if(!loaded){
+            summary.html(loadingHTML());
+            currentDistribution.empty();
+            completedDistribution.empty();
+        }
         const filters={};
         page.main.find("[data-filter]").each((_,el)=>{
             if(el.value?.trim())filters[el.dataset.filter]=el.value.trim();
         });
         frappe.call({
             method:"marina_custom_apps.design_management.api.dashboard.get_design_dashboard",
-            args:filters,freeze:true,freeze_message:__("Loading design status...")
+            args:filters
         }).then(({message:r})=>{
             if(token!==request||!r)return;
+            loaded=true;
             const cards=[
                 [__("Total Designs"),r.total],
                 [__("Average Completion"),safe(r.average_completion)+"%"],
@@ -136,9 +157,27 @@ frappe.pages["design-management-dashboard"].on_page_load=function(wrapper){
         }).catch(error=>{
             if(token!==request)return;
             console.error("Unable to load Design Management Dashboard",error);
-            frappe.msgprint(__("Could not load dashboard. Check permissions and try Refresh."));
-        });
+            if(!loaded){
+                summary.html('<div class="alert alert-warning" role="alert">'+
+                    __("Dashboard statistics could not be loaded. Use Refresh to retry.")+
+                    '</div>');
+            }else{
+                frappe.show_alert({indicator:"orange",message:__(
+                    "Dashboard refresh failed. Previous figures are still shown.")});
+            }
+        }).finally(()=>{if(token===request)pending=false;});
     }
+    wrapper.__marina_dashboard_refresh=()=>{if(!loaded && !pending)refresh();};
     loadMoodBoards();
     refresh();
+};
+
+frappe.pages["design-management-dashboard"].on_page_show=function(wrapper){
+    // A cold first navigation may leave the Page shell visible without its
+    // content. Recover when the script has loaded; do not duplicate handlers.
+    if(!wrapper.__marina_dashboard_initialized){
+        frappe.pages["design-management-dashboard"].on_page_load(wrapper);
+    }else{
+        wrapper.__marina_dashboard_refresh?.();
+    }
 };
