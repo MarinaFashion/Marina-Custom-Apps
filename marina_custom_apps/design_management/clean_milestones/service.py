@@ -377,6 +377,9 @@ def create_plan(design_code, milestone_types, lead_time_overrides=None):
         frappe.throw("Assign a Designer in Team Assignments before creating milestones")
     _role_user(design, "Designer")
     snapshots = _snapshots(milestone_types)
+    from marina_custom_apps.design_management.clean_milestones.fabric_approval import configure_snapshot
+    snapshots = [configure_snapshot(cfg, design.fabric_approval_required)
+                 for cfg in snapshots]
     if lead_time_overrides is None:
         lead_time_overrides = {}
     if isinstance(lead_time_overrides, str):
