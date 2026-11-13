@@ -27,7 +27,7 @@ def change_fabric_approval(design_code, approval, reason, previous_approval):
     from marina_custom_apps.design_management.clean_milestones.fabric_approval import (
         VALUES, switch_existing_plan,
     )
-    if approval not in VALUES or previous_approval not in VALUES:
+    if approval not in VALUES or previous_approval not in (*VALUES, "", None):
         frappe.throw("Select a valid Fabric Approval value")
     if not isinstance(reason, str) or len(reason.strip()) < 5 or len(reason) > 500:
         frappe.throw("Enter a change reason between 5 and 500 characters")
@@ -41,9 +41,18 @@ def change_fabric_approval(design_code, approval, reason, previous_approval):
     if approval == saved:
         return {"unchanged": True, "fabric_approval": saved}
     old = saved
-    state = switch_existing_plan(design, approval, reason.strip())
+    audit_note = "Fabric Approval: {} → {}. Reason: {}".format(
+        old or "Not Set", approval, reason.strip())
+    state = switch_existing_plan(design, approval, audit_note)
     frappe.db.set_value("Design Code", design_code, "fabric_approval_required",
                         approval, update_modified=False)
+    # Preserve a traceable timeline entry even for Planned milestones with
+    # no execution/custody event yet. Roll back with the same transaction.
+    frappe.get_doc({
+        "doctype": "Comment", "comment_type": "Info",
+        "reference_doctype": "Design Code", "reference_name": design_code,
+        "content": audit_note,
+    }).insert(ignore_permissions=True)
     return {"fabric_approval": approval, "previous": old,
             "plan_state": state}
 
