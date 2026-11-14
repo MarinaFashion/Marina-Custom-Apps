@@ -70,19 +70,26 @@ class DesignCode(Document):
                 frappe.throw(
                     "Tech Pack Not Required cannot change after milestones are created"
                 )
-        if before and (before.get("fabric_approval_required") or "") != (
-                self.get("fabric_approval_required") or ""):
-            # Fabric approval is a planning choice, never a live workflow
-            # toggle. Lock and recheck to avoid concurrent plan creation.
-            frappe.db.sql(
-                "SELECT name FROM `tabDesign Code` WHERE name=%s FOR UPDATE",
-                (self.name,),
-            )
-            if frappe.db.exists("Design Milestone Plan Entry", {
-                    "design_code": self.name}):
-                frappe.throw(
-                    "Fabric Approval cannot change after milestones are created"
+        previous_fabric = (before.get("fabric_approval_required") or "") if before else ""
+        selected_fabric = self.get("fabric_approval_required") or ""
+        if selected_fabric != previous_fabric:
+            from marina_custom_apps.design_management.security.role_access import can_action
+            action = ("Set Initial Fabric Approval" if not previous_fabric
+                      and selected_fabric else "Change Fabric Approval")
+            if not can_action(action, frappe.session.user):
+                frappe.throw("Missing Design Action: " + action, frappe.PermissionError)
+            if before:
+                # Updating a saved Design Code must never silently rewrite an
+                # already-created workflow. Use the controlled Change action.
+                frappe.db.sql(
+                    "SELECT name FROM `tabDesign Code` WHERE name=%s FOR UPDATE",
+                    (self.name,),
                 )
+                if frappe.db.exists("Design Milestone Plan Entry", {
+                        "design_code": self.name}):
+                    frappe.throw(
+                        "Fabric Approval cannot change after milestones are created"
+                    )
         if before:
             if before.design_number != self.design_number:
                 frappe.throw("Design Number cannot be changed")
