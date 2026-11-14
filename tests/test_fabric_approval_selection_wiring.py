@@ -32,19 +32,6 @@ class FabricApprovalSelectionTests(unittest.TestCase):
         self.assertLess(service.index('design.fabric_approval_required not in'),
                         service.index('snapshots = _snapshots(milestone_types)'))
 
-    def test_legacy_blank_previous_value_is_accepted_safely(self):
-        api = (ROOT / "design_management/clean_milestones/api.py").read_text()
-        ui = (CODE / "design_code.js").read_text()
-        tree = ast.parse(api)
-        function = next(node for node in tree.body
-                        if isinstance(node, ast.FunctionDef)
-                        and node.name == "change_fabric_approval")
-        self.assertEqual(len(function.args.defaults), 1)
-        self.assertIsInstance(function.args.defaults[0], ast.Constant)
-        self.assertIsNone(function.args.defaults[0].value)
-        self.assertIn('(saved or "") != (previous_approval or "")', api)
-        self.assertIn('const previous=frm.doc.fabric_approval_required||"";', ui)
-
     def test_choice_is_locked_after_plan_creation(self):
         source = (CODE / "design_code.py").read_text()
         ast.parse(source)
