@@ -14,6 +14,7 @@ MODULE_DOCTYPES = frozenset({
     "Production Colorway", "Design Cost Breakdown",
 })
 ACTIONS = frozenset({
+    "Set Initial Fabric Approval", "Change Fabric Approval",
     "Assign Milestones",
     "Advance Milestone Step",
     "Publish Document",
