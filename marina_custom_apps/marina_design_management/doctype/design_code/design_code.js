@@ -1288,7 +1288,7 @@ frappe.ui.form.on("Design Code", {
                     frappe.msgprint(__("Save or discard your unsaved changes first."));
                     return;
                 }
-                const previous=frm.doc.fabric_approval_required;
+                const previous=frm.doc.fabric_approval_required||"";
                 const dialog=new frappe.ui.Dialog({
                     title:__("Change Fabric Approval"),
                     fields:[
