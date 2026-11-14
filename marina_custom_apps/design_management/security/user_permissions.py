@@ -18,6 +18,7 @@ DOCS = frozenset({
     "Design Module Role",
 })
 ACTIONS = frozenset({
+    "Set Initial Fabric Approval", "Change Fabric Approval",
     "Assign Milestones", "Advance Milestone Step", "Publish Document",
     "Remove Published Assignment", "Replace Published Document", "Create ERPNext Items", "Delete Design Code",
     "Return to Milestone", "Clear Related Milestones", "Manage Role Permissions",
