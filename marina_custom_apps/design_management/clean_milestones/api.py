@@ -21,7 +21,7 @@ def fabric_approval_change_info(design_code):
 
 
 @frappe.whitelist(methods=["POST"])
-def change_fabric_approval(design_code, approval, reason, previous_approval):
+def change_fabric_approval(design_code, approval, reason, previous_approval=None):
     """Authorized, audited change while Fabric Sourcing is not completed."""
     from marina_custom_apps.design_management.clean_milestones import service
     from marina_custom_apps.design_management.clean_milestones.fabric_approval import (
@@ -36,7 +36,10 @@ def change_fabric_approval(design_code, approval, reason, previous_approval):
     design.check_permission("write")
     service._authorize(frappe.session.user, "Assign Milestones", design)
     saved = frappe.db.get_value("Design Code", design_code, "fabric_approval_required")
-    if saved != previous_approval:
+    # Legacy records have NULL/blank approval; JavaScript may omit undefined
+    # arguments from frappe.call. Normalize both sides without losing the
+    # optimistic-concurrency check for already classified designs.
+    if (saved or "") != (previous_approval or ""):
         frappe.throw("Fabric Approval changed. Refresh this Design before retrying")
     if approval == saved:
         return {"unchanged": True, "fabric_approval": saved}
