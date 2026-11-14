@@ -61,6 +61,7 @@ def _inspect_one(name, approval):
 
 @frappe.whitelist()
 def preview_bulk_fabric_approval(design_codes, approval):
+    frappe.throw("Bulk Fabric Approval is retired. Update initial choices on the Design Code form, or use the permitted Change Fabric Approval action.")
     if approval not in VALUES:
         frappe.throw("Select Required or Not Required")
     rows = [_inspect_one(name, approval) for name in _names(design_codes)]
@@ -73,6 +74,7 @@ def preview_bulk_fabric_approval(design_codes, approval):
 
 @frappe.whitelist(methods=["POST"])
 def set_bulk_fabric_approval(design_codes, approval, reason, confirm=0):
+    frappe.throw("Bulk Fabric Approval is retired. Use the Design Code form with dedicated action permissions.")
     if approval not in VALUES:
         frappe.throw("Select Required or Not Required")
     if not isinstance(reason, str) or not 5 <= len(reason.strip()) <= 350:
