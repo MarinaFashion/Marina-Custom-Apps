@@ -4,6 +4,13 @@ from marina_custom_apps.design_management.clean_milestones import service
 
 
 @frappe.whitelist()
+def fabric_approval_initial_permission():
+    from marina_custom_apps.design_management.security.role_access import can_action
+    # Read-only eligibility hint; Design Code.validate is the authority.
+    return bool(can_action("Set Initial Fabric Approval", frappe.session.user))
+
+
+@frappe.whitelist()
 def fabric_approval_change_info(design_code):
     from marina_custom_apps.design_management.clean_milestones import service
     from marina_custom_apps.design_management.clean_milestones.fabric_approval import MILESTONE
