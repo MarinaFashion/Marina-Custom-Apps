@@ -8,6 +8,8 @@ def fabric_approval_change_info(design_code):
     from marina_custom_apps.design_management.clean_milestones import service
     from marina_custom_apps.design_management.clean_milestones.fabric_approval import MILESTONE
     design = service._design(design_code)
+    from marina_custom_apps.design_management.security.role_access import can_action
+    can_edit = frappe.has_permission("Design Code", "write", doc=design)
     plans = frappe.get_all(
         "Design Milestone Plan Entry",
         filters={"design_code": design.name, "milestone_type": MILESTONE},
@@ -15,9 +17,17 @@ def fabric_approval_change_info(design_code):
     )
     has_plan = bool(frappe.db.exists(
         "Design Milestone Plan Entry", {"design_code": design.name}))
-    return {"has_plan": has_plan,
-            "can_change": has_plan and len(plans) == 1
-            and plans[0].plan_state in ("Planned", "Active")}
+    return {
+        "has_plan": has_plan,
+        "can_set_initial": bool(can_edit and can_action(
+            "Set Initial Fabric Approval", frappe.session.user)),
+        "can_change": bool(
+            can_edit and can_action("Change Fabric Approval", frappe.session.user)
+            and has_plan and len(plans) == 1
+            and plans[0].plan_state in ("Planned", "Active")),
+        "can_change_before_plan": bool(can_edit and can_action(
+            "Change Fabric Approval", frappe.session.user)),
+    }
 
 
 @frappe.whitelist(methods=["POST"])
@@ -34,7 +44,7 @@ def change_fabric_approval(design_code, approval, reason, previous_approval=None
     service._lock_design(design_code)
     design = service._design(design_code)
     design.check_permission("write")
-    service._authorize(frappe.session.user, "Assign Milestones", design)
+    service._authorize(frappe.session.user, "Change Fabric Approval", design)
     saved = frappe.db.get_value("Design Code", design_code, "fabric_approval_required")
     # Legacy records have NULL/blank approval; JavaScript may omit undefined
     # arguments from frappe.call. Normalize both sides without losing the
