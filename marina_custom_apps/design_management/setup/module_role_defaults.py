@@ -20,6 +20,10 @@ DOCUMENTS = {
 
 def _actions(name):
     actions=["Advance Milestone Step"]
+    if name in {"Administrator", "Merchandiser", "Head Of Merchandisers"}:
+        actions.append("Set Initial Fabric Approval")
+    if name in {"Administrator", "Designer"}:
+        actions.append("Change Fabric Approval")
     if name in HEADS:
         actions.extend(["Assign Team Tasks", "Reassign Team Tasks"])
     if name in {"Administrator", "China Office Manager",
