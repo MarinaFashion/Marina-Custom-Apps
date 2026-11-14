@@ -123,15 +123,15 @@ frappe.listview_settings["Design Code"] = Object.assign(
                             esc(item.previous)+'</td><td>'+esc(item.status)+'</td><td>'+
                             esc((item.reasons||[]).join("; ")||"—")+'</td></tr>').join("");
                         dialog.fields_dict.preview.$wrapper.html(
-                            '<p>'+esc(__("Ready: {0}, Unchanged: {1}, Blocked: {2}",[
-                                preview.ready,preview.unchanged,preview.blocked]))+'</p>'+
+                            '<p>'+esc(__("Ready: {0} (historical classification only: {1}), Unchanged: {2}, Blocked: {3}",[
+                                preview.ready,preview.historical||0,preview.unchanged,preview.blocked]))+'</p>'+
                             '<div style="max-height:260px;overflow:auto"><table class="table table-sm table-bordered">'+
                             '<thead><tr><th>Design</th><th>Previous</th><th>Status</th><th>Reason</th></tr></thead>'+
                             '<tbody>'+rows+'</tbody></table></div>');
                         if(preview.blocked || !preview.ready)return;
                         frappe.confirm(
-                            __("Update Fabric Approval to {0} for {1} designs? This may change unfinished milestone custody.",[
-                                approval,preview.ready]),
+                            __("Set Fabric Approval to {0} for {1} designs? {2} completed milestones will receive historical classification only; unfinished milestones may change custody.",[
+                                approval,preview.ready,preview.historical||0]),
                             async()=>{
                                 const button=dialog.get_primary_btn();
                                 button.prop("disabled",true);
