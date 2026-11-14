@@ -44,7 +44,7 @@ class FabricApprovalWorkflowTests(unittest.TestCase):
         self.assertIn('def change_fabric_approval(', api)
         self.assertIn('service._lock_design(design_code)', api)
         self.assertIn('design.check_permission("write")', api)
-        self.assertIn('service._authorize(frappe.session.user, "Assign Milestones", design)', api)
+        self.assertIn('service._authorize(frappe.session.user, "Change Fabric Approval", design)', api)
         self.assertIn('len(reason.strip()) < 5', api)
         self.assertIn('comment_type": "Info"', api)
         self.assertIn('previous_approval', api)
@@ -52,7 +52,7 @@ class FabricApprovalWorkflowTests(unittest.TestCase):
     def test_controlled_form_action(self):
         js = (DESIGN / "design_code.js").read_text()
         self.assertIn('marina_design_button(frm,"Change Fabric Approval"', js)
-        self.assertIn('"fabric_approval_required","read_only",info?.has_plan?1:0', js)
+        self.assertIn('info?.has_plan || !canEdit ? 1 : 0', js)
         self.assertIn("api.change_fabric_approval", js)
         self.assertIn('fieldname:"reason"', js)
 
