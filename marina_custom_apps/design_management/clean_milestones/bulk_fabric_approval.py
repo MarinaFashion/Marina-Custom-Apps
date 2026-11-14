@@ -42,9 +42,18 @@ def _inspect_one(name, approval):
     fabric = [p for p in plans if p.milestone_type == MILESTONE]
     if plans and len(fabric) != 1:
         reasons.append("No unique Fabric / Material Sourcing milestone in existing plan")
-    if fabric and fabric[0].plan_state not in ("Planned", "Active"):
-        reasons.append("Fabric Sourcing is completed or unavailable")
-    status = "unchanged" if previous == approval else ("blocked" if reasons else "ready")
+    # Historical backfill is only for previously unset designs. Completing
+    # Fabric Sourcing must remain irreversible: do not change its snapshot,
+    # execution, custody or actual dates.
+    historical = bool(
+        fabric and fabric[0].plan_state == "Completed"
+        and previous == "" and approval == "Not Required"
+    )
+    if fabric and fabric[0].plan_state not in ("Planned", "Active") and not historical:
+        reasons.append("Fabric Sourcing is completed; only historical Not Set → Not Required is allowed")
+    status = ("unchanged" if previous == approval
+              else "blocked" if reasons
+              else "historical" if historical else "ready")
     return {"design_code": name, "previous": previous or "Not Set",
             "status": status, "reasons": reasons,
             "has_plan": bool(plans)}
@@ -56,7 +65,8 @@ def preview_bulk_fabric_approval(design_codes, approval):
         frappe.throw("Select Required or Not Required")
     rows = [_inspect_one(name, approval) for name in _names(design_codes)]
     return {"designs": rows, "selected": len(rows),
-            "ready": sum(x["status"] == "ready" for x in rows),
+            "ready": sum(x["status"] in ("ready", "historical") for x in rows),
+            "historical": sum(x["status"] == "historical" for x in rows),
             "unchanged": sum(x["status"] == "unchanged" for x in rows),
             "blocked": sum(x["status"] == "blocked" for x in rows)}
 
@@ -85,7 +95,10 @@ def set_bulk_fabric_approval(design_codes, approval, reason, confirm=0):
         previous = design.get("fabric_approval_required") or ""
         note = "Fabric Approval: {} → {}. Reason: {}".format(
             previous or "Not Set", approval, reason.strip())
-        if row["has_plan"]:
+        if row["status"] == "historical":
+            note += (" [Historical classification only; completed Fabric Sourcing "
+                     "milestone, execution and workflow remain unchanged]")
+        elif row["has_plan"]:
             switch_existing_plan(design, approval, note)
         frappe.db.set_value("Design Code", name, "fabric_approval_required",
                             approval, update_modified=False)
