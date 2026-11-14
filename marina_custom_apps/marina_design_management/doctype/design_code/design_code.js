@@ -1265,6 +1265,22 @@ frappe.ui.form.on("Design Code", {
 });
 
 
+/* Restrict first-time Fabric Approval selection on new Design Codes by
+   explicit Design Action; server validate independently enforces the gate. */
+frappe.ui.form.on("Design Code", {
+    onload(frm) {
+        if(!frm.is_new())return;
+        frappe.call({
+            method:"marina_custom_apps.design_management.clean_milestones.api.fabric_approval_initial_permission"
+        }).then(({message:allowed})=>{
+            if(frm.is_new())frm.set_df_property("fabric_approval_required","read_only",
+                allowed ? 0 : 1);
+        }).catch(()=>{
+            if(frm.is_new())frm.set_df_property("fabric_approval_required","read_only",1);
+        });
+    }
+});
+
 /* Fabric Approval may change while the Fabric Sourcing plan is unfinished,
    only through a permission-checked, reasoned server action. */
 frappe.ui.form.on("Design Code", {
@@ -1281,7 +1297,10 @@ frappe.ui.form.on("Design Code", {
             args:{design_code:design}
         }).then(({message:info})=>{
             if(frm.doc.name!==design || frm.__marina_menu_version!==generation)return;
-            frm.set_df_property("fabric_approval_required","read_only",info?.has_plan?1:0);
+            const isInitial=!(frm.doc.fabric_approval_required||"");
+            const canEdit=isInitial ? info?.can_set_initial : info?.can_change_before_plan;
+            frm.set_df_property("fabric_approval_required","read_only",
+                info?.has_plan || !canEdit ? 1 : 0);
             if(!info?.can_change)return;
             marina_design_button(frm,"Change Fabric Approval",()=>{
                 if(frm.is_dirty()){
