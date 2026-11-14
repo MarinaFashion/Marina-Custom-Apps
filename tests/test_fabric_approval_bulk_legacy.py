@@ -22,6 +22,17 @@ class FabricApprovalLegacyTests(unittest.TestCase):
         self.assertIn('set_df_property("fabric_approval_required","hidden",0)', js)
         self.assertIn('set_df_property("fabric_approval_required","read_only",info?.has_plan?1:0', js)
 
+    def test_historical_completed_backfill_is_classification_only(self):
+        code = BULK.read_text()
+        ast.parse(code)
+        self.assertIn('fabric[0].plan_state == "Completed"', code)
+        self.assertIn('previous == "" and approval == "Not Required"', code)
+        self.assertIn('"historical" if historical else "ready"', code)
+        self.assertIn('if row["status"] == "historical":', code)
+        self.assertIn('elif row["has_plan"]:', code)
+        self.assertIn("switch_existing_plan(design, approval, note)", code)
+        self.assertIn("completed Fabric Sourcing", code)
+
     def test_safe_batch_actions(self):
         js = (BASE / "design_code_list.js").read_text()
         self.assertIn('add_action_item(__("Set Fabric Approval")', js)
