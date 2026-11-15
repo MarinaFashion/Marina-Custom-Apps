@@ -81,9 +81,11 @@ class TestBulkShipmentPaste(unittest.TestCase):
                  "receipt_qty": 6, "candidates": []}
         item = SimpleNamespace(name="SKU-A", item_name="Sample", description="Sample",
                                disabled=0, is_stock_item=1, stock_uom="Nos")
-        with patch("marina_custom_apps.purchasing.bulk_shipment_receiving._evaluate",
-                   return_value=([no_po], [])), \\
-             patch("marina_custom_apps.purchasing.bulk_shipment_receiving.frappe") as frappe_mock:
+        with (
+            patch("marina_custom_apps.purchasing.bulk_shipment_receiving._evaluate",
+                  return_value=([no_po], [])),
+            patch("marina_custom_apps.purchasing.bulk_shipment_receiving.frappe") as frappe_mock,
+        ):
             frappe_mock.db.get_value.return_value = "COMPANY"
             frappe_mock.db.exists.return_value = True
             frappe_mock.get_cached_value.return_value = "SAR"
