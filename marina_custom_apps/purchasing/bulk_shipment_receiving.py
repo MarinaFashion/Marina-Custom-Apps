@@ -216,10 +216,8 @@ def build_draft(text, supplier, company, decisions=None, currency=None, conversi
     if not linked and not unlinked:
         frappe.throw(_("Select at least one item for inclusion."))
 
-    # Currency is the Purchase Receipt's transaction currency selected on the form.
-    # For PO-linked lines, require the mapped PO document currency to match.
-    receipt_currency = frappe.db.get_value("Supplier", supplier, "default_currency")
-    receipt_currency = frappe.db.get_value("Company", company, "default_currency") if not receipt_currency else receipt_currency
+    # Do not silently substitute a guessed supplier currency or live FX rate.
+    receipt_currency = frappe.get_cached_value("Company", company, "default_currency")
     # The UI must pass its current document currency. Never silently mix currencies.
     if unlinked and not currency:
         frappe.throw(_("Purchase Receipt currency is required for Receive Without PO."))
@@ -259,6 +257,12 @@ def build_draft(text, supplier, company, decisions=None, currency=None, conversi
             target = make_purchase_receipt(po, target_doc=target, args={"filtered_children": selected})
         if not target:
             frappe.throw(_("No eligible Purchase Order lines found."))
+        if unlinked and abs(flt(target.conversion_rate) - conversion_rate) > EPS:
+            frappe.throw(_("The Purchase Receipt conversion rate differs from the mapped "
+                           "Purchase Order. Align the receipt exchange rate before "
+                           "mixing PO-linked and unlinked items."))
+        if unlinked:
+            conversion_rate = flt(target.conversion_rate)
 
         mapped, seen = [], set()
         for item in target.items:
