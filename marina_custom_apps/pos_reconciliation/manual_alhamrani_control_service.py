@@ -48,36 +48,53 @@ def _read(name, lock=False):
 
 
 def _check_unlinked(doc):
-    """Do not mutate a source already consumed by matching or financial workflows."""
+    """Block genuine payment/financial consumption, not run-scope metadata.
+
+    An Alhamrani Only result can have its run's bank-statement
+    reconciliation identifier populated without being paired with any
+    Bank POS or statement settlement. That field alone is not financial
+    evidence and must not prevent a controlled manual confirmation.
+    """
     name = doc.name
     if frappe.db.exists("DocType", "Manual Alhamrani POS Link") and frappe.db.exists(
         "Manual Alhamrani POS Link", {"alhamrani_transaction": name}
     ):
         frappe.throw(_("AUP already has a Manual Alhamrani POS Link. Finance must review it before changes."))
-    if frappe.db.exists("DocType", "POS Reconciliation Record"):
-        rows = frappe.get_all(
-            "POS Reconciliation Record",
-            filters={"alhamrani_transaction": name},
-            fields=["name", "bank_transaction", "accounting_status", "accounting_posting",
-                    "journal_entry", "settlement_number", "bank_statement_reconciliation",
-                    "bank_statement_settlement"],
-            limit_page_length=2,
+
+    if not frappe.db.exists("DocType", "POS Reconciliation Record"):
+        return
+
+    rows = frappe.get_all(
+        "POS Reconciliation Record",
+        filters={"alhamrani_transaction": name},
+        fields=[
+            "name", "match_status", "bank_transaction", "accounting_status",
+            "accounting_posting", "journal_entry", "settlement_number",
+            "bank_statement_reconciliation", "bank_statement_settlement",
+            "bank_statement_status", "bank_statement_references",
+        ],
+        limit_page_length=0,
+    )
+    for row in rows:
+        # The run-reference alone may be populated for Alhamrani Only rows.
+        # A real Bank POS, settlement, bank-statement match, or JE is protected.
+        financial_fields = (
+            "bank_transaction", "accounting_posting", "journal_entry",
+            "settlement_number", "bank_statement_settlement",
+            "bank_statement_references",
         )
-        for row in rows:
-            # An unlinked, Alhamrani-only preview is safe to refresh on the next
-            # reconciliation run. Never mutate an already paired or financially
-            # consumed source, even if its status label is stale.
-            financial_fields = (
-                "bank_transaction", "accounting_posting", "journal_entry",
-                "settlement_number", "bank_statement_reconciliation",
-                "bank_statement_settlement",
-            )
-            if any(cstr(row.get(field)).strip() for field in financial_fields):
-                frappe.throw(_("AUP is linked to reconciliation or financial evidence. Finance review is required."))
-            if cstr(row.get("accounting_status")).strip() in {
-                "Draft Created", "Posted", "Draft - Review Required", "Posted - Review Required"
-            }:
-                frappe.throw(_("AUP has protected accounting status. Source correction is blocked."))
+        if any(cstr(row.get(field)).strip() for field in financial_fields):
+            frappe.throw(_("AUP is linked to reconciliation or financial evidence. Finance review is required."))
+        if cstr(row.get("bank_statement_status")).strip() in {
+            "Fully Reconciled", "Partially Reconciled",
+        }:
+            frappe.throw(_("AUP has bank-statement settlement evidence. Finance review is required."))
+        if cstr(row.get("accounting_status")).strip() in {
+            "Draft Created", "Posted", "Draft - Review Required", "Posted - Review Required",
+        }:
+            frappe.throw(_("AUP has protected accounting status. Source correction is blocked."))
+        if cstr(row.get("match_status")).strip() != "Alhamrani Only":
+            frappe.throw(_("AUP is not an unpaired Alhamrani Only record. Finance review is required."))
 
 
 def _rrn(value):
