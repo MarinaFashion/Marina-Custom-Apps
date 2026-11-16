@@ -67,15 +67,34 @@ def _candidates(source, rrn):
         fields=BANK_FIELDS,
         limit_page_length=50,
     )
+    if not rows:
+        return []
+    names = [bank.name for bank in rows]
+    # Batch membership and protection checks: no per-candidate database queries.
+    linked_banks = {
+        row.bank_pos_transaction for row in frappe.get_all(
+            LINK, filters={"bank_pos_transaction": ["in", names]},
+            fields=["bank_pos_transaction"], limit_page_length=0,
+        )
+    }
+    existing_by_bank = {
+        row.bank_transaction: row for row in frappe.get_all(
+            "POS Reconciliation Record",
+            filters={"bank_transaction": ["in", names]},
+            fields=["bank_transaction", "alhamrani_transaction", "accounting_status",
+                    "accounting_posting", "journal_entry"],
+            limit_page_length=0,
+        )
+    }
+    tolerance = frappe.db.get_single_value(
+        "POS Reconciliation Settings", "transaction_time_tolerance_seconds"
+    )
+    tolerance = max(0, min(int(60 if tolerance is None else tolerance), 300))
     found = []
     for bank in rows:
-        if frappe.db.exists(LINK, {"bank_pos_transaction": bank.name}):
+        if bank.name in linked_banks:
             continue
-        existing = frappe.db.get_value(
-            "POS Reconciliation Record", {"bank_transaction": bank.name},
-            ["alhamrani_transaction", "accounting_status", "accounting_posting", "journal_entry"],
-            as_dict=True,
-        )
+        existing = existing_by_bank.get(bank.name)
         if existing and (
             (existing.alhamrani_transaction and existing.alhamrani_transaction != source.name)
             or existing.accounting_posting or existing.journal_entry
@@ -96,6 +115,7 @@ def _candidates(source, rrn):
             "time": cstr(bank.transaction_time).strip(),
             "pos_profile": bank.pos_profile,
             "bank_terminal_id": cstr(bank.terminal_id),
+            "time_tolerance_seconds": tolerance,
             "alhamrani": {
                 "name": source.name,
                 "pos_profile": source.pos_profile,
