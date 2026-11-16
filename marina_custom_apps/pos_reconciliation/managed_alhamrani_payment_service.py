@@ -121,23 +121,26 @@ def _preview(name, proposed_rrn=None):
     elif record and record.bank_transaction:
         state = "already_matched"
     else:
-        action = _decide_action(doc)
         _check_unlinked(doc)
-        if action == "confirm":
-            state = "needs_confirmation"
-        elif candidate_rrn and candidate_rrn != existing_rrn:
-            state = "needs_rrn_correction"
-        elif not re.fullmatch(r"\d{12}", existing_rrn):
-            state = "needs_rrn_correction"
+        approved = cstr(doc.get("status")).strip().upper() in {"APPROVED", "SUCCESS", "COMPLETED"}
+        if _is_manual(doc):
+            state = "needs_rrn_correction" if (
+                candidate_rrn != existing_rrn or not re.fullmatch(r"\d{12}", existing_rrn)
+            ) else "ready_to_link"
+        elif approved:
+            # Existing approved electronic payments can be investigated and
+            # manually linked, but must never be manually re-confirmed or edited.
+            state = "ready_to_link" if re.fullmatch(r"\d{12}", existing_rrn) and candidate_rrn == existing_rrn else "investigate"
         else:
-            state = "ready_to_link"
+            action = _decide_action(doc)  # rejects conflicting electronic evidence
+            state = "needs_confirmation" if action == "confirm" else "investigate"
 
     # Never auto-approve or silently rewrite an electronic response.
     if state == "needs_rrn_correction" and not _is_manual(doc):
         frappe.throw(_("Only a previously manually confirmed AUP may have its RRN corrected."))
     valid_for_search = bool(re.fullmatch(r"\d{12}", candidate_rrn))
     candidates = []
-    if state not in {"already_linked", "already_matched"} and valid_for_search:
+    if state not in {"already_linked", "already_matched", "investigate"} and valid_for_search:
         source.rrn = candidate_rrn
         if state == "needs_confirmation":
             source.status = "Approved"  # preview only; the stored AUP is untouched
@@ -192,8 +195,8 @@ def apply_managed_alhamrani_payment(
     state = preview["state"]
     if expected_state and cstr(expected_state) != state:
         frappe.throw(_("Payment state changed since preview. Refresh the proposal."))
-    if state in {"already_linked", "already_matched"}:
-        frappe.throw(_("This AUP is already linked or reconciled; no changes are permitted."))
+    if state in {"already_linked", "already_matched", "investigate"}:
+        frappe.throw(_("This AUP is already linked, reconciled, or requires investigation; changes are blocked."))
 
     current_rrn = cstr(preview["rrn"]).strip()
     rrn_to_use = _rrn(proposed_rrn or current_rrn)
