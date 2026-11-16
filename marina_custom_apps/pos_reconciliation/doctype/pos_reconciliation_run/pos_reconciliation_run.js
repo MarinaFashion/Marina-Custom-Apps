@@ -134,6 +134,169 @@ function pos_recon_render_connections(frm, has_results) {
         });
 }
 
+// One guided entry point for manual slip confirmation, RRN correction and
+// explicitly approved POS Bank pairing. Every final decision is rechecked server-side.
+function pos_recon_open_managed_alhamrani(frm) {
+    const service = "marina_custom_apps.pos_reconciliation.managed_alhamrani_payment_service.";
+    frappe.prompt([
+        {fieldname:"alhamrani_name",fieldtype:"Data",label:__("Alhamrani Transaction ID"),reqd:1}
+    ], (first) => {
+        const aupName = String(first.alhamrani_name || "").trim();
+        frappe.call({
+            method:service + "preview_managed_alhamrani_payment",
+            args:{alhamrani_name:aupName}, freeze:true
+        }).then(response => {
+            if (!response.message) return;
+            let proposed = response.message;
+            let searchedRRN = String(proposed.rrn || "").trim();
+            let dialog;
+
+            function showCandidate() {
+                if (!dialog) return;
+                const chosen = dialog.get_value("bank_pos_name");
+                const candidate = (proposed.candidates || []).find(row => row.name === chosen);
+                const target = dialog.fields_dict.mapping_confirmation.$wrapper;
+                target.html(candidate
+                    ? pos_recon_manual_link_preview(candidate)
+                    : '<p class="text-muted small">' +
+                        __("No Bank POS selected. AUP-only update is available when confirmation or RRN correction is required.") +
+                        '</p>');
+                dialog.set_value("confirm_mapping", 0);
+            }
+
+            function showPreview(data) {
+                proposed = data;
+                searchedRRN = String(data.proposed_rrn || data.rrn || "").trim();
+                const pairs = [
+                    [__("AUP"), data.name],
+                    [__("Sales Invoice"), data.sales_invoice],
+                    [__("Status"), data.status],
+                    [__("Current RRN"), data.rrn],
+                    [__("Amount"), data.amount],
+                    [__("Transaction Date"), data.date],
+                    [__("POS Profile"), data.pos_profile],
+                    [__("Current State"), data.state],
+                ];
+                dialog.fields_dict.transaction_details.$wrapper.html(
+                    '<div class="alert alert-info"><table class="table table-condensed" style="margin:0">' +
+                    pairs.map(pair => '<tr><th>' + pos_recon_escape(pair[0]) + '</th><td>' +
+                        pos_recon_escape(pair[1] == null ? "—" : pair[1]) + '</td></tr>').join("") +
+                    '</table></div>'
+                );
+                const candidates = data.candidates || [];
+                const names = ["", ...candidates.map(row => row.name)];
+                dialog.set_df_property("bank_pos_name", "options", names.join("\n"));
+                dialog.set_value("bank_pos_name", "");
+                const blocked = ["already_linked", "already_matched", "investigate"].includes(data.state);
+                dialog.fields_dict.lookup_hint.$wrapper.html(
+                    '<div class="small text-muted" style="margin-bottom:8px;">' +
+                    (blocked
+                        ? __("The payment is already linked/matched or needs further investigation. Changes are blocked.")
+                        : candidates.length
+                            ? __("{0} eligible Bank POS candidate(s). Select and verify the correct transaction before approving.", [candidates.length])
+                            : __("No eligible Bank POS candidate found. Verify the RRN/date/amount. An eligible AUP-only update is permitted.")) +
+                    '</div><button type="button" class="btn btn-default btn-sm pos-managed-find">' +
+                    __("Find Bank POS using RRN") + '</button>'
+                );
+                showCandidate();
+                dialog.get_primary_btn().prop("disabled", blocked);
+            }
+
+            dialog = new frappe.ui.Dialog({
+                title: __("Manage Alhamrani Payment"),
+                fields: [
+                    {fieldname:"transaction_details",fieldtype:"HTML"},
+                    {fieldname:"rrn",fieldtype:"Data",label:__("Verified RRN (12 digits)"),
+                        default:proposed.rrn || "",description:__("If missing or incorrect, use the terminal slip to enter the correct RRN, then search again.")},
+                    {fieldname:"lookup_hint",fieldtype:"HTML"},
+                    {fieldname:"bank_pos_name",fieldtype:"Select",label:__("Bank POS Transaction"),
+                        options:"\n",onchange:showCandidate},
+                    {fieldname:"mapping_confirmation",fieldtype:"HTML"},
+                    {fieldname:"confirm_mapping",fieldtype:"Check",
+                        label:__("I reviewed both POS Profiles, Amount, Date and Time and confirm this mapping.")},
+                    {fieldname:"reason",fieldtype:"Small Text",label:__("Reason / Terminal Slip Evidence"),reqd:1},
+                    {fieldname:"confirmed",fieldtype:"Check",
+                        label:__("I verified the terminal slip or available transaction evidence and authorize this operation."),reqd:1},
+                ],
+                primary_action_label: __("Approve Selected Operation"),
+                primary_action(values) {
+                    const rrn = String(values.rrn || "").trim();
+                    const chosen = String(values.bank_pos_name || "").trim();
+                    const reason = String(values.reason || "").trim();
+                    if (!/^\d{12}$/.test(rrn) || reason.length < 10 || reason.length > 500 || !values.confirmed) {
+                        frappe.msgprint(__("Enter a valid 12-digit RRN, a reason of 10-500 characters and acknowledge the transaction evidence."));
+                        return;
+                    }
+                    if (rrn !== searchedRRN) {
+                        frappe.msgprint(__("RRN has changed. Click Find Bank POS using RRN to revalidate candidates before saving."));
+                        return;
+                    }
+                    if (chosen && !values.confirm_mapping) {
+                        frappe.msgprint(__("Confirm the selected Bank POS transaction mapping before linking."));
+                        return;
+                    }
+                    const updating = proposed.state === "needs_confirmation" ||
+                        (rrn !== String(proposed.rrn || "").trim());
+                    if (!chosen && !updating) {
+                        frappe.msgprint(__("Select an eligible Bank POS transaction or enter a verified RRN correction."));
+                        return;
+                    }
+                    const candidate = (proposed.candidates || []).find(row => row.name === chosen);
+                    if (chosen && !candidate) {
+                        frappe.msgprint(__("Selected Bank POS transaction is not eligible. Search again."));
+                        return;
+                    }
+                    const sourceProfile = String(candidate?.alhamrani?.pos_profile || "");
+                    const bankProfile = String(candidate?.pos_profile || "");
+                    const profileWarning = chosen && sourceProfile !== bankProfile
+                        ? __("POS Profiles differ (Alhamrani: {0}, Bank POS: {1}). ", [sourceProfile || "—", bankProfile || "—"])
+                        : "";
+                    frappe.confirm(
+                        profileWarning + (chosen
+                            ? (updating
+                                ? __("Confirm AUP correction/approval AND link to the selected Bank POS? Both changes will be saved together.")
+                                : __("Approve the verified manual pairing? No payment amount, settlement or journal entry will be changed."))
+                            : __("Confirm the verified AUP update without linking a Bank POS transaction?")),
+                        () => frappe.call({
+                            method:service + "apply_managed_alhamrani_payment",
+                            args:{
+                                alhamrani_name:proposed.name, rrn:rrn, bank_pos_name:chosen,
+                                reason:reason, confirmed:1, confirm_mapping:chosen ? 1 : 0,
+                                expected_state:proposed.state
+                            },
+                            freeze:true,
+                            freeze_message:__("Rechecking transaction evidence and saving...")
+                        }).then(result => {
+                            if (!result.message) return;
+                            dialog.hide();
+                            frappe.msgprint(result.message.linked
+                                ? __("Manual pairing approved. Re-run POS reconciliation to update the match result.")
+                                : __("Alhamrani payment updated. Re-run POS reconciliation when the matching Bank POS transaction is available."));
+                            frm.reload_doc();
+                        })
+                    );
+                }
+            });
+            dialog.show();
+            dialog.fields_dict.lookup_hint.$wrapper.on("click", ".pos-managed-find", () => {
+                const rrn = String(dialog.get_value("rrn") || "").trim();
+                if (!/^\d{12}$/.test(rrn)) {
+                    frappe.msgprint(__("Enter the verified 12-digit RRN before searching."));
+                    return;
+                }
+                frappe.call({
+                    method:service + "preview_managed_alhamrani_payment",
+                    args:{alhamrani_name:aupName, proposed_rrn:rrn},
+                    freeze:true
+                }).then(result => {
+                    if (result.message) showPreview(result.message);
+                });
+            });
+            showPreview(proposed);
+        });
+    }, __("Manage Alhamrani Payment"), __("Find AUP"));
+}
+
 frappe.ui.form.on("POS Reconciliation Run", {
     refresh(frm) {
         // Singles have one fixed document, with no New document workflow.
@@ -170,162 +333,8 @@ frappe.ui.form.on("POS Reconciliation Run", {
         }
 
         if (!execution_active && (frappe.user_roles.includes("Accounts Manager") || frappe.user_roles.includes("System Manager"))) {
-            const controlMethod = "marina_custom_apps.pos_reconciliation.manual_alhamrani_control_service.";
-            const openAlhamraniControl = () => {
-                frappe.prompt([
-                    {fieldname:"alhamrani_name",fieldtype:"Data",label:__("Alhamrani Transaction ID"),reqd:1}
-                ], (first) => {
-                    frappe.call({
-                        method: controlMethod + "preview_alhamrani_control",
-                        args:{alhamrani_name:first.alhamrani_name},
-                        freeze:true
-                    }).then((res) => {
-                        const data = res.message;
-                        if (!data) return;
-                        const mode = data.action === "confirm";
-                        const d = new frappe.ui.Dialog({
-                            title: __("Update Manual Alhamrani Payment"),
-                            fields:[
-                                {fieldname:"transaction_details",fieldtype:"HTML"},
-                                {fieldname:"rrn",fieldtype:"Data",label:__("RRN (12 digits)"),reqd:1,
-                                 default:data.rrn || "",description:__("Verify the RRN against the terminal slip.")},
-                                {fieldname:"reason",fieldtype:"Small Text",label:__("Reason / Terminal Slip Evidence"),reqd:1},
-                                {fieldname:"confirmed",fieldtype:"Check",reqd:1,
-                                 label:__("I personally verified the terminal slip and confirm this change.")},
-                            ],
-                            primary_action_label: mode ? __("Approve Manual Confirmation") : __("Save Corrected RRN"),
-                            primary_action(values) {
-                                const rrn = String(values.rrn || "").trim();
-                                const reason = String(values.reason || "").trim();
-                                if (!/^\d{12}$/.test(rrn) || reason.length < 10 || !values.confirmed) {
-                                    frappe.msgprint(__("Enter a 12-digit RRN, a reason of at least 10 characters, and acknowledge the terminal slip."));
-                                    return;
-                                }
-                                if (!mode && rrn === String(data.rrn || "").trim()) {
-                                    frappe.msgprint(__("Corrected RRN must differ from the current value."));
-                                    return;
-                                }
-                                frappe.confirm(
-                                    mode
-                                        ? __("Approve this Alhamrani transaction based on the verified terminal slip? Status will become Approved.")
-                                        : __("Replace this manually confirmed Alhamrani RRN? Existing accounting and links will not be changed."),
-                                    () => frappe.call({
-                                        method:controlMethod + "update_alhamrani_control",
-                                        args:{alhamrani_name:data.name,rrn,reason,confirmed:1,expected_action:data.action},
-                                        freeze:true,
-                                        freeze_message:__("Revalidating transaction and saving audit trail...")
-                                    }).then((result) => {
-                                        if (result.message && result.message.name === data.name) {
-                                            d.hide();
-                                            frappe.msgprint(__("Saved {0}. The updated AUP will be considered on the next POS reconciliation run.", [data.name]));
-                                            frm.reload_doc();
-                                        }
-                                    })
-                                );
-                            }
-                        });
-                        const summary = [
-                            [__("AUP"), data.name],
-                            [__("Sales Invoice"), data.sales_invoice],
-                            [__("Status"), data.status],
-                            [__("Current RRN"), data.rrn],
-                            [__("Response Meaning"), data.response_meaning],
-                            [__("POS Profile"), data.pos_profile],
-                        ];
-                        d.show();
-                        d.fields_dict.transaction_details.$wrapper.html(
-                            '<div class="alert alert-info"><b>' +
-                            (mode ? __("Confirm from terminal slip") : __("Correct manually entered RRN")) +
-                            '</b><table class="table table-condensed" style="margin:8px 0 0">' +
-                            summary.map(pair => '<tr><th>' + pos_recon_escape(pair[0]) +
-                                '</th><td>' + pos_recon_escape(pair[1] || "—") +
-                                '</td></tr>').join("") + '</table></div>'
-                        );
-                    });
-                }, __("Update Manual Alhamrani Payment"), __("Find Transaction"));
-            };
-            frm.add_custom_button(__("Update Manual Alhamrani Payment"), openAlhamraniControl, __("Actions"));
-        }
-
-        if (!execution_active && (frappe.user_roles.includes("Accounts Manager") || frappe.user_roles.includes("System Manager"))) {
-            frm.add_custom_button(__("Link Manual Alhamrani Payment"), () => {
-                frappe.prompt([{fieldname:"alhamrani_name",fieldtype:"Data",label:__("Alhamrani Transaction ID"),reqd:1}], (first) => {
-                    frappe.call({
-                        method:"marina_custom_apps.pos_reconciliation.manual_alhamrani_link_service.find_manual_link_candidates",
-                        args:{alhamrani_name:first.alhamrani_name},
-                        freeze:true
-                    }).then(response => {
-                        const candidates = response.message || [];
-                        if (!candidates.length) {
-                            frappe.msgprint(__("No eligible Bank POS candidates found. Check the 12-digit RRN, amount, date, transaction type and approval status."));
-                            return;
-                        }
-                        const options = candidates.map(c => c.name).join("\n");
-                        let mappingDialog;
-                        const refreshMapping = () => {
-                            if (!mappingDialog) return;
-                            const chosen = mappingDialog.get_value("bank_pos_name") || candidates[0].name;
-                            const candidate = candidates.find(c => c.name === chosen);
-                            mappingDialog.fields_dict.mapping_confirmation.$wrapper.html(
-                                pos_recon_manual_link_preview(candidate)
-                            );
-                            // Changing the selected bank record requires fresh acknowledgement.
-                            mappingDialog.set_value("confirm_mapping", 0);
-                        };
-                        mappingDialog = new frappe.ui.Dialog({
-                            title: __("Approve Manual Link"),
-                            fields: [
-                                {fieldname:"bank_pos_name",fieldtype:"Select",label:__("Bank POS Transaction"),
-                                 options:options,reqd:1,default:candidates[0].name,onchange:refreshMapping},
-                                {fieldname:"mapping_confirmation",fieldtype:"HTML"},
-                                {fieldname:"confirm_mapping",fieldtype:"Check",
-                                 label:__("I reviewed both POS Profiles, Amount, Date and Time and confirm this mapping."),reqd:1},
-                                {fieldname:"reason",fieldtype:"Small Text",label:__("Manual Link Reason"),reqd:1,
-                                 default:"Terminal approved payment but POS did not receive approval response."}
-                            ],
-                            primary_action_label: __("Approve Link"),
-                            primary_action(v) {
-                                if (!v.confirm_mapping) {
-                                    frappe.msgprint(__("Please review and confirm the transaction mapping before approving."));
-                                    return;
-                                }
-                                const candidate = candidates.find(c => c.name === v.bank_pos_name);
-                                const sourceProfile = String(candidate?.alhamrani?.pos_profile || "");
-                                const bankProfile = String(candidate?.pos_profile || "");
-                                const profilesDiffer = sourceProfile !== bankProfile;
-                                frappe.confirm(
-                                    profilesDiffer
-                                        ? __("POS Profiles differ (Alhamrani: {0}, Bank POS: {1}). Confirm this manual link after verifying the terminal slip? Bank settlement and accounting will not be modified.", [
-                                            pos_recon_escape(sourceProfile || "—"), pos_recon_escape(bankProfile || "—")
-                                          ])
-                                        : __("Approve the verified manual payment pairing? Bank settlement and accounting will not be modified."),
-                                    () => {
-                                    frappe.call({
-                                        method:"marina_custom_apps.pos_reconciliation.manual_alhamrani_link_service.approve_manual_link",
-                                        args:{alhamrani_name:first.alhamrani_name,bank_pos_name:v.bank_pos_name,reason:v.reason},
-                                        freeze:true,freeze_message:__("Validating source records...")
-                                    }).then(result => {
-                                        if (result.message && result.message.status === "Approved") {
-                                            mappingDialog.hide();
-                                            const enrichment = result.message.enrichment || {};
-                                            const updatedFields = enrichment.fields || [];
-                                            const enrichmentText = enrichment.status === "Applied"
-                                                ? __("Alhamrani enriched fields: {0}.", [updatedFields.join(", ")])
-                                                : __("Enrichment: {0}.", [enrichment.status || "Not Applied"]);
-                                            const skippedPan = (enrichment.skipped || []).find(x => x.field === "masked_card_number");
-                                            const panHint = skippedPan
-                                                ? __(" Masked card number was not copied: {0}. Open the Manual Link and use Enrich Remaining Fields after resolving it.", [skippedPan.reason])
-                                                : "";
-                                            frappe.msgprint(__("Manual pairing approved. {0}{1} Re-run POS reconciliation to refresh the matching result.", [enrichmentText, panHint]));
-                                        }
-                                    });
-                                });
-                            }
-                        });
-                        mappingDialog.show();
-                        refreshMapping();
-                    });
-                }, __("Find Manual Payment"), __("Find Candidates"));
+            frm.add_custom_button(__("Manage Alhamrani Payment"), () => {
+                pos_recon_open_managed_alhamrani(frm);
             }, __("Actions"));
         }
 
