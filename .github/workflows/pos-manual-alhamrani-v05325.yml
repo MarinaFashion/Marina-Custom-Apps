@@ -73,6 +73,8 @@ jobs:
           assert '"0.53.25"' in Path('pyproject.toml').read_text()
           print("Manual link invariants passed")
           PY
+      - name: Unpaired Alhamrani financial guard checks
+        run: python marina_custom_apps/pos_reconciliation/tests/check_alhamrani_only_guard.py
       - name: Guided Alhamrani payment workflow checks
         run: |
           python marina_custom_apps/pos_reconciliation/tests/check_managed_alhamrani_payment.py
