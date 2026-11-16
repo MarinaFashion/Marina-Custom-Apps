@@ -67,7 +67,7 @@ def test_preview():
     preview, calls = build()
     assert preview("AUP-2026-00001")["state"] == "ready_to_link"
     assert preview("AUP-2026-00001")["candidates"][0]["name"] == "BPT-1"
-    assert calls == ["checked"]
+    assert calls == ["checked", "checked"]
 
     preview, _ = build(rrn="", manual=True)
     assert preview("AUP-2026-00001")["state"] == "needs_rrn_correction"
