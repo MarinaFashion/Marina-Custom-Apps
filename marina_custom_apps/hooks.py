@@ -126,7 +126,7 @@ has_permission = {
 app_include_js = list(globals().get("app_include_js", [])) + [
     "/assets/marina_custom_apps/js/marina_usernames.js",
     "/assets/marina_custom_apps/js/marina_discussions.js",
-    "/assets/marina_custom_apps/js/bulk_shipment_receiving_v3.js",
+    "/assets/marina_custom_apps/js/bulk_shipment_receiving_v4.js",
 ]
 scheduler_events.setdefault("daily", []).append(
     "marina_custom_apps.design_management.discussion_retention.expire_large_attachments"

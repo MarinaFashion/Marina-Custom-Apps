@@ -122,10 +122,13 @@ def _evaluate(text, supplier, company):
             "item_code": code, "template": template, "receipt_qty": qty,
             "qty": qty, "candidates": candidates,
         }
-        if not template:
-            row.update({"status": "Not Found", "message": "Item has no Item Template (variant_of)"})
+        if code not in templates:
+            row.update({"status": "Invalid Item", "message": "Item Code does not exist in ERPNext"})
         elif not candidates:
-            row.update({"status": "Not Found", "message": "No outstanding PO item matching template/title"})
+            row.update({"status": "No Available PO",
+                        "message": "No open PO line with an outstanding quantity. "
+                                   "May be a completed/closed PO or no PO at all. "
+                                   "Receive Without PO requires separate approval, rate and warehouse."})
         elif len(candidates) > 1:
             row.update({"status": "Ambiguous", "message": "Multiple open PO lines match this variant/template"})
         else:
@@ -155,14 +158,14 @@ def _decisions(value):
         if not isinstance(row, dict):
             frappe.throw(_("Invalid review decision."))
         code, action = row.get("item_code"), row.get("decision")
-        if not isinstance(code, str) or code in output or action not in ("Accept", "Reject"):
+        if not isinstance(code, str) or code in output or action not in ("Accept", "Reject", "Receive Without PO"):
             frappe.throw(_("Duplicate or invalid review decision."))
         output[code] = row
     return output
 
 
 @frappe.whitelist()
-def build_draft(text, supplier, company, decisions=None):
+def build_draft(text, supplier, company, decisions=None, currency=None, conversion_rate=None):
     """Re-evaluate authoritative data, apply approvals, return an unsaved receipt."""
     if decisions is None:
         frappe.throw(_("Outdated Bulk Shipment Receiving screen. Refresh the browser and use Preview Match again before loading."))
@@ -173,64 +176,143 @@ def build_draft(text, supplier, company, decisions=None):
     if set(review) != {r["item_code"] for r in rows}:
         frappe.throw(_("Review decisions do not cover the current pasted items. Preview again."))
 
-    chosen = []
+    linked, unlinked = [], []
     for row in rows:
-        action = review[row["item_code"]]["decision"]
+        approval = review[row["item_code"]]
+        action = approval["decision"]
         if action == "Reject":
+            continue
+        if action == "Receive Without PO":
+            if row["status"] != "No Available PO":
+                frappe.throw(_("Item {0} has a PO candidate or invalid Item. "
+                               "Re-preview before using Receive Without PO.").format(row["item_code"]))
+            try:
+                rate = Decimal(str(approval.get("rate")))
+            except (InvalidOperation, TypeError, ValueError):
+                frappe.throw(_("Enter a valid purchase rate for {0}.").format(row["item_code"]))
+            if not rate.is_finite() or rate <= 0:
+                frappe.throw(_("Purchase rate for {0} must be greater than zero.").format(row["item_code"]))
+            warehouse = approval.get("warehouse")
+            if not warehouse or frappe.db.get_value("Warehouse", warehouse, "company") != company:
+                frappe.throw(_("Select a valid warehouse belonging to {0} for {1}.").format(
+                    company, row["item_code"]))
+            if not frappe.has_permission("Item", "read", row["item_code"]):
+                frappe.throw(_("No Item read permission for {0}.").format(row["item_code"]),
+                             frappe.PermissionError)
+            item_doc = frappe.get_doc("Item", row["item_code"])
+            if item_doc.disabled or not item_doc.is_stock_item:
+                frappe.throw(_("Item {0} must be an enabled stock item.").format(row["item_code"]))
+            if not item_doc.stock_uom:
+                frappe.throw(_("Stock UOM missing for {0}.").format(row["item_code"]))
+            unlinked.append((row, item_doc, float(rate), warehouse))
             continue
         if row["status"] not in ("Matched", "Variance"):
             frappe.throw(_("Item {0} cannot be accepted: {1}").format(row["item_code"], row["status"]))
         candidate = row["candidates"][0]
-        # Prevent decisions from being reused if source PO candidates change.
-        if review[row["item_code"]].get("po_item") != candidate["po_item"]:
+        if approval.get("po_item") != candidate["po_item"]:
             frappe.throw(_("PO match changed for {0}. Preview again.").format(row["item_code"]))
-        chosen.append(row)
+        linked.append(row)
 
-    if not chosen:
+    if not linked and not unlinked:
         frappe.throw(_("Select at least one item for inclusion."))
-    from erpnext.buying.doctype.purchase_order.purchase_order import make_purchase_receipt
 
-    desired = {r["candidates"][0]["po_item"]: r for r in chosen}
-    po_names = sorted({r["candidates"][0]["po"] for r in chosen})
-    parents = frappe.get_list(
-        "Purchase Order",
-        filters={"name": ["in", po_names], "docstatus": 1,
-                 "supplier": supplier, "company": company},
-        fields=["name", "currency"], limit_page_length=len(po_names),
-    )
-    if len(parents) != len(po_names):
-        frappe.throw(_("A Purchase Order is no longer available. Preview again."))
-    if len({po.currency for po in parents}) != 1:
-        frappe.throw(_("Mixed PO currencies are not supported in one Purchase Receipt."))
+    # Do not silently substitute a guessed supplier currency or live FX rate.
+    receipt_currency = frappe.get_cached_value("Company", company, "default_currency")
+    # The UI must pass its current document currency. Never silently mix currencies.
+    if unlinked and not currency:
+        frappe.throw(_("Purchase Receipt currency is required for Receive Without PO."))
+    currency = currency or receipt_currency
+    if not frappe.db.exists("Currency", currency):
+        frappe.throw(_("Invalid Purchase Receipt currency {0}.").format(currency))
+    try:
+        conversion_rate = flt(conversion_rate or 0)
+    except (TypeError, ValueError):
+        conversion_rate = 0
+    base_currency = frappe.get_cached_value("Company", company, "default_currency")
+    if currency == base_currency:
+        conversion_rate = 1
+    elif unlinked and conversion_rate <= 0:
+        frappe.throw(_("Set a valid Purchase Receipt conversion rate for {0}.").format(currency))
 
     target = None
-    for po in po_names:
-        selected = [ref for ref, row in desired.items() if row["candidates"][0]["po"] == po]
-        target = make_purchase_receipt(po, target_doc=target, args={"filtered_children": selected})
-    if not target:
-        frappe.throw(_("No eligible Purchase Order lines found."))
+    if linked:
+        from erpnext.buying.doctype.purchase_order.purchase_order import make_purchase_receipt
+        desired = {r["candidates"][0]["po_item"]: r for r in linked}
+        po_names = sorted({r["candidates"][0]["po"] for r in linked})
+        parents = frappe.get_list(
+            "Purchase Order",
+            filters={"name": ["in", po_names], "docstatus": 1,
+                     "supplier": supplier, "company": company},
+            fields=["name", "currency"], limit_page_length=len(po_names),
+        )
+        if len(parents) != len(po_names):
+            frappe.throw(_("A Purchase Order is no longer available. Preview again."))
+        if len({po.currency for po in parents}) != 1:
+            frappe.throw(_("Mixed PO currencies are not supported in one Purchase Receipt."))
+        if currency != parents[0].currency:
+            frappe.throw(_("Receipt currency ({0}) differs from PO currency ({1}).").format(
+                currency, parents[0].currency))
+        for po in po_names:
+            selected = [ref for ref, row in desired.items() if row["candidates"][0]["po"] == po]
+            target = make_purchase_receipt(po, target_doc=target, args={"filtered_children": selected})
+        if not target:
+            frappe.throw(_("No eligible Purchase Order lines found."))
+        if unlinked and abs(flt(target.conversion_rate) - conversion_rate) > EPS:
+            frappe.throw(_("The Purchase Receipt conversion rate differs from the mapped "
+                           "Purchase Order. Align the receipt exchange rate before "
+                           "mixing PO-linked and unlinked items."))
+        if unlinked:
+            conversion_rate = flt(target.conversion_rate)
 
-    mapped, seen = [], set()
-    for item in target.items:
-        ref = item.get("purchase_order_item")
-        if ref not in desired:
-            continue
-        if ref in seen:
-            frappe.throw(_("Duplicate mapped PO line: {0}").format(ref))
-        seen.add(ref)
-        row = desired[ref]
-        factor = flt(item.conversion_factor)
-        if factor <= 0:
-            frappe.throw(_("Invalid conversion factor for {0}.").format(item.item_code))
-        item.qty = row["receipt_qty"] / factor
-        item.received_qty = item.qty
-        item.stock_qty = row["receipt_qty"]
-        item.amount = flt(item.qty) * flt(item.rate)
-        item.base_amount = flt(item.amount) * flt(target.conversion_rate)
-        mapped.append(item)
-    if set(desired) != seen:
-        frappe.throw(_("ERPNext could not map every accepted PO line. No document saved."))
-    target.set("items", mapped)
+        mapped, seen = [], set()
+        for item in target.items:
+            ref = item.get("purchase_order_item")
+            if ref not in desired:
+                continue
+            if ref in seen:
+                frappe.throw(_("Duplicate mapped PO line: {0}").format(ref))
+            seen.add(ref)
+            row = desired[ref]
+            factor = flt(item.conversion_factor)
+            if factor <= 0:
+                frappe.throw(_("Invalid conversion factor for {0}.").format(item.item_code))
+            item.qty = row["receipt_qty"] / factor
+            item.received_qty = item.qty
+            item.stock_qty = row["receipt_qty"]
+            item.amount = flt(item.qty) * flt(item.rate)
+            item.base_amount = flt(item.amount) * flt(target.conversion_rate)
+            mapped.append(item)
+        if set(desired) != seen:
+            frappe.throw(_("ERPNext could not map every accepted PO line. No document saved."))
+        target.set("items", mapped)
+    else:
+        target = frappe.new_doc("Purchase Receipt")
+        target.company = company
+        target.supplier = supplier
+        target.currency = currency
+        target.conversion_rate = conversion_rate
+
+    for row, doc, rate, warehouse in unlinked:
+        # Deliberately no purchase_order / purchase_order_item link.
+        # A completed or closed PO is NEVER reopened or over-received through this path.
+        target.append("items", {
+            "item_code": doc.name,
+            "item_name": doc.item_name,
+            "description": doc.description or doc.item_name,
+            "qty": row["receipt_qty"],
+            "received_qty": row["receipt_qty"],
+            "stock_qty": row["receipt_qty"],
+            "uom": doc.stock_uom,
+            "stock_uom": doc.stock_uom,
+            "conversion_factor": 1,
+            "rate": rate,
+            "amount": row["receipt_qty"] * rate,
+            "base_rate": rate * conversion_rate,
+            "base_amount": row["receipt_qty"] * rate * conversion_rate,
+            "warehouse": warehouse,
+            "purchase_order": None,
+            "purchase_order_item": None,
+        })
     target.company = company
     target.supplier = supplier
     return target.as_dict()

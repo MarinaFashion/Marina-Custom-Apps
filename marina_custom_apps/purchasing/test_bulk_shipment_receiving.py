@@ -1,7 +1,9 @@
 """Focused parser tests for Excel-paste receiving workflow."""
 import unittest
+from unittest.mock import patch
+from types import SimpleNamespace
 
-from marina_custom_apps.purchasing.bulk_shipment_receiving import _parse, _decisions
+from marina_custom_apps.purchasing.bulk_shipment_receiving import _parse, _decisions, _evaluate, build_draft
 
 
 class TestBulkShipmentPaste(unittest.TestCase):
@@ -35,6 +37,86 @@ class TestBulkShipmentPaste(unittest.TestCase):
                 {"item_code": "SKU-A", "decision": "Accept"},
                 {"item_code": "SKU-A", "decision": "Reject"},
             ])
+
+    def test_receive_without_po_decision_is_explicit(self):
+        row = _decisions([{
+            "item_code": "SKU-A", "decision": "Receive Without PO",
+            "rate": "12.50", "warehouse": "Stores - M"
+        }])["SKU-A"]
+        self.assertEqual(row["rate"], "12.50")
+        self.assertEqual(row["decision"], "Receive Without PO")
+
+    def test_invalid_review_action_rejected(self):
+        with self.assertRaises(Exception):
+            _decisions([{"item_code": "SKU-A", "decision": "Force PO Closed"}])
+
+    def test_existing_variant_without_available_po_is_exception_not_invalid(self):
+        with patch("marina_custom_apps.purchasing.bulk_shipment_receiving._lookup",
+                   return_value=({}, {"SKU-A": "STYLE-A"})):
+            rows, errors = _evaluate("SKU-A\\t6", "SUPPLIER", "COMPANY")
+        self.assertFalse(errors)
+        self.assertEqual(rows[0]["status"], "No Available PO")
+        self.assertFalse(rows[0]["candidates"])
+
+    def test_nonexistent_item_cannot_be_received_without_po(self):
+        with patch("marina_custom_apps.purchasing.bulk_shipment_receiving._lookup",
+                   return_value=({}, {})):
+            rows, errors = _evaluate("BAD-SKU\\t6", "SUPPLIER", "COMPANY")
+        self.assertFalse(errors)
+        self.assertEqual(rows[0]["status"], "Invalid Item")
+
+    def test_without_po_creates_unlinked_unsaved_receipt_item(self):
+        class UnsavedReceipt:
+            def __init__(self):
+                self.items = []
+                self.conversion_rate = 1
+
+            def append(self, fieldname, value):
+                self.items.append(value)
+
+            def as_dict(self):
+                return {"items": self.items, "currency": self.currency}
+
+        no_po = {"item_code": "SKU-A", "status": "No Available PO",
+                 "receipt_qty": 6, "candidates": []}
+        item = SimpleNamespace(name="SKU-A", item_name="Sample", description="Sample",
+                               disabled=0, is_stock_item=1, stock_uom="Nos")
+        with (
+            patch("marina_custom_apps.purchasing.bulk_shipment_receiving._evaluate",
+                  return_value=([no_po], [])),
+            patch("marina_custom_apps.purchasing.bulk_shipment_receiving.frappe") as frappe_mock,
+        ):
+            frappe_mock.db.get_value.return_value = "COMPANY"
+            frappe_mock.db.exists.return_value = True
+            frappe_mock.get_cached_value.return_value = "SAR"
+            frappe_mock.has_permission.return_value = True
+            frappe_mock.get_doc.return_value = item
+            frappe_mock.new_doc.return_value = UnsavedReceipt()
+            result = build_draft(
+                "SKU-A\\t6", "SUPPLIER", "COMPANY",
+                decisions=[{"item_code": "SKU-A", "decision": "Receive Without PO",
+                            "rate": "12.50", "warehouse": "Stores - M"}],
+                currency="SAR", conversion_rate=1,
+            )
+        row = result["items"][0]
+        self.assertIsNone(row["purchase_order"])
+        self.assertIsNone(row["purchase_order_item"])
+        self.assertEqual(row["qty"], 6)
+        self.assertEqual(row["rate"], 12.5)
+        self.assertEqual(row["amount"], 75)
+
+    def test_without_po_rejects_zero_rate_before_draft(self):
+        no_po = {"item_code": "SKU-A", "status": "No Available PO",
+                 "receipt_qty": 6, "candidates": []}
+        with patch("marina_custom_apps.purchasing.bulk_shipment_receiving._evaluate",
+                   return_value=([no_po], [])):
+            with self.assertRaises(Exception):
+                build_draft(
+                    "SKU-A\\t6", "SUPPLIER", "COMPANY",
+                    decisions=[{"item_code": "SKU-A", "decision": "Receive Without PO",
+                                "rate": "0", "warehouse": "Stores - M"}],
+                    currency="SAR", conversion_rate=1,
+                )
 
     def test_zero_qty_is_excluded(self):
         rows, errors = _parse("SKU-A\t0\nSKU-B\t1")
