@@ -43,8 +43,11 @@ jobs:
           assert "result = _base_result(run, bank=bank, alhamrani=alh" in engine
           assert "frappe.db.delete(" not in service
           assert "frappe.db.commit(" not in service
-          assert 'Link Manual Alhamrani Payment' in js
-          assert 'find_manual_link_candidates' in js
+          assert 'Manage Alhamrani Payment' in js
+          assert 'preview_managed_alhamrani_payment' in js
+          assert 'apply_managed_alhamrani_payment' in js
+          assert 'Link Manual Alhamrani Payment' not in js
+          assert 'Update Manual Alhamrani Payment' not in js
           assert 'pos_recon_manual_link_preview(candidate)' in js
           assert '"transaction_time"], limit_page_length=100)' in service
           assert '"time": cstr(bank.transaction_time).strip()' in service
@@ -53,8 +56,8 @@ jobs:
           assert 'time_tolerance_seconds' in service
           # Scope the ordering check to the existing manual LINK dialog:
           # the newer AUP confirmation dialog has its own reason field.
-          manual_link_js = js.split('frm.add_custom_button(__("Link Manual Alhamrani Payment")', 1)[1]
-          assert manual_link_js.index('fieldname:"mapping_confirmation"') < manual_link_js.index('fieldname:"reason",fieldtype:"Small Text"')
+          managed_js = js.split('function pos_recon_open_managed_alhamrani(frm)', 1)[1]
+          assert managed_js.index('fieldname:"mapping_confirmation"') < managed_js.index('fieldname:"reason",fieldtype:"Small Text"')
           assert 'I reviewed both POS Profiles, Amount, Date and Time and confirm this mapping.' in js
           assert 'source.pos_profile, candidate.pos_profile' in js
           assert 'POS Profiles differ (Alhamrani:' in js
@@ -66,7 +69,7 @@ jobs:
           assert 'Math.abs(alhamraniSeconds - bankSeconds) <= tolerance' in js
           assert 'manual record creation time, not a verified terminal time' in js
           assert 'Verify slip' in js
-          assert 'mappingDialog.set_value("confirm_mapping", 0)' in js
+          assert 'dialog.set_value("confirm_mapping", 0)' in js
           assert '"0.53.25"' in Path('pyproject.toml').read_text()
           print("Manual link invariants passed")
           PY
