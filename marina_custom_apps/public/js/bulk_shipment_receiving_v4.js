@@ -51,13 +51,20 @@
                 const results = response.message || {};
                 const rows = results.rows || [];
                 const decisions = {};
+                const exceptionWarehouses = {};
+                // The PR's Set Warehouse field is the single default for every
+                // unlinked exception. Keep each row editable after pre-filling.
+                const defaultWarehouse = frm.doc.set_warehouse || "";
                 rows.forEach(row => {
                     // Exact match defaults to Accept; exceptions ALWAYS need explicit review.
                     decisions[row.item_code] = row.status === "Matched" ? "Accept" : "";
+                    if (row.status === "No Available PO") {
+                        exceptionWarehouses[row.item_code] = defaultWarehouse;
+                    }
                 });
                 dialog.__review = {paste: values.paste, supplier: frm.doc.supplier,
                     company: frm.doc.company, rows, decisions, selected: new Set(),
-                    exceptionRates: {}, exceptionWarehouses: {},
+                    exceptionRates: {}, exceptionWarehouses,
                     errors: results.errors || [], page: 0};
                 render();
             },
@@ -197,7 +204,7 @@
                     escape(frm.doc.currency || "currency") + ')</label><input type="number" min="0.000001" step="any" class="form-control input-xs marina-exception-rate" data-index="' +
                     (begin + index) + '" value="' + escape(state.exceptionRates[row.item_code] ?? "") +
                     '"><label>Warehouse</label><input class="form-control input-xs marina-exception-warehouse" data-index="' +
-                    (begin + index) + '" value="' + escape(state.exceptionWarehouses[row.item_code] ?? frm.doc.set_warehouse ?? "") +
+                    (begin + index) + '" value="' + escape(state.exceptionWarehouses[row.item_code] ?? "") +
                     '"></div>' : '') + '</td>' +
                     '<td class="text-center"><input type="checkbox" class="marina-row-select" data-index="' +
                     (begin + index) + '"' + (valid ? '' : ' disabled') +
