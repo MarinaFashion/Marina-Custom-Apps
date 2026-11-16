@@ -383,6 +383,13 @@ def build_matrix(rows, sizes, images):
                                if totals["po_qty"] else 0)
         blocks.append({"item_code": template, "image": images.get(template),
                        "variants": cells, "totals": totals})
+    # Rank entire styles by the sum of their already-calculated variant
+    # discount amounts. This keeps each style's eight matrix rows together.
+    # Stable item-code tie break also makes zero-discount results predictable.
+    blocks.sort(key=lambda block: (
+        -flt(block["totals"]["discount_value"]),
+        block["item_code"] or "",
+    ))
     return blocks
 
 

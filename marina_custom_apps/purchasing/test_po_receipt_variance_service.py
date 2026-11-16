@@ -84,6 +84,31 @@ class TestPOReceiptDiscount(unittest.TestCase):
         self.assertEqual(matrix[0]["totals"]["eligible_excess_qty"], 8)
         self.assertEqual(matrix[0]["totals"]["eligible_amount_before_discount"], 1016)
 
+    def test_matrix_styles_sort_by_total_discount_descending(self):
+        def variant(code, template, discount):
+            return {
+                "item_code": code, "item_template": template, "po_qty": 100,
+                "receipt_qty": 112, "variance_qty": 12, "variance_pct": 12,
+                "tolerance_qty": 8, "eligible_excess_qty": 4,
+                "unit_cost": 100, "eligible_amount_before_discount": discount * 2,
+                "discount_value": discount,
+            }
+
+        rows = [
+            variant("A-S", "STYLE-A", 30),
+            variant("B-S", "STYLE-B", 80),
+            variant("A-M", "STYLE-A", 60),
+            variant("C-S", "STYLE-C", 0),
+            variant("D-S", "STYLE-D", 90),
+        ]
+        blocks = build_matrix(rows, {}, {})
+        self.assertEqual(
+            [block["item_code"] for block in blocks],
+            ["STYLE-A", "STYLE-D", "STYLE-B", "STYLE-C"],
+        )
+        self.assertEqual(blocks[0]["totals"]["discount_value"], 90)
+        self.assertEqual(len(blocks[0]["variants"]), 2)
+
     def test_template_never_offsets_variant_excess_with_other_variant_shortage(self):
         rows = []
         for variant, ordered, received in (("SIZE-S", 100, 120), ("SIZE-M", 100, 80)):
