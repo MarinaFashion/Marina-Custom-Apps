@@ -60,7 +60,7 @@ def test_preview():
             "_decide_action": lambda doc: "confirm",
             "_rrn": lambda rrn: rrn if re.fullmatch(r"\d{12}", rrn) else (_ for _ in ()).throw(ValueError()),
             "_candidates": lambda source, rrn: [{"name": "BPT-1"}],
-            "re": re, "cstr": str,
+            "re": re, "cstr": lambda value: "" if value is None else str(value),
         }
         return extract("_preview", ns), calls
 
