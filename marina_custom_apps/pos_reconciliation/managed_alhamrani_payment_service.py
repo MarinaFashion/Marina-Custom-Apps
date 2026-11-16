@@ -7,14 +7,14 @@ import re
 
 import frappe
 from frappe import _
-from frappe.utils import cstr, flt, getdate
+from frappe.utils import cstr
 
 from marina_custom_apps.pos_reconciliation.alhamrani_adapter import (
     ALHAMRANI_DOCTYPE, AlhamraniAdapter,
 )
 from marina_custom_apps.pos_reconciliation.manual_alhamrani_control_service import (
     _read, _check_unlinked, _decide_action, _is_manual,
-    _require_approver, _rrn, _reason, _site_guard,
+    _rrn, _reason, _site_guard,
     update_alhamrani_control,
 )
 from marina_custom_apps.pos_reconciliation.manual_alhamrani_link_service import (
@@ -42,7 +42,7 @@ def _related_records(name):
     return linked, record
 
 
-def _source(name, proposed_rrn=None):
+def _source(name):
     doc, invoice = _read(name)
     adapter = AlhamraniAdapter()
     source = adapter.normalized_row(doc.as_dict())
