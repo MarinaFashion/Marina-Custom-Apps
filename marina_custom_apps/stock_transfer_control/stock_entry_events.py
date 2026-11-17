@@ -124,10 +124,24 @@ def _set_transfer_total_qty(doc):
         doc.custom_total_qty = 0
 
 
+def _ensure_send_stock_transit(doc):
+    """New/draft Marina Send Stock must use ERPNext's transit ledger workflow.
+
+    Never mutate submitted/cancelled Stock Entries: add_to_transit affects
+    stock-ledger/accounting behavior and requires a separate evidence-based
+    recovery if a submitted transaction was created without it.
+    """
+    if doc.docstatus != 0:
+        return
+    if doc.stock_entry_type == TYPE_SEND_STOCK or _has_mr_origin(doc):
+        doc.add_to_transit = 1
+
+
 def before_validate_stock_entry(doc, method=None):
     # Preserve Stock Auto Allocation logistics metadata/authoritative MR route first.
     from marina_custom_apps.stock_auto_allocation.stock_entry_events import preserve_allocation_route
     preserve_allocation_route(doc, method=method)
+    _ensure_send_stock_transit(doc)
     _remove_route_only_blank_rows(doc)
     _set_transfer_total_qty(doc)
 
@@ -389,6 +403,7 @@ def validate_stock_entry(doc, method=None):
     if mr_origin:
         _validate_material_request_origin(doc)
 
+    _ensure_send_stock_transit(doc)
     if doc.stock_entry_type not in MANAGED_TYPES:
         # Do not interfere with manufacturing/repack/other ERPNext stock entries.
         return
