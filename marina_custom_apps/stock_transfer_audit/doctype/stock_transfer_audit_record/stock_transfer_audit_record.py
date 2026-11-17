@@ -324,26 +324,30 @@ class StockTransferAuditRecord(Document):
                     )
 
     def _correction_groups(self):
-        groups = {"to_source": {}, "to_target": {}}
-
+        # Submitted legacy audit records may still contain duplicate item rows
+        # with opposite discrepancies. Net the eligible movements per SKU to
+        # prevent creating two opposing Stock Entries for the same item.
+        net_by_item = {}
         for row in self.items or []:
             variance = flt(row.discrepancy_qty)
-            qty = abs(variance)
-
-            if qty < 0.000001 or row.action == ACTION_IGNORE:
+            if abs(variance) < 0.000001 or row.action == ACTION_IGNORE:
                 continue
-
-            group = None
-            if variance > 0 and row.action == ACTION_MOVE_TO_SOURCE:
-                group = "to_source"
-            elif variance < 0 and row.action == ACTION_MOVE_TO_TARGET:
-                group = "to_target"
-
-            if group:
-                groups[group][row.item_code] = (
-                    flt(groups[group].get(row.item_code)) + qty
+            if variance > 0 and row.action != ACTION_MOVE_TO_SOURCE:
+                frappe.throw(
+                    _("Item {0}: shortage must be moved to source or ignored.").format(row.item_code)
                 )
+            if variance < 0 and row.action != ACTION_MOVE_TO_TARGET:
+                frappe.throw(
+                    _("Item {0}: excess must be moved to target or ignored.").format(row.item_code)
+                )
+            net_by_item[row.item_code] = flt(net_by_item.get(row.item_code)) + variance
 
+        groups = {"to_source": {}, "to_target": {}}
+        for item_code, variance in net_by_item.items():
+            if variance > 0.000001:
+                groups["to_source"][item_code] = variance
+            elif variance < -0.000001:
+                groups["to_target"][item_code] = abs(variance)
         return groups
 
     def _validate_item_for_auto_correction(self, item_code):
