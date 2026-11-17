@@ -1,0 +1,24 @@
+name: Stock Transfer Audit net item regression
+
+on:
+  pull_request:
+    paths:
+      - "marina_custom_apps/stock_transfer_audit/**"
+      - ".github/workflows/stock-transfer-audit-net-item.yml"
+  push:
+    paths:
+      - "marina_custom_apps/stock_transfer_audit/**"
+      - ".github/workflows/stock-transfer-audit-net-item.yml"
+
+jobs:
+  audit-net-variance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate syntax
+        run: python -m compileall -q marina_custom_apps/stock_transfer_audit
+      - name: Run net-item regression checks
+        run: python marina_custom_apps/stock_transfer_audit/tests/check_net_item_variance.py

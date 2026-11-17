@@ -21,15 +21,20 @@ def get_record_processing_status(record):
         return "Completed"
     if record.audit_result != "Variance":
         return "Pending"
-    need_source = need_target = False
+    # Use the same net-item basis as correction generation, including
+    # legacy submitted audit records with multiple rows for one SKU.
+    net_by_item = {}
     for row in record.items or []:
         variance = flt(row.discrepancy_qty)
-        if row.action == ACTION_IGNORE:
+        if row.action == ACTION_IGNORE or abs(variance) < 0.000001:
             continue
-        if variance > 0 and row.action == ACTION_MOVE_TO_SOURCE:
-            need_source = True
-        elif variance < 0 and row.action == ACTION_MOVE_TO_TARGET:
-            need_target = True
+        if variance > 0 and row.action != ACTION_MOVE_TO_SOURCE:
+            return "Pending"
+        if variance < 0 and row.action != ACTION_MOVE_TO_TARGET:
+            return "Pending"
+        net_by_item[row.item_code] = flt(net_by_item.get(row.item_code)) + variance
+    need_source = any(qty > 0.000001 for qty in net_by_item.values())
+    need_target = any(qty < -0.000001 for qty in net_by_item.values())
     if need_source and not _submitted_correction(record.name, ACTION_MOVE_TO_SOURCE):
         return "Pending"
     if need_target and not _submitted_correction(record.name, ACTION_MOVE_TO_TARGET):
