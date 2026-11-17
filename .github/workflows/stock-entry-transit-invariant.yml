@@ -1,0 +1,31 @@
+name: Stock Entry transit invariant validation
+
+on:
+  pull_request:
+    paths:
+      - "marina_custom_apps/stock_transfer_control/**"
+      - "marina_custom_apps/public/js/stock_entry_control.js"
+      - ".github/workflows/stock-entry-transit-invariant.yml"
+  push:
+    paths:
+      - "marina_custom_apps/stock_transfer_control/**"
+      - "marina_custom_apps/public/js/stock_entry_control.js"
+      - ".github/workflows/stock-entry-transit-invariant.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Python syntax and Add to Transit regression
+        run: |
+          python -m compileall -q marina_custom_apps/stock_transfer_control
+          python marina_custom_apps/stock_transfer_control/tests/check_send_stock_transit.py
+      - name: Stock Entry client JavaScript syntax
+        run: node --check marina_custom_apps/public/js/stock_entry_control.js
