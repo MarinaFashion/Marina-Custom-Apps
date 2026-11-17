@@ -133,7 +133,10 @@ def _ensure_send_stock_transit(doc):
     """
     if doc.docstatus != 0:
         return
-    if doc.stock_entry_type == TYPE_SEND_STOCK or _has_mr_origin(doc):
+    if doc.stock_entry_type == TYPE_SEND_STOCK or (
+        doc.stock_entry_type not in {TYPE_RECEIVE_STOCK, TYPE_TRANSFER_BETWEEN}
+        and _has_mr_origin(doc)
+    ):
         doc.add_to_transit = 1
 
 
