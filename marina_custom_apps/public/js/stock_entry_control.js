@@ -21,7 +21,7 @@ frappe.ui.form.on("Stock Entry", {
             if (allowed.includes("Send Stock") && !frm.doc.stock_entry_type) {
                 await frm.set_value("stock_entry_type", "Send Stock");
             }
-            await marina_disable_standard_transit(frm);
+            await marina_ensure_standard_transit(frm);
         }
 
         marina_bind_link_query_guards(frm);
@@ -74,7 +74,7 @@ frappe.ui.form.on("Stock Entry", {
             frm.marina_internal_route_update = false;
         }
 
-        await marina_disable_standard_transit(frm);
+        await marina_ensure_standard_transit(frm);
         await marina_clear_route(frm, true);
         marina_bind_link_query_guards(frm);
         marina_apply_field_controls(frm);
@@ -86,7 +86,7 @@ frappe.ui.form.on("Stock Entry", {
 
         frm.marina_internal_route_update = true;
         try {
-            await marina_disable_standard_transit(frm);
+            await marina_ensure_standard_transit(frm);
             await frm.set_value("to_warehouse", null);
             await frm.set_value("custom_intended_final_warehouse", null);
             await marina_sync_child_route(frm);
@@ -230,18 +230,16 @@ function marina_is_managed_send(frm) {
 }
 
 
-async function marina_disable_standard_transit(frm) {
-    if (!marina_is_managed_send(frm) || marina_has_material_request_origin(frm)) {
-        return;
-    }
-
+async function marina_ensure_standard_transit(frm) {
+    // The controlled End Transit flow depends on ERPNext's add_to_transit.
+    // Never rewrite this ledger-significant field on submitted documents.
+    const managed = marina_is_managed_send(frm) || marina_has_material_request_origin(frm);
     if (frm.fields_dict.add_to_transit) {
-        frm.set_df_property("add_to_transit", "read_only", 1);
-        frm.set_df_property("add_to_transit", "hidden", 1);
+        frm.set_df_property("add_to_transit", "read_only", managed ? 1 : 0);
+        frm.set_df_property("add_to_transit", "hidden", managed ? 1 : 0);
     }
-
-    if (frm.doc.add_to_transit) {
-        await frm.set_value("add_to_transit", 0);
+    if (managed && frm.doc.docstatus === 0 && !frm.doc.add_to_transit) {
+        await frm.set_value("add_to_transit", 1);
     }
 }
 
@@ -882,6 +880,7 @@ async function marina_prepare_material_request_stock_entry(frm) {
 
     try {
         await frm.set_value("stock_entry_type", route.stock_entry_type || "Send Stock");
+        await marina_ensure_standard_transit(frm);
         await frm.set_value("from_warehouse", route.from_warehouse);
         await frm.set_value("to_warehouse", route.to_warehouse);
         await frm.set_value(
