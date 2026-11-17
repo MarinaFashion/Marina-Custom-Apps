@@ -80,6 +80,36 @@ def get_transfer_snapshot(send_name, receive_name=None):
                 "receive_stock_detail":None,
             })
 
+    # Net repeated SKU rows before determining discrepancies or correction actions.
+    # A duplicated SKU may have an excess on one receiving row and a shortage
+    # on another: only the net variance should be actionable.
+    consolidated = {}
+    counts = {}
+    for row in items:
+        item_code = row.get("item_code")
+        if not item_code:
+            frappe.throw(_("Cannot audit a stock transfer item without an Item Code."))
+        if item_code not in consolidated:
+            consolidated[item_code] = dict(row)
+            counts[item_code] = 1
+        else:
+            aggregate = consolidated[item_code]
+            aggregate["sent_qty"] += flt(row["sent_qty"])
+            aggregate["actual_received_qty"] += flt(row["actual_received_qty"])
+            counts[item_code] += 1
+
+    items = []
+    total_abs_variance = 0.0
+    for item_code, row in consolidated.items():
+        row["discrepancy_qty"] = flt(row["sent_qty"]) - flt(row["actual_received_qty"])
+        # A grouped line no longer identifies a single source/receipt detail.
+        if counts[item_code] > 1:
+            row["send_stock_detail"] = None
+            row["receive_stock_detail"] = None
+        row["unexpected_item"] = int(flt(row["sent_qty"]) == 0)
+        total_abs_variance += abs(row["discrepancy_qty"])
+        items.append(row)
+
     total_variance=total_sent-total_received
     return {
         "original_send_stock":send.name,
