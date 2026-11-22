@@ -103,7 +103,15 @@ def _record_groups(run, records):
 
         settlement_number = normalize_settlement_number(bank.settlement_number)
         terminal_id = cstr(bank.terminal_id or record.terminal_id).strip()
+        # The unified POS card mapping intentionally groups several uncommon schemes
+        # as OTHER, but SNB statement codes GN/GF/GV and AX/AF/AV retain their
+        # original GCCCARD / AMEX scheme. Use the bank's explicit source scheme
+        # only for these two cases, so transaction and statement settlement keys
+        # agree without reclassifying unrelated OTHER schemes (e.g. Discover).
         card_type = normalize_statement_card_type(record.card_type or bank.card_type)
+        source_card_type = normalize_statement_card_type(bank.card_type)
+        if card_type == "OTHER" and source_card_type in {"GCCCARD", "AMEX"}:
+            card_type = source_card_type
         reconciliation_date = getdate(bank.balance_date) if bank.balance_date else None
         terminal_ref = terminal_bank_reference(terminal_id, ref_length) if terminal_id else ""
 
