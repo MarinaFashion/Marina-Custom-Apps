@@ -44,3 +44,29 @@ class TestFinanceReviewFoundation(TestCase):
             transaction_time="22:49:00",
         )
         self.assertIn("Masked PAN", compare_transactions(bank, alhamrani))
+
+    def test_pan_mask_length_difference_with_same_visible_digits(self):
+        bank = SimpleNamespace(
+            transaction_amount=548.00,
+            card_type="SPAN",
+            masked_card_number="968205XXXXXX0605",
+            transaction_date="2026-11-21",
+            transaction_time="16:44:09",
+        )
+        alhamrani = SimpleNamespace(
+            amount=548.00,
+            card_type="SPAN",
+            masked_pan="968205*********0605",
+            emv_last4="",
+            transaction_date="2026-11-21",
+            transaction_time="16:44:09",
+        )
+        self.assertEqual(get_pan_validation_method(bank, alhamrani), "Direct PAN")
+        self.assertNotIn("Masked PAN", compare_transactions(bank, alhamrani))
+
+    def test_pan_visible_digits_must_match_even_when_mask_lengths_differ(self):
+        bank = SimpleNamespace(masked_card_number="968205XXXXXX0605")
+        alhamrani = SimpleNamespace(masked_pan="968205*********0606", emv_last4="")
+        self.assertEqual(get_pan_validation_method(bank, alhamrani), "Mismatch")
+        alhamrani.masked_pan = "968206*********0605"
+        self.assertEqual(get_pan_validation_method(bank, alhamrani), "Mismatch")

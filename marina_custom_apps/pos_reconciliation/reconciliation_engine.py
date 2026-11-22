@@ -87,6 +87,24 @@ def get_pan_validation_method(bank, alhamrani):
     if bank_pan and alh_pan and bank_pan == alh_pan:
         return "Direct PAN"
 
+    # Masking systems can hide different numbers of digits (X vs *) while
+    # preserving the same visible BIN/prefix and final four digits. Do not
+    # treat a mask-length difference alone as a PAN mismatch. Require both
+    # sides to contain a masked middle section and identical visible segments.
+    # Exact matches above retain their previous validation classification.
+    if bank_pan and alh_pan and "*" in bank_pan and "*" in alh_pan:
+        bank_prefix, bank_suffix = bank_pan.split("*", 1)[0], bank_pan.rsplit("*", 1)[-1]
+        alh_prefix, alh_suffix = alh_pan.split("*", 1)[0], alh_pan.rsplit("*", 1)[-1]
+        if (
+            len(bank_prefix) >= 6
+            and len(bank_suffix) == 4
+            and bank_prefix == alh_prefix
+            and bank_suffix == alh_suffix
+            and bank_prefix.isdigit()
+            and bank_suffix.isdigit()
+        ):
+            return "Direct PAN"
+
     bank_last4 = _pan_last4(getattr(bank, "masked_card_number", None))
     emv_last4 = cstr(getattr(alhamrani, "emv_last4", None)).strip()
     if bank_last4 and emv_last4 and bank_last4 == emv_last4:
