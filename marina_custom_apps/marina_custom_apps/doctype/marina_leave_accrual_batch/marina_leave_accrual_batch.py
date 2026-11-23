@@ -11,7 +11,7 @@ from decimal import Decimal
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import flt, get_datetime, now_datetime
+from frappe.utils import flt, now_datetime
 
 from marina_custom_apps.marina_leave_management.monthly_preview import (
     get_candidates,
@@ -120,8 +120,7 @@ def _line_dict(row):
         "employee_name": row.get("employee_name"),
         "entitlement": row.get("entitlement"),
         "period": row.get("period"),
-        "eligible_days": None if row.get("candidate_credit") is None else
-                         flt(row.get("candidate_credit"), 6) * 0 + 0,  # populated below
+        "eligible_days": None,
         "excluded_days": flt(row.get("excluded_days") or 0, 6),
         "candidate_credit": flt(row.get("candidate_credit") or 0, 6),
         "status": row["status"],
@@ -145,10 +144,6 @@ def generate_batch(name):
     doc.set("employees", [])
     for row in rows:
         line = _line_dict(row)
-        # Actual eligible calendar-day count is computed from joining month
-        # and excluded days in an upcoming report enhancement. Until then
-        # leave this informational field blank, not an invented estimate.
-        line["eligible_days"] = None
         doc.append("employees", line)
     doc.eligible_count = sum(
         1 for row in rows if row.get("candidate_credit") and
@@ -195,7 +190,7 @@ def approve_batch(name, confirm_warnings=0):
            for row in latest):
         frappe.throw(_("Candidate data changed; regenerate before approval"))
     has_warnings = any(row["status"] == "Needs Review" for row in latest)
-    if has_warnings and not int(confirm_warnings):
+    if has_warnings and not frappe.utils.cint(confirm_warnings):
         frappe.throw(_("Review warnings and explicitly confirm them before approval"))
     doc.status = "Approved"
     doc.approved_by = frappe.session.user
