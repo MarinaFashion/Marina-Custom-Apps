@@ -46,7 +46,7 @@ def _require_hr_access():
     frappe.has_permission("Leave Application", ptype="read", throw=True)
 
 
-def get_candidates(credit_date, employee=None, entitlement=None, include_exempt=False):
+def get_candidates(credit_date, employee=None, entitlement=None, include_exempt=False, company=None):
     """Generate candidate rows; leave allocations are never created.
 
     Existing overlapping allocations are a REVIEW flag, not automatically
@@ -61,6 +61,8 @@ def get_candidates(credit_date, employee=None, entitlement=None, include_exempt=
     }
     if employee:
         criteria["name"] = employee
+    if company:
+        criteria["company"] = company
     if entitlement:
         if entitlement not in ("Annual 21", "Annual 30"):
             frappe.throw(_("Unsupported contract entitlement"))
@@ -68,7 +70,7 @@ def get_candidates(credit_date, employee=None, entitlement=None, include_exempt=
 
     employees = frappe.get_list(
         "Employee", filters=criteria,
-        fields=["name", "employee_name", "date_of_joining",
+        fields=["name", "employee_name", "company", "date_of_joining",
                 "custom_leave_period", "custom_exclude_from_leave_accrual"],
         order_by="name", limit_page_length=0,
     )
@@ -96,6 +98,7 @@ def get_candidates(credit_date, employee=None, entitlement=None, include_exempt=
         row = {
             "employee": emp.name,
             "employee_name": emp.employee_name,
+            "company": emp.company,
             "entitlement": emp.custom_leave_period,
             "date_of_joining": emp.date_of_joining,
             "credit_date": str(cutoff),
@@ -133,9 +136,9 @@ def get_candidates(credit_date, employee=None, entitlement=None, include_exempt=
             if amount <= 0:
                 row["status"] = "Zero accrual"
             else:
-                row["status"] = "Review required"
+                row["status"] = "Ready for Approval"
             if notes:
-                row["status"] = "Review required" if amount > 0 else row["status"]
+                row["status"] = "Needs Review" if amount > 0 else row["status"]
             row["notes"] = "; ".join(notes) if notes else (
                 "Provisional amount; no posting enabled"
             )
