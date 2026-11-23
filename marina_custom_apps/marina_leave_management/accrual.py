@@ -1,8 +1,10 @@
 """Pure accrual calculator for Marina annual paid leave.
 
 PHASE 1 / SIMULATION ONLY. Assumptions are deliberately explicit:
-* 30-day contract: each eligible calendar day earns 30 / 330 days.
-* 21-day contract: each eligible calendar day earns 21 / 339 days.
+* 30-day contract: eligible day earns 30 / (contract-year days - 30).
+* 21-day contract: eligible day earns 21 / (contract-year days - 21).
+* A 365-day contract year therefore uses 30/335 or 21/344.
+* Anniversary years containing Feb 29 use 366 days in the denominator.
 * Month length varies (28/29/30/31), so monthly credits vary accordingly.
 * Excluded absences and joining dates reduce eligible days directly.
 * Accrual for a completed month is credited on its final calendar day.
@@ -17,7 +19,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from typing import Iterable
 
 D = Decimal
-RATES = {"Annual 21": (D("21"), D("339")), "Annual 30": (D("30"), D("330"))}
+RATES = {"Annual 21": D("21"), "Annual 30": D("30")}
 
 
 def _date(value):
@@ -60,7 +62,7 @@ def simulate(joining_date, entitlement, through_date, leave_intervals=()):
     if through < joining:
         return {"rows": [], "earned": "0.000000", "excluded_days": "0.000000",
                 "unposted_month": None, "assumptions": "simulation only"}
-    annual, divisor = RATES[entitlement]
+    annual = RATES[entitlement]
     absences = {}
     for interval in leave_intervals:
         start, end = _date(interval["from_date"]), _date(interval["to_date"])
@@ -75,6 +77,7 @@ def simulate(joining_date, entitlement, through_date, leave_intervals=()):
             absences[day] = max(absences.get(day, D("0")), fraction)
             day += timedelta(days=1)
 
+    annual_rates = {}
     rows = []
     earned = D("0")
     excluded = D("0")
@@ -91,9 +94,14 @@ def simulate(joining_date, entitlement, through_date, leave_intervals=()):
         while day <= end:
             fraction = absences.get(day, D("0"))
             month_excluded += fraction
-            # Credit by actual eligible calendar days, independent of the
-            # count of days in other months or previous allocations.
-            month_credit += (D("1") - fraction) * annual / divisor
+            # Annual-period daily rate is fixed for that joining-anniversary
+            # year; leap days count toward the period length. No hard cap.
+            cycle = contract_start(joining, day)
+            if cycle not in annual_rates:
+                next_cycle = anniversary(joining, cycle.year + 1)
+                year_days = D((next_cycle - cycle).days)
+                annual_rates[cycle] = annual / (year_days - annual)
+            month_credit += (D("1") - fraction) * annual_rates[cycle]
             day += timedelta(days=1)
         earned += month_credit
         excluded += month_excluded
@@ -109,5 +117,5 @@ def simulate(joining_date, entitlement, through_date, leave_intervals=()):
         "rows": rows, "earned": quantize(earned),
         "excluded_days": quantize(excluded),
         "unposted_month": cursor.isoformat() if cursor <= through else None,
-        "assumptions": "actual eligible calendar days * (30/330 or 21/339); month-end credit, no annual cap; provisional",
+        "assumptions": "actual eligible calendar days * entitlement/(anniversary-year days - entitlement); month-end credit, no cap; provisional",
     }
