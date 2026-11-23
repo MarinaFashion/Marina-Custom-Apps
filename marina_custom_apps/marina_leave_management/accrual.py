@@ -1,10 +1,10 @@
 """Pure accrual calculator for Marina annual paid leave.
 
 PHASE 1 / SIMULATION ONLY. Assumptions are deliberately explicit:
-* 30-day contract: 30 / 330 eligible standardized days
-* 21-day contract: 21 / 339 eligible standardized days
-* Every full calendar month represents 30 service units. Partial months and
-  excluded absences are normalized by actual days in that calendar month.
+* 30-day contract: each eligible calendar day earns 30 / 330 days.
+* 21-day contract: each eligible calendar day earns 21 / 339 days.
+* Month length varies (28/29/30/31), so monthly credits vary accordingly.
+* Excluded absences and joining dates reduce eligible days directly.
 * Accrual for a completed month is credited on its final calendar day.
 * Each month is independent: no contract-year cap reduces a monthly credit.
 These conventions must be approved by HR before live posting. No writes here.
@@ -85,16 +85,15 @@ def simulate(joining_date, entitlement, through_date, leave_intervals=()):
         # Credit only fully completed calendar months, on their final day.
         if next_month - timedelta(days=1) > through:
             break
-        month_days = D(calendar.monthrange(cursor.year, cursor.month)[1])
         month_credit = D("0")
         month_excluded = D("0")
         day = max(joining, cursor)
         while day <= end:
             fraction = absences.get(day, D("0"))
             month_excluded += fraction
-            # Full-month baseline is fixed: 30 * annual / divisor.
-            # Each non-service day removes its proportional monthly share.
-            month_credit += (D("1") - fraction) * D("30") * annual / divisor / month_days
+            # Credit by actual eligible calendar days, independent of the
+            # count of days in other months or previous allocations.
+            month_credit += (D("1") - fraction) * annual / divisor
             day += timedelta(days=1)
         earned += month_credit
         excluded += month_excluded
@@ -110,5 +109,5 @@ def simulate(joining_date, entitlement, through_date, leave_intervals=()):
         "rows": rows, "earned": quantize(earned),
         "excluded_days": quantize(excluded),
         "unposted_month": cursor.isoformat() if cursor <= through else None,
-        "assumptions": "fixed monthly baseline 30/330 or 21/339; deduct actual-month absence fraction; no annual cap; provisional",
+        "assumptions": "actual eligible calendar days * (30/330 or 21/339); month-end credit, no annual cap; provisional",
     }
