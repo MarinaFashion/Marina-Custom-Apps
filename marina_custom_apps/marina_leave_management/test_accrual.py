@@ -10,19 +10,19 @@ class TestMarinaLeaveAccrual(unittest.TestCase):
     def test_full_month_30_day_contract(self):
         result = simulate("2026-01-01", "Annual 30", "2026-01-31")
         self.assertEqual(len(result["rows"]), 1)
-        self.assertEqual(Decimal(result["earned"]), Decimal("2.818182"))
+        self.assertEqual(Decimal(result["earned"]), Decimal("2.776119"))
         self.assertEqual(result["rows"][0]["credit_date"], "2026-01-31")
 
     def test_full_month_21_day_contract(self):
         result = simulate("2026-01-01", "Annual 21", "2026-01-31")
-        self.assertEqual(Decimal(result["earned"]), Decimal("1.920354"))
+        self.assertEqual(Decimal(result["earned"]), Decimal("1.892442"))
 
     def test_full_month_varies_with_calendar_days(self):
         cases = [
-            ("2026-02-01", "2026-02-28", "2.545455"),
-            ("2024-02-01", "2024-02-29", "2.636364"),
-            ("2026-04-01", "2026-04-30", "2.727273"),
-            ("2026-10-01", "2026-10-31", "2.818182"),
+            ("2026-02-01", "2026-02-28", "2.507463"),
+            ("2024-02-01", "2024-02-29", "2.589286"),
+            ("2026-04-01", "2026-04-30", "2.686567"),
+            ("2026-10-01", "2026-10-31", "2.776119"),
         ]
         for joining, cutoff, expected in cases:
             with self.subTest(cutoff=cutoff):
@@ -73,7 +73,7 @@ class TestMarinaLeaveAccrual(unittest.TestCase):
         rows = {row["month"]: row for row in result["rows"]}
         self.assertEqual(rows["2026-08-01"]["excluded_calendar_days"], "19.000000")
         self.assertEqual(rows["2026-10-01"]["excluded_calendar_days"], "0.000000")
-        self.assertEqual(rows["2026-10-01"]["earned"], "2.818182")
+        self.assertEqual(rows["2026-10-01"]["earned"], "2.776119")
 
     def test_october_leave_is_proportional(self):
         result = simulate(
@@ -81,7 +81,7 @@ class TestMarinaLeaveAccrual(unittest.TestCase):
             [{"from_date": "2026-10-01", "to_date": "2026-10-05"}]
         )
         october = result["rows"][-1]
-        expected = Decimal("30") / Decimal("330") * Decimal("26")
+        expected = Decimal("30") / Decimal("335") * Decimal("26")
         self.assertEqual(Decimal(october["earned"]),
                          Decimal(expected.quantize(Decimal("0.000001"))))
         self.assertEqual(october["excluded_calendar_days"], "5.000000")
@@ -95,7 +95,38 @@ class TestMarinaLeaveAccrual(unittest.TestCase):
 
     def test_daily_rate_without_absences_can_exceed_annual_label(self):
         result = simulate("2026-01-01", "Annual 30", "2026-12-31")
-        self.assertEqual(result["earned"], "33.181818")
+        self.assertEqual(result["earned"], "32.686567")
+
+    def test_30_paid_days_during_365_day_year_earns_30(self):
+        result = simulate(
+            "2026-01-01", "Annual 30", "2026-12-31",
+            [
+                {"from_date": "2026-01-01", "to_date": "2026-01-16"},
+                {"from_date": "2026-02-01", "to_date": "2026-02-03"},
+                {"from_date": "2026-12-01", "to_date": "2026-12-11"},
+            ],
+        )
+        self.assertEqual(result["excluded_days"], "30.000000")
+        self.assertEqual(result["earned"], "30.000000")
+
+    def test_60_excluded_days_over_two_years_earns_60(self):
+        result = simulate(
+            "2025-01-01", "Annual 30", "2026-12-31",
+            [
+                {"from_date": "2025-07-01", "to_date": "2025-07-30"},
+                {"from_date": "2026-07-01", "to_date": "2026-07-30"},
+            ],
+        )
+        self.assertEqual(result["excluded_days"], "60.000000")
+        self.assertEqual(result["earned"], "60.000000")
+
+    def test_leap_year_annual_30_denominator(self):
+        result = simulate(
+            "2024-01-01", "Annual 30", "2024-12-31",
+            [{"from_date": "2024-07-01", "to_date": "2024-07-30"}],
+        )
+        self.assertEqual(result["excluded_days"], "30.000000")
+        self.assertEqual(result["earned"], "30.000000")
 
     def test_reject_invalid_entitlement(self):
         with self.assertRaises(ValueError):
