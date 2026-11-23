@@ -46,3 +46,20 @@ python -m unittest marina_custom_apps.marina_leave_management.test_accrual
 Check leave-day handling (holiday lists and half-days), contract anniversary,
 rounding in HRMS allocation, active employee status and historical cutover.
 Do not enable any posting until HR validates sample calculations.
+
+
+## Employee exemptions
+A migration patch creates Employee checkbox
+`custom_exclude_from_leave_accrual` ("Exclude from Automatic Paid Leave Accrual").
+It defaults to unchecked for every employee. HR must explicitly check it on
+records that should be exempt, including HR-EMP-00048 and HR-EMP-00023.
+
+When checked, `preview_employee` returns
+`excluded_from_accrual: true` and `earned: null` rather than an entitlement.
+It does not delete leave history, change a Leave Ledger Entry, or set a balance
+to zero. Remote work **does not** automatically cause exclusion; HR must
+decide employee by employee.
+
+Migration on demo: deploy branch, run migrations using normal Frappe Cloud
+deployment, verify Employee field, manually mark approved exemptions, and
+test a preview. No posting job exists in this release.
