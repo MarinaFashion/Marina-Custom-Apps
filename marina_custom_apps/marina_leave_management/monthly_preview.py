@@ -105,6 +105,8 @@ def get_candidates(credit_date, employee=None, entitlement=None, include_exempt=
             "period": str(cutoff)[:7],
             "exempt": excluded,
             "candidate_credit": None,
+            "eligible_days": None,
+            "excluded_days": None,
             "status": "Review required",
             "notes": "",
         }
@@ -129,6 +131,10 @@ def get_candidates(credit_date, employee=None, entitlement=None, include_exempt=
             amount = D(str(month_row["earned"]))
             row["candidate_credit"] = float(amount)
             row["excluded_days"] = float(D(str(month_row["excluded_calendar_days"])))
+            first = cutoff.replace(day=1)
+            service_start = max(getdate(emp.date_of_joining), first)
+            calendar_service = D((cutoff - service_start).days + 1)
+            row["eligible_days"] = float(calendar_service - D(str(month_row["excluded_calendar_days"])))
             notes = list(calculation.get("warnings", []))
             if overlap.get(emp.name):
                 notes.append("Submitted allocation overlaps selected credit date: "
