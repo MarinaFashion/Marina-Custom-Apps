@@ -1,6 +1,7 @@
 """Read-only monthly accrual candidates. No allocation or ledger writes."""
 from __future__ import annotations
 
+import calendar
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -15,15 +16,15 @@ D = Decimal
 
 def validate_credit_date(value):
     date_value = getdate(value)
-    if date_value.day != 1:
-        raise ValueError("Credit date must be the first day of a calendar month")
+    if date_value.day != calendar.monthrange(date_value.year, date_value.month)[1]:
+        raise ValueError("Credit date must be the last calendar day of a month")
     if date_value > getdate(today()):
         raise ValueError("Future credit dates are not allowed in the preview")
     return date_value
 
 
 def select_month_credit(simulation, credit_date):
-    """Return just the earned credit due on a given first-of-month date.
+    """Return earned credit for the specified last-of-month date.
 
     This is a total entitlement for that month, NOT an amount to post.
     """
@@ -98,7 +99,7 @@ def get_candidates(credit_date, employee=None, entitlement=None, include_exempt=
             "entitlement": emp.custom_leave_period,
             "date_of_joining": emp.date_of_joining,
             "credit_date": str(cutoff),
-            "period": str(cutoff - timedelta(days=1))[:7],
+            "period": str(cutoff)[:7],
             "exempt": excluded,
             "candidate_credit": None,
             "status": "Review required",
@@ -109,9 +110,9 @@ def get_candidates(credit_date, employee=None, entitlement=None, include_exempt=
             row["notes"] = "Excluded by Employee checkbox; no credit proposed"
             rows.append(row)
             continue
-        if getdate(emp.date_of_joining) >= cutoff:
+        if getdate(emp.date_of_joining) > cutoff:
             row["status"] = "Not eligible yet"
-            row["notes"] = "No completed eligible month before selected credit date"
+            row["notes"] = "Joining date is after selected month-end"
             rows.append(row)
             continue
         try:
