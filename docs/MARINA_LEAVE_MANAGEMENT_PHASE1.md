@@ -13,7 +13,7 @@ ERPNext / HRMS remains the source of truth. Preview is **not** a leave balance.
 - Annual 21: 21 / 339 normalized eligible days.
 - 30 standardized service units per full calendar month, prorated by actual
   calendar days for partial months or absences.
-- Earned monthly credit appears on the next calendar month's first day.
+- Earned monthly credit is recognized on the last calendar day of the earning month.
 - Join-date anniversaries define entitlement periods and annual caps.
 - Only submitted **Approved** Paid Leave and Leave Without Pay exclude accrual.
 - Overlapping absences count only once; half days are supported.
@@ -63,3 +63,6 @@ decide employee by employee.
 Migration on demo: deploy branch, run migrations using normal Frappe Cloud
 deployment, verify Employee field, manually mark approved exemptions, and
 test a preview. No posting job exists in this release.
+
+## Month-end posting policy (2026-11-23 revision)
+Accrual is recognized on the last calendar day of each calendar month, including December 31 for annual closing. A partial first month is prorated and also credited on that month's last day. No monthly scheduler or posting automation is enabled yet. The simulator only includes a calendar month when its final day has arrived. For mid-month 'as of' dates the current month's accrual is not included; that requires a separate accrued-but-unposted accounting estimate if requested.
