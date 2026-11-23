@@ -1,0 +1,160 @@
+{
+  "doctype": "DocType",
+  "name": "Marina Leave Accrual Batch",
+  "module": "Marina Custom Apps",
+  "autoname": "field:batch_key",
+  "engine": "InnoDB",
+  "track_changes": 1,
+  "allow_rename": 0,
+  "field_order": [
+    "company",
+    "credit_date",
+    "status",
+    "batch_key",
+    "results_section",
+    "employees",
+    "totals_section",
+    "eligible_count",
+    "review_count",
+    "total_credit",
+    "prepared_by",
+    "prepared_on",
+    "approved_by",
+    "approved_on",
+    "warning_section",
+    "control_note"
+  ],
+  "fields": [
+    {
+      "fieldname": "company",
+      "fieldtype": "Link",
+      "label": "Company",
+      "options": "Company",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "credit_date",
+      "fieldtype": "Date",
+      "label": "Month-End Credit Date",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "label": "Status",
+      "options": "Draft\nCalculated\nApproved\nCancelled",
+      "default": "Draft",
+      "read_only": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "batch_key",
+      "fieldtype": "Data",
+      "label": "Batch Key",
+      "read_only": 1,
+      "hidden": 1,
+      "unique": 1
+    },
+    {
+      "fieldname": "results_section",
+      "fieldtype": "Section Break",
+      "label": "Accrual Candidates"
+    },
+    {
+      "fieldname": "employees",
+      "fieldtype": "Table",
+      "label": "Employees",
+      "options": "Marina Leave Accrual Batch Employee",
+      "read_only": 1
+    },
+    {
+      "fieldname": "totals_section",
+      "fieldtype": "Section Break",
+      "label": "Summary"
+    },
+    {
+      "fieldname": "eligible_count",
+      "fieldtype": "Int",
+      "label": "Eligible Employees",
+      "read_only": 1
+    },
+    {
+      "fieldname": "review_count",
+      "fieldtype": "Int",
+      "label": "Exceptions for Review",
+      "read_only": 1
+    },
+    {
+      "fieldname": "total_credit",
+      "fieldtype": "Float",
+      "label": "Calculated Credit Days",
+      "read_only": 1,
+      "precision": 6
+    },
+    {
+      "fieldname": "prepared_by",
+      "fieldtype": "Link",
+      "label": "Prepared By",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "prepared_on",
+      "fieldtype": "Datetime",
+      "label": "Prepared On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "approved_by",
+      "fieldtype": "Link",
+      "label": "Approved By",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "approved_on",
+      "fieldtype": "Datetime",
+      "label": "Approved On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "warning_section",
+      "fieldtype": "Section Break",
+      "label": "Control Notes"
+    },
+    {
+      "fieldname": "control_note",
+      "fieldtype": "Small Text",
+      "label": "Review Notes",
+      "read_only": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "HR Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "report": 1,
+      "export": 1,
+      "print": 1
+    }
+  ],
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "search_fields": "company,credit_date,status"
+}
