@@ -1,0 +1,91 @@
+{
+  "doctype": "DocType",
+  "name": "Marina Leave Accrual Batch Employee",
+  "module": "Marina Custom Apps",
+  "istable": 1,
+  "editable_grid": 1,
+  "engine": "InnoDB",
+  "field_order": [
+    "employee",
+    "employee_name",
+    "entitlement",
+    "period",
+    "eligible_days",
+    "excluded_days",
+    "candidate_credit",
+    "status",
+    "notes",
+    "calculation_signature"
+  ],
+  "fields": [
+    {
+      "fieldname": "employee",
+      "fieldtype": "Link",
+      "label": "Employee",
+      "options": "Employee",
+      "in_list_view": 1,
+      "reqd": 1
+    },
+    {
+      "fieldname": "employee_name",
+      "fieldtype": "Data",
+      "label": "Employee Name",
+      "read_only": 1
+    },
+    {
+      "fieldname": "entitlement",
+      "fieldtype": "Data",
+      "label": "Entitlement",
+      "read_only": 1
+    },
+    {
+      "fieldname": "period",
+      "fieldtype": "Data",
+      "label": "Accrual Month",
+      "read_only": 1
+    },
+    {
+      "fieldname": "eligible_days",
+      "fieldtype": "Float",
+      "label": "Eligible Days",
+      "read_only": 1,
+      "precision": 6
+    },
+    {
+      "fieldname": "excluded_days",
+      "fieldtype": "Float",
+      "label": "Excluded Days",
+      "read_only": 1,
+      "precision": 6
+    },
+    {
+      "fieldname": "candidate_credit",
+      "fieldtype": "Float",
+      "label": "Monthly Accrual",
+      "read_only": 1,
+      "precision": 6,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Data",
+      "label": "Review Status",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Small Text",
+      "label": "Review Notes",
+      "read_only": 1
+    },
+    {
+      "fieldname": "calculation_signature",
+      "fieldtype": "Data",
+      "label": "Calculation Signature",
+      "hidden": 1,
+      "read_only": 1
+    }
+  ],
+  "permissions": []
+}
