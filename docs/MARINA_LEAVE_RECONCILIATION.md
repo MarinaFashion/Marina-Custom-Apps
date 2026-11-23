@@ -71,3 +71,14 @@ Accrual is recognized on the last calendar day of each calendar month, including
 
 ## Actual calendar-day basis (2026-11-24 revision)
 The latest preview rule is daily accrual: `eligible_calendar_days * annual_entitlement / eligible_service_divisor`. Divisors remain 330 for Annual 30 and 339 for Annual 21, pending HR validation. This supersedes the prior fixed 30-day monthly baseline. It deliberately DOES NOT reintroduce the anniversary cap, so full months are independent. The annual entitlement discrepancy remains: an absence-free 365-day year gives 33.181818 days for Annual 30 and 22.610619 days for Annual 21. Do not post to HRMS until resolved.
+
+## Approved service-day accrual interpretation (2026-11-24; supersedes older numeric examples)
+- **No annual accrual cap.** More eligible service than the nominal annual baseline earns additional Paid Leave; the earnings carry forward.
+- The daily rate for each **joining-anniversary year** is `annual leave entitlement / (calendar days in that anniversary year - annual leave entitlement)`.
+- Annual 30: `30/335` for a 365-day anniversary year; `30/336` for a 366-day anniversary year.
+- Annual 21: `21/344` for a 365-day anniversary year; `21/345` for a 366-day anniversary year.
+- At each calendar month end, credit that month's actual eligible days multiplied by the relevant anniversary-year daily rate. An anniversary inside the month can split the monthly calculation between two rates.
+- Approved Paid Leave and Leave Without Pay stop accrual for the overlapping calendar days; other periods are treated as eligible under current policy. Paid Leave also independently consumes leave from the actual HRMS balance.
+- For 365 days with 30 Paid Leave days, 335 eligible days earn exactly 30. For two complete 365-day years with 60 excluded days, 670 eligible days earn 60. With only 30 excluded days across two years, 700 eligible days earn 62.686567, not exactly 60.
+- The previous 30/330, 21/339, fixed-month, and anniversary-cap assumptions in earlier sections are **superseded** by this rule. Existing historical simulations will change after deployment. HR retains authority to validate historical balances.
+- Preview and reconciliation only. No automatic Leave Allocation, payroll valuation, or Leave Ledger posting is enabled.
