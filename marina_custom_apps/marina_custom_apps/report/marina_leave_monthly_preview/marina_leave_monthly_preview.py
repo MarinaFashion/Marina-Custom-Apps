@@ -35,4 +35,5 @@ def execute(filters=None):
         employee=filters.get("employee"),
         entitlement=filters.get("entitlement"),
         include_exempt=bool(filters.get("include_exempt")),
+        company=filters.get("company"),
     )
