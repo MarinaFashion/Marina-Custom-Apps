@@ -1,8 +1,15 @@
 frappe.query_reports["Marina Leave Monthly Preview"] = {
     filters: [
-        {fieldname: "credit_date", label: __("Credit Date (1st of Month)"),
+        {fieldname: "credit_date", label: __("Credit Date (Month End)"),
          fieldtype: "Date", reqd: 1,
-         default: frappe.datetime.get_today().slice(0, 8) + '01'},
+         default: (() => {
+             const now = frappe.datetime.get_today();
+             const [year, month, day] = now.split("-").map(Number);
+             const last = new Date(year, month, 0).getDate();
+             return day === last
+                 ? now
+                 : frappe.datetime.add_days(now.slice(0, 8) + "01", -1);
+         })()},
         {fieldname: "employee", label: __("Employee"),
          fieldtype: "Link", options: "Employee"},
         {fieldname: "entitlement", label: __("Contract Entitlement"),
