@@ -56,3 +56,6 @@ print(result.testsRun, len(result.failures), len(result.errors))
 ## Release gate
 No scheduler, no leave allocation, no historical credit posting.
 Review business formula and employee history before authorizing changes.
+
+## Month-end posting policy (2026-11-23 revision)
+Accrual is recognized on the last calendar day of each calendar month, including December 31 for annual closing. A partial first month is prorated and also credited on that month's last day. No monthly scheduler or posting automation is enabled yet. The simulator only includes a calendar month when its final day has arrived. For mid-month 'as of' dates the current month's accrual is not included; that requires a separate accrued-but-unposted accounting estimate if requested.
