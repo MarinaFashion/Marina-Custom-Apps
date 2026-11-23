@@ -51,9 +51,39 @@ class TestMarinaLeaveAccrual(unittest.TestCase):
         self.assertEqual(result["rows"][0]["credit_date"], "2026-01-31")
         self.assertGreater(Decimal(result["earned"]), Decimal("0"))
 
-    def test_anniversary_cap(self):
-        result = simulate("2025-01-15", "Annual 30", "2026-01-31")
-        self.assertLessEqual(Decimal(result["earned"]), Decimal("35"))
+    def test_no_contract_year_cap_reduces_october(self):
+        # HR-EMP-00007 scenario: earlier August leave has no impact on
+        # October if October itself has no Paid Leave or LWP.
+        result = simulate(
+            "2012-11-03", "Annual 30", "2026-10-31",
+            [{"from_date": "2026-08-01", "to_date": "2026-08-19"}]
+        )
+        rows = {row["month"]: row for row in result["rows"]}
+        self.assertEqual(rows["2026-08-01"]["excluded_calendar_days"], "19.000000")
+        self.assertEqual(rows["2026-10-01"]["excluded_calendar_days"], "0.000000")
+        self.assertEqual(rows["2026-10-01"]["earned"], "2.727273")
+
+    def test_october_leave_is_proportional(self):
+        result = simulate(
+            "2026-01-01", "Annual 30", "2026-10-31",
+            [{"from_date": "2026-10-01", "to_date": "2026-10-05"}]
+        )
+        october = result["rows"][-1]
+        expected = Decimal("30") / Decimal("11") * Decimal("26") / Decimal("31")
+        self.assertEqual(Decimal(october["earned"]),
+                         Decimal(expected.quantize(Decimal("0.000001"))))
+        self.assertEqual(october["excluded_calendar_days"], "5.000000")
+
+    def test_month_with_entire_month_on_leave(self):
+        result = simulate(
+            "2026-01-01", "Annual 30", "2026-01-31",
+            [{"from_date": "2026-01-01", "to_date": "2026-01-31"}]
+        )
+        self.assertEqual(result["earned"], "0.000000")
+
+    def test_monthly_baseline_without_absences_can_exceed_annual_label(self):
+        result = simulate("2026-01-01", "Annual 30", "2026-12-31")
+        self.assertEqual(result["earned"], "32.727273")
 
     def test_reject_invalid_entitlement(self):
         with self.assertRaises(ValueError):
