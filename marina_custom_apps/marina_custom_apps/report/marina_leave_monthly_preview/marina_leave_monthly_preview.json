@@ -1,0 +1,18 @@
+{
+  "doctype": "Report",
+  "name": "Marina Leave Monthly Preview",
+  "report_name": "Marina Leave Monthly Preview",
+  "ref_doctype": "Employee",
+  "report_type": "Script Report",
+  "is_standard": "Yes",
+  "module": "Marina Custom Apps",
+  "disabled": 0,
+  "roles": [
+    {
+      "role": "HR Manager"
+    },
+    {
+      "role": "System Manager"
+    }
+  ]
+}
