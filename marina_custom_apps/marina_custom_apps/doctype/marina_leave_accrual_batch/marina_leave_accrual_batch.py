@@ -120,7 +120,7 @@ def _line_dict(row):
         "employee_name": row.get("employee_name"),
         "entitlement": row.get("entitlement"),
         "period": row.get("period"),
-        "eligible_days": None,
+        "eligible_days": row.get("eligible_days"),
         "excluded_days": flt(row.get("excluded_days") or 0, 6),
         "candidate_credit": flt(row.get("candidate_credit") or 0, 6),
         "status": row["status"],
