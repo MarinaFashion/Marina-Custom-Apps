@@ -80,13 +80,15 @@ def ledger_snapshot(employee_ids, cutoff):
         if start > cutoff:
             info["future"] += 1
             continue
-        if end > cutoff:
-            info["spanning"] += 1
-            continue
         days = dec(entry.leaves)
         if entry.transaction_type == "Leave Allocation":
+            # Allocation periods frequently end after the report date.
+            # Use effective start date, not allocation end date.
             info["credit"] += days
         elif entry.transaction_type == "Leave Application":
+            if end > cutoff:
+                info["spanning"] += 1
+                continue
             info["debit"] += days
         else:
             info["other"] += 1
