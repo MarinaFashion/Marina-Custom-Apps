@@ -6,7 +6,7 @@ PHASE 1 / SIMULATION ONLY. Assumptions are deliberately explicit:
 * Every full calendar month represents 30 service units. Partial months and
   excluded absences are normalized by actual days in that calendar month.
 * Accrual for a completed month is credited on its final calendar day.
-* Contract-year cap is 21 or 30; year boundaries are joining anniversaries.
+* Each month is independent: no contract-year cap reduces a monthly credit.
 These conventions must be approved by HR before live posting. No writes here.
 """
 from __future__ import annotations
@@ -75,7 +75,6 @@ def simulate(joining_date, entitlement, through_date, leave_intervals=()):
             absences[day] = max(absences.get(day, D("0")), fraction)
             day += timedelta(days=1)
 
-    year_credits = {}
     rows = []
     earned = D("0")
     excluded = D("0")
@@ -93,14 +92,9 @@ def simulate(joining_date, entitlement, through_date, leave_intervals=()):
         while day <= end:
             fraction = absences.get(day, D("0"))
             month_excluded += fraction
-            standardized_service = (D("1") - fraction) * D("30") / month_days
-            if standardized_service:
-                cycle = contract_start(joining, day)
-                already = year_credits.get(cycle, D("0"))
-                credit = min(standardized_service * annual / divisor,
-                             max(D("0"), annual - already))
-                year_credits[cycle] = already + credit
-                month_credit += credit
+            # Full-month baseline is fixed: 30 * annual / divisor.
+            # Each non-service day removes its proportional monthly share.
+            month_credit += (D("1") - fraction) * D("30") * annual / divisor / month_days
             day += timedelta(days=1)
         earned += month_credit
         excluded += month_excluded
@@ -116,5 +110,5 @@ def simulate(joining_date, entitlement, through_date, leave_intervals=()):
         "rows": rows, "earned": quantize(earned),
         "excluded_days": quantize(excluded),
         "unposted_month": cursor.isoformat() if cursor <= through else None,
-        "assumptions": "30/330 or 21/339 standardized units, credited month-end; provisional",
+        "assumptions": "fixed monthly baseline 30/330 or 21/339; deduct actual-month absence fraction; no annual cap; provisional",
     }
