@@ -5,7 +5,7 @@ PHASE 1 / SIMULATION ONLY. Assumptions are deliberately explicit:
 * 21-day contract: 21 / 339 eligible standardized days
 * Every full calendar month represents 30 service units. Partial months and
   excluded absences are normalized by actual days in that calendar month.
-* Accrual for a completed month becomes available on the next month's first day.
+* Accrual for a completed month is credited on its final calendar day.
 * Contract-year cap is 21 or 30; year boundaries are joining anniversaries.
 These conventions must be approved by HR before live posting. No writes here.
 """
@@ -83,8 +83,8 @@ def simulate(joining_date, entitlement, through_date, leave_intervals=()):
     while cursor <= through:
         next_month = month_next(cursor)
         end = min(next_month - timedelta(days=1), through)
-        # Never include an incomplete month in posted accruals.
-        if next_month > through:
+        # Credit only fully completed calendar months, on their final day.
+        if next_month - timedelta(days=1) > through:
             break
         month_days = D(calendar.monthrange(cursor.year, cursor.month)[1])
         month_credit = D("0")
@@ -106,7 +106,7 @@ def simulate(joining_date, entitlement, through_date, leave_intervals=()):
         excluded += month_excluded
         rows.append({
             "month": cursor.isoformat(),
-            "credit_date": next_month.isoformat(),
+            "credit_date": (next_month - timedelta(days=1)).isoformat(),
             "earned": quantize(month_credit),
             "excluded_calendar_days": quantize(month_excluded),
             "cumulative_earned": quantize(earned),
@@ -116,5 +116,5 @@ def simulate(joining_date, entitlement, through_date, leave_intervals=()):
         "rows": rows, "earned": quantize(earned),
         "excluded_days": quantize(excluded),
         "unposted_month": cursor.isoformat() if cursor <= through else None,
-        "assumptions": "30/330 or 21/339 standardized units, posted next month; provisional",
+        "assumptions": "30/330 or 21/339 standardized units, credited month-end; provisional",
     }
