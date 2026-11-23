@@ -11,8 +11,9 @@ ERPNext / HRMS remains the source of truth. Preview is **not** a leave balance.
 ## Assumptions to validate with HR
 - Annual 30: 30 / 330 normalized eligible days.
 - Annual 21: 21 / 339 normalized eligible days.
-- 30 standardized service units per full calendar month, prorated by actual
-  calendar days for partial months or absences.
+- Accrual uses **actual eligible calendar days**, including variations for
+  28, 29, 30, and 31-day months. Partial joining months and absences reduce
+  the count of eligible calendar days.
 - Earned monthly credit is recognized on the last calendar day of the earning month.
 - Joining anniversaries remain available for reporting; there is no annual cap in the monthly preview.
 - Only submitted **Approved** Paid Leave and Leave Without Pay exclude accrual.
@@ -23,7 +24,7 @@ ERPNext / HRMS remains the source of truth. Preview is **not** a leave balance.
   estimates credits, and does not calculate historical ledger balances.
 - Rejected applications and test allocation HR-LAL-2024-00001 are not used
   to produce entitlements; no test data is removed.
-- Monthly accrual now uses a fixed monthly baseline minus the fraction of that month covered by approved Paid Leave or Leave Without Pay. Prior-month leave and lifetime accrual do not reduce an otherwise full current-month credit.
+- Monthly accrual uses actual eligible calendar days multiplied by the per-day rate. Prior-month leave and lifetime accrual do not reduce an otherwise full current-month credit.
 
 ## Preview in demo console
 ```python
@@ -67,10 +68,13 @@ test a preview. No posting job exists in this release.
 Accrual is recognized on the last calendar day of each calendar month, including December 31 for annual closing. A partial first month is prorated and also credited on that month's last day. No monthly scheduler or posting automation is enabled yet. The simulator only includes a calendar month when its final day has arrived. For mid-month 'as of' dates the current month's accrual is not included; that requires a separate accrued-but-unposted accounting estimate if requested.
 
 ## Fixed monthly accrual clarification (2026-11-24)
-- Annual 30: each completed month starts at 30/330*30 = 2.7272727... days.
-- Annual 21: each completed month starts at 21/339*30 = 1.8584071... days.
-- Monthly credit = monthly baseline * (eligible calendar days / calendar days in that month). The employee's joining month follows the same proration.
+- Annual 30: monthly credit = actual eligible calendar days * 30/330.
+- Annual 21: monthly credit = actual eligible calendar days * 21/339.
+- For Annual 30 with no absences: February (28d) = 2.545455; April (30d) = 2.727273; October (31d) = 2.818182. Joining month counts only dates on/after joining.
 - Only approved Paid Leave and Leave Without Pay overlapping that particular month reduce eligible days; overlaps are not double counted.
-- The previous contract-year ceiling was removed from the monthly calculator. For example, HR-EMP-00007 must earn 2.727273 for October 2026 given zero October exclusions, irrespective of August leave or historic totals.
-- **Policy reconciliation needed before posting:** 12 fully eligible months on Annual 30 now accrue 32.727273, which exceeds its labeled 30-day annual entitlement. The same issue applies to Annual 21. The report must remain provisional until this difference is explicitly resolved.
+- The previous contract-year ceiling was removed from the monthly calculator. For example, HR-EMP-00007 must earn 2.818182 for October 2026 given zero October exclusions, irrespective of August leave or historic totals.
+- **Policy reconciliation needed before posting:** 365 eligible days on Annual 30 now accrue 33.181818, which exceeds its labeled 30-day annual entitlement. The same issue applies to Annual 21. The report must remain provisional until this difference is explicitly resolved.
 - No scheduler or automatic posting has been activated.
+
+## Actual calendar-day basis (2026-11-24 revision)
+The latest preview rule is daily accrual: `eligible_calendar_days * annual_entitlement / eligible_service_divisor`. Divisors remain 330 for Annual 30 and 339 for Annual 21, pending HR validation. This supersedes the prior fixed 30-day monthly baseline. It deliberately DOES NOT reintroduce the anniversary cap, so full months are independent. The annual entitlement discrepancy remains: an absence-free 365-day year gives 33.181818 days for Annual 30 and 22.610619 days for Annual 21. Do not post to HRMS until resolved.
