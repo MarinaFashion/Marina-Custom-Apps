@@ -1,5 +1,6 @@
 frappe.query_reports["Marina Leave Monthly Preview"] = {
     filters: [
+        {fieldname: "company", label: __("Company"), fieldtype: "Link", options: "Company"},
         {fieldname: "credit_date", label: __("Credit Date (Month End)"),
          fieldtype: "Date", reqd: 1,
          default: (() => {
