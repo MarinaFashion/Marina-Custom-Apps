@@ -74,7 +74,8 @@ def preview_employee(employee: str, as_of: str | None = None):
         frappe.throw("Future as_of dates are not supported in phase 1")
     row = frappe.db.get_value(
         "Employee", employee,
-        ["name", "date_of_joining", "custom_leave_period", "status", "employment_type"],
+        ["name", "date_of_joining", "custom_leave_period", "status", "employment_type",
+         "custom_exclude_from_leave_accrual"],
         as_dict=True,
     )
     if not row or not row.date_of_joining:
@@ -83,11 +84,27 @@ def preview_employee(employee: str, as_of: str | None = None):
         frappe.throw("Phase 1 supports full-time employees only")
     if row.custom_leave_period not in ("Annual 21", "Annual 30"):
         frappe.throw("Employee must have Annual 21 or Annual 30 entitlement")
+    if row.custom_exclude_from_leave_accrual:
+        return {
+            "employee": row.name,
+            "entitlement": row.custom_leave_period,
+            "as_of": str(cutoff),
+            "excluded_from_accrual": True,
+            "exclusion_reason": "Employee exemption flag enabled",
+            "rows": [],
+            "earned": None,
+            "excluded_days": None,
+            "approved_absence_applications": 0,
+            "warnings": [],
+            "official_balance": False,
+            "posting_enabled": False,
+        }
     joining = getdate(row.date_of_joining)
     intervals, warnings, counted = _read_leave_intervals(employee, joining, cutoff)
     result = simulate(joining, row.custom_leave_period, cutoff, intervals)
     result.update({
         "employee": row.name,
+        "excluded_from_accrual": False,
         "entitlement": row.custom_leave_period,
         "as_of": str(cutoff),
         "approved_absence_applications": counted,
