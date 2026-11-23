@@ -65,8 +65,14 @@ frappe.pages["po-receipt-variance-matrix"].on_page_load = function(wrapper) {
            border-left:3px solid var(--marina-primary);
        }
        .marina-po-matrix td.identity {color:var(--marina-primary);}
-       .marina-po-matrix td.photo {background:#fff!important;vertical-align:middle;text-align:center;}
-       .marina-po-matrix td.photo img {max-width:120px;max-height:145px;object-fit:contain;}
+       .marina-po-matrix td.photo {
+           background:#fff!important;vertical-align:middle;text-align:center;
+           width:180px;min-width:160px;padding:4px;
+       }
+       .marina-po-matrix td.photo img {
+           display:block;width:100%;height:215px;max-width:175px;
+           margin:auto;object-fit:contain;object-position:center;
+       }
        .marina-po-matrix td.total {background:var(--marina-sand)!important;font-weight:700;}
        /* Strong outer outline around each 8-row item block; no double lines. */
        .marina-po-matrix tbody tr.item-start > td:not(.identity):not(.photo) {
