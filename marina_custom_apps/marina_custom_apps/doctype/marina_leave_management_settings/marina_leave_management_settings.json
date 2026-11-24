@@ -1,0 +1,45 @@
+{
+  "doctype": "DocType",
+  "name": "Marina Leave Management Settings",
+  "module": "Marina Custom Apps",
+  "issingle": 1,
+  "track_changes": 1,
+  "field_order": [
+    "posting_section",
+    "enable_leave_posting",
+    "posting_status_note"
+  ],
+  "fields": [
+    {
+      "fieldname": "posting_section",
+      "fieldtype": "Section Break",
+      "label": "Posting Controls"
+    },
+    {
+      "fieldname": "enable_leave_posting",
+      "fieldtype": "Check",
+      "label": "Enable Leave Posting",
+      "default": "0",
+      "description": "Reserved for Phase 4B. This setting alone cannot post any leave allocations."
+    },
+    {
+      "fieldname": "posting_status_note",
+      "fieldtype": "Small Text",
+      "label": "Posting Status",
+      "read_only": 1,
+      "default": "Posting engine not yet enabled. Approved batches remain preview-only."
+    }
+  ],
+  "permissions": [
+    {
+      "role": "HR Manager",
+      "read": 1,
+      "write": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1
+    }
+  ]
+}
