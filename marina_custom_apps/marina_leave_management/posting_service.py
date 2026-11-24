@@ -36,8 +36,12 @@ def _settings(batch, employee, require_enabled):
         frappe.throw(_("Enable Leave Posting is OFF"))
     if not config.pilot_employee or employee != config.pilot_employee:
         frappe.throw(_("Only the configured pilot employee can be posted"))
-    if not config.cutover_confirmed or not config.cutover_date or not config.allocation_end_date:
-        frappe.throw(_("Historical balance cutover, start and end dates must be approved"))
+    if not config.cutover_date or not config.allocation_end_date:
+        frappe.throw(_("Pilot cutover date and allocation end date are required"))
+    if require_enabled and not cint(config.cutover_confirmed):
+        frappe.throw(_("Historical balance cutover must be reviewed before actual posting"))
+    if getdate(config.allocation_end_date) <= getdate(config.cutover_date):
+        frappe.throw(_("Allocation end date must be later than the cutover date"))
     if getdate(batch.credit_date) < getdate(config.cutover_date):
         frappe.throw(_("Batch month is earlier than the approved cutover date"))
     if getdate(batch.credit_date) > getdate(config.allocation_end_date):
