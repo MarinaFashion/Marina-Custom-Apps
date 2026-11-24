@@ -1,0 +1,1 @@
+"""Marina Leave Management configuration."""
