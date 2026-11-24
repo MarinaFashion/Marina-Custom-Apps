@@ -7,6 +7,7 @@ from successfully posted entries; never from unposted previews.
 from __future__ import annotations
 
 from datetime import date
+import calendar
 from decimal import Decimal, ROUND_HALF_UP
 import hashlib
 
@@ -37,7 +38,7 @@ def calculate_posting(exact_credit, prior_residual="0"):
 
 def posting_key(company, employee, leave_type, credit_date):
     day = credit_date if isinstance(credit_date, date) else date.fromisoformat(str(credit_date)[:10])
-    if day.day < 28:
+    if day.day != calendar.monthrange(day.year, day.month)[1]:
         raise ValueError("Expected month-end credit date")
     raw = "|".join((company, employee, leave_type, day.isoformat()))
     return "MLPJ-" + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32].upper()
