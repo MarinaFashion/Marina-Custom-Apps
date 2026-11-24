@@ -99,6 +99,21 @@ def _plan(batch, employee, require_enabled=True):
             frappe.throw(_("Linked allocation employee/leave type mismatch"))
         if allocation.company != batch.company:
             frappe.throw(_("Linked allocation company mismatch"))
+        other_allocations = frappe.get_all(
+            "Leave Allocation",
+            filters={"employee": employee, "leave_type": LEAVE_TYPE,
+                     "docstatus": ["<", 2], "name": ["!=", allocation.name]},
+            pluck="name", limit_page_length=1,
+        )
+        if other_allocations:
+            frappe.throw(_("Other Paid Leave allocations detected; manual reconciliation required"))
+        ledger_total = Decimal(str(allocation.get_existing_leave_count() or 0))
+        journal_total = sum(
+            (Decimal(str(frappe.db.get_value(JOURNAL, r.name, "hrms_credit") or "0"))
+             for r in history), Decimal("0")
+        )
+        if abs(ledger_total - journal_total) > Decimal("0.000001"):
+            frappe.throw(_("Allocation ledger credits differ from posted Marina journal history"))
         if getdate(allocation.from_date) != getdate(config.cutover_date):
             frappe.throw(_("Allocation start differs from pilot cutover"))
         if getdate(allocation.to_date) != getdate(config.allocation_end_date):
