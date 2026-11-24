@@ -7,6 +7,10 @@
   "field_order": [
     "posting_section",
     "enable_leave_posting",
+    "pilot_employee",
+    "cutover_date",
+    "allocation_end_date",
+    "cutover_confirmed",
     "posting_status_note"
   ],
   "fields": [
@@ -20,7 +24,33 @@
       "fieldtype": "Check",
       "label": "Enable Leave Posting",
       "default": "0",
-      "description": "Reserved for Phase 4B. This setting alone cannot post any leave allocations."
+      "description": "Disabled by default. Controls manually confirmed single-employee pilot posting only; never enables a scheduler."
+    },
+    {
+      "fieldname": "pilot_employee",
+      "fieldtype": "Link",
+      "label": "Pilot Employee (Demo Only)",
+      "options": "Employee",
+      "description": "Only this employee may receive credits during the controlled pilot."
+    },
+    {
+      "fieldname": "cutover_date",
+      "fieldtype": "Date",
+      "label": "Cutover Date",
+      "description": "First month-end permitted for posting. Must be explicitly approved."
+    },
+    {
+      "fieldname": "allocation_end_date",
+      "fieldtype": "Date",
+      "label": "Allocation Valid Until",
+      "description": "Explicit final HRMS allocation date for the pilot; must cover future leave usage."
+    },
+    {
+      "fieldname": "cutover_confirmed",
+      "fieldtype": "Check",
+      "label": "Historical Cutover Reviewed",
+      "default": "0",
+      "description": "HR has reviewed historical balances and confirmed the new pilot credits will not overwrite them."
     },
     {
       "fieldname": "posting_status_note",
