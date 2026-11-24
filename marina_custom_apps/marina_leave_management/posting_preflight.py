@@ -10,10 +10,10 @@ from decimal import Decimal
 
 import frappe
 from frappe import _
-from frappe.utils import getdate, flt
+from frappe.utils import getdate
 
 from marina_custom_apps.marina_custom_apps.doctype.marina_leave_accrual_batch.marina_leave_accrual_batch import (
-    BATCH, _get_locked, _candidate_rows, canonical,
+    BATCH, require_hr_manager, _candidate_rows, canonical,
 )
 
 ALLOCATION = "Leave Allocation"
@@ -146,7 +146,8 @@ def analyze(batch, employee):
 @frappe.whitelist()
 def preview_employee_posting(batch_name, employee):
     """Read-only diagnostic with HR role and batch document permission checks."""
-    batch = _get_locked(batch_name)
+    require_hr_manager()
+    batch = frappe.get_doc(BATCH, batch_name)
     batch.check_permission("read")
     frappe.has_permission("Employee", "read", employee, throw=True)
     frappe.has_permission(ALLOCATION, "read", throw=True)
