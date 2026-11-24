@@ -116,10 +116,20 @@ def analyze(batch, employee):
         warnings.append(
             f"{len(ledger)} submitted Paid Leave allocation-ledger entry/entries exist; require reference reconciliation"
         )
-    # No custom employee-month posting reference DocType exists yet.
-    blockers.append("Employee/month posting journal and idempotency key not yet installed")
-    blockers.append("Historical opening balance cutover not yet authorized")
-    blockers.append("HRMS fractional Leave Allocation behavior not yet verified in demo")
+    settings = frappe.get_single("Marina Leave Management Settings")
+    if not settings.enable_leave_posting:
+        blockers.append("Marina posting is disabled in Settings")
+    if not settings.cutover_confirmed or not settings.cutover_date or not settings.allocation_end_date:
+        blockers.append("Historical cutover and allocation validity are not approved")
+    if settings.pilot_employee != employee:
+        blockers.append("Employee is not the configured pilot employee")
+    from marina_custom_apps.marina_leave_management.precision import posting_key
+    key = posting_key(batch.company, employee, LEAVE_TYPE, credit_date)
+    if frappe.db.exists("Marina Leave Posting Journal", key):
+        blockers.append("Employee/month posting journal already exists: " + key)
+    if allocations:
+        blockers.append("Existing allocation requires explicit historical review before first pilot posting")
+    warnings.append("HRMS credits are limited to 3 decimals; six-decimal residual is stored in the journal")
     return {
         "batch": batch.name,
         "employee": employee,
@@ -137,7 +147,7 @@ def analyze(batch, employee):
         "overlapping_allocations": overlaps,
         "blocking_reasons": blockers,
         "warnings": warnings,
-        "posting_enabled": False,
+        "posting_enabled": bool(settings.enable_leave_posting),
         "would_create_leave_allocation": False,
         "would_create_ledger_entry": False,
     }
