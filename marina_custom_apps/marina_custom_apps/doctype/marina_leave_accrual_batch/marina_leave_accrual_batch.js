@@ -35,6 +35,60 @@ frappe.ui.form.on("Marina Leave Accrual Batch", {
             }, __("Actions"));
         }
         if (frm.doc.status === "Approved") {
+            frm.add_custom_button(__("Check Posting Readiness"), () => {
+                const eligible = (frm.doc.employees || []).filter(row =>
+                    row.candidate_credit > 0 && row.status === "Ready for Approval"
+                );
+                if (!eligible.length) {
+                    frappe.msgprint(__("No positive-credit employees to inspect."));
+                    return;
+                }
+                const dialog = new frappe.ui.Dialog({
+                    title: __("Read-only Posting Preflight"),
+                    fields: [{
+                        fieldname: "employee", fieldtype: "Link", options: "Employee",
+                        label: __("Employee"), reqd: 1,
+                        default: eligible[0].employee
+                    }],
+                    primary_action_label: __("Run Preflight"),
+                    primary_action(values) {
+                        const selected = eligible.find(x => x.employee === values.employee);
+                        if (!selected) {
+                            frappe.msgprint(__("Select a positive-credit employee in this batch."));
+                            return;
+                        }
+                        frappe.call({
+                            method: "marina_custom_apps.marina_leave_management.posting_preflight.preview_employee_posting",
+                            args: {batch_name: frm.doc.name, employee: values.employee},
+                            freeze: true
+                        }).then(res => {
+                            dialog.hide();
+                            const d = res.message || {};
+                            const blockers = (d.blocking_reasons || []).map(s =>
+                                "<li>" + frappe.utils.escape_html(s) + "</li>"
+                            ).join("");
+                            const warnings = (d.warnings || []).map(s =>
+                                "<li>" + frappe.utils.escape_html(s) + "</li>"
+                            ).join("");
+                            frappe.msgprint({
+                                title: __("Posting Preflight — No Changes"),
+                                indicator: "orange",
+                                message:
+                                    "<p><b>" + __("Employee") + ":</b> " +
+                                    frappe.utils.escape_html(values.employee) + "</p>" +
+                                    "<p><b>" + __("Monthly Credit") + ":</b> " +
+                                    frappe.utils.escape_html(String(d.monthly_credit ?? "")) + "</p>" +
+                                    "<p><b>" + __("Blockers") + ":</b></p><ul>" + blockers + "</ul>" +
+                                    "<p><b>" + __("Warnings") + ":</b></p><ul>" + warnings + "</ul>" +
+                                    "<p><b>" + __("Posting Enabled") + ":</b> No</p>"
+                            });
+                        });
+                    }
+                });
+                dialog.show();
+            }, __("Actions"));
+        }
+        if (frm.doc.status === "Approved") {
             frm.set_intro(__("Approved preview only. HRMS posting is NOT enabled."), "orange");
         } else {
             frm.set_intro(__("PREVIEW: no Leave Allocation or Leave Ledger changes will occur."), "blue");
