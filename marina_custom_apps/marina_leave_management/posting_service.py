@@ -72,6 +72,8 @@ def _plan(batch, employee, require_enabled=True):
         frappe.throw(_("Employee company mismatch"))
     if frappe.db.get_value("Employee", employee, "status") != "Active":
         frappe.throw(_("Employee must be active"))
+    if frappe.db.get_value("Employee", employee, "employment_type") != "Full-time":
+        frappe.throw(_("Employee must be full-time"))
     if frappe.db.get_value("Employee", employee, "custom_exclude_from_leave_accrual"):
         frappe.throw(_("Employee is excluded from accrual"))
 
@@ -97,6 +99,8 @@ def _plan(batch, employee, require_enabled=True):
             frappe.throw(_("Linked allocation employee/leave type mismatch"))
         if allocation.company != batch.company:
             frappe.throw(_("Linked allocation company mismatch"))
+        if getdate(allocation.from_date) != getdate(config.cutover_date):
+            frappe.throw(_("Allocation start differs from pilot cutover"))
         if getdate(allocation.to_date) != getdate(config.allocation_end_date):
             frappe.throw(_("Allocation validity changed after previous posting"))
         if cint(allocation.carry_forward):
