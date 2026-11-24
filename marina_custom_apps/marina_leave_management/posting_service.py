@@ -67,6 +67,12 @@ def _posted_history(employee, batch):
 def _plan(batch, employee, require_enabled=True):
     _assert_demo()
     config = _settings(batch, employee, require_enabled=require_enabled)
+    # An already-posted month must be rejected *before* recalculating its
+    # approved snapshot. Its own allocation now overlaps the credit date and
+    # legitimately changes informational warning notes/status in the preview.
+    key = posting_key(batch.company, employee, LEAVE_TYPE, batch.credit_date)
+    if frappe.db.exists(JOURNAL, key):
+        frappe.throw(_("Employee/month already has a posting journal: {0}").format(key))
     saved, current = _review(batch, employee)
     if current["status"] != "Ready for Approval":
         frappe.throw(_("Pilot only permits Ready for Approval employees"))
@@ -80,10 +86,6 @@ def _plan(batch, employee, require_enabled=True):
         frappe.throw(_("Employee must be full-time"))
     if frappe.db.get_value("Employee", employee, "custom_exclude_from_leave_accrual"):
         frappe.throw(_("Employee is excluded from accrual"))
-
-    key = posting_key(batch.company, employee, LEAVE_TYPE, batch.credit_date)
-    if frappe.db.exists(JOURNAL, key):
-        frappe.throw(_("Employee/month already has a posting journal: {0}").format(key))
 
     history = _posted_history(employee, batch)
     credit_date = getdate(batch.credit_date)
