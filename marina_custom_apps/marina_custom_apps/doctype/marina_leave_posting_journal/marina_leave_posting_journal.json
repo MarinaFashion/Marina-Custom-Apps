@@ -1,0 +1,164 @@
+{
+  "doctype": "DocType",
+  "name": "Marina Leave Posting Journal",
+  "module": "Marina Custom Apps",
+  "autoname": "field:posting_key",
+  "engine": "InnoDB",
+  "track_changes": 1,
+  "allow_rename": 0,
+  "field_order": [
+    "posting_key",
+    "company",
+    "employee",
+    "leave_type",
+    "credit_date",
+    "batch",
+    "status",
+    "amounts_section",
+    "exact_credit",
+    "opening_residual",
+    "hrms_credit",
+    "closing_residual",
+    "audit_section",
+    "leave_allocation",
+    "approved_by",
+    "posted_on",
+    "posting_error"
+  ],
+  "fields": [
+    {
+      "fieldname": "posting_key",
+      "fieldtype": "Data",
+      "label": "Unique Posting Key",
+      "read_only": 1,
+      "unique": 1,
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "company",
+      "fieldtype": "Link",
+      "label": "Company",
+      "options": "Company",
+      "read_only": 1
+    },
+    {
+      "fieldname": "employee",
+      "fieldtype": "Link",
+      "label": "Employee",
+      "options": "Employee",
+      "reqd": 1,
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "leave_type",
+      "fieldtype": "Link",
+      "label": "Leave Type",
+      "options": "Leave Type",
+      "read_only": 1,
+      "default": "Paid Leave"
+    },
+    {
+      "fieldname": "credit_date",
+      "fieldtype": "Date",
+      "label": "Credit Date",
+      "reqd": 1,
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "batch",
+      "fieldtype": "Link",
+      "label": "Accrual Batch",
+      "options": "Marina Leave Accrual Batch",
+      "read_only": 1
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "label": "Posting Status",
+      "options": "Reserved\nPending\nPosted\nFailed\nReversed",
+      "default": "Reserved",
+      "read_only": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "amounts_section",
+      "fieldtype": "Section Break",
+      "label": "Exact Accrual And HRMS Precision"
+    },
+    {
+      "fieldname": "exact_credit",
+      "fieldtype": "Data",
+      "label": "Exact Monthly Credit (6dp)",
+      "read_only": 1
+    },
+    {
+      "fieldname": "opening_residual",
+      "fieldtype": "Data",
+      "label": "Prior Residual (6dp)",
+      "read_only": 1
+    },
+    {
+      "fieldname": "hrms_credit",
+      "fieldtype": "Data",
+      "label": "HRMS Credit (3dp)",
+      "read_only": 1
+    },
+    {
+      "fieldname": "closing_residual",
+      "fieldtype": "Data",
+      "label": "New Residual (6dp)",
+      "read_only": 1
+    },
+    {
+      "fieldname": "audit_section",
+      "fieldtype": "Section Break",
+      "label": "Posting Audit"
+    },
+    {
+      "fieldname": "leave_allocation",
+      "fieldtype": "Link",
+      "label": "Leave Allocation",
+      "options": "Leave Allocation",
+      "read_only": 1
+    },
+    {
+      "fieldname": "approved_by",
+      "fieldtype": "Link",
+      "label": "Authorized By",
+      "options": "User",
+      "read_only": 1
+    },
+    {
+      "fieldname": "posted_on",
+      "fieldtype": "Datetime",
+      "label": "Posted On",
+      "read_only": 1
+    },
+    {
+      "fieldname": "posting_error",
+      "fieldtype": "Small Text",
+      "label": "Error / Review Notes",
+      "read_only": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "HR Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "report": 1,
+      "export": 1
+    }
+  ],
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "search_fields": "employee,credit_date,batch,status"
+}
