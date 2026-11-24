@@ -144,11 +144,13 @@ def _plan(batch, employee, require_enabled=True):
     }
 
 
-def _access(batch_name, employee):
+def _access(batch_name, employee, require_write=False):
     require_hr_manager()
     frappe.has_permission("Employee", "read", employee, throw=True)
-    frappe.has_permission("Leave Allocation", "create", throw=True)
-    frappe.has_permission("Leave Allocation", "submit", throw=True)
+    frappe.has_permission("Leave Allocation", "read", throw=True)
+    if require_write:
+        frappe.has_permission("Leave Allocation", "create", throw=True)
+        frappe.has_permission("Leave Allocation", "submit", throw=True)
     batch = frappe.get_doc(BATCH, batch_name)
     batch.check_permission("read")
     if batch.status != "Approved":
@@ -171,7 +173,7 @@ def post_selected_employee(batch_name, employee, confirm=0):
     _assert_demo()
     if not cint(confirm):
         frappe.throw(_("Explicit posting confirmation is required"))
-    batch = _access(batch_name, employee)
+    batch = _access(batch_name, employee, require_write=True)
     # This serializes concurrent posting attempts for this employee, even
     # when they originate from different monthly batch documents.
     frappe.db.sql("SELECT name FROM `tabEmployee` WHERE name=%s FOR UPDATE", (employee,))
